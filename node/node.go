@@ -181,7 +181,6 @@ func (n *Node) lachesis(gossip bool) {
 			if gossip {
 				proceed, err := n.preGossip()
 				if proceed && err == nil {
-					n.logger.Debug("Time to gossip!")
 					peer := n.peerSelector.Next()
 					n.goFunc(func() { n.gossip(peer.NetAddr, returnCh) })
 				}
@@ -346,7 +345,6 @@ func (n *Node) preGossip() (bool, error) {
 
 	//Check if it is necessary to gossip
 	if !(n.core.NeedGossip() || n.isStarting()) {
-		n.logger.Debug("Nothing to gossip")
 		return false, nil
 	}
 
@@ -621,7 +619,7 @@ func (n *Node) commit(block hg.Block) error {
 		//inmem is simply the hash of transactions
 		//this requires a 1:1 relationship with nodes and clients
 		//multiple nodes can't read from the same client
-		
+
 		block.Body.StateHash = stateHash
 		n.coreLock.Lock()
 		defer n.coreLock.Unlock()
