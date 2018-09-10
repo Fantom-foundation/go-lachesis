@@ -9,9 +9,9 @@ import (
 type PeerSelector interface {
 	Peers() []net.Peer
 	UpdateLast(peer string)
-	UpdateLastN(peer []string)
+	UpdateLastN(peer []net.Peer)
 	Next() net.Peer
-	NextN(n int)
+	NextN(n int) []net.Peer
 }
 
 //+++++++++++++++++++++++++++++++++++++++
@@ -20,7 +20,7 @@ type PeerSelector interface {
 type RandomPeerSelector struct {
 	peers []net.Peer
 	last  string
-	lastN []string
+	lastN []net.Peer
 }
 
 func NewRandomPeerSelector(participants []net.Peer, localAddr string) *RandomPeerSelector {
@@ -38,7 +38,7 @@ func (ps *RandomPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
 
-func (ps *RandomPeerSelector) UpdateLastN(peers []string) {
+func (ps *RandomPeerSelector) UpdateLastN(peers []net.Peer) {
 	ps.lastN = peers
 }
 
@@ -52,12 +52,33 @@ func (ps *RandomPeerSelector) Next() net.Peer {
 	return peer
 }
 
-func (ps *RandomPeerSelector) NextN(n int) net.Peer {
+func (ps *RandomPeerSelector) NextN(n int) []net.Peer {
 	selectablePeers := ps.peers
-	if len(selectablePeers) > n {
-		_, selectablePeers = net.ExcludePeers(selectablePeers, ps.lastN)
+	if len(selectablePeers) > (n*2) {
+		selectablePeers = net.ExcludePeers(selectablePeers, ps.lastN)
 	}
-	i := rand.Intn(len(selectablePeers))
-	peer := selectablePeers[i]
-	return peer
+	//do n times
+	if len(selectablePeers) > n {
+		returnPeers := make([]net.Peer, 0, n)
+		for i := 0; i < n; i++ {
+			found := false
+			added := false
+			for (!added) {
+				randomPeer := selectablePeers[rand.Intn(len(selectablePeers))]
+				for _, p := range returnPeers {
+					if (p.NetAddr == randomPeer.NetAddr) {
+						found = true
+						break
+					}
+				}
+				if (!found) {
+					returnPeers = append(returnPeers, randomPeer)
+					added = true
+				}
+			}
+		}
+		return returnPeers
+	} else {
+		return selectablePeers
+	}
 }

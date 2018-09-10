@@ -126,12 +126,12 @@ func ExcludePeer(peers []Peer, peer string) (int, []Peer) {
 	return index, otherPeers
 }
 // ExcludePeers is used to exclude multiple peers from a list of peers.
-func ExcludePeers(peers []Peer, excludedPeers []string) ([]Peer) {
+func ExcludePeers(peers []Peer, excludedPeers []Peer) ([]Peer) {
 	otherPeers := make([]Peer, 0, len(peers))
 	for _, p := range peers {
 		found := false
 		for _, ex := range excludedPeers {
-			if p.NetAddr == ex {
+			if p.NetAddr == ex.NetAddr {
 				found = true
 			}
 		}

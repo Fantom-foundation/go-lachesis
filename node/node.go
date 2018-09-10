@@ -181,8 +181,8 @@ func (n *Node) lachesis(gossip bool) {
 			if gossip {
 				proceed, err := n.preGossip()
 				if proceed && err == nil {
-					peer := n.peerSelector.Next()
-					n.goFunc(func() { n.gossip(peer.NetAddr, returnCh) })
+					peers := n.peerSelector.NextN(1)
+					n.goFunc(func() { n.gossip(peers, returnCh) })
 				}
 			}
 			if !n.core.NeedGossip() {
@@ -354,41 +354,67 @@ func (n *Node) preGossip() (bool, error) {
 //This function is usually called in a go-routine and needs to inform the
 //calling routine (usually the lachesis routine) when it is time to exit the
 //Gossiping state and return.
-func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
 
-	//pull
-	syncLimit, otherKnownEvents, err := n.pull(peerAddr)
-	if err != nil {
-		return err
+//peers[0].NetAddr
+func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
+
+	//pull for all n peers to get all unknown events
+	//need to perform an n synchronization
+
+	//step 1 pull all unknown events from other parties
+	//step 2 save all unknown events locally
+	//step 3 perform another pull
+	var allEvents []hg.WireEvent
+	var otherKnownEventsArray []map[int]int
+	var err error
+	for _, p := range peers {
+		syncLimit, otherKnownEvents, events, err := n.pull(p.NetAddr)
+		if err != nil {
+			return err
+		}
+
+		//check and handle syncLimit
+		if syncLimit {
+			n.logger.WithField("from", p.NetAddr).Debug("SyncLimit")
+			n.setState(CatchingUp)
+			parentReturnCh <- struct{}{}
+			return nil
+		}
+
+		otherKnownEventsArray = append(otherKnownEventsArray, otherKnownEvents)
+		allEvents = append(allEvents, events...)
 	}
 
-	//check and handle syncLimit
-	if syncLimit {
-		n.logger.WithField("from", peerAddr).Debug("SyncLimit")
-		n.setState(CatchingUp)
-		parentReturnCh <- struct{}{}
-		return nil
+	if len(allEvents) > 0 {
+		//Add Events to Hashgraph and create new Head if necessary
+		n.coreLock.Lock()
+		err = n.sync(allEvents)
+		n.coreLock.Unlock()
+		if err != nil {
+			n.logger.WithField("error", err).Error("sync()")
+			return err
+		}
 	}
 
 	//push
-	err = n.push(peerAddr, otherKnownEvents)
-	if err != nil {
-		return err
+	for i, p := range peers {
+		err = n.push(p.NetAddr, otherKnownEventsArray[i])
+		if err != nil {
+			return err
+		}
 	}
 
 	//update peer selector
 	n.selectorLock.Lock()
-	n.peerSelector.UpdateLast(peerAddr)
+	n.peerSelector.UpdateLastN(peers)
 	n.selectorLock.Unlock()
-
 	n.logStats()
-
 	n.setStarting(false)
 
 	return nil
 }
 
-func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]int, err error) {
+func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]int, events []hg.WireEvent, err error) {
 	//Compute Known
 	n.coreLock.Lock()
 	knownEvents := n.core.KnownEvents()
@@ -401,7 +427,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]i
 	n.logger.WithField("duration", elapsed.Nanoseconds()).Debug("requestSync()")
 	if err != nil {
 		n.logger.WithField("error", err).Error("requestSync()")
-		return false, nil, err
+		return false, nil, nil, err
 	}
 	n.logger.WithFields(logrus.Fields{
 		"from_id":    resp.FromID,
@@ -411,21 +437,10 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]i
 	}).Debug("SyncResponse")
 
 	if resp.SyncLimit {
-		return true, nil, nil
+		return true, nil, nil, nil
 	}
 
-	if len(resp.Events) > 0 {
-		//Add Events to Hashgraph and create new Head if necessary
-		n.coreLock.Lock()
-		err = n.sync(resp.Events)
-		n.coreLock.Unlock()
-		if err != nil {
-			n.logger.WithField("error", err).Error("sync()")
-			return false, nil, err
-		}
-	}
-
-	return false, resp.Known, nil
+	return false, resp.Known, resp.Events, nil
 }
 
 func (n *Node) push(peerAddr string, knownEvents map[int]int) error {
