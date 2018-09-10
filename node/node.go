@@ -289,7 +289,7 @@ func (n *Node) processEagerSyncRequest(rpc net.RPC, cmd *net.EagerSyncRequest) {
 
 	success := true
 	n.coreLock.Lock()
-	err := n.sync(cmd.Events)
+	err := n.sync([][]hg.WireEvent{cmd.Events})
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("error", err).Error("sync()")
@@ -364,10 +364,11 @@ func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
 	//step 1 pull all unknown events from other parties
 	//step 2 save all unknown events locally
 	//step 3 perform another pull
-	var allEvents []hg.WireEvent
-	var otherKnownEventsArray []map[int]int
+	allEvents := [][]hg.WireEvent{}
+	otherKnownEventsArray := []map[int]int{}
+	eventsCount := 0
 	var err error
-	for _, p := range peers {
+	for i, p := range peers {
 		syncLimit, otherKnownEvents, events, err := n.pull(p.NetAddr)
 		if err != nil {
 			return err
@@ -382,10 +383,11 @@ func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
 		}
 
 		otherKnownEventsArray = append(otherKnownEventsArray, otherKnownEvents)
-		allEvents = append(allEvents, events...)
+		allEvents[i] = events
+		eventsCount += len(events)
 	}
 
-	if len(allEvents) > 0 {
+	if eventsCount > 0 {
 		//Add Events to Hashgraph and create new Head if necessary
 		n.coreLock.Lock()
 		err = n.sync(allEvents)
@@ -448,7 +450,7 @@ func (n *Node) push(peerAddr string, knownEvents map[int]int) error {
 	//If the transaction pool is not empty, create a new self-event and empty the
 	//transaction pool in its payload
 	n.coreLock.Lock()
-	err := n.core.AddSelfEvent("")
+	err := n.core.AddSelfEvent([]string{""})
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("error", err).Error("Adding SelfEvent")
@@ -589,7 +591,7 @@ func (n *Node) requestFastForward(target string) (net.FastForwardResponse, error
 	return out, err
 }
 
-func (n *Node) sync(events []hg.WireEvent) error {
+func (n *Node) sync(events [][]hg.WireEvent) error {
 	//Insert Events in Hashgraph and create new Head if necessary
 	start := time.Now()
 	err := n.core.Sync(events)

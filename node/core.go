@@ -212,7 +212,7 @@ func (c *Core) EventDiff(known map[int]int) (events []hg.Event, err error) {
 	return unknown, nil
 }
 
-func (c *Core) Sync(unknownEvents []hg.WireEvent) error {
+func (c *Core) Sync(unknownEvents [][]hg.WireEvent) error {
 
 	c.logger.WithFields(logrus.Fields{
 		"unknown_events":       len(unknownEvents),
@@ -220,27 +220,31 @@ func (c *Core) Sync(unknownEvents []hg.WireEvent) error {
 		"block_signature_pool": len(c.blockSignaturePool),
 	}).Debug("Sync")
 
-	otherHead := ""
-	//add unknown events
-	for k, we := range unknownEvents {
-		ev, err := c.hg.ReadWireInfo(we)
-		if err != nil {
-			c.logger.WithField("WireEvent", we).Errorf("ReadingWireInfo")
-			return err
+	otherHeads := []string{}
 
-		}
-		if err := c.InsertEvent(*ev, false); err != nil {
-			return err
-		}
-		//assume last event corresponds to other-head
-		if k == len(unknownEvents)-1 {
-			otherHead = ev.Hex()
+	//for each node add to unknown events
+	for i, ue := range unknownEvents {
+		//add unknown events
+		for k, we := range ue {
+			ev, err := c.hg.ReadWireInfo(we)
+			if err != nil {
+				c.logger.WithField("WireEvent", we).Errorf("ReadingWireInfo")
+				return err
+
+			}
+			if err := c.InsertEvent(*ev, false); err != nil {
+				return err
+			}
+			//assume last event corresponds to other-head
+			if k == len(unknownEvents)-1 {
+				otherHeads[i] = ev.Hex()
+			}
 		}
 	}
 
 	//create new event with self head and other head only if there are pending
 	//loaded events or the pools are not empty
-	return c.AddSelfEvent(otherHead)
+	return c.AddSelfEvent(otherHeads)
 }
 
 func (c *Core) FastForward(peer string, block hg.Block, frame hg.Frame) error {
@@ -288,19 +292,26 @@ func (c *Core) FastForward(peer string, block hg.Block, frame hg.Frame) error {
 	return nil
 }
 
-func (c *Core) AddSelfEvent(otherHead string) error {
+func (c *Core) AddSelfEvent(otherHeads []string) error {
 
 	//exit if there is nothing to record
-	if otherHead == "" && len(c.transactionPool) == 0 && len(c.blockSignaturePool) == 0 {
+	for _, oh := range otherHeads {
+		if oh == "" {
+			c.logger.Debug("Empty otherHead")
+			return nil
+		}
+	}
+	if len(c.transactionPool) == 0 && len(c.blockSignaturePool) == 0 {
 		c.logger.Debug("Empty transaction pool and block signature pool")
 		return nil
 	}
-
+	parents := []string{c.Head}
+	parents = append(parents, otherHeads...)
 	//create new event with self head and empty other parent
 	//empty transaction pool in its payload
 	newHead := hg.NewEvent(c.transactionPool,
 		c.blockSignaturePool,
-		[]string{c.Head, otherHead},
+		parents,
 		c.PubKey(), c.Seq+1)
 
 	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
