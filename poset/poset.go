@@ -418,7 +418,7 @@ func (h *Poset) checkSelfParent(event Event) error {
 
 //Check if we know the OtherParent
 func (h *Poset) checkOtherParent(event Event) error {
-	otherParent := event.OtherParent(1)
+	otherParent := event.OtherParent(0)
 	if otherParent != "" {
 		//Check if we have it
 		_, err := h.Store.GetEvent(otherParent)
@@ -517,7 +517,7 @@ func (h *Poset) initEventCoordinates(event *Event) error {
 	return nil
 }
 
-//update first decendant of each last ancestor to point to event
+//update first descendant of each last ancestor to point to event
 func (h *Poset) updateAncestorFirstDescendant(event Event) error {
 	creatorID, ok := h.Participants[event.Creator()]
 	if !ok {
@@ -570,7 +570,7 @@ func (h *Poset) createSelfParentRootEvent(ev Event) (RootEvent, error) {
 
 func (h *Poset) createOtherParentRootEvent(ev Event) (RootEvent, error) {
 
-	op := ev.OtherParent()
+	op := ev.OtherParent(0)
 
 	//it might still be in the Root
 	root, err := h.Store.GetRoot(ev.Creator())
@@ -601,7 +601,43 @@ func (h *Poset) createOtherParentRootEvent(ev Event) (RootEvent, error) {
 		Round:            opRound,
 	}
 	return otherParentRootEvent, nil
+}
 
+func (h *Poset) createOtherParentsRootEvents(ev Event) ([]RootEvent, error) {
+
+	ops := ev.OtherParents()
+	otherParentRootEvents := []RootEvent{}
+	//it might still be in the Root
+	root, err := h.Store.GetRoot(ev.Creator())
+	if err != nil {
+		return RootEvent{}, err
+	}
+	if other, ok := root.Others[ev.Hex()]; ok && other.Hash == op {
+		return other, nil
+	}
+	for _, op := range ops {
+		otherParent, err := h.Store.GetEvent(op)
+		if err != nil {
+			return RootEvent{}, err
+		}
+		opLT, err := h.lamportTimestamp(op)
+		if err != nil {
+			return RootEvent{}, err
+		}
+		opRound, err := h.round(op)
+		if err != nil {
+			return RootEvent{}, err
+		}
+		otherParentRootEvent := RootEvent{
+			Hash:             op,
+			CreatorID:        h.Participants[otherParent.Creator()],
+			Index:            otherParent.Index(),
+			LamportTimestamp: opLT,
+			Round:            opRound,
+		}
+		otherParentRootEvents = append(otherParentRootEvents, otherParentRootEvent)
+	}
+	return otherParentRootEvents
 }
 
 func (h *Poset) createRoot(ev Event) (Root, error) {
@@ -620,11 +656,11 @@ func (h *Poset) createRoot(ev Event) (Root, error) {
 	}
 
 	/*
-		OtherParent
+		OtherParents
 	*/
 	var otherParentRootEvent *RootEvent
-	if ev.OtherParent() != "" {
-		opre, err := h.createOtherParentRootEvent(ev)
+	if len(ev.OtherParents()) > 0 {
+		opre, err := h.createOtherParentsRootEvents(ev)
 		if err != nil {
 			return Root{}, err
 		}
@@ -634,12 +670,13 @@ func (h *Poset) createRoot(ev Event) (Root, error) {
 	root := Root{
 		NextRound:  evRound,
 		SelfParent: selfParentRootEvent,
-		Others:     map[string]RootEvent{},
+		Others:     map[string][]RootEvent{},
 	}
 
 	if otherParentRootEvent != nil {
 		root.Others[ev.Hex()] = *otherParentRootEvent
 	}
+
 
 	return root, nil
 }
@@ -664,28 +701,37 @@ func (h *Poset) setWireInfo(event *Event) error {
 		selfParentIndex = selfParent.Index()
 	}
 
-	if event.OtherParent() != "" {
+	if len(event.OtherParent()) > 0 {
 		//Check Root then regular Events
 		root, err := h.Store.GetRoot(event.Creator())
 		if err != nil {
 			return err
 		}
-		if other, ok := root.Others[event.Hex()]; ok && other.Hash == event.OtherParent() {
-			otherParentCreatorID = other.CreatorID
-			otherParentIndex = other.Index
-		} else {
-			otherParent, err := h.Store.GetEvent(event.OtherParent())
-			if err != nil {
-				return err
+
+		otherParentCreatorIDs := []int{}
+		otherParentIndexes := []int{}
+
+		if others, ok := root.Others[event.Hex()]; ok {
+			for k, other := range others {
+				if other.Hash == event.OtherParent(k) {
+					otherParentCreatorID = other.CreatorID
+					otherParentIndex = other.Index
+				} else {
+					otherParent, err := h.Store.GetEvent(event.OtherParent(k))
+					if err != nil {
+						return err
+					}
+					otherParentCreatorID = h.Participants[otherParent.Creator()]
+					otherParentIndex = otherParent.Index()
+				}
 			}
-			otherParentCreatorID = h.Participants[otherParent.Creator()]
-			otherParentIndex = otherParent.Index()
-		}
+			otherParentCreatorIDs = append(otherParentCreatorIDs, otherParentCreatorID)
+			otherParentIndexes = append(otherParentIndexes, otherParentIndex)
 	}
 
 	event.SetWireInfo(selfParentIndex,
-		otherParentCreatorID,
-		otherParentIndex,
+		otherParentCreatorIDs,
+		otherParentIndexes,
 		h.Participants[event.Creator()])
 
 	return nil
@@ -729,7 +775,7 @@ func (h *Poset) InsertEvent(event Event, setWireInfo bool) error {
 		return fmt.Errorf("CheckSelfParent: %s", err)
 	}
 
-	if err := h.checkOtherParent(event); err != nil {
+	if err := h.checkOtherParents(event); err != nil {
 		return fmt.Errorf("CheckOtherParent: %s", err)
 	}
 

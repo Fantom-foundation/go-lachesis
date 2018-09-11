@@ -10,55 +10,10 @@ import (
 /*
 Roots constitute the base of a Poset. Each Participant is assigned a Root on
 top of which Events will be added. The first Event of a participant must have a
-Self-Parent and an Other-Parent that match its Root X and Y respectively.
+Self-Parent and n Other-Parents that match its Root respectively.
 
 This construction allows us to initialize Posets where the first Events are
-taken from the middle of another Poset
-
-ex 1:
-
------------------        -----------------       -----------------
-- Event E0      -        - Event E1      -       - Event E2      -
-- SP = ""       -        - SP = ""       -       - SP = ""       -
-- OP = ""       -        - OP = ""       -       - OP = ""       -
------------------        -----------------       -----------------
-        |                        |                       |
------------------		 -----------------		 -----------------
-- Root 0        - 		 - Root 1        - 		 - Root 2        -
-- X = Y = ""    - 		 - X = Y = ""    -		 - X = Y = ""    -
-- Index= -1     -		 - Index= -1     -       - Index= -1     -
-- Others= empty - 		 - Others= empty -       - Others= empty -
------------------		 -----------------       -----------------
-
-ex 2:
-
------------------
-- Event E02     -
-- SP = E01      -
-- OP = E_OLD    -
------------------
-       |
------------------
-- Event E01     -
-- SP = E00      -
-- OP = E10      -  \
------------------    \
-       |               \
------------------        -----------------       -----------------
-- Event E00     -        - Event E10     -       - Event E20     -
-- SP = x0       -        - SP = x1       -       - SP = x2       -
-- OP = y0       -        - OP = y1       -       - OP = y2       -
------------------        -----------------       -----------------
-        |                        |                       |
------------------		 -----------------		 -----------------
-- Root 0        - 		 - Root 1        - 		 - Root 2        -
-- X: x0, Y: y0  - 		 - X: x1, Y: y1  - 		 - X: x2, Y: y2  -
-- Index= i0     -		 - Index= i1     -       - Index= i2     -
-- Others= {     - 		 - Others= empty -       - Others= empty -
--  E02: E_OLD   -        -----------------       -----------------
-- }             -
------------------
-*/
+taken from the middle of another Poset*/
 
 //RootEvent contains enough information about an Event and its direct descendant
 //to allow inserting Events on top of it.
@@ -92,7 +47,7 @@ func NewBaseRootEvent(creatorID int) RootEvent {
 type Root struct {
 	NextRound  int
 	SelfParent RootEvent
-	Others     map[string]RootEvent
+	Others     map[string][]RootEvent
 }
 
 //NewBaseRoot initializes a Root object for a fresh Poset.
@@ -100,7 +55,7 @@ func NewBaseRoot(creatorID int) Root {
 	res := Root{
 		NextRound:  0,
 		SelfParent: NewBaseRootEvent(creatorID),
-		Others:     map[string]RootEvent{},
+		Others:     map[string][]RootEvent{},
 	}
 	return res
 }

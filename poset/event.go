@@ -25,8 +25,8 @@ type EventBody struct {
 	//wire
 	//It is cheaper to send ints then hashes over the wire
 	selfParentIndex      int
-	otherParentCreatorID int
-	otherParentIndex     int
+	otherParentCreatorID []int
+	otherParentIndex     []int
 	creatorID            int
 }
 
