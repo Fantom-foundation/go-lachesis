@@ -418,7 +418,7 @@ func (h *Poset) checkSelfParent(event Event) error {
 
 //Check if we know the OtherParent
 func (h *Poset) checkOtherParent(event Event) error {
-	otherParent := event.OtherParent()
+	otherParent := event.OtherParent(1)
 	if otherParent != "" {
 		//Check if we have it
 		_, err := h.Store.GetEvent(otherParent)
@@ -438,6 +438,30 @@ func (h *Poset) checkOtherParent(event Event) error {
 	return nil
 }
 
+//Check if we know the OtherParents
+func (h *Poset) checkOtherParents(event Event) error {
+	otherParents := event.OtherParents()
+	for i, otherParent := range otherParents {
+		if otherParent != "" {
+			//Check if we have it
+			_, err := h.Store.GetEvent(otherParent)
+			if err != nil {
+				//it might still be in the Root
+				root, err := h.Store.GetRoot(event.Creator())
+				if err != nil {
+					return err
+				}
+				other, ok := root.Others[event.Hex()]
+				if ok && other.Hash == event.OtherParent() {
+					return nil
+				}
+				return fmt.Errorf("other-parent not known")
+			}
+		}
+	}
+	return nil
+}
+
 //initialize arrays of last ancestors and first descendants
 func (h *Poset) initEventCoordinates(event *Event) error {
 	members := len(h.Participants)
@@ -452,7 +476,8 @@ func (h *Poset) initEventCoordinates(event *Event) error {
 	event.lastAncestors = make([]EventCoordinates, members)
 
 	selfParent, selfParentError := h.Store.GetEvent(event.SelfParent())
-	otherParent, otherParentError := h.Store.GetEvent(event.OtherParent())
+	otherParents, otherParentError := h.Store.GetEvent(event.OtherParents())
+
 
 	if selfParentError != nil && otherParentError != nil {
 		for id := 0; id < members; id++ {
@@ -460,19 +485,19 @@ func (h *Poset) initEventCoordinates(event *Event) error {
 				index: -1,
 			}
 		}
-	} else if selfParentError != nil {
-		copy(event.lastAncestors[:members], otherParent.lastAncestors)
 	} else if otherParentError != nil {
 		copy(event.lastAncestors[:members], selfParent.lastAncestors)
 	} else {
 		selfParentLastAncestors := selfParent.lastAncestors
-		otherParentLastAncestors := otherParent.lastAncestors
+		for _, otherParent := range otherParents {
+			otherParentLastAncestors := otherParent.lastAncestors
 
-		copy(event.lastAncestors[:members], selfParentLastAncestors)
-		for i := 0; i < members; i++ {
-			if event.lastAncestors[i].index < otherParentLastAncestors[i].index {
-				event.lastAncestors[i].index = otherParentLastAncestors[i].index
-				event.lastAncestors[i].hash = otherParentLastAncestors[i].hash
+			copy(event.lastAncestors[:members], selfParentLastAncestors)
+			for i := 0; i < members; i++ {
+				if event.lastAncestors[i].index < otherParentLastAncestors[i].index {
+					event.lastAncestors[i].index = otherParentLastAncestors[i].index
+					event.lastAncestors[i].hash = otherParentLastAncestors[i].hash
+				}
 			}
 		}
 	}
