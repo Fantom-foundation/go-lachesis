@@ -10,7 +10,7 @@ import (
 
 	"strconv"
 
-	hg "github.com/andrecronje/lachesis/hashgraph"
+	"github.com/andrecronje/lachesis/poset"
 	"github.com/andrecronje/lachesis/net"
 	"github.com/andrecronje/lachesis/proxy"
 )
@@ -36,7 +36,7 @@ type Node struct {
 	proxy    proxy.AppProxy
 	submitCh chan []byte
 
-	commitCh chan hg.Block
+	commitCh chan poset.Block
 
 	shutdownCh chan struct{}
 
@@ -51,7 +51,7 @@ func NewNode(conf *Config,
 	id int,
 	key *ecdsa.PrivateKey,
 	participants []net.Peer,
-	store hg.Store,
+	store poset.Store,
 	trans net.Transport,
 	proxy proxy.AppProxy) *Node {
 
@@ -59,7 +59,7 @@ func NewNode(conf *Config,
 
 	pmap, _ := store.Participants()
 
-	commitCh := make(chan hg.Block, 400)
+	commitCh := make(chan poset.Block, 400)
 	core := NewCore(id, key, pmap, store, commitCh, conf.Logger)
 
 	peerSelector := NewRandomPeerSelector(participants, localAddr)
@@ -289,7 +289,7 @@ func (n *Node) processEagerSyncRequest(rpc net.RPC, cmd *net.EagerSyncRequest) {
 
 	success := true
 	n.coreLock.Lock()
-	err := n.sync([][]hg.WireEvent{cmd.Events})
+	err := n.sync([][]poset.WireEvent{cmd.Events})
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("error", err).Error("sync()")
@@ -364,7 +364,7 @@ func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
 	//step 1 pull all unknown events from other parties
 	//step 2 save all unknown events locally
 	//step 3 perform another pull
-	allEvents := [][]hg.WireEvent{}
+	allEvents := [][]poset.WireEvent{}
 	otherKnownEventsArray := []map[int]int{}
 	eventsCount := 0
 	var err error
@@ -388,7 +388,7 @@ func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
 	}
 
 	if eventsCount > 0 {
-		//Add Events to Hashgraph and create new Head if necessary
+		//Add Events to Poset and create new Head if necessary
 		n.coreLock.Lock()
 		err = n.sync(allEvents)
 		n.coreLock.Unlock()
@@ -416,7 +416,7 @@ func (n *Node) gossip(peers []net.Peer, parentReturnCh chan struct{}) error {
 	return nil
 }
 
-func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]int, events []hg.WireEvent, err error) {
+func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]int, events []poset.WireEvent, err error) {
 	//Compute Known
 	n.coreLock.Lock()
 	knownEvents := n.core.KnownEvents()
@@ -527,12 +527,12 @@ func (n *Node) fastForward() error {
 		"snapshot":             resp.Snapshot,
 	}).Debug("FastForwardResponse")
 
-	//prepare core. ie: fresh hashgraph
+	//prepare core. ie: fresh poset
 	n.coreLock.Lock()
 	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
-		n.logger.WithField("error", err).Error("Fast Forwarding Hashgraph")
+		n.logger.WithField("error", err).Error("Fast Forwarding Poset")
 		return err
 	}
 
@@ -564,7 +564,7 @@ func (n *Node) requestSync(target string, known map[int]int) (net.SyncResponse, 
 	return out, err
 }
 
-func (n *Node) requestEagerSync(target string, events []hg.WireEvent) (net.EagerSyncResponse, error) {
+func (n *Node) requestEagerSync(target string, events []poset.WireEvent) (net.EagerSyncResponse, error) {
 	args := net.EagerSyncRequest{
 		FromID: n.id,
 		Events: events,
@@ -591,8 +591,8 @@ func (n *Node) requestFastForward(target string) (net.FastForwardResponse, error
 	return out, err
 }
 
-func (n *Node) sync(events [][]hg.WireEvent) error {
-	//Insert Events in Hashgraph and create new Head if necessary
+func (n *Node) sync(events [][]poset.WireEvent) error {
+	//Insert Events in Poset and create new Head if necessary
 	start := time.Now()
 	err := n.core.Sync(events)
 	elapsed := time.Since(start)
@@ -613,7 +613,7 @@ func (n *Node) sync(events [][]hg.WireEvent) error {
 	return nil
 }
 
-func (n *Node) commit(block hg.Block) error {
+func (n *Node) commit(block poset.Block) error {
 
 	stateHash, err := n.proxy.CommitBlock(block)
 	n.logger.WithFields(logrus.Fields{
@@ -674,7 +674,7 @@ func (n *Node) Shutdown() {
 		//transport and store should only be closed once all concurrent operations
 		//are finished otherwise they will panic trying to use close objects
 		n.trans.Close()
-		n.core.hg.Store.Close()
+		n.core.poset.Store.Close()
 	}
 }
 
@@ -751,45 +751,45 @@ func (n *Node) SyncRate() float64 {
 }
 
 func (n *Node) GetParticipants() (map[string]int, error) {
-	return n.core.hg.Store.Participants()
+	return n.core.poset.Store.Participants()
 }
 
-func (n *Node) GetEvent(event string) (hg.Event, error) {
-	return n.core.hg.Store.GetEvent(event)
+func (n *Node) GetEvent(event string) (poset.Event, error) {
+	return n.core.poset.Store.GetEvent(event)
 }
 
 func (n *Node) GetLastEventFrom(participant string) (string, bool, error) {
-	return n.core.hg.Store.LastEventFrom(participant)
+	return n.core.poset.Store.LastEventFrom(participant)
 }
 
 func (n *Node) GetKnownEvents() map[int]int {
-	return n.core.hg.Store.KnownEvents()
+	return n.core.poset.Store.KnownEvents()
 }
 
 func (n *Node) GetConsensusEvents() []string {
-	return n.core.hg.Store.ConsensusEvents()
+	return n.core.poset.Store.ConsensusEvents()
 }
 
-func (n *Node) GetRound(roundIndex int) (hg.RoundInfo, error) {
-	return n.core.hg.Store.GetRound(roundIndex)
+func (n *Node) GetRound(roundIndex int) (poset.RoundInfo, error) {
+	return n.core.poset.Store.GetRound(roundIndex)
 }
 
 func (n *Node) GetLastRound() int {
-	return n.core.hg.Store.LastRound()
+	return n.core.poset.Store.LastRound()
 }
 
 func (n *Node) GetRoundWitnesses(roundIndex int) []string {
-	return n.core.hg.Store.RoundWitnesses(roundIndex)
+	return n.core.poset.Store.RoundWitnesses(roundIndex)
 }
 
 func (n *Node) GetRoundEvents(roundIndex int) int {
-	return n.core.hg.Store.RoundEvents(roundIndex)
+	return n.core.poset.Store.RoundEvents(roundIndex)
 }
 
-func (n *Node) GetRoot(rootIndex string) (hg.Root, error) {
-	return n.core.hg.Store.GetRoot(rootIndex)
+func (n *Node) GetRoot(rootIndex string) (poset.Root, error) {
+	return n.core.poset.Store.GetRoot(rootIndex)
 }
 
-func (n *Node) GetBlock(blockIndex int) (hg.Block, error) {
-	return n.core.hg.Store.GetBlock(blockIndex)
+func (n *Node) GetBlock(blockIndex int) (poset.Block, error) {
+	return n.core.poset.Store.GetBlock(blockIndex)
 }
