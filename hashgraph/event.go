@@ -15,6 +15,8 @@ EventBody
 
 type EventBody struct {
 	Transactions    [][]byte         //the payload
+	SelfParent      string         //hash of self-parent
+	OtherParents    []string         //hashess of other parents part of event
 	Parents         []string         //hashes of the event's parents, self-parent first
 	Creator         []byte           //creator's public key
 	Index           int              //index in the sequence of events created by Creator
@@ -65,8 +67,8 @@ type EventCoordinates struct {
 }
 
 type Event struct {
-	Body      EventBody
-	Signature string //creator's digital signature of body
+	Body             EventBody
+	Signature        string //creator's digital signature of body
 
 	topologicalIndex int
 
@@ -74,14 +76,14 @@ type Event struct {
 	round            *int
 	lamportTimestamp *int
 
-	roundReceived *int
+	roundReceived    *int
 
 	lastAncestors    []EventCoordinates //[participant fake id] => last ancestor
 	firstDescendants []EventCoordinates //[participant fake id] => first descendant
 
-	creator string
-	hash    []byte
-	hex     string
+	creator          string
+	hash             []byte
+	hex              string
 }
 
 func NewEvent(transactions [][]byte,
@@ -93,6 +95,8 @@ func NewEvent(transactions [][]byte,
 	body := EventBody{
 		Transactions:    transactions,
 		BlockSignatures: blockSignatures,
+		SelfParent:      parents[0],
+		OtherParents:    parents[1:],
 		Parents:         parents,
 		Creator:         creator,
 		Index:           index,
@@ -110,11 +114,15 @@ func (e *Event) Creator() string {
 }
 
 func (e *Event) SelfParent() string {
-	return e.Body.Parents[0]
+	return e.Body.SelfParent
 }
 
-func (e *Event) OtherParent() string {
-	return e.Body.Parents[1]
+func (e *Event) OtherParent(n int) string {
+	return e.Body.OtherParents[n]
+}
+
+func (e *Event) OtherParents() string {
+	return e.Body.OtherParents
 }
 
 func (e *Event) Transactions() [][]byte {
