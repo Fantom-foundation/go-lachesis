@@ -24,10 +24,10 @@ type EventBody struct {
 
 	//wire
 	//It is cheaper to send ints then hashes over the wire
-	selfParentIndex      int
-	otherParentCreatorID []int
-	otherParentIndex     []int
-	creatorID            int
+	selfParentIndex       int
+	otherParentCreatorIDs []int
+	otherParentIndexes    []int
+	creatorID             int
 }
 
 //json encoding of body only
@@ -121,7 +121,7 @@ func (e *Event) OtherParent(n int) string {
 	return e.Body.OtherParents[n]
 }
 
-func (e *Event) OtherParents() string {
+func (e *Event) OtherParents() []string {
 	return e.Body.OtherParents
 }
 
@@ -237,13 +237,13 @@ func (e *Event) SetRoundReceived(rr int) {
 	*e.roundReceived = rr
 }
 
-func (e *Event) SetWireInfo(selfParentIndex,
-	otherParentCreatorID,
-	otherParentIndex,
+func (e *Event) SetWireInfo(selfParentIndex int,
+	otherParentCreatorIDs []int,
+	otherParentIndexes []int,
 	creatorID int) {
 	e.Body.selfParentIndex = selfParentIndex
-	e.Body.otherParentCreatorID = otherParentCreatorID
-	e.Body.otherParentIndex = otherParentIndex
+	e.Body.otherParentCreatorIDs = otherParentCreatorIDs
+	e.Body.otherParentIndexes = otherParentIndexes
 	e.Body.creatorID = creatorID
 }
 
@@ -263,13 +263,13 @@ func (e *Event) ToWire() WireEvent {
 
 	return WireEvent{
 		Body: WireBody{
-			Transactions:         e.Body.Transactions,
-			SelfParentIndex:      e.Body.selfParentIndex,
-			OtherParentCreatorID: e.Body.otherParentCreatorID,
-			OtherParentIndex:     e.Body.otherParentIndex,
-			CreatorID:            e.Body.creatorID,
-			Index:                e.Body.Index,
-			BlockSignatures:      e.WireBlockSignatures(),
+			Transactions:          e.Body.Transactions,
+			SelfParentIndex:       e.Body.selfParentIndex,
+			OtherParentCreatorIDs: e.Body.otherParentCreatorIDs,
+			OtherParentIndexes:    e.Body.otherParentIndexes,
+			CreatorID:             e.Body.creatorID,
+			Index:                 e.Body.Index,
+			BlockSignatures:       e.WireBlockSignatures(),
 		},
 		Signature: e.Signature,
 	}
@@ -323,13 +323,13 @@ func (a ByLamportTimestamp) Less(i, j int) bool {
 *******************************************************************************/
 
 type WireBody struct {
-	Transactions    [][]byte
-	BlockSignatures []WireBlockSignature
+	Transactions          [][]byte
+	BlockSignatures       []WireBlockSignature
 
-	SelfParentIndex      int
-	OtherParentCreatorID int
-	OtherParentIndex     int
-	CreatorID            int
+	SelfParentIndex       int
+	OtherParentCreatorIDs []int
+	OtherParentIndexes    []int
+	CreatorID             int
 
 	Index int
 }
