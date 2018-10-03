@@ -10,7 +10,7 @@ import (
 
 	"strconv"
 
-	hg "github.com/andrecronje/lachesis/src/poset"
+	"github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/net"
 	"github.com/andrecronje/lachesis/src/peers"
 	"github.com/andrecronje/lachesis/src/proxy"
@@ -37,7 +37,7 @@ type Node struct {
 	proxy    proxy.AppProxy
 	submitCh chan []byte
 
-	commitCh chan hg.Block
+	commitCh chan poset.Block
 
 	shutdownCh chan struct{}
 
@@ -54,7 +54,7 @@ func NewNode(conf *Config,
 	id int,
 	key *ecdsa.PrivateKey,
 	participants *peers.Peers,
-	store hg.Store,
+	store poset.Store,
 	trans net.Transport,
 	proxy proxy.AppProxy) *Node {
 
@@ -62,7 +62,7 @@ func NewNode(conf *Config,
 
 	pmap, _ := store.Participants()
 
-	commitCh := make(chan hg.Block, 400)
+	commitCh := make(chan poset.Block, 400)
 	core := NewCore(id, key, pmap, store, commitCh, conf.Logger)
 
 	peerSelector := NewRandomPeerSelector(participants, localAddr)
@@ -553,7 +553,7 @@ func (n *Node) requestSync(target string, known map[int]int) (net.SyncResponse, 
 	return out, err
 }
 
-func (n *Node) requestEagerSync(target string, events []hg.WireEvent) (net.EagerSyncResponse, error) {
+func (n *Node) requestEagerSync(target string, events []poset.WireEvent) (net.EagerSyncResponse, error) {
 	args := net.EagerSyncRequest{
 		FromID: n.id,
 		Events: events,
@@ -580,7 +580,7 @@ func (n *Node) requestFastForward(target string) (net.FastForwardResponse, error
 	return out, err
 }
 
-func (n *Node) sync(events []hg.WireEvent) error {
+func (n *Node) sync(events []poset.WireEvent) error {
 	//Insert Events in Poset and create new Head if necessary
 	start := time.Now()
 	err := n.core.Sync(events)
@@ -602,7 +602,7 @@ func (n *Node) sync(events []hg.WireEvent) error {
 	return nil
 }
 
-func (n *Node) commit(block hg.Block) error {
+func (n *Node) commit(block poset.Block) error {
 
 	stateHash, err := n.proxy.CommitBlock(block)
 	n.logger.WithFields(logrus.Fields{
@@ -653,7 +653,7 @@ func (n *Node) Shutdown() {
 		//transport and store should only be closed once all concurrent operations
 		//are finished otherwise they will panic trying to use close objects
 		n.trans.Close()
-		n.core.hg.Store.Close()
+		n.core.poset.Store.Close()
 	}
 }
 
@@ -669,6 +669,8 @@ func (n *Node) GetStats() map[string]string {
 
 	consensusEvents := n.core.GetConsensusEventsCount()
 	consensusEventsPerSecond := float64(consensusEvents) / timeElapsed.Seconds()
+	consensusTransactions := n.core.GetConsensusTransactionsCount()
+	transactionsPerSecond := float64(consensusTransactions) / timeElapsed.Seconds()
 
 	lastConsensusRound := n.core.GetLastConsensusRoundIndex()
 	var consensusRoundsPerSecond float64
@@ -677,19 +679,25 @@ func (n *Node) GetStats() map[string]string {
 	}
 
 	s := map[string]string{
-		"last_consensus_round":   toString(lastConsensusRound),
-		"last_block_index":       strconv.Itoa(n.core.GetLastBlockIndex()),
-		"consensus_events":       strconv.Itoa(consensusEvents),
-		"consensus_transactions": strconv.Itoa(n.core.GetConsensusTransactionsCount()),
-		"undetermined_events":    strconv.Itoa(len(n.core.GetUndeterminedEvents())),
-		"transaction_pool":       strconv.Itoa(len(n.core.transactionPool)),
-		"num_peers":              strconv.Itoa(n.peerSelector.Peers().Len()),
-		"sync_rate":              strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
-		"events_per_second":      strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
-		"rounds_per_second":      strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
-		"round_events":           strconv.Itoa(n.core.GetLastCommitedRoundEventsCount()),
-		"id":                     strconv.Itoa(n.id),
-		"state":                  n.getState().String(),
+		"last_consensus_round":    toString(lastConsensusRound),
+		"time_elapsed":            strconv.FormatFloat(timeElapsed.Seconds(), 'f', 2, 64),
+		"heartbeat":               strconv.FormatFloat(n.conf.HeartbeatTimeout.Seconds(), 'f', 2, 64),
+		"node_current":            strconv.FormatInt(time.Now().Unix(), 10),
+		"node_start":              strconv.FormatInt(n.start.Unix(), 10),
+		"last_block_index":        strconv.Itoa(n.core.GetLastBlockIndex()),
+		"consensus_events":        strconv.Itoa(consensusEvents),
+		"sync_limit":              strconv.Itoa(n.conf.SyncLimit),
+		"consensus_transactions":  strconv.Itoa(consensusTransactions),
+		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
+		"transaction_pool":        strconv.Itoa(len(n.core.transactionPool)),
+		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
+		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
+		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
+		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
+		"rounds_per_second":       strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
+		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
+		"id":                      strconv.Itoa(n.id),
+		"state":                   n.getState().String(),
 	}
 	return s
 }
@@ -721,10 +729,46 @@ func (n *Node) SyncRate() float64 {
 	return 1 - syncErrorRate
 }
 
-func (n *Node) GetBlock(blockIndex int) (hg.Block, error) {
-	return n.core.hg.Store.GetBlock(blockIndex)
+func (n *Node) GetParticipants() (*peers.Peers, error) {
+	return n.core.poset.Store.Participants()
 }
 
-func (n *Node) ID() int {
-	return n.id
+func (n *Node) GetEvent(event string) (poset.Event, error) {
+	return n.core.poset.Store.GetEvent(event)
+}
+
+func (n *Node) GetLastEventFrom(participant string) (string, bool, error) {
+	return n.core.poset.Store.LastEventFrom(participant)
+}
+
+func (n *Node) GetKnownEvents() map[int]int {
+	return n.core.poset.Store.KnownEvents()
+}
+
+func (n *Node) GetConsensusEvents() []string {
+	return n.core.poset.Store.ConsensusEvents()
+}
+
+func (n *Node) GetRound(roundIndex int) (poset.RoundInfo, error) {
+	return n.core.poset.Store.GetRound(roundIndex)
+}
+
+func (n *Node) GetLastRound() int {
+	return n.core.poset.Store.LastRound()
+}
+
+func (n *Node) GetRoundWitnesses(roundIndex int) []string {
+	return n.core.poset.Store.RoundWitnesses(roundIndex)
+}
+
+func (n *Node) GetRoundEvents(roundIndex int) int {
+	return n.core.poset.Store.RoundEvents(roundIndex)
+}
+
+func (n *Node) GetRoot(rootIndex string) (poset.Root, error) {
+	return n.core.poset.Store.GetRoot(rootIndex)
+}
+
+func (n *Node) GetBlock(blockIndex int) (poset.Block, error) {
+	return n.core.poset.Store.GetBlock(blockIndex)
 }

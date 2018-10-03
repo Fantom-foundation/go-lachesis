@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/andrecronje/lachesis/src/crypto"
-	hg "github.com/andrecronje/lachesis/src/poset"
+	"github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/peers"
 )
 
@@ -19,14 +19,14 @@ type Core struct {
 	key    *ecdsa.PrivateKey
 	pubKey []byte
 	hexID  string
-	hg     *hg.Poset
+	poset  *poset.Poset
 
 	participants *peers.Peers //[PubKey] => id
 	Head         string
 	Seq          int
 
 	transactionPool    [][]byte
-	blockSignaturePool []hg.BlockSignature
+	blockSignaturePool []poset.BlockSignature
 
 	logger *logrus.Entry
 }
@@ -35,8 +35,8 @@ func NewCore(
 	id int,
 	key *ecdsa.PrivateKey,
 	participants *peers.Peers,
-	store hg.Store,
-	commitCh chan hg.Block,
+	store poset.Store,
+	commitCh chan poset.Block,
 	logger *logrus.Logger) Core {
 
 	if logger == nil {
@@ -48,10 +48,10 @@ func NewCore(
 	core := Core{
 		id:                 id,
 		key:                key,
-		hg:                 hg.NewPoset(participants, store, commitCh, logEntry),
+		poset:              poset.NewPoset(participants, store, commitCh, logEntry),
 		participants:       participants,
 		transactionPool:    [][]byte{},
-		blockSignaturePool: []hg.BlockSignature{},
+		blockSignaturePool: []poset.BlockSignature{},
 		logger:             logEntry,
 		Head:               "",
 		Seq:                -1,
@@ -83,13 +83,13 @@ func (c *Core) SetHeadAndSeq() error {
 	var head string
 	var seq int
 
-	last, isRoot, err := c.hg.Store.LastEventFrom(c.HexID())
+	last, isRoot, err := c.poset.Store.LastEventFrom(c.HexID())
 	if err != nil {
 		return err
 	}
 
 	if isRoot {
-		root, err := c.hg.Store.GetRoot(c.HexID())
+		root, err := c.poset.Store.GetRoot(c.HexID())
 		if err != nil {
 			return err
 		}
@@ -117,12 +117,12 @@ func (c *Core) SetHeadAndSeq() error {
 }
 
 func (c *Core) Bootstrap() error {
-	return c.hg.Bootstrap()
+	return c.poset.Bootstrap()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (c *Core) SignAndInsertSelfEvent(event hg.Event) error {
+func (c *Core) SignAndInsertSelfEvent(event poset.Event) error {
 	if err := event.Sign(c.key); err != nil {
 		return err
 	}
@@ -132,8 +132,8 @@ func (c *Core) SignAndInsertSelfEvent(event hg.Event) error {
 	return nil
 }
 
-func (c *Core) InsertEvent(event hg.Event, setWireInfo bool) error {
-	if err := c.hg.InsertEvent(event, setWireInfo); err != nil {
+func (c *Core) InsertEvent(event poset.Event, setWireInfo bool) error {
+	if err := c.poset.InsertEvent(event, setWireInfo); err != nil {
 		return err
 	}
 	if event.Creator() == c.HexID() {
@@ -144,20 +144,20 @@ func (c *Core) InsertEvent(event hg.Event, setWireInfo bool) error {
 }
 
 func (c *Core) KnownEvents() map[int]int {
-	return c.hg.Store.KnownEvents()
+	return c.poset.Store.KnownEvents()
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (c *Core) SignBlock(block hg.Block) (hg.BlockSignature, error) {
+func (c *Core) SignBlock(block poset.Block) (poset.BlockSignature, error) {
 	sig, err := block.Sign(c.key)
 	if err != nil {
-		return hg.BlockSignature{}, err
+		return poset.BlockSignature{}, err
 	}
 	if err := block.SetSignature(sig); err != nil {
-		return hg.BlockSignature{}, err
+		return poset.BlockSignature{}, err
 	}
-	return sig, c.hg.Store.SetBlock(block)
+	return sig, c.poset.Store.SetBlock(block)
 }
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -176,37 +176,37 @@ func (c *Core) OverSyncLimit(knownEvents map[int]int, syncLimit int) bool {
 	return false
 }
 
-func (c *Core) GetAnchorBlockWithFrame() (hg.Block, hg.Frame, error) {
-	return c.hg.GetAnchorBlockWithFrame()
+func (c *Core) GetAnchorBlockWithFrame() (poset.Block, poset.Frame, error) {
+	return c.poset.GetAnchorBlockWithFrame()
 }
 
 //returns events that c knowns about and are not in 'known'
-func (c *Core) EventDiff(known map[int]int) (events []hg.Event, err error) {
-	unknown := []hg.Event{}
+func (c *Core) EventDiff(known map[int]int) (events []poset.Event, err error) {
+	unknown := []poset.Event{}
 	//known represents the indez of the last event known for every participant
 	//compare this to our view of events and fill unknown with events that we know of
 	// and the other doesnt
 	for id, ct := range known {
 		peer := c.participants.ById[id]
 		//get participant Events with index > ct
-		participantEvents, err := c.hg.Store.ParticipantEvents(peer.PubKeyHex, ct)
+		participantEvents, err := c.poset.Store.ParticipantEvents(peer.PubKeyHex, ct)
 		if err != nil {
-			return []hg.Event{}, err
+			return []poset.Event{}, err
 		}
 		for _, e := range participantEvents {
-			ev, err := c.hg.Store.GetEvent(e)
+			ev, err := c.poset.Store.GetEvent(e)
 			if err != nil {
-				return []hg.Event{}, err
+				return []poset.Event{}, err
 			}
 			unknown = append(unknown, ev)
 		}
 	}
-	sort.Sort(hg.ByTopologicalOrder(unknown))
+	sort.Sort(poset.ByTopologicalOrder(unknown))
 
 	return unknown, nil
 }
 
-func (c *Core) Sync(unknownEvents []hg.WireEvent) error {
+func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 
 	c.logger.WithFields(logrus.Fields{
 		"unknown_events":       len(unknownEvents),
@@ -217,7 +217,7 @@ func (c *Core) Sync(unknownEvents []hg.WireEvent) error {
 	otherHead := ""
 	//add unknown events
 	for k, we := range unknownEvents {
-		ev, err := c.hg.ReadWireInfo(we)
+		ev, err := c.poset.ReadWireInfo(we)
 		if err != nil {
 			c.logger.WithField("WireEvent", we).Errorf("ReadingWireInfo")
 			return err
@@ -237,10 +237,10 @@ func (c *Core) Sync(unknownEvents []hg.WireEvent) error {
 	return c.AddSelfEvent(otherHead)
 }
 
-func (c *Core) FastForward(peer string, block hg.Block, frame hg.Frame) error {
+func (c *Core) FastForward(peer string, block poset.Block, frame poset.Frame) error {
 
 	//Check Block Signatures
-	err := c.hg.CheckBlock(block)
+	err := c.poset.CheckBlock(block)
 	if err != nil {
 		return err
 	}
@@ -254,7 +254,7 @@ func (c *Core) FastForward(peer string, block hg.Block, frame hg.Frame) error {
 		return fmt.Errorf("Invalid Frame Hash")
 	}
 
-	err = c.hg.Reset(block, frame)
+	err = c.poset.Reset(block, frame)
 	if err != nil {
 		return err
 	}
@@ -264,7 +264,7 @@ func (c *Core) FastForward(peer string, block hg.Block, frame hg.Frame) error {
 		return err
 	}
 
-	// lastEventFromPeer, _, err := c.hg.Store.LastEventFrom(peer)
+	// lastEventFromPeer, _, err := c.poset.Store.LastEventFrom(peer)
 	// if err != nil {
 	// 	return err
 	// }
@@ -292,7 +292,7 @@ func (c *Core) AddSelfEvent(otherHead string) error {
 
 	//create new event with self head and empty other parent
 	//empty transaction pool in its payload
-	newHead := hg.NewEvent(c.transactionPool,
+	newHead := poset.NewEvent(c.transactionPool,
 		c.blockSignaturePool,
 		[]string{c.Head, otherHead},
 		c.PubKey(), c.Seq+1)
@@ -307,15 +307,15 @@ func (c *Core) AddSelfEvent(otherHead string) error {
 	}).Debug("Created Self-Event")
 
 	c.transactionPool = [][]byte{}
-	c.blockSignaturePool = []hg.BlockSignature{}
+	c.blockSignaturePool = []poset.BlockSignature{}
 
 	return nil
 }
 
-func (c *Core) FromWire(wireEvents []hg.WireEvent) ([]hg.Event, error) {
-	events := make([]hg.Event, len(wireEvents), len(wireEvents))
+func (c *Core) FromWire(wireEvents []poset.WireEvent) ([]poset.Event, error) {
+	events := make([]poset.Event, len(wireEvents), len(wireEvents))
 	for i, w := range wireEvents {
-		ev, err := c.hg.ReadWireInfo(w)
+		ev, err := c.poset.ReadWireInfo(w)
 		if err != nil {
 			return nil, err
 		}
@@ -324,8 +324,8 @@ func (c *Core) FromWire(wireEvents []hg.WireEvent) ([]hg.Event, error) {
 	return events, nil
 }
 
-func (c *Core) ToWire(events []hg.Event) ([]hg.WireEvent, error) {
-	wireEvents := make([]hg.WireEvent, len(events), len(events))
+func (c *Core) ToWire(events []poset.Event) ([]poset.WireEvent, error) {
+	wireEvents := make([]poset.WireEvent, len(events), len(events))
 	for i, e := range events {
 		wireEvents[i] = e.ToWire()
 	}
@@ -334,7 +334,7 @@ func (c *Core) ToWire(events []hg.Event) ([]hg.WireEvent, error) {
 
 func (c *Core) RunConsensus() error {
 	start := time.Now()
-	err := c.hg.DivideRounds()
+	err := c.poset.DivideRounds()
 	c.logger.WithField("duration", time.Since(start).Nanoseconds()).Debug("DivideRounds()")
 	if err != nil {
 		c.logger.WithField("error", err).Error("DivideRounds")
@@ -342,7 +342,7 @@ func (c *Core) RunConsensus() error {
 	}
 
 	start = time.Now()
-	err = c.hg.DecideFame()
+	err = c.poset.DecideFame()
 	c.logger.WithField("duration", time.Since(start).Nanoseconds()).Debug("DecideFame()")
 	if err != nil {
 		c.logger.WithField("error", err).Error("DecideFame")
@@ -350,7 +350,7 @@ func (c *Core) RunConsensus() error {
 	}
 
 	start = time.Now()
-	err = c.hg.DecideRoundReceived()
+	err = c.poset.DecideRoundReceived()
 	c.logger.WithField("duration", time.Since(start).Nanoseconds()).Debug("DecideRoundReceived()")
 	if err != nil {
 		c.logger.WithField("error", err).Error("DecideRoundReceived")
@@ -358,7 +358,7 @@ func (c *Core) RunConsensus() error {
 	}
 
 	start = time.Now()
-	err = c.hg.ProcessDecidedRounds()
+	err = c.poset.ProcessDecidedRounds()
 	c.logger.WithField("duration", time.Since(start).Nanoseconds()).Debug("ProcessDecidedRounds()")
 	if err != nil {
 		c.logger.WithField("error", err).Error("ProcessDecidedRounds")
@@ -366,7 +366,7 @@ func (c *Core) RunConsensus() error {
 	}
 
 	start = time.Now()
-	err = c.hg.ProcessSigPool()
+	err = c.poset.ProcessSigPool()
 	c.logger.WithField("duration", time.Since(start).Nanoseconds()).Debug("ProcessSigPool()")
 	if err != nil {
 		c.logger.WithField("error", err).Error("ProcessSigPool()")
@@ -380,16 +380,16 @@ func (c *Core) AddTransactions(txs [][]byte) {
 	c.transactionPool = append(c.transactionPool, txs...)
 }
 
-func (c *Core) AddBlockSignature(bs hg.BlockSignature) {
+func (c *Core) AddBlockSignature(bs poset.BlockSignature) {
 	c.blockSignaturePool = append(c.blockSignaturePool, bs)
 }
 
-func (c *Core) GetHead() (hg.Event, error) {
-	return c.hg.Store.GetEvent(c.Head)
+func (c *Core) GetHead() (poset.Event, error) {
+	return c.poset.Store.GetEvent(c.Head)
 }
 
-func (c *Core) GetEvent(hash string) (hg.Event, error) {
-	return c.hg.Store.GetEvent(hash)
+func (c *Core) GetEvent(hash string) (poset.Event, error) {
+	return c.poset.Store.GetEvent(hash)
 }
 
 func (c *Core) GetEventTransactions(hash string) ([][]byte, error) {
@@ -403,19 +403,19 @@ func (c *Core) GetEventTransactions(hash string) ([][]byte, error) {
 }
 
 func (c *Core) GetConsensusEvents() []string {
-	return c.hg.Store.ConsensusEvents()
+	return c.poset.Store.ConsensusEvents()
 }
 
 func (c *Core) GetConsensusEventsCount() int {
-	return c.hg.Store.ConsensusEventsCount()
+	return c.poset.Store.ConsensusEventsCount()
 }
 
 func (c *Core) GetUndeterminedEvents() []string {
-	return c.hg.UndeterminedEvents
+	return c.poset.UndeterminedEvents
 }
 
 func (c *Core) GetPendingLoadedEvents() int {
-	return c.hg.PendingLoadedEvents
+	return c.poset.PendingLoadedEvents
 }
 
 func (c *Core) GetConsensusTransactions() ([][]byte, error) {
@@ -431,23 +431,27 @@ func (c *Core) GetConsensusTransactions() ([][]byte, error) {
 }
 
 func (c *Core) GetLastConsensusRoundIndex() *int {
-	return c.hg.LastConsensusRound
+	return c.poset.LastConsensusRound
 }
 
 func (c *Core) GetConsensusTransactionsCount() int {
-	return c.hg.ConsensusTransactions
+	return c.poset.ConsensusTransactions
+}
+
+func (c *Core) GetLastCommittedRoundEventsCount() int {
+	return c.poset.LastCommitedRoundEvents
 }
 
 func (c *Core) GetLastCommitedRoundEventsCount() int {
-	return c.hg.LastCommitedRoundEvents
+	return c.poset.LastCommitedRoundEvents
 }
 
 func (c *Core) GetLastBlockIndex() int {
-	return c.hg.Store.LastBlockIndex()
+	return c.poset.Store.LastBlockIndex()
 }
 
 func (c *Core) NeedGossip() bool {
-	return c.hg.PendingLoadedEvents > 0 ||
+	return c.poset.PendingLoadedEvents > 0 ||
 		len(c.transactionPool) > 0 ||
 		len(c.blockSignaturePool) > 0
 }
