@@ -213,7 +213,7 @@ other endpoints:
  - ``client_addr`` : where the App listens for transactions from Lachesis 
 
 We also need to specify where Lachesis exposes its HTTP API where one can query 
-the Hashgraph data store. This is defined by the ``service_addr`` flag.
+the Poset data store. This is defined by the ``service_addr`` flag.
 
 Finally, we can choose to run Lachesis with a database backend or only with an 
 in-memory cache. By default, Lachesis will look for a database file in 

@@ -1,13 +1,13 @@
 package proxy
 
 import (
-	"github.com/andrecronje/lachesis/src/hashgraph"
+	"github.com/andrecronje/lachesis/src/poset"
 	bproxy "github.com/andrecronje/lachesis/src/proxy/lachesis"
 )
 
 type AppProxy interface {
 	SubmitCh() chan []byte
-	CommitBlock(block hashgraph.Block) ([]byte, error)
+	CommitBlock(block poset.Block) ([]byte, error)
 	GetSnapshot(blockIndex int) ([]byte, error)
 	Restore(snapshot []byte) error
 }

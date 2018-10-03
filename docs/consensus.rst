@@ -3,7 +3,7 @@
 Lachesis Consensus
 ================
 
-Lachesis is based on our own interpretation of Hashgraph, but also builds upon 
+Lachesis is based on our own interpretation of Poset, but also builds upon 
 other techniques that facilitate coordination within distributed systems. Here, 
 we give a high-level overview of the most important concepts that inspired the 
 development of Lachesis and how they all fit together. This document is also 
@@ -108,7 +108,7 @@ However, the resulting algorithm requires the active participation of all the
 processes. A process must know all the commands issued by other processes, so 
 that the failure of a single process will make it impossible for any other 
 process to execute commands, thereby halting the system. Lachesis implements 
-Lamport Timestamps on top of the hashgraph, but with added steps for Byzantine 
+Lamport Timestamps on top of the poset, but with added steps for Byzantine 
 Fault Tolerance.
 
 This paper triggered a wave of research on BFT consensus algorithms. Some famous 
@@ -153,7 +153,7 @@ using the concept of virtual voting. Instead of exchanging votes directly, we
 compute what other participants would have voted, based on our knowledge of what 
 they know. 
 
-First, the Hashgraph defines a concept of *Strongly Seeing*: 
+First, the Poset defines a concept of *Strongly Seeing*: 
 
 "If there are n members, then an event w can strongly see an event x, if w can 
 see more than 2n/3 events by different members, each of which can see x". 
@@ -164,13 +164,13 @@ see more than 2n/3 events by different members, each of which can see x".
 participants in the first phase of the two-phase commit.
 
 Also, we do not need a leader to propose a value. Instead, participants compute 
-virtual cuts in the hashgraph, called rounds, which allow processing events in 
+virtual cuts in the poset, called rounds, which allow processing events in 
 batches. This is also a distributed algorithm where all members end up with the 
 same rounds. Roughly speaking, starting at round 0, when we reach a point when 
 ⅔ of members can strongly see the cut from the previous rounds, we start a new 
 round. When there is common knowledge about a round, attested by *Strongly 
 Seeing*, we can decide on the order of event below that cut. The details of the 
-algorithm are best described in the `original hashgraph whitepaper <https://www.swirlds.com/downloads/SWIRLDS-TR-2016-01.pdf>`__.
+algorithm are best described in the `original poset whitepaper <https://www.swirlds.com/downloads/SWIRLDS-TR-2016-01.pdf>`__.
 
 .. image:: assets/dag_rounds.png
 
@@ -183,7 +183,7 @@ Blockchain
 ----------
 
 A blockchain is a one-dimensional data-structure made of cryptographically 
-chained blocks. It is convenient to map our two-dimensional hashgraph onto a 
+chained blocks. It is convenient to map our two-dimensional poset onto a 
 blockchain because the blockchain is much easier to work with when it comes to
 consuming and verifying the output of the consensus algorithm. The concatenation 
 of blocks, and the transactions they contain, is recursively secured by digital 

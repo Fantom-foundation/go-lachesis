@@ -9,7 +9,7 @@ import (
 
 	"github.com/andrecronje/lachesis/src/common"
 	"github.com/andrecronje/lachesis/src/crypto"
-	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	hg "github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/peers"
 )
 
@@ -67,7 +67,7 @@ e01 |   |
 e0  e1  e2
 0   1   2
 */
-func initHashgraph(cores []Core, keys map[int]*ecdsa.PrivateKey, index map[string]string, participant int) {
+func initPoset(cores []Core, keys map[int]*ecdsa.PrivateKey, index map[string]string, participant int) {
 	for i := 0; i < len(cores); i++ {
 		if i != participant {
 			event, _ := cores[i].GetEvent(index[fmt.Sprintf("e%d", i)])
@@ -121,7 +121,7 @@ func insertEvent(cores []Core, keys map[int]*ecdsa.PrivateKey, index map[string]
 func TestEventDiff(t *testing.T) {
 	cores, keys, index := initCores(3, t)
 
-	initHashgraph(cores, keys, index, 0)
+	initPoset(cores, keys, index, 0)
 
 	/*
 	   P0 knows
@@ -325,7 +325,7 @@ type play struct {
 	payload [][]byte
 }
 
-func initConsensusHashgraph(t *testing.T) []Core {
+func initConsensusPoset(t *testing.T) []Core {
 	cores, _, _ := initCores(3, t)
 	playbook := []play{
 		play{from: 0, to: 1, payload: [][]byte{[]byte("e10")}},
@@ -359,7 +359,7 @@ func initConsensusHashgraph(t *testing.T) []Core {
 }
 
 func TestConsensus(t *testing.T) {
-	cores := initConsensusHashgraph(t)
+	cores := initConsensusPoset(t)
 
 	if l := len(cores[0].GetConsensusEvents()); l != 6 {
 		t.Fatalf("length of consensus should be 6 not %d", l)
@@ -380,7 +380,7 @@ func TestConsensus(t *testing.T) {
 }
 
 func TestOverSyncLimit(t *testing.T) {
-	cores := initConsensusHashgraph(t)
+	cores := initConsensusPoset(t)
 
 	//positive
 	known := map[int]int{
@@ -458,7 +458,7 @@ func TestOverSyncLimit(t *testing.T) {
     |   e1  e2  e3
     0	1	2	3
 */
-func initFFHashgraph(cores []Core, t *testing.T) {
+func initFFPoset(cores []Core, t *testing.T) {
 	playbook := []play{
 		play{from: 1, to: 2, payload: [][]byte{[]byte("e21")}},
 		play{from: 2, to: 3, payload: [][]byte{[]byte("e32")}},
@@ -485,7 +485,7 @@ func initFFHashgraph(cores []Core, t *testing.T) {
 
 func TestConsensusFF(t *testing.T) {
 	cores, _, _ := initCores(4, t)
-	initFFHashgraph(cores, t)
+	initFFPoset(cores, t)
 
 	if r := cores[1].GetLastConsensusRoundIndex(); r == nil || *r != 1 {
 		disp := "nil"
@@ -515,7 +515,7 @@ func TestConsensusFF(t *testing.T) {
 
 func TestCoreFastForward(t *testing.T) {
 	cores, _, _ := initCores(4, t)
-	initFFHashgraph(cores, t)
+	initFFPoset(cores, t)
 
 	t.Run("Test no Anchor", func(t *testing.T) {
 		//Test no anchor block
@@ -621,7 +621,7 @@ func TestCoreFastForward(t *testing.T) {
 
 		sBlock, err := cores[0].hg.Store.GetBlock(block.Index())
 		if err != nil {
-			t.Fatalf("Error retrieving latest Block from reset hashgraph: %v", err)
+			t.Fatalf("Error retrieving latest Block from reset poset: %v", err)
 		}
 		if !reflect.DeepEqual(sBlock.Body, block.Body) {
 			t.Fatalf("Blocks defer")

@@ -3,7 +3,7 @@ package app
 import (
 	"time"
 
-	"github.com/andrecronje/lachesis/src/hashgraph"
+	"github.com/andrecronje/lachesis/src/poset"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,7 +51,7 @@ func (p *SocketAppProxy) SubmitCh() chan []byte {
 	return p.server.submitCh
 }
 
-func (p *SocketAppProxy) CommitBlock(block hashgraph.Block) ([]byte, error) {
+func (p *SocketAppProxy) CommitBlock(block poset.Block) ([]byte, error) {
 	return p.client.CommitBlock(block)
 }
 

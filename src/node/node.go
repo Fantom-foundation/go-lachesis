@@ -10,7 +10,7 @@ import (
 
 	"strconv"
 
-	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	hg "github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/net"
 	"github.com/andrecronje/lachesis/src/peers"
 	"github.com/andrecronje/lachesis/src/proxy"
@@ -421,7 +421,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int]i
 	}
 
 	if len(resp.Events) > 0 {
-		//Add Events to Hashgraph and create new Head if necessary
+		//Add Events to Poset and create new Head if necessary
 		n.coreLock.Lock()
 		err = n.sync(resp.Events)
 		n.coreLock.Unlock()
@@ -516,12 +516,12 @@ func (n *Node) fastForward() error {
 		"snapshot":             resp.Snapshot,
 	}).Debug("FastForwardResponse")
 
-	//prepare core. ie: fresh hashgraph
+	//prepare core. ie: fresh poset
 	n.coreLock.Lock()
 	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
-		n.logger.WithField("error", err).Error("Fast Forwarding Hashgraph")
+		n.logger.WithField("error", err).Error("Fast Forwarding Poset")
 		return err
 	}
 
@@ -581,7 +581,7 @@ func (n *Node) requestFastForward(target string) (net.FastForwardResponse, error
 }
 
 func (n *Node) sync(events []hg.WireEvent) error {
-	//Insert Events in Hashgraph and create new Head if necessary
+	//Insert Events in Poset and create new Head if necessary
 	start := time.Now()
 	err := n.core.Sync(events)
 	elapsed := time.Since(start)

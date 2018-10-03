@@ -99,7 +99,7 @@ If everything goes well, it should output something along these lines:
     ok      github.com/andrecronje/lachesis/common   0.011s
     ?       github.com/andrecronje/lachesis/cmd      [no test files]
     ?       github.com/andrecronje/lachesis/cmd/dummy_client [no test files]
-    ok      github.com/andrecronje/lachesis/hashgraph        0.174s
+    ok      github.com/andrecronje/lachesis/poset        0.174s
     ok      github.com/andrecronje/lachesis/node     1.699s
     ok      github.com/andrecronje/lachesis/proxy    0.018s
     ok      github.com/andrecronje/lachesis/crypto   0.028s

@@ -1,4 +1,4 @@
-package hashgraph
+package poset
 
 import "github.com/andrecronje/lachesis/src/peers"
 

@@ -17,7 +17,7 @@ This is alpha software. Please contact us if you intend to run it in production.
 
 ## Consensus Algorithm and Blockchain
 
-We use the Hashgraph consensus algorithm, invented by Leemon Baird.
+We use the Poset consensus algorithm, invented by Leemon Baird.
 It is best described in the 
 [white-paper](http://www.swirlds.com/downloads/SWIRLDS-TR-2016-01.pdf) and its 
 [accompanying document](http://www.swirlds.com/downloads/SWIRLDS-TR-2016-02.pdf).
@@ -25,7 +25,7 @@ The algorithm is protected by [patents](http://www.swirlds.com/ip/) in the USA.
 Therefore, anyone intending to use this software in the USA should obtain a 
 license from the patent holders.
 
-Hashgraph is based on the intuitive idea that gossiping about gossip itself 
+Poset is based on the intuitive idea that gossiping about gossip itself 
 yields enough information to compute a consensus ordering of events. It attains 
 the theoretical limit of tolerating up to one-third of faulty nodes without 
 compromising on speed. For those familiar with the jargon, it is a leaderless, 
@@ -72,7 +72,7 @@ language.
  |   |                                     |                   |
  |   |                                     |    +----------+   |
  |   |  +-----------+        +---------+   |    | Service  |   |
- |   |  | Hashgraph |        | Store   |   | -- |          | <----> HTTP API
+ |   |  | Poset |        | Store   |   | -- |          | <----> HTTP API
  |   |  +-----------+        +----------   |    |          |   |
  |   |                                     |    +----------+   |
  |   |                                     |                   |
@@ -208,7 +208,7 @@ ok      github.com/andrecronje/lachesis/net      0.052s
 ok      github.com/andrecronje/lachesis/common   0.011s
 ?       github.com/andrecronje/lachesis/cmd      [no test files]
 ?       github.com/andrecronje/lachesis/cmd/dummy_client [no test files]
-ok      github.com/andrecronje/lachesis/hashgraph        0.174s
+ok      github.com/andrecronje/lachesis/poset        0.174s
 ok      github.com/andrecronje/lachesis/node     1.699s
 ok      github.com/andrecronje/lachesis/proxy    0.018s
 ok      github.com/andrecronje/lachesis/crypto   0.028s

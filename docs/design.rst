@@ -37,7 +37,7 @@ Overview
          =   =                                     =                   =
          =   =                                     =    ============   =
          =   =  =============        ===========   =    = Service  =   =  
-         =   =  = Hashgraph =        = Store   =   = -- =          = <----> HTTP API
+         =   =  = Poset =        = Store   =   = -- =          = <----> HTTP API
          =   =  =============        ===========   =    =          =   =
          =   =                                     =    ============   =     
          =   =                                     =                   =
@@ -90,15 +90,15 @@ which describes a method for extracting a consensus order of events from a
 data structure representing the history of gossip between a set of participants.
 Instead of only gossiping transactions and exchanging votes directly, members 
 gossip about gossip itself; something that can be represented in a Directed 
-Acyclic Graph (DAG) - the hashgraph. The algorithm for extracting a consensus 
-order from the hashgraph is proven to work and attains the theoretical limits of
+Acyclic Graph (DAG) - the poset. The algorithm for extracting a consensus 
+order from the poset is proven to work and attains the theoretical limits of
 Byzantine fault-tolerance in terms of the number and power of the malicious
 members it can cope with. The messaging routines required to gossip and create 
-the hashgraph are very simple compared to other BFT algorithms. The hashgraph 
+the poset are very simple compared to other BFT algorithms. The poset 
 itself, however, is not ideal for representing the ordered list of transactions 
 because it is a two-dimensional object which doesn't explicitly express a linear 
 order of the items it contains. Hence, we developed a method to map the 
-hashgraph onto a blockchain. 
+poset onto a blockchain. 
 
 A blockchain is a data structure where transactions are packaged in hash-linked 
 blocks. Each block is identified by a cryptographic hash and contains a hash of 
@@ -110,9 +110,9 @@ valid signatures from at least one third of validators can be considered valid
 because - by hypothesis - at least one of those signatures is from an honest 
 member. 
 
-Projecting the hashgraph onto a blockchain makes it much easier for third 
+Projecting the poset onto a blockchain makes it much easier for third 
 parties to verify the consensus order. It makes it possible to build 
-light-clients and to integrate Hashgraph based systems with other blockchains. 
+light-clients and to integrate Poset based systems with other blockchains. 
 For more detail about the projection method, please refer to :ref:`blockchain`
 
 Proxy
@@ -202,41 +202,41 @@ Transport
 
 Lachesis nodes communicate with other Lachesis nodes in a fully connected Peer To 
 Peer network. Nodes gossip by repeatedly choosing another node at random and 
-telling eachother what they know about the hashgraph. The gossip protocol is 
+telling eachother what they know about the poset. The gossip protocol is 
 extremely simple and serves the dual purpose of gossiping about transactions and 
-about the gossip itself (the hashgraph). The hashgraph contains enough 
+about the gossip itself (the poset). The poset contains enough 
 information to compute a consensus ordering of transactions. 
 
 The communication mechanism is a custom RPC protocol over TCP connections. It  
 implements a Pull-Push gossip system. At the moment, there are two types of RPC  
 commands: **Sync** and **EagerSync**. When node **A** wants to sync with node 
 **B**, it sends a **SyncRequest** to **B** containing a description of what it 
-knows about the hashgraph. **B** computes what it knows that **A** doesn't know 
+knows about the poset. **B** computes what it knows that **A** doesn't know 
 and returns a **SyncResponse** with the corresponding events in topological 
-order. Upon receiving the **SyncResponse**, **A** updates its hashgraph 
+order. Upon receiving the **SyncResponse**, **A** updates its poset 
 accordingly and calculates the consensus order. Then, **A** sends an 
 **EagerSyncRequest** to **B** with the Events that it knows and **B** doesn't. 
-Upon receiving the **EagerSyncRequest**, **B** updates its hashgraph and runs 
+Upon receiving the **EagerSyncRequest**, **B** updates its poset and runs 
 the consensus methods.
 
 The list of peers must be predefined and known to all peers. At the moment, it 
 is not possible to dynamically modify the list of peers while the network is 
-running but this is not a limitation of the Hashgraph algorithm, just an 
+running but this is not a limitation of the Poset algorithm, just an 
 implementation prioritization.
 
 Core
 ----
 
-The core of Lachesis is the component that maintains and computes the hashgraph.  
+The core of Lachesis is the component that maintains and computes the poset.  
 The consensus algorithm, invented by Leemon Baird, is best described in the 
 `white-paper <http://www.swirlds.com/downloads/SWIRLDS-TR-2016-01.pdf>`__  
 and its `accompanying document 
 <http://www.swirlds.com/downloads/SWIRLDS-TR-2016-02.pdf>`__. 
 
-The hashgraph itself is a data structure that contains all the information about  
+The poset itself is a data structure that contains all the information about  
 the history of the gossip and thereby grows and grows in size as gossip spreads.  
-There are various strategies to keep the size of the hashgraph limited. In our  
-implementation, the **Hashgraph** object has a dependency on a **Store** object  
+There are various strategies to keep the size of the poset limited. In our  
+implementation, the **Poset** object has a dependency on a **Store** object  
 which contains the actual data and is abstracted behind an interface.
 
 There are currently two implementations of the **Store** interface. The 
@@ -250,7 +250,7 @@ Service
 -------
 
 The Service exposes an HTTP API to query information about the state of the node
-as well as the underlying hashgraph and blockchain. At the moment, it services 
+as well as the underlying poset and blockchain. At the moment, it services 
 two queries:
 
 **[GET] /stats**:  

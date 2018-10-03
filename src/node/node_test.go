@@ -12,7 +12,7 @@ import (
 
 	"github.com/andrecronje/lachesis/src/common"
 	"github.com/andrecronje/lachesis/src/crypto"
-	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	hg "github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/net"
 	peers_ "github.com/andrecronje/lachesis/src/peers"
 	aproxy "github.com/andrecronje/lachesis/src/proxy/app"
@@ -519,7 +519,7 @@ func TestFastForward(t *testing.T) {
 	}
 	sBlock, err := nodes[0].GetBlock(lbi)
 	if err != nil {
-		t.Fatalf("Error retrieving latest Block from reset hashgraph: %v", err)
+		t.Fatalf("Error retrieving latest Block from reset poset: %v", err)
 	}
 	expectedBlock, err := nodes[1].GetBlock(lbi)
 	if err != nil {

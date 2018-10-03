@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/andrecronje/lachesis/src/crypto"
-	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	hg "github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/peers"
 )
 
@@ -19,7 +19,7 @@ type Core struct {
 	key    *ecdsa.PrivateKey
 	pubKey []byte
 	hexID  string
-	hg     *hg.Hashgraph
+	hg     *hg.Poset
 
 	participants *peers.Peers //[PubKey] => id
 	Head         string
@@ -48,7 +48,7 @@ func NewCore(
 	core := Core{
 		id:                 id,
 		key:                key,
-		hg:                 hg.NewHashgraph(participants, store, commitCh, logEntry),
+		hg:                 hg.NewPoset(participants, store, commitCh, logEntry),
 		participants:       participants,
 		transactionPool:    [][]byte{},
 		blockSignaturePool: []hg.BlockSignature{},
