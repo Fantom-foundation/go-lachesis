@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/andrecronje/lachesis/src/peers"
 
 	"github.com/sirupsen/logrus"
 
@@ -17,8 +17,8 @@ import (
 
 	"math"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	"github.com/mosaicnetworks/babble/src/crypto"
+	"github.com/andrecronje/lachesis/src/common"
+	"github.com/andrecronje/lachesis/src/crypto"
 )
 
 var (

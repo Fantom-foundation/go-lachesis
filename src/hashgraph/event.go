@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/mosaicnetworks/babble/src/crypto"
+	"github.com/andrecronje/lachesis/src/crypto"
 )
 
 /*******************************************************************************

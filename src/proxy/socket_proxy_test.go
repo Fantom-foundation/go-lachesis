@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mosaicnetworks/babble/src/common"
-	bcrypto "github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/hashgraph"
-	aproxy "github.com/mosaicnetworks/babble/src/proxy/app"
+	"github.com/andrecronje/lachesis/src/common"
+	bcrypto "github.com/andrecronje/lachesis/src/crypto"
+	"github.com/andrecronje/lachesis/src/hashgraph"
+	aproxy "github.com/andrecronje/lachesis/src/proxy/app"
 )
 
 func TestSocketProxyServer(t *testing.T) {

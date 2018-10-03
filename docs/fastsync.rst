@@ -3,7 +3,7 @@
 FastSync
 ========
 
-FastSync is an element of the Babble protocol which enables nodes to catch up 
+FastSync is an element of the Lachesis protocol which enables nodes to catch up 
 with other nodes without downloading and processing the entire history of gossip 
 (Hashgraph + Blockchain). It is important in the context of mobile ad hoc 
 networks where users dynamically create or join groups, and where limited 
@@ -25,7 +25,7 @@ Overview
 
 .. image:: assets/fastsync.png
 
-The Babble node is implemented as a state machine where the possible states are: 
+The Lachesis node is implemented as a state machine where the possible states are: 
 **Babbling**, **CatchingUp**, and **Shutdown**. A node is normally in the 
 **Babbling** state where it performs the regular Hashgraph gossip routines, but 
 a **sync_limit** response from a peer will trigger the node to enter the 

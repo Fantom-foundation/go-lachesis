@@ -9,9 +9,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/mosaicnetworks/babble/src/crypto"
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/peers"
+	"github.com/andrecronje/lachesis/src/crypto"
+	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	"github.com/andrecronje/lachesis/src/peers"
 )
 
 type Core struct {

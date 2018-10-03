@@ -17,7 +17,7 @@ Overview
             =  ===============     ==============  =
             =          |                |          =
             =       ========================       =
-            =       = Babble Proxy         =       =
+            =       = Lachesis Proxy         =       =
             =       ========================       =
             =          |                ^          =
             ===========|================|===========
@@ -67,20 +67,20 @@ for read-only requests), but forwards commands to a *transaction ordering
 system* which takes care of broadcasting and ordering the transactions across 
 all replicas before feeding them back to the application's *state*. 
 
-Babble is an ordering system that plugs into any application thanks to a very 
+Lachesis is an ordering system that plugs into any application thanks to a very 
 simple JSON-RPC interface over TCP. It uses a consensus algorithm, to replicate 
 and order the transactions, and a blockchain to represent the resulting list. 
 A blockchain is a linear data structure composed of batches of transactions, 
 hashed and signed together, easily allowing to verify any transaction. So, 
-instead of applying commands directly to the *state*, Babble applications must 
-forward the commands to Babble and let them be processed asynchronously by the 
+instead of applying commands directly to the *state*, Lachesis applications must 
+forward the commands to Lachesis and let them be processed asynchronously by the 
 consensus system before receiving them back, in blocks, ready to be applied 
 to the *state*.  
 
 Consensus and Blockchain
 ------------------------
 
-At the core of Babble is an algorithm insuring that all participants process the 
+At the core of Lachesis is an algorithm insuring that all participants process the 
 same transactions in the same order. We have chosen to implement a system 
 suitable for the most adversarial conditions - with powerful attackers. This is 
 known as Byzantine Fault Tolerance (BFT) and has been a field of research for 
@@ -118,33 +118,33 @@ For more detail about the projection method, please refer to :ref:`blockchain`
 Proxy
 -----
 
-The Babble node and the App are loosely coupled and can run in separate 
+The Lachesis node and the App are loosely coupled and can run in separate 
 processes. They communicate via a very simple **JSON-RPC** interface over a 
 **TCP** connection. 
 
 The App submits transactions for consensus ordering via the **SubmitTx** 
-endpoint exposed by the **App Proxy**. Babble asynchronously processes 
+endpoint exposed by the **App Proxy**. Lachesis asynchronously processes 
 transactions and eventually feeds them back to the App, in consensus order and 
 bundled into blocks, with a **CommitBlock** message.
 
-Transactions are just raw bytes and Babble does not need to know what they 
+Transactions are just raw bytes and Lachesis does not need to know what they 
 represent. Therefore, encoding and decoding transactions is done by the App.
 
-Apps must implement their own **Babble Proxy** to submit and receive committed  
-transactions from Babble. The advantage of using a JSON-RPC API is that there is  
+Apps must implement their own **Lachesis Proxy** to submit and receive committed  
+transactions from Lachesis. The advantage of using a JSON-RPC API is that there is  
 no restriction on the programming language for the App. It only requires a 
-component that sends SubmitTx messages to Babble and exposes a TCP endpoint where 
-Babble can send CommitTx messages.
+component that sends SubmitTx messages to Lachesis and exposes a TCP endpoint where 
+Lachesis can send CommitTx messages.
 
-When launching a Babble node, one must specify the address and port exposed by 
-the Babble Proxy of the App. It is also possible to configure which address and 
+When launching a Lachesis node, one must specify the address and port exposed by 
+the Lachesis Proxy of the App. It is also possible to configure which address and 
 port the AppProxy exposes.
 
-Example SubmitTx request (from App to Babble):
+Example SubmitTx request (from App to Lachesis):
 
 ::
 
-    request: {"method":"Babble.SubmitTx","params":["Y2xpZW50IDE6IGhlbGxv"],"id":0}
+    request: {"method":"Lachesis.SubmitTx","params":["Y2xpZW50IDE6IGhlbGxv"],"id":0}
     response: {"id":0,"result":true,"error":null}
 
 
@@ -153,10 +153,10 @@ an example of how to make a SubmitTx request manually:
 
 ::
 
-    printf "{\"method\":\"Babble.SubmitTx\",\"params\":[\"Y2xpZW50IDE6IGhlbGxv\"],\"id\":0}" | nc -v  172.77.5.1 1338
+    printf "{\"method\":\"Lachesis.SubmitTx\",\"params\":[\"Y2xpZW50IDE6IGhlbGxv\"],\"id\":0}" | nc -v  172.77.5.1 1338
 
 
-Example CommitBlock request (from Babble to App):
+Example CommitBlock request (from Lachesis to App):
 
 ::
     
@@ -200,7 +200,7 @@ State-hash resulting from processing the block's transaction sequentially.
 Transport
 ---------
 
-Babble nodes communicate with other Babble nodes in a fully connected Peer To 
+Lachesis nodes communicate with other Lachesis nodes in a fully connected Peer To 
 Peer network. Nodes gossip by repeatedly choosing another node at random and 
 telling eachother what they know about the hashgraph. The gossip protocol is 
 extremely simple and serves the dual purpose of gossiping about transactions and 
@@ -227,7 +227,7 @@ implementation prioritization.
 Core
 ----
 
-The core of Babble is the component that maintains and computes the hashgraph.  
+The core of Lachesis is the component that maintains and computes the hashgraph.  
 The consensus algorithm, invented by Leemon Baird, is best described in the 
 `white-paper <http://www.swirlds.com/downloads/SWIRLDS-TR-2016-01.pdf>`__  
 and its `accompanying document 
@@ -255,7 +255,7 @@ two queries:
 
 **[GET] /stats**:  
 
-Returns a map with information about the Babble node. 
+Returns a map with information about the Lachesis node. 
 
 ::
 
@@ -278,7 +278,7 @@ Returns a map with information about the Babble node.
 
 **[GET] /block/{block_index}**:
 
-Returns the Block with the specified index, as stored by the Babble node.
+Returns the Block with the specified index, as stored by the Lachesis node.
 
 ::
 

@@ -1,4 +1,4 @@
-package: github.com/mosaicnetworks/babble
+package: github.com/andrecronje/lachesis
 import:
 - package: github.com/sirupsen/logrus
 - package: github.com/urfave/cli

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# This script creates the configuration for a Babble testnet with a variable
+# This script creates the configuration for a Lachesis testnet with a variable
 # number of nodes. It will generate crytographic key pairs and assemble a peers.json
-# file in the format used by Babble. The files are copied into individual folders
-# for each node so that these folders can be used as the datadir that Babble reads
+# file in the format used by Lachesis. The files are copied into individual folders
+# for each node so that these folders can be used as the datadir that Lachesis reads
 # configuration from.
 
 set -e
@@ -17,7 +17,7 @@ for i in $(seq 1 $N)
 do
     dest=$DEST/node$i
     mkdir -p $dest
-    docker run --rm mosaicnetworks/babble keygen | sed -n -e "2 w $dest/pub" -e "4,+4 w $dest/priv_key.pem"
+    docker run --rm andrecronje/lachesis keygen | sed -n -e "2 w $dest/pub" -e "4,+4 w $dest/priv_key.pem"
     echo "$IPBASE$i:$PORT" > $dest/addr
 done
 

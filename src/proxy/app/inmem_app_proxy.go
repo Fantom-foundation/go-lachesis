@@ -3,8 +3,8 @@ package app
 import (
 	"fmt"
 
-	bcrypto "github.com/mosaicnetworks/babble/src/crypto"
-	"github.com/mosaicnetworks/babble/src/hashgraph"
+	bcrypto "github.com/andrecronje/lachesis/src/crypto"
+	"github.com/andrecronje/lachesis/src/hashgraph"
 	"github.com/sirupsen/logrus"
 )
 

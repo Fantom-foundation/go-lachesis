@@ -1,16 +1,16 @@
 # BABBLE
 ## BFT Consensus platform for distributed applications.
 
-[![CircleCI](https://circleci.com/gh/mosaicnetworks/babble.svg?style=svg)](https://circleci.com/gh/mosaicnetworks/babble)
+[![CircleCI](https://circleci.com/gh/andrecronje/lachesis.svg?style=svg)](https://circleci.com/gh/andrecronje/lachesis)
 
-Babble allows many computers to behave as one. It uses Peer to Peer (P2P) 
+Lachesis allows many computers to behave as one. It uses Peer to Peer (P2P) 
 networking and a consensus algorithm to guarantee that multiple connected 
 computers process the same commands in the same order; a technique known as 
 state machine replication. This makes for secure systems that can tolerate 
 arbitrary failures including malicious behaviour.
 
-For guidance on how to install and use Babble please visit our 
-[documentation](http://docs.babble.io) pages.
+For guidance on how to install and use Lachesis please visit our 
+[documentation](http://docs.lachesis.io) pages.
 
 **NOTE**:
 This is alpha software. Please contact us if you intend to run it in production.
@@ -31,14 +31,14 @@ the theoretical limit of tolerating up to one-third of faulty nodes without
 compromising on speed. For those familiar with the jargon, it is a leaderless, 
 asynchronous BFT consensus algorithm.
 
-Babble projects the output of the consensus algorithm onto a linear blockchain 
+Lachesis projects the output of the consensus algorithm onto a linear blockchain 
 which is more suitable for representing an ordered list of transactions and 
 facilitates the creation of light-clients. For information about this projection
-please refer to [documentation](http://docs.babble.io/blockchain.html) pages.
+please refer to [documentation](http://docs.lachesis.io/blockchain.html) pages.
 
 ## Design
 
-Babble is designed to integrate with applications written in any programming 
+Lachesis is designed to integrate with applications written in any programming 
 language.
 
 
@@ -52,7 +52,7 @@ language.
     |  +-------------+     +------------+  |
     |          |                |          |
     |       +----------------------+       |
-    |       | Babble Proxy         |       |
+    |       | Lachesis Proxy         |       |
     |       +----------------------+       |
     |          |                ^          |
     +----------|----------------|----------+
@@ -102,13 +102,13 @@ for read-only requests), but forwards commands to a *transaction ordering
 system* which takes care of broadcasting and ordering the transactions across 
 all replicas before feeding them back to the application's *state*. 
 
-Babble is an ordering system that plugs into any application thanks to a very 
+Lachesis is an ordering system that plugs into any application thanks to a very 
 simple JSON-RPC interface over TCP. It uses a consensus algorithm, to replicate 
 and order the transactions, and a blockchain to represent the resulting list. 
 A blockchain is a linear data structure composed of batches of transactions, 
 hashed and signed together, easily allowing to verify any transaction. So, 
-instead of applying commands directly to the *state*, Babble applications must 
-forward the commands to Babble and let them be processed asynchronously by the 
+instead of applying commands directly to the *state*, Lachesis applications must 
+forward the commands to Lachesis and let them be processed asynchronously by the 
 consensus system before receiving them back, in blocks, ready to be applied 
 to the *state*.  
 
@@ -118,69 +118,69 @@ The easiest way to build binaries is to do so in a hermetic Docker container.
 Use this simple command:
 
 ```bash
-[...]/babble$ make dist
+[...]/lachesis$ make dist
 ```
 This will launch the build in a Docker container and write all the artifacts in
 the build/ folder.
 
 ```bash
-[...]/babble$ tree build
+[...]/lachesis$ tree build
 build/
 ├── dist
-│   ├── babble_0.1.0_darwin_386.zip
-│   ├── babble_0.1.0_darwin_amd64.zip
-│   ├── babble_0.1.0_freebsd_386.zip
-│   ├── babble_0.1.0_freebsd_arm.zip
-│   ├── babble_0.1.0_linux_386.zip
-│   ├── babble_0.1.0_linux_amd64.zip
-│   ├── babble_0.1.0_linux_arm.zip
-│   ├── babble_0.1.0_SHA256SUMS
-│   ├── babble_0.1.0_windows_386.zip
-│   └── babble_0.1.0_windows_amd64.zip
+│   ├── lachesis_0.1.0_darwin_386.zip
+│   ├── lachesis_0.1.0_darwin_amd64.zip
+│   ├── lachesis_0.1.0_freebsd_386.zip
+│   ├── lachesis_0.1.0_freebsd_arm.zip
+│   ├── lachesis_0.1.0_linux_386.zip
+│   ├── lachesis_0.1.0_linux_amd64.zip
+│   ├── lachesis_0.1.0_linux_arm.zip
+│   ├── lachesis_0.1.0_SHA256SUMS
+│   ├── lachesis_0.1.0_windows_386.zip
+│   └── lachesis_0.1.0_windows_amd64.zip
 └── pkg
     ├── darwin_386
-    │   └── babble
+    │   └── lachesis
     ├── darwin_amd64
-    │   └── babble
+    │   └── lachesis
     ├── freebsd_386
-    │   └── babble
+    │   └── lachesis
     ├── freebsd_arm
-    │   └── babble
+    │   └── lachesis
     ├── linux_386
-    │   └── babble
+    │   └── lachesis
     ├── linux_amd64
-    │   └── babble
+    │   └── lachesis
     ├── linux_arm
-    │   └── babble
+    │   └── lachesis
     ├── windows_386
-    │   └── babble.exe
+    │   └── lachesis.exe
     └── windows_amd64
-        └── babble.exe
+        └── lachesis.exe
 ```
 
 ## Dev
 
 ### Go
-Babble is written in [Golang](https://golang.org/). Hence, the first step is to 
+Lachesis is written in [Golang](https://golang.org/). Hence, the first step is to 
 install **Go version 1.9 or above** which is both the programming language  and a 
 CLI tool for managing Go code. Go is very opinionated and will require you to 
 [define a workspace](https://golang.org/doc/code.html#Workspaces) where all your 
 go code will reside.
 
-### Babble and dependencies
-Clone the [repository](https://github.com/mosaicnetworks/babble) in the appropriate 
+### Lachesis and dependencies
+Clone the [repository](https://github.com/andrecronje/lachesis) in the appropriate 
 GOPATH subdirectory:
 
 ```bash
-$ mkdir -p $GOPATH/src/github.com/mosaicnetworks/
-$ cd $GOPATH/src/github.com/mosaicnetworks
-[...]/mosaicnetworks$ git clone https://github.com/mosaicnetworks/babble.git
+$ mkdir -p $GOPATH/src/github.com/andrecronje/
+$ cd $GOPATH/src/github.com/andrecronje
+[...]/andrecronje$ git clone https://github.com/andrecronje/lachesis.git
 ```
-Babble uses [Glide](http://github.com/Masterminds/glide) to manage dependencies.
+Lachesis uses [Glide](http://github.com/Masterminds/glide) to manage dependencies.
 
 ```bash
-[...]/babble$ curl https://glide.sh/get | sh
-[...]/babble$ glide install
+[...]/lachesis$ curl https://glide.sh/get | sh
+[...]/lachesis$ glide install
 ```
 This will download all dependencies and put them in the **vendor** folder.
 
@@ -197,26 +197,26 @@ brew install gnu-sed gawk --with-default-names
 
 ### Testing
 
-Babble has extensive unit-testing. Use the Go tool to run tests:
+Lachesis has extensive unit-testing. Use the Go tool to run tests:
 ```bash
-[...]/babble$ make test
+[...]/lachesis$ make test
 ```
 
 If everything goes well, it should output something along these lines:
 ```
-ok      github.com/mosaicnetworks/babble/net      0.052s
-ok      github.com/mosaicnetworks/babble/common   0.011s
-?       github.com/mosaicnetworks/babble/cmd      [no test files]
-?       github.com/mosaicnetworks/babble/cmd/dummy_client [no test files]
-ok      github.com/mosaicnetworks/babble/hashgraph        0.174s
-ok      github.com/mosaicnetworks/babble/node     1.699s
-ok      github.com/mosaicnetworks/babble/proxy    0.018s
-ok      github.com/mosaicnetworks/babble/crypto   0.028s
+ok      github.com/andrecronje/lachesis/net      0.052s
+ok      github.com/andrecronje/lachesis/common   0.011s
+?       github.com/andrecronje/lachesis/cmd      [no test files]
+?       github.com/andrecronje/lachesis/cmd/dummy_client [no test files]
+ok      github.com/andrecronje/lachesis/hashgraph        0.174s
+ok      github.com/andrecronje/lachesis/node     1.699s
+ok      github.com/andrecronje/lachesis/proxy    0.018s
+ok      github.com/andrecronje/lachesis/crypto   0.028s
 ```
 
 ## Demo
 
-To see Babble in action, we have provided a series of scripts to bootstrap a 
+To see Lachesis in action, we have provided a series of scripts to bootstrap a 
 test network locally.
 
 **NOTE:**
@@ -227,8 +227,8 @@ Make sure you have [Docker](https://docker.com) installed.
 Then, run the testnet:
 
 ```bash
-[...]/babble$ cd demo
-[...]/babble/demo$ make
+[...]/lachesis$ cd demo
+[...]/lachesis/demo$ make
 ```
 
 Once the testnet is started, a script is automatically launched to monitor 
@@ -245,31 +245,31 @@ consensus_events:180 consensus_transactions:40 events_per_second:0.00 id:0 last_
 
 Running ```docker ps -a``` will show you that 9 docker containers have been launched:
 ```
-[...]/babble/demo$ docker ps -a
+[...]/lachesis/demo$ docker ps -a
 CONTAINER ID        IMAGE                    COMMAND                  CREATED             STATUS              PORTS                   NAMES
-ba80ef275f22        mosaicnetworks/watcher   "/watch.sh"              48 seconds ago      Up 7 seconds                                watcher
-4620ed62a67d        mosaicnetworks/dummy     "dummy '--name=client"   49 seconds ago      Up 48 seconds       1339/tcp                client4
-847ea77bd7fc        mosaicnetworks/babble    "babble run --cache_s"   50 seconds ago      Up 49 seconds       80/tcp, 1337-1338/tcp   node4
-11df03bf9690        mosaicnetworks/dummy     "dummy '--name=client"   51 seconds ago      Up 50 seconds       1339/tcp                client3
-00af002747ca        mosaicnetworks/babble    "babble run --cache_s"   52 seconds ago      Up 50 seconds       80/tcp, 1337-1338/tcp   node3
-b2011d3d65bb        mosaicnetworks/dummy     "dummy '--name=client"   53 seconds ago      Up 51 seconds       1339/tcp                client2
-e953b50bc1db        mosaicnetworks/babble    "babble run --cache_s"   53 seconds ago      Up 52 seconds       80/tcp, 1337-1338/tcp   node2
-0c9dd65de193        mosaicnetworks/dummy     "dummy '--name=client"   54 seconds ago      Up 53 seconds       1339/tcp                client1
-d1f4e5008d4d        mosaicnetworks/babble    "babble run --cache_s"   55 seconds ago      Up 54 seconds       80/tcp, 1337-1338/tcp   node1
+ba80ef275f22        andrecronje/watcher   "/watch.sh"              48 seconds ago      Up 7 seconds                                watcher
+4620ed62a67d        andrecronje/dummy     "dummy '--name=client"   49 seconds ago      Up 48 seconds       1339/tcp                client4
+847ea77bd7fc        andrecronje/lachesis    "lachesis run --cache_s"   50 seconds ago      Up 49 seconds       80/tcp, 1337-1338/tcp   node4
+11df03bf9690        andrecronje/dummy     "dummy '--name=client"   51 seconds ago      Up 50 seconds       1339/tcp                client3
+00af002747ca        andrecronje/lachesis    "lachesis run --cache_s"   52 seconds ago      Up 50 seconds       80/tcp, 1337-1338/tcp   node3
+b2011d3d65bb        andrecronje/dummy     "dummy '--name=client"   53 seconds ago      Up 51 seconds       1339/tcp                client2
+e953b50bc1db        andrecronje/lachesis    "lachesis run --cache_s"   53 seconds ago      Up 52 seconds       80/tcp, 1337-1338/tcp   node2
+0c9dd65de193        andrecronje/dummy     "dummy '--name=client"   54 seconds ago      Up 53 seconds       1339/tcp                client1
+d1f4e5008d4d        andrecronje/lachesis    "lachesis run --cache_s"   55 seconds ago      Up 54 seconds       80/tcp, 1337-1338/tcp   node1
 ```
-Indeed, each node is comprised of an App and a Babble node (cf Architecture section).
+Indeed, each node is comprised of an App and a Lachesis node (cf Architecture section).
 
 Run the **demo** script to play with the **Dummy App** which is a simple chat 
-application powered by the Babble consensus platform:
+application powered by the Lachesis consensus platform:
 
 ```
-[...]/babble/demo$ make demo
+[...]/lachesis/demo$ make demo
 ```
 ![Demo](demo/img/demo.png)
 
 
 Finally, stop the testnet:
 ```
-[...]/babble/demo$ make stop
+[...]/lachesis/demo$ make stop
 ```
 

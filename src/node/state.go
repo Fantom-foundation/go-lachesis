@@ -5,11 +5,11 @@ import (
 	"sync/atomic"
 )
 
-// NodeState captures the state of a Babble node: Babbling, CatchingUp or Shutdown
+// NodeState captures the state of a Lachesis node: Babbling, CatchingUp or Shutdown
 type NodeState uint32
 
 const (
-	// Babbling is the initial state of a Babble node.
+	// Babbling is the initial state of a Lachesis node.
 	Babbling NodeState = iota
 
 	CatchingUp

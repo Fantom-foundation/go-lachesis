@@ -10,10 +10,10 @@ import (
 
 	"strconv"
 
-	hg "github.com/mosaicnetworks/babble/src/hashgraph"
-	"github.com/mosaicnetworks/babble/src/net"
-	"github.com/mosaicnetworks/babble/src/peers"
-	"github.com/mosaicnetworks/babble/src/proxy"
+	hg "github.com/andrecronje/lachesis/src/hashgraph"
+	"github.com/andrecronje/lachesis/src/net"
+	"github.com/andrecronje/lachesis/src/peers"
+	"github.com/andrecronje/lachesis/src/proxy"
 )
 
 type Node struct {
@@ -132,7 +132,7 @@ func (n *Node) Run(gossip bool) {
 
 		switch state {
 		case Babbling:
-			n.babble(gossip)
+			n.lachesis(gossip)
 		case CatchingUp:
 			n.fastForward()
 		case Shutdown:
@@ -173,11 +173,11 @@ func (n *Node) doBackgroundWork() {
 	}
 }
 
-//babble is interrupted when a gossip function, launched asychronously, changes
+//lachesis is interrupted when a gossip function, launched asychronously, changes
 //the state from Babbling to CatchingUp, or when the node is shutdown.
 //Otherwise, it periodicaly initiates gossip while there is something to gossip
 //about, or waits.
-func (n *Node) babble(gossip bool) {
+func (n *Node) lachesis(gossip bool) {
 	returnCh := make(chan struct{})
 	for {
 		select {
@@ -358,7 +358,7 @@ func (n *Node) preGossip() (bool, error) {
 }
 
 //This function is usually called in a go-routine and needs to inform the
-//calling routine (usually the babble routine) when it is time to exit the
+//calling routine (usually the lachesis routine) when it is time to exit the
 //Babbling state and return.
 func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
 
@@ -612,7 +612,7 @@ func (n *Node) commit(block hg.Block) error {
 	}).Debug("CommitBlock Response")
 
 	//XXX what do we do in case of error. Retry? This has to do with the
-	//Babble <-> App interface. Think about it.
+	//Lachesis <-> App interface. Think about it.
 
 	//There is no point in using the stateHash if we know it is wrong
 	if err == nil {

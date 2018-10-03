@@ -25,4 +25,4 @@ IMPROVEMENTS:
 * hashgraph: Refactored the consensus methods around the concept of Frames.
 * hashgraph: Removed special case for "initial" Events, and make use of Roots 
 instead. 
-* docs: Added sections on Babble and FastSync.
+* docs: Added sections on Lachesis and FastSync.

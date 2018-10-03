@@ -10,12 +10,12 @@ import (
 
 	"reflect"
 
-	scrypto "github.com/mosaicnetworks/babble/src/crypto"
+	scrypto "github.com/andrecronje/lachesis/src/crypto"
 )
 
 func TestJSONPeers(t *testing.T) {
 	// Create a test dir
-	dir, err := ioutil.TempDir("", "babble")
+	dir, err := ioutil.TempDir("", "lachesis")
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
