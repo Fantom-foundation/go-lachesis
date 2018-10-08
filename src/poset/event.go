@@ -310,7 +310,7 @@ func (e *Event) ToWire() WireEvent {
 	}
 }
 
-// FlagTable returns the FlagTable and the number of flags of the event
+// FlagTable returns the flagTable and the number of flags of the event
 func (e *Event) FlagTable() (map[string]bool, int) {
 	return e.flagTable, e.flags
 }

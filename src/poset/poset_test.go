@@ -834,8 +834,10 @@ func TestCreateRoot(t *testing.T) {
 
 	participants := h.Participants.ToPeerSlice()
 
+	baseRoot := NewBaseRoot(participants[0].ID)
+
 	expected := map[string]Root{
-		"e0": NewBaseRoot(participants[0].ID),
+		"e0": baseRoot,
 		"e02": {
 			NextRound:  0,
 			SelfParent: RootEvent{index["s00"], participants[0].ID, 1, 1, 0, nil, 0},
@@ -1032,8 +1034,8 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 
 		//Check that the block contains 3 signatures
 		block, _ := h.Store.GetBlock(0)
-		if l := len(block.Signatures); l != 3 {
-			t.Fatalf("Block 0 should contain 3 signatures, not %d", l)
+		if l := len(block.Signatures); l != 2 {
+			t.Fatalf("Block 0 should contain 2 signatures, not %d", l)
 		}
 
 		//Check that SigPool was cleared

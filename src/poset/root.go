@@ -77,16 +77,12 @@ type RootEvent struct {
 //of a Poset.
 func NewBaseRootEvent(creatorID int) RootEvent {
 	hash := fmt.Sprintf("Root%d", creatorID)
-	flagTable := make(map[string]bool)
-	flagTable[hash] = true
 	res := RootEvent{
 		Hash:             hash,
 		CreatorID:        creatorID,
 		Index:            -1,
 		LamportTimestamp: -1,
 		Round:            -1,
-		flagTable:        flagTable,
-		flags:            1,
 	}
 	return res
 }
