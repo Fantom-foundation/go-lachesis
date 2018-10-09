@@ -96,18 +96,14 @@ func NewNode(conf *Config,
 	topic := "/mq/lachesis/node"
 	if err := node.mqtt.Connect(); err != nil {
 		node.logger.WithField("error", err).Error("Connection failed")
-		return
 	}
 	if err := node.mqtt.Listen(topic); err != nil {
 		node.logger.WithField("error", err).Error("Failed to listen on topic")
-		return
 	}
 	wg.Add(1)
 	if err := node.mqtt.FireEvent("Test Message", topic); err != nil {
 		node.logger.WithField("error", err).Error("Failed to send message")
-		return
 	}
-	t.Log("Msg has been published")
 	wg.Wait()
 
 	node.needBoostrap = store.NeedBoostrap()
