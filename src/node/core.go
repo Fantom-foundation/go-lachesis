@@ -296,11 +296,11 @@ func (c *Core) AddSelfEventBlock(otherHead string) error {
 	var flags int
 
 	if perr != nil {
-		return fmt.Errorf("Error retrieving parent: %s", perr)
+		fmt.Errorf("Error retrieving parent: %s", perr)
 	}
 	otherParentEvent, oerr := c.poset.Store.GetEvent(otherHead)
 	if oerr != nil {
-		return fmt.Errorf("Error retrieving other parent: %s", oerr)
+		fmt.Errorf("Error retrieving other parent: %s", oerr)
 	}
 	if perr == nil && oerr == nil {
 		flagTable, flags := parentEvent.FlagTable()
