@@ -69,6 +69,12 @@ func NewNode(conf *Config,
 
 	peerSelector := NewRandomPeerSelector(participants, localAddr)
 
+	wg := sync.WaitGroup{}
+	mqtt := net.NewMqttSocket("tcp://localhost:1883", func(client mq.Client, message mq.Message) {
+		conf.Logger.WithField("this_id", id).Debug("Message received : ", string(message.Payload()), " on topic ", message.Topic())
+		wg.Done()
+	})
+
 	node := Node{
 		id:           id,
 		conf:         conf,
@@ -79,19 +85,13 @@ func NewNode(conf *Config,
 		trans:        trans,
 		netCh:        trans.Consumer(),
 		proxy:        proxy,
+		mqtt:         mqtt,
 		submitCh:     proxy.SubmitCh(),
 		commitCh:     commitCh,
 		shutdownCh:   make(chan struct{}),
 		controlTimer: NewRandomControlTimer(conf.HeartbeatTimeout),
 		start:        time.Now(),
 	}
-
-	wg := sync.WaitGroup{}
-	mqtt := net.NewMqttSocket("tcp://localhost:1883", func(client mq.Client, message mq.Message) {
-		node.logger.Debug("Message received : ", string(message.Payload()), " on topic ", message.Topic())
-		wg.Done()
-	})
-	node.mqtt = mqtt
 
 	node.needBoostrap = store.NeedBoostrap()
 
@@ -718,7 +718,7 @@ func (n *Node) GetStats() map[string]string {
 		"id":                      strconv.Itoa(n.id),
 		"state":                   n.getState().String(),
 	}
-	n.mqtt.FireEvent(s, "/mq/lachesis/stats" )
+	n.mqtt.FireEvent(s, "/mq/lachesis/stats")
 	return s
 }
 
