@@ -120,7 +120,7 @@ func (c *Core) Bootstrap() error {
 	return c.poset.Bootstrap()
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 func (c *Core) SignAndInsertSelfEvent(event poset.Event) error {
 	if err := event.Sign(c.key); err != nil {
@@ -147,7 +147,7 @@ func (c *Core) KnownEvents() map[int]int {
 	return c.poset.Store.KnownEvents()
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 func (c *Core) SignBlock(block poset.Block) (poset.BlockSignature, error) {
 	sig, err := block.Sign(c.key)
@@ -160,7 +160,7 @@ func (c *Core) SignBlock(block poset.Block) (poset.BlockSignature, error) {
 	return sig, c.poset.Store.SetBlock(block)
 }
 
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 func (c *Core) OverSyncLimit(knownEvents map[int]int, syncLimit int) bool {
 	totUnknown := 0
@@ -180,15 +180,15 @@ func (c *Core) GetAnchorBlockWithFrame() (poset.Block, poset.Frame, error) {
 	return c.poset.GetAnchorBlockWithFrame()
 }
 
-//returns events that c knows about and are not in 'known'
+// returns events that c knows about and are not in 'known'
 func (c *Core) EventDiff(known map[int]int) (events []poset.Event, err error) {
 	var unknown []poset.Event
-	//known represents the index of the last event known for every participant
-	//compare this to our view of events and fill unknown with events that we know of
+	// known represents the index of the last event known for every participant
+	// compare this to our view of events and fill unknown with events that we know of
 	// and the other doesn't
 	for id, ct := range known {
 		peer := c.participants.ById[id]
-		//get participant Events with index > ct
+		// get participant Events with index > ct
 		participantEvents, err := c.poset.Store.ParticipantEvents(peer.PubKeyHex, ct)
 		if err != nil {
 			return []poset.Event{}, err
@@ -215,7 +215,7 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 	}).Debug("Sync(unknownEventBlocks []poset.EventBlock)")
 
 	otherHead := ""
-	//add unknown events
+	// add unknown events
 	for k, we := range unknownEvents {
 		ev, err := c.poset.ReadWireInfo(we)
 		if err != nil {
@@ -226,32 +226,32 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 		if err := c.InsertEvent(*ev, false); err != nil {
 			return err
 		}
-		//assume last event corresponds to other-head
+		// assume last event corresponds to other-head
 		if k == len(unknownEvents)-1 {
 			otherHead = ev.Hex()
 		}
 	}
 
-	//create new event with self head and other head only if there are pending
-	//loaded events or the pools are not empty
+	// create new event with self head and other head only if there are pending
+	// loaded events or the pools are not empty
 	return c.AddSelfEventBlock(otherHead)
 }
 
 func (c *Core) FastForward(peer string, block poset.Block, frame poset.Frame) error {
 
-	//Check Block Signatures
+	// Check Block Signatures
 	err := c.poset.CheckBlock(block)
 	if err != nil {
 		return err
 	}
 
-	//Check Frame Hash
+	// Check Frame Hash
 	frameHash, err := frame.Hash()
 	if err != nil {
 		return err
 	}
 	if !reflect.DeepEqual(block.FrameHash(), frameHash) {
-		return fmt.Errorf("Invalid Frame Hash")
+		return fmt.Errorf("invalid Frame Hash")
 	}
 
 	err = c.poset.Reset(block, frame)
@@ -284,43 +284,48 @@ func (c *Core) FastForward(peer string, block poset.Block, frame poset.Frame) er
 
 func (c *Core) AddSelfEventBlock(otherHead string) error {
 
-	//exit if there is nothing to record
+	// exit if there is nothing to record
 	if otherHead == "" && len(c.transactionPool) == 0 && len(c.blockSignaturePool) == 0 {
 		c.logger.Debug("Empty transaction and block signature pool")
 		return nil
 	}
 
 	// Get flag tables from parents
-	parentEvent, perr := c.poset.Store.GetEvent(c.Head)
+	// parentEvent, perr := c.poset.Store.GetEvent(c.Head)
 	flagTable := make(map[string]bool)
-	var flags int
+	// var flags int
 
-	if perr != nil {
-		return fmt.Errorf("Error retrieving parent: %s", perr)
-	}
-	otherParentEvent, oerr := c.poset.Store.GetEvent(otherHead)
-	if oerr != nil {
-		return fmt.Errorf("Error retrieving other parent: %s", oerr)
-	}
-	if perr == nil && oerr == nil {
-		flagTable, flags := parentEvent.FlagTable()
-		otherFlagTable, _ := otherParentEvent.FlagTable()
-		// event flag table = parent 1 flag table OR parent 2 flag table
-		for id, flag := range otherFlagTable {
-			if !flagTable[id] && flag {
-				flagTable[id] = true
-				flags++
-			}
-		}
-	}
+	// debug.PrintStack()
+	// c.logger.Debug("Getting info for block", otherHead)
+	// c.logger.Debug("parentEvent", parentEvent)
+	// c.logger.Debug("head", c.Head)
+	// c.printEvents()
 
-	//create new event with self head and empty other parent
-	//empty transaction pool in its payload
+	// if perr != nil {
+	// 	return fmt.Errorf("Error retrieving parent: %s", perr)
+	// }
+	// otherParentEvent, oerr := c.poset.Store.GetEvent(otherHead)
+	// if oerr != nil {
+	// 	return fmt.Errorf("Error retrieving other parent: %s", oerr)
+	// }
+
+	// flagTable, flags := parentEvent.FlagTable()
+	// otherFlagTable, _ := otherParentEvent.FlagTable()
+	// // event flag table = parent 1 flag table OR parent 2 flag table
+	// for id, flag := range otherFlagTable {
+	// 	if !flagTable[id] && flag {
+	// 		flagTable[id] = true
+	// 		flags++
+	// 	}
+	// }
+
+	// create new event with self head and empty other parent
+	// empty transaction pool in its payload
 	newHead := poset.NewEvent(c.transactionPool,
 		c.blockSignaturePool,
 		[]string{c.Head, otherHead},
 		c.PubKey(), c.Seq+1,
-		flagTable, flags)
+		flagTable, 0)
 
 	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
 		return fmt.Errorf("newHead := poset.NewEventBlock: %s", err)

@@ -22,7 +22,7 @@ import (
 var ip = 9990
 
 func initPeers(n int) ([]*ecdsa.PrivateKey, *peers_.Peers) {
-	var keys []*ecdsa.PrivateKey
+	keys := []*ecdsa.PrivateKey{}
 	peers := peers_.NewPeers()
 
 	for i := 0; i < n; i++ {
@@ -43,7 +43,7 @@ func TestProcessSync(t *testing.T) {
 	testLogger := common.NewTestLogger(t)
 	config := TestConfig(t)
 
-	//Start two nodes
+	// Start two nodes
 
 	peers := p.ToPeerSlice()
 
@@ -75,7 +75,7 @@ func TestProcessSync(t *testing.T) {
 
 	node1.RunAsync(false)
 
-	//Manually prepare SyncRequest and expected SyncResponse
+	// Manually prepare SyncRequest and expected SyncResponse
 
 	node0KnownEvents := node0.core.KnownEvents()
 	node1KnownEvents := node1.core.KnownEvents()
@@ -100,7 +100,7 @@ func TestProcessSync(t *testing.T) {
 		Known:  node1KnownEvents,
 	}
 
-	//Make actual SyncRequest and check SyncResponse
+	// Make actual SyncRequest and check SyncResponse
 
 	var out net.SyncResponse
 	if err := peer0Trans.Sync(peers[1].NetAddr, &args, &out); err != nil {
@@ -139,7 +139,7 @@ func TestProcessEagerSync(t *testing.T) {
 	testLogger := common.NewTestLogger(t)
 	config := TestConfig(t)
 
-	//Start two nodes
+	// Start two nodes
 
 	peers := p.ToPeerSlice()
 
@@ -171,7 +171,7 @@ func TestProcessEagerSync(t *testing.T) {
 
 	node1.RunAsync(false)
 
-	//Manually prepare EagerSyncRequest and expected EagerSyncResponse
+	// Manually prepare EagerSyncRequest and expected EagerSyncResponse
 
 	node1KnownEvents := node1.core.KnownEvents()
 
@@ -194,7 +194,7 @@ func TestProcessEagerSync(t *testing.T) {
 		Success: true,
 	}
 
-	//Make actual EagerSyncRequest and check EagerSyncResponse
+	// Make actual EagerSyncRequest and check EagerSyncResponse
 
 	var out net.EagerSyncResponse
 	if err := peer0Trans.EagerSync(peers[1].NetAddr, &args, &out); err != nil {
@@ -215,7 +215,7 @@ func TestAddTransaction(t *testing.T) {
 	testLogger := common.NewTestLogger(t)
 	config := TestConfig(t)
 
-	//Start two nodes
+	// Start two nodes
 
 	peers := p.ToPeerSlice()
 
@@ -248,12 +248,12 @@ func TestAddTransaction(t *testing.T) {
 	node1.Init()
 
 	node1.RunAsync(false)
-	//Submit a Tx to node0
+	// Submit a Tx to node0
 
 	message := "Hello World!"
 	peer0Proxy.SubmitTx([]byte(message))
 
-	//simulate a SyncRequest from node0 to node1
+	// simulate a SyncRequest from node0 to node1
 
 	node0KnownEvents := node0.core.KnownEvents()
 	args := net.SyncRequest{
@@ -270,7 +270,7 @@ func TestAddTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	//check the Tx was removed from the transactionPool and added to the new Head
+	// check the Tx was removed from the transactionPool and added to the new Head
 
 	if l := len(node0.core.transactionPool); l > 0 {
 		t.Fatalf("node0's transactionPool should have 0 elements, not %d\n", l)
@@ -465,7 +465,7 @@ func TestSyncLimit(t *testing.T) {
 	}
 	defer shutdownNodes(nodes)
 
-	//create fake node[0] known to artificially reach SyncLimit
+	// create fake node[0] known to artificially reach SyncLimit
 	node0KnownEvents := nodes[0].core.KnownEvents()
 	for k := range node0KnownEvents {
 		node0KnownEvents[k] = 0
@@ -533,10 +533,10 @@ func TestFastForward(t *testing.T) {
 func TestCatchUp(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
-	//Create  config for 4 nodes
+	// Create  config for 4 nodes
 	keys, peers := initPeers(4)
 
-	//Initialize the first 3 nodes only
+	// Initialize the first 3 nodes only
 	normalNodes := initNodes(keys[0:3], peers, 1000, 400, "inmem", logger, t)
 	defer shutdownNodes(normalNodes)
 
@@ -550,7 +550,7 @@ func TestCatchUp(t *testing.T) {
 
 	node4 := initNodes(keys[3:], peers, 1000, 400, "inmem", logger, t)[0]
 
-	//Run parallel routine to check node4 eventually reaches CatchingUp state.
+	// Run parallel routine to check node4 eventually reaches CatchingUp state.
 	timeout := time.After(6 * time.Second)
 	go func() {
 		for {
@@ -568,7 +568,7 @@ func TestCatchUp(t *testing.T) {
 	node4.RunAsync(true)
 	defer node4.Shutdown()
 
-	//Gossip some more
+	// Gossip some more
 	nodes := append(normalNodes, node4)
 	newTarget := target + 20
 	err = bombardAndWait(nodes, newTarget, 6*time.Second)
@@ -583,7 +583,7 @@ func TestCatchUp(t *testing.T) {
 func TestFastSync(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
-	//Create  config for 4 nodes
+	// Create  config for 4 nodes
 	keys, peers := initPeers(4)
 	nodes := initNodes(keys, peers, 1000, 400, "inmem", logger, t)
 	defer shutdownNodes(nodes)
@@ -606,10 +606,10 @@ func TestFastSync(t *testing.T) {
 	}
 	checkGossip(nodes[0:3], 0, t)
 
-	//Can't re-run it; have to reinstantiate a new node.
+	// Can't re-run it; have to reinstantiate a new node.
 	node4 = recycleNode(node4, logger, t)
 
-	//Run parallel routine to check node4 eventually reaches CatchingUp state.
+	// Run parallel routine to check node4 eventually reaches CatchingUp state.
 	timeout := time.After(6 * time.Second)
 	go func() {
 		for {
@@ -629,7 +629,7 @@ func TestFastSync(t *testing.T) {
 
 	nodes[3] = node4
 
-	//Gossip some more
+	// Gossip some more
 	thirdTarget := secondTarget + 20
 	err = bombardAndWait(nodes, thirdTarget, 6*time.Second)
 	if err != nil {
@@ -663,8 +663,8 @@ func TestBootstrapAllNodes(t *testing.T) {
 	os.RemoveAll("test_data")
 	os.Mkdir("test_data", os.ModeDir|0777)
 
-	//create a first network with BadgerStore and wait till it reaches 10 consensus
-	//rounds before shutting it down
+	// create a first network with BadgerStore and wait till it reaches 10 consensus
+	// rounds before shutting it down
 	keys, peers := initPeers(4)
 	nodes := initNodes(keys, peers, 1000, 1000, "badger", logger, t)
 	err := gossip(nodes, 10, false, 3*time.Second)
@@ -674,8 +674,8 @@ func TestBootstrapAllNodes(t *testing.T) {
 	checkGossip(nodes, 0, t)
 	shutdownNodes(nodes)
 
-	//Now try to recreate a network from the databases created in the first step
-	//and advance it to 20 consensus rounds
+	// Now try to recreate a network from the databases created in the first step
+	// and advance it to 20 consensus rounds
 	newNodes := recycleNodes(nodes, logger, t)
 	err = gossip(newNodes, 20, false, 3*time.Second)
 	if err != nil {
@@ -684,7 +684,7 @@ func TestBootstrapAllNodes(t *testing.T) {
 	checkGossip(newNodes, 0, t)
 	shutdownNodes(newNodes)
 
-	//Check that both networks did not have completely different consensus events
+	// Check that both networks did not have completely different consensus events
 	checkGossip([]*Node{nodes[0], newNodes[0]}, 0, t)
 }
 
@@ -705,7 +705,7 @@ func bombardAndWait(nodes []*Node, target int, timeout time.Duration) error {
 	quit := make(chan struct{})
 	makeRandomTransactions(nodes, quit)
 
-	//wait until all nodes have at least 'target' blocks
+	// wait until all nodes have at least 'target' blocks
 	stopper := time.After(timeout)
 	for {
 		select {
@@ -721,8 +721,8 @@ func bombardAndWait(nodes []*Node, target int, timeout time.Duration) error {
 				done = false
 				break
 			} else {
-				//wait until the target block has retrieved a state hash from
-				//the app
+				// wait until the target block has retrieved a state hash from
+				// the app
 				targetBlock, _ := n.core.poset.Store.GetBlock(target)
 				if len(targetBlock.StateHash()) == 0 {
 					done = false
