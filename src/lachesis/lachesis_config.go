@@ -16,12 +16,14 @@ import (
 
 type LachesisConfig struct {
 	NodeConfig node.Config `mapstructure:",squash"`
+
 	DataDir     string `mapstructure:"datadir"`
 	BindAddr    string `mapstructure:"listen"`
 	ServiceAddr string `mapstructure:"service-listen"`
 	MaxPool     int    `mapstructure:"max-pool"`
 	Store       bool   `mapstructure:"store"`
 	LogLevel    string `mapstructure:"log"`
+
 	LoadPeers bool
 	Proxy     proxy.AppProxy
 	Key       *ecdsa.PrivateKey
@@ -48,8 +50,14 @@ func NewDefaultConfig() *LachesisConfig {
 
 	config.NodeConfig.Logger = config.Logger
 
+/*
+	config.Logger.Level = LogLevel(config.LogLevel)
+	config.Proxy = aproxy.NewInmemAppProxy(config.Logger)
+	config.NodeConfig.Logger = config.Logger
+*/
 	//XXX
-	config.Proxy, _ = sproxy.NewSocketAppProxy("127.0.0.1:1338", "127.0.0.1:1339", 1*time.Second, config.Logger)
+	config.Proxy = aproxy.NewInmemAppProxy(config.Logger)
+	//config.Proxy, _ = sproxy.NewSocketAppProxy("127.0.0.1:1338", "127.0.0.1:1339", 1*time.Second, config.Logger)
 
 	return config
 }

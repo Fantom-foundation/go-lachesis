@@ -35,7 +35,7 @@ func (l *Lachesis) initTransport() error {
 		l.Config.BindAddr,
 		nil,
 		l.Config.MaxPool,
-		l.Config.NodeConfig.TCPTimeout,
+		l.Config.NodeConfig.HeartbeatTimeout,
 		l.Config.Logger,
 	)
 
