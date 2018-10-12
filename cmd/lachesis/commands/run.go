@@ -3,12 +3,72 @@ package commands
 import (
 	"fmt"
 	"github.com/andrecronje/lachesis/src/lachesis"
-	aproxy "github.com/andrecronje/lachesis/src/proxy/app"
+	aproxy "github.com/andrecronje/lachesis/src/proxy/socket/app"
 	"github.com/andrecronje/lachesis/tester"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/urfave/cli"
+	"github.com/spf13/viper"
 )
+
+//NewRunCmd returns the command that starts a Lachesis node
+func NewRunCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "run",
+		Short:   "Run node",
+		PreRunE: loadConfig,
+		RunE:    runLachesis,
+	}
+	AddRunFlags(cmd)
+	return cmd
+}
+
+/*******************************************************************************
+* RUN
+*******************************************************************************/
+
+func runLachesis(cmd *cobra.Command, args []string) error {
+	if !config.Inapp {
+		p, err := aproxy.NewSocketAppProxy(
+			config.ClientAddr,
+			config.ProxyAddr,
+			config.Lachesis.NodeConfig.HeartbeatTimeout,
+			config.Lachesis.Logger,
+		)
+
+		if err != nil {
+			config.Lachesis.Logger.Error("Cannot initialize socket AppProxy:", err)
+			return err
+		}
+
+		config.Lachesis.Proxy = p
+	}
+
+	engine := lachesis.NewLachesis(&config.Lachesis)
+
+	if err := engine.Init(); err != nil {
+		config.Lachesis.Logger.Error("Cannot initialize engine:", err)
+		return err
+	}
+
+	if config.Lachesis.Test {
+		p, err := engine.Store.Participants()
+		if err != nil {
+			return cli.NewExitError(
+				fmt.Sprintf("Failed to acquire participants: %s", err),
+				1)
+		}
+		go tester.PingNodesN(p.Sorted, p.ByPubKey, config.Lachesis.TestN, config.Lachesis.ServiceAddr)
+	}
+
+	engine.Run()
+
+	return nil
+}
+
+/*******************************************************************************
+* CONFIG
+*******************************************************************************/
 
 //AddRunFlags adds flags to the Run command
 func AddRunFlags(cmd *cobra.Command) {
@@ -42,21 +102,18 @@ func AddRunFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64("test_n", config.Lachesis.TestN, "Number of transactions to send")
 }
 
-//NewRunCmd returns the command that starts a Lachesis node
-func NewRunCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "run",
-		Short:   "Run node",
-		PreRunE: logConfig,
-		RunE:    runLachesis,
+func loadConfig(cmd *cobra.Command, args []string) error {
+
+	err := bindFlagsLoadViper(cmd)
+	if err != nil {
+		return err
 	}
 
-	AddRunFlags(cmd)
+	config, err = parseConfig()
+	if err != nil {
+		return err
+	}
 
-	return cmd
-}
-
-func logConfig(cmd *cobra.Command, args []string) error {
 	config.Lachesis.Logger.Level = lachesis.LogLevel(config.Lachesis.LogLevel)
 	config.Lachesis.NodeConfig.Logger = config.Lachesis.Logger
 
@@ -81,42 +138,54 @@ func logConfig(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
-func runLachesis(cmd *cobra.Command, args []string) error {
-	if !config.Inapp {
-		p, err := aproxy.NewSocketAppProxy(
-			config.ClientAddr,
-			config.ProxyAddr,
-			config.Lachesis.NodeConfig.HeartbeatTimeout,
-			config.Lachesis.Logger,
-		)
-
-		if err != nil {
-			config.Lachesis.Logger.Error("Cannot initialize socket AppProxy:", err)
-			return nil
-		}
-
-		config.Lachesis.Proxy = p
+//Bind all flags and read the config into viper
+func bindFlagsLoadViper(cmd *cobra.Command) error {
+	// cmd.Flags() includes flags from this command and all persistent flags from the parent
+	if err := viper.BindPFlags(cmd.Flags()); err != nil {
+		return err
 	}
 
-	engine := lachesis.NewLachesis(&config.Lachesis)
+	viper.SetConfigName("lachesis")              // name of config file (without extension)
+	viper.AddConfigPath(config.Lachesis.DataDir) // search root directory
+	// viper.AddConfigPath(filepath.Join(config.Lachesis.DataDir, "lachesis")) // search root directory /config
 
-	if err := engine.Init(); err != nil {
-		config.Lachesis.Logger.Error("Cannot initialize engine:", err)
-		return nil
+	// If a config file is found, read it in.
+	if err := viper.ReadInConfig(); err == nil {
+		config.Lachesis.Logger.Debugf("Using config file: %s", viper.ConfigFileUsed())
+	} else if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		config.Lachesis.Logger.Debugf("No config file found in: %s", config.Lachesis.DataDir)
+	} else {
+		return err
 	}
-
-	if config.Lachesis.Test {
-		p, err := engine.Store.Participants()
-		if err != nil {
-			return cli.NewExitError(
-				fmt.Sprintf("Failed to acquire participants: %s", err),
-				1)
-		}
-		go tester.PingNodesN(p.Sorted, p.ByPubKey, config.Lachesis.TestN, config.Lachesis.ServiceAddr)
-	}
-
-	engine.Run()
 
 	return nil
+}
+
+//Retrieve the default environment configuration.
+func parseConfig() (*CLIConfig, error) {
+	conf := NewDefaultCLIConfig()
+	err := viper.Unmarshal(conf)
+	if err != nil {
+		return nil, err
+	}
+	return conf, err
+}
+
+func logLevel(l string) logrus.Level {
+	switch l {
+	case "debug":
+		return logrus.DebugLevel
+	case "info":
+		return logrus.InfoLevel
+	case "warn":
+		return logrus.WarnLevel
+	case "error":
+		return logrus.ErrorLevel
+	case "fatal":
+		return logrus.FatalLevel
+	case "panic":
+		return logrus.PanicLevel
+	default:
+		return logrus.DebugLevel
+	}
 }

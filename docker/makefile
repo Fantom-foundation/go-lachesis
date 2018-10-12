@@ -11,11 +11,11 @@ lachesis-image:
 	CGO_ENABLED=0 go build \
 		--ldflags "-X github.com/andrecronje/lachesis/src/version.GitCommit=`git rev-parse HEAD`" \
 		-o lachesis/lachesis ../cmd/lachesis/
-	docker build --no-cache=true -t andrecronje/lachesis:$(BABBLE_VERSION) lachesis/
+	docker build --no-cache=true -t andrecronje/lachesis:$(BABBLE_VERSION)  -t andrecronje/lachesis:latest lachesis/
 
 dummy-image:
 	CGO_ENABLED=0 go build \
-		-o dummy/dummy ../cmd/dummy_client/
+		-o dummy/dummy ../cmd/dummy/
 	docker build --no-cache=true -t andrecronje/dummy:$(DUMMY_VERSION) dummy/
 
 watcher-image:

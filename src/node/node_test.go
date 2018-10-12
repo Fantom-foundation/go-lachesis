@@ -3,7 +3,6 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/andrecronje/lachesis/src/poset"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -13,10 +12,10 @@ import (
 
 	"github.com/andrecronje/lachesis/src/common"
 	"github.com/andrecronje/lachesis/src/crypto"
+	dummy "github.com/andrecronje/lachesis/src/dummy"
+	"github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/net"
 	peers_ "github.com/andrecronje/lachesis/src/peers"
-	hg "github.com/andrecronje/lachesis/src/poset"
-	aproxy "github.com/andrecronje/lachesis/src/proxy/app"
 	"github.com/sirupsen/logrus"
 )
 
@@ -55,9 +54,9 @@ func TestProcessSync(t *testing.T) {
 	defer peer0Trans.Close()
 
 	node0 := NewNode(config, peers[0].ID, keys[0], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
-		aproxy.NewInmemAppProxy(testLogger))
+		dummy.NewInmemDummyClient(testLogger))
 	node0.Init()
 
 	node0.RunAsync(false)
@@ -69,9 +68,9 @@ func TestProcessSync(t *testing.T) {
 	defer peer1Trans.Close()
 
 	node1 := NewNode(config, peers[1].ID, keys[1], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
-		aproxy.NewInmemAppProxy(testLogger))
+		dummy.NewInmemDummyClient(testLogger))
 	node1.Init()
 
 	node1.RunAsync(false)
@@ -151,9 +150,9 @@ func TestProcessEagerSync(t *testing.T) {
 	defer peer0Trans.Close()
 
 	node0 := NewNode(config, peers[0].ID, keys[0], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
-		aproxy.NewInmemAppProxy(testLogger))
+		dummy.NewInmemDummyClient(testLogger))
 	node0.Init()
 
 	node0.RunAsync(false)
@@ -165,9 +164,9 @@ func TestProcessEagerSync(t *testing.T) {
 	defer peer1Trans.Close()
 
 	node1 := NewNode(config, peers[1].ID, keys[1], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
-		aproxy.NewInmemAppProxy(testLogger))
+		dummy.NewInmemDummyClient(testLogger))
 	node1.Init()
 
 	node1.RunAsync(false)
@@ -224,11 +223,11 @@ func TestAddTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	peer0Proxy := aproxy.NewInmemAppProxy(testLogger)
+	peer0Proxy := dummy.NewInmemDummyClient(testLogger)
 	defer peer0Trans.Close()
 
 	node0 := NewNode(TestConfig(t), peers[0].ID, keys[0], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
 		peer0Proxy)
 	node0.Init()
@@ -239,11 +238,11 @@ func TestAddTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	peer1Proxy := aproxy.NewInmemAppProxy(testLogger)
+	peer1Proxy := dummy.NewInmemDummyClient(testLogger)
 	defer peer1Trans.Close()
 
 	node1 := NewNode(TestConfig(t), peers[1].ID, keys[1], p,
-		hg.NewInmemStore(p, config.CacheSize),
+		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
 		peer1Proxy)
 	node1.Init()
@@ -322,14 +321,14 @@ func initNodes(keys []*ecdsa.PrivateKey,
 		switch storeType {
 		case "badger":
 			path, _ := ioutil.TempDir("", "badger")
-			store, err = hg.NewBadgerStore(peers, conf.CacheSize, path)
+			store, err = poset.NewBadgerStore(peers, conf.CacheSize, path)
 			if err != nil {
 				t.Fatalf("failed to create BadgerStore for peer %d: %s", id, err)
 			}
 		case "inmem":
-			store = hg.NewInmemStore(peers, conf.CacheSize)
+			store = poset.NewInmemStore(peers, conf.CacheSize)
 		}
-		prox := aproxy.NewInmemAppProxy(logger)
+		prox := dummy.NewInmemDummyClient(logger)
 		node := NewNode(conf,
 			id,
 			k,
@@ -363,8 +362,8 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 
 	var store poset.Store
 	var err error
-	if _, ok := oldNode.core.poset.Store.(*hg.BadgerStore); ok {
-		store, err = hg.LoadBadgerStore(conf.CacheSize, oldNode.core.poset.Store.StorePath())
+	if _, ok := oldNode.core.poset.Store.(*poset.BadgerStore); ok {
+		store, err = poset.LoadBadgerStore(conf.CacheSize, oldNode.core.poset.Store.StorePath())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -377,7 +376,7 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prox := aproxy.NewInmemAppProxy(logger)
+	prox := dummy.NewInmemDummyClient(logger)
 
 	newNode := NewNode(conf, id, key, peers, store, trans, prox)
 
@@ -412,7 +411,7 @@ func deleteStores(nodes []*Node, t *testing.T) {
 }
 
 func getCommittedTransactions(n *Node) ([][]byte, error) {
-	InmemAppProxy, ok := n.proxy.(*aproxy.InmemAppProxy)
+	InmemAppProxy, ok := n.proxy.(*dummy.InmemDummyClient)
 	if !ok {
 		return nil, fmt.Errorf("error casting to InmemProp")
 	}
@@ -790,7 +789,7 @@ func makeRandomTransactions(nodes []*Node, quit chan struct{}) {
 }
 
 func submitTransaction(n *Node, tx []byte) error {
-	prox, ok := n.proxy.(*aproxy.InmemAppProxy)
+	prox, ok := n.proxy.(*dummy.InmemDummyClient)
 	if !ok {
 		return fmt.Errorf("error casting to InmemProp")
 	}

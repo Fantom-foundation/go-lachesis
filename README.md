@@ -2,7 +2,6 @@
 
 [documentation](http://docs.fantom.foundation) pages.
 
-
 ## Docker
 
 Create an 3 node lachesis cluster with:
