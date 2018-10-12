@@ -12,23 +12,29 @@ type SocketLachesisProxy struct {
 	nodeAddress string
 	bindAddress string
 
+	handler proxy.ProxyHandler
+
 	client *SocketLachesisProxyClient
 	server *SocketLachesisProxyServer
 }
 
-func NewSocketLachesisProxy(nodeAddr string,
+func NewSocketLachesisProxy(
+	nodeAddr string,
 	bindAddr string,
+	handler proxy.ProxyHandler,
 	timeout time.Duration,
-	logger *logrus.Logger) (*SocketLachesisProxy, error) {
+	logger *logrus.Logger,
+) (*SocketLachesisProxy, error) {
 
 	if logger == nil {
 		logger = logrus.New()
+
 		logger.Level = logrus.DebugLevel
 	}
 
 	client := NewSocketLachesisProxyClient(nodeAddr, timeout)
 
-	server, err := NewSocketLachesisProxyServer(bindAddr, timeout, logger)
+	server, err := NewSocketLachesisProxyServer(bindAddr, handler, timeout, logger)
 
 	if err != nil {
 		return nil, err
@@ -37,6 +43,7 @@ func NewSocketLachesisProxy(nodeAddr string,
 	proxy := &SocketLachesisProxy{
 		nodeAddress: nodeAddr,
 		bindAddress: bindAddr,
+		handler:     handler,
 		client:      client,
 		server:      server,
 	}
@@ -44,18 +51,6 @@ func NewSocketLachesisProxy(nodeAddr string,
 	go proxy.server.listen()
 
 	return proxy, nil
-}
-
-func (p *SocketLachesisProxy) CommitCh() chan proto.Commit {
-	return p.server.commitCh
-}
-
-func (p *SocketLachesisProxy) SnapshotRequestCh() chan proto.SnapshotRequest {
-	return p.server.snapshotRequestCh
-}
-
-func (p *SocketLachesisProxy) RestoreCh() chan proto.RestoreRequest {
-	return p.server.restoreCh
 }
 
 func (p *SocketLachesisProxy) SubmitTx(tx []byte) error {

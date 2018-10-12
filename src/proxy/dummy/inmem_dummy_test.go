@@ -12,19 +12,15 @@ import (
 )
 
 func TestInmemDummyAppSide(t *testing.T) {
-
 	logger := common.NewTestLogger(t)
 
 	dummy := NewInmemDummyClient(logger)
 
-	submitCh := dummy.SubmitCh()
-
 	tx := []byte("the test transaction")
 
-	// Listen for a request
 	go func() {
 		select {
-		case st := <-submitCh:
+		case st := <-dummy.SubmitCh():
 			// Verify the command
 			if !reflect.DeepEqual(st, tx) {
 				t.Fatalf("tx mismatch: %#v %#v", tx, st)
@@ -39,13 +35,17 @@ func TestInmemDummyAppSide(t *testing.T) {
 }
 
 func TestInmemDummyServerSide(t *testing.T) {
-
 	logger := common.NewTestLogger(t)
 
 	dummy := NewInmemDummyClient(logger)
 
 	//create a few blocks
+<<<<<<< HEAD:src/dummy/inmem_dummy_test.go
 	blocks := [5]poset.Block{}
+=======
+	blocks := [5]hashgraph.Block{}
+
+>>>>>>> remotes/babble/inmem_proxy2:src/proxy/dummy/inmem_dummy_test.go
 	for i := 0; i < 5; i++ {
 		blocks[i] = poset.NewBlock(i, i+1, []byte{}, [][]byte{[]byte(fmt.Sprintf("block %d transaction", i))})
 	}
@@ -61,6 +61,7 @@ func TestInmemDummyServerSide(t *testing.T) {
 
 	for _, t := range blocks[0].Transactions() {
 		tHash := bcrypto.SHA256(t)
+
 		expectedStateHash = bcrypto.SimpleHashFromTwoHashes(expectedStateHash, tHash)
 	}
 
@@ -69,6 +70,7 @@ func TestInmemDummyServerSide(t *testing.T) {
 	}
 
 	snapshot, err := dummy.GetSnapshot(blocks[0].Index())
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,13 +88,14 @@ func TestInmemDummyServerSide(t *testing.T) {
 		}
 	}
 
-	stateHash, err = dummy.Restore(snapshot)
+	err = dummy.Restore(snapshot)
+
 	if err != nil {
 		t.Fatalf("Error restoring snapshot: %v", err)
 	}
 
-	if !reflect.DeepEqual(stateHash, expectedStateHash) {
-		t.Fatalf("Restore StateHash should be %v, not %v", expectedStateHash, stateHash)
+	if !reflect.DeepEqual(dummy.state.stateHash, expectedStateHash) {
+		t.Fatalf("Restore StateHash should be %v, not %v", expectedStateHash, dummy.state.stateHash)
 	}
 
 }

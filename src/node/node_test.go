@@ -12,7 +12,7 @@ import (
 
 	"github.com/andrecronje/lachesis/src/common"
 	"github.com/andrecronje/lachesis/src/crypto"
-	dummy "github.com/andrecronje/lachesis/src/dummy"
+	dummy "github.com/andrecronje/lachesis/src/proxy/dummy"
 	"github.com/andrecronje/lachesis/src/poset"
 	"github.com/andrecronje/lachesis/src/net"
 	peers_ "github.com/andrecronje/lachesis/src/peers"

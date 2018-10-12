@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/andrecronje/lachesis/src/dummy"
+	"github.com/andrecronje/lachesis/src/proxy/dummy"
 	"github.com/rifflock/lfshook"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

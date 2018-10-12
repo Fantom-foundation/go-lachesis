@@ -31,23 +31,29 @@ func NewState(logger *logrus.Logger) *State {
 		snapshots:    make(map[int][]byte),
 		logger:       logger,
 	}
+
 	logger.Info("Init Dummy State")
+
 	return state
 }
 
-func (a *State) CommitBlock(block poset.Block) ([]byte, error) {
+func (a *State) CommitHandler(block poset.Block) ([]byte, error) {
 	a.logger.WithField("block", block).Debug("CommitBlock")
+
 	err := a.commit(block)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return a.stateHash, nil
 }
 
-func (a *State) GetSnapshot(blockIndex int) ([]byte, error) {
+func (a *State) SnapshotHandler(blockIndex int) ([]byte, error) {
 	a.logger.WithField("block", blockIndex).Debug("GetSnapshot")
 
 	snapshot, ok := a.snapshots[blockIndex]
+
 	if !ok {
 		return nil, fmt.Errorf("Snapshot %d not found", blockIndex)
 	}
@@ -55,9 +61,10 @@ func (a *State) GetSnapshot(blockIndex int) ([]byte, error) {
 	return snapshot, nil
 }
 
-func (a *State) Restore(snapshot []byte) ([]byte, error) {
+func (a *State) RestoreHandler(snapshot []byte) ([]byte, error) {
 	//XXX do something smart here
 	a.stateHash = snapshot
+
 	return a.stateHash, nil
 }
 
@@ -70,10 +77,13 @@ func (a *State) commit(block poset.Block) error {
 
 	//log tx and update state hash
 	hash := a.stateHash
+
 	for _, tx := range block.Transactions() {
 		a.logger.Info(string(tx))
+
 		hash = crypto.SimpleHashFromTwoHashes(hash, crypto.SHA256(tx))
 	}
+
 	a.stateHash = hash
 
 	//XXX do something smart here
