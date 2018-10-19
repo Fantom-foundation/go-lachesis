@@ -132,7 +132,7 @@ func (s *InmemStore) LastEventFrom(participant string) (last string, isRoot bool
 			err = cm.NewStoreErr("InmemStore.Roots", cm.NoRoot, participant)
 		}
 	}
-	return
+	return last, isRoot, err
 }
 
 func (s *InmemStore) LastConsensusEventFrom(participant string) (last string, isRoot bool, err error) {
