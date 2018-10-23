@@ -209,8 +209,10 @@ func (c *Core) bootstrapInDegrees() {
 				if err != nil {
 					continue
 				}
-				if event.OtherParent() == eventHash {
-					c.inDegrees[pubKey]++
+				for _, othrerParentHash := range event.OtherParents() {
+					if othrerParentHash == eventHash {
+						c.inDegrees[pubKey]++
+					}
 				}
 			}
 		}
@@ -249,9 +251,10 @@ func (c *Core) InsertEvent(event poset.Event, setWireInfo bool) error {
 	}
 
 	c.inDegrees[event.GetCreator()] = 0
-
-	if otherEvent, err := c.poset.Store.GetEventBlock(event.OtherParent()); err == nil {
-		c.inDegrees[otherEvent.GetCreator()]++
+	for _, otherParentHash := range event.OtherParents() {
+		if otherEvent, err := c.poset.Store.GetEventBlock(otherParentHash); err == nil {
+			c.inDegrees[otherEvent.GetCreator()]++
+		}
 	}
 	return nil
 }
@@ -333,7 +336,7 @@ func (c *Core) EventDiff(known map[uint64]int64) (events []poset.Event, err erro
 }
 
 // Sync unknown events into our poset
-func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
+func (c *Core) Sync(unknownEvents [][]poset.WireEvent) error {
 
 	c.logger.WithFields(logrus.Fields{
 		"unknown_events":              len(unknownEvents),
@@ -341,34 +344,36 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 		"internal_transaction_pool":   c.GetInternalTransactionPoolCount(),
 		"block_signature_pool":        c.GetBlockSignaturePoolCount(),
 		"c.poset.PendingLoadedEvents": c.poset.GetPendingLoadedEvents(),
-	}).Debug("Sync(unknownEventBlocks []poset.EventBlock)")
+	}).Debug("Sync(unknownEventBlocks [][]poset.EventBlock)")
 
 	myKnownEvents := c.KnownEvents()
-	otherHead := poset.EventHash{}
+	otherHeads := make(poset.EventHashes, len(unknownEvents), len(unknownEvents))
 	// add unknown events
-	for k, we := range unknownEvents {
-		c.logger.WithFields(logrus.Fields{
-			"unknown_events": we,
-		}).Debug("unknownEvents")
-		ev, err := c.poset.ReadWireInfo(we)
-		if err != nil {
-			c.logger.WithField("EventBlock", we).Errorf("c.poset.ReadEventBlockInfo(we)")
-			return err
-
-		}
-		if ev.Index() > myKnownEvents[ev.CreatorID()] {
-			ev.SetLamportTimestamp(poset.LamportTimestampNIL)
-			ev.SetRound(poset.RoundNIL)
-			ev.SetRoundReceived(poset.RoundNIL)
-			if err := c.InsertEvent(*ev, false); err != nil {
-				c.logger.Error("SYNC: INSERT ERR", err)
+	for i, wireEvents := range unknownEvents {
+		for k, wireEvent := range wireEvents {
+			c.logger.WithFields(logrus.Fields{
+				"unknown_event": wireEvent,
+			}).Debug("unknownEvents")
+			event, err := c.poset.ReadWireInfo(wireEvent)
+			if err != nil {
+				c.logger.WithField("EventBlock", wireEvent).Errorf("c.poset.ReadEventBlockInfo(we)")
 				return err
-			}
-		}
 
-		// assume last event corresponds to other-head
-		if k == len(unknownEvents)-1 {
-			otherHead = ev.Hash()
+			}
+			if event.Index() > myKnownEvents[event.CreatorID()] {
+				event.SetLamportTimestamp(poset.LamportTimestampNIL)
+				event.SetRound(poset.RoundNIL)
+				event.SetRoundReceived(poset.RoundNIL)
+				if err := c.InsertEvent(*event, false); err != nil {
+					c.logger.Error("SYNC: INSERT ERR", err)
+					return err
+				}
+			}
+
+			// assume last event corresponds to other-head
+			if k == len(wireEvents)-1 {
+				otherHeads[i] = event.Hash()
+			}
 		}
 	}
 
@@ -378,7 +383,7 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 		c.GetTransactionPoolCount() > 0 ||
 		c.GetInternalTransactionPoolCount() > 0 ||
 		c.GetBlockSignaturePoolCount() > 0 {
-		return c.AddSelfEventBlock(otherHead)
+		return c.AddSelfEventBlock(otherHeads)
 	}
 	return nil
 }
@@ -427,7 +432,7 @@ func min(a, b int) int {
 }
 
 // AddSelfEventBlock adds an event block created by this node
-func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
+func (c *Core) AddSelfEventBlock(otherHeads poset.EventHashes) error {
 
 	c.addSelfEventBlockLocker.Lock()
 	defer c.addSelfEventBlockLocker.Unlock()
@@ -436,10 +441,6 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 	parentEvent, errSelf := c.poset.Store.GetEventBlock(c.head)
 	if errSelf != nil {
 		c.logger.Warnf("failed to get parent: %s", errSelf)
-	}
-	otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
-	if errOther != nil {
-		c.logger.Warnf("failed to get other parent: %s", errOther)
 	}
 
 	var (
@@ -456,10 +457,15 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 		}
 	}
 
-	if errOther == nil {
-		flagTable, err = otherParentEvent.MergeFlagTable(flagTable)
-		if err != nil {
-			return fmt.Errorf("failed to marge flag tables: %s", err)
+	for _, otherHead := range otherHeads {
+		otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
+		if errOther != nil {
+			c.logger.Warnf("failed to get other parent: %s", errOther)
+		} else {
+			flagTable, err = otherParentEvent.MergeFlagTable(flagTable)
+			if err != nil {
+				return fmt.Errorf("failed to merge flag tables: %s", err)
+			}
 		}
 	}
 
@@ -479,10 +485,15 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 	c.transactionPoolLocker.Unlock()
 
 	// create new event with self head and empty other parent
+	parents := poset.EventHashes{c.Head()}
+	parents = append(parents, otherHeads...)
 	newHead := poset.NewEvent(batch,
 		c.internalTransactionPool,
 		c.blockSignaturePool,
-		poset.EventHashes{c.head, otherHead}, c.PubKey(), c.Seq+1, flagTable)
+		parents,
+		c.PubKey(),
+		c.Seq+1,
+		flagTable)
 
 	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
 		// put batch back to transactionPool

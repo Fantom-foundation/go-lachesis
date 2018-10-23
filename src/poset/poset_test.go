@@ -586,7 +586,7 @@ func TestInsertEvent(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		return ev.SelfParent() == selfDominator && ev.OtherParent() == dominator
+		return ev.SelfParent() == selfDominator && ev.OtherParent(0) == dominator
 	}
 
 	t.Run("Check Event Coordinates", func(t *testing.T) {
@@ -602,8 +602,8 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(e0Event.Message.SelfParentIndex == -1 &&
-			e0Event.Message.OtherParentCreatorID == peers.PeerNIL &&
-			e0Event.Message.OtherParentIndex == -1 &&
+			e0Event.Message.OtherParentCreatorIDs[0] == peers.PeerNIL &&
+			e0Event.Message.OtherParentIndexes[0] == -1 &&
 			e0Event.Message.CreatorID == peer0.ID) {
 			t.Fatalf("Invalid wire info on %s", e0)
 		}
@@ -629,8 +629,8 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(e21Event.Message.SelfParentIndex == 1 &&
-			e21Event.Message.OtherParentCreatorID == peer10.ID &&
-			e21Event.Message.OtherParentIndex == 1 &&
+			e21Event.Message.OtherParentCreatorIDs[0] == peer10.ID &&
+			e21Event.Message.OtherParentIndexes[0] == 1 &&
 			e21Event.Message.CreatorID == peer21.ID) {
 			t.Fatalf("Invalid wire info on %s", e21)
 		}
@@ -646,8 +646,8 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(f1Event.Message.SelfParentIndex == 2 &&
-			f1Event.Message.OtherParentCreatorID == peer0.ID &&
-			f1Event.Message.OtherParentIndex == 2 &&
+			f1Event.Message.OtherParentCreatorIDs[0] == peer0.ID &&
+			f1Event.Message.OtherParentIndexes[0] == 2 &&
 			f1Event.Message.CreatorID == peerf1.ID) {
 			t.Fatalf("Invalid wire info on %s", f1)
 		}
@@ -1082,13 +1082,16 @@ func TestCreateRoot(t *testing.T) {
 				Index:            1,
 				LamportTimestamp: 1,
 				Round:            0},
-			Others: map[string]*RootEvent{
+			Others: map[string]*RootEvents{
 				hashString(index[e02]): {
-					Hash:             hashBytes(index[e21]),
-					CreatorID:        participants[2].ID,
-					Index:            2,
-					LamportTimestamp: 2,
-					Round:            1},
+					Value: []*RootEvent{{
+						Hash:             hashBytes(index[e21]),
+						CreatorID:        participants[2].ID,
+						Index:            2,
+						LamportTimestamp: 2,
+						Round:            1},
+					},
+				},
 			},
 		},
 		s10: {
@@ -1099,7 +1102,7 @@ func TestCreateRoot(t *testing.T) {
 				Index:            1,
 				LamportTimestamp: 1,
 				Round:            0},
-			Others: map[string]*RootEvent{},
+			Others: map[string]*RootEvents{},
 		},
 		f1: {
 			NextRound: 1,
@@ -1109,13 +1112,16 @@ func TestCreateRoot(t *testing.T) {
 				Index:            2,
 				LamportTimestamp: 2,
 				Round:            0},
-			Others: map[string]*RootEvent{
+			Others: map[string]*RootEvents{
 				hashString(index[f1]): {
-					Hash:             hashBytes(index[e02]),
-					CreatorID:        participants[0].ID,
-					Index:            2,
-					LamportTimestamp: 3,
-					Round:            1},
+					Value: []*RootEvent{{
+						Hash:             hashBytes(index[e02]),
+						CreatorID:        participants[0].ID,
+						Index:            2,
+						LamportTimestamp: 3,
+						Round:            1},
+					},
+				},
 			},
 		},
 	}
@@ -1191,13 +1197,13 @@ func TestCreateRootBis(t *testing.T) {
 		e12: {
 			NextRound:  0,
 			SelfParent: &root,
-			Others: map[string]*RootEvent{
-				hashString(index[e12]): {
+			Others: map[string]*RootEvents{
+				hashString(index[e12]): {Value: []*RootEvent{{
 					Hash:             hashBytes(index[e2]),
 					CreatorID:        participants[2].ID,
 					Index:            0,
 					LamportTimestamp: 0,
-					Round:            0},
+					Round:            0}}},
 			},
 		},
 	}
@@ -1997,13 +2003,13 @@ func TestGetFrame(t *testing.T) {
 				LamportTimestamp: 0,
 				Round:            0,
 			},
-			Others: map[string]*RootEvent{
-				hashString(index[f0]): {
+			Others: map[string]*RootEvents{
+				hashString(index[f0]): {Value: []*RootEvent{{
 					Hash:             hashBytes(index[f2b]),
 					CreatorID:        participants[2].ID,
 					Index:            2,
 					LamportTimestamp: 3,
-					Round:            1,
+					Round:            1}},
 				},
 			},
 		}
@@ -2016,13 +2022,13 @@ func TestGetFrame(t *testing.T) {
 				LamportTimestamp: 1,
 				Round:            0,
 			},
-			Others: map[string]*RootEvent{
-				hashString(index[f1]): {
+			Others: map[string]*RootEvents{
+				hashString(index[f1]): {Value: []*RootEvent{{
 					Hash:             hashBytes(index[f0]),
 					CreatorID:        participants[0].ID,
 					Index:            1,
 					LamportTimestamp: 4,
-					Round:            1,
+					Round:            1}},
 				},
 			},
 		}
@@ -2035,13 +2041,13 @@ func TestGetFrame(t *testing.T) {
 				LamportTimestamp: 0,
 				Round:            0,
 			},
-			Others: map[string]*RootEvent{
-				hashString(index[f2]): {
+			Others: map[string]*RootEvents{
+				hashString(index[f2]): {Value: []*RootEvent{{
 					Hash:             hashBytes(index[e10]),
 					CreatorID:        participants[1].ID,
 					Index:            1,
 					LamportTimestamp: 1,
-					Round:            0,
+					Round:            0}},
 				},
 			},
 		}
@@ -2729,13 +2735,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[a12]): {
+				Others: map[string]*RootEvents{
+					hashString(index[a12]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[a23]),
 						CreatorID:        participants[2].ID,
 						Index:            1,
 						LamportTimestamp: 1,
-						Round:            0},
+						Round:            0}}},
 				},
 			},
 			{
@@ -2746,13 +2752,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 1,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[a21]): {
+				Others: map[string]*RootEvents{
+					hashString(index[a21]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[a12]),
 						CreatorID:        participants[1].ID,
 						Index:            1,
 						LamportTimestamp: 2,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 			{
@@ -2763,13 +2769,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[w13]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w13]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[a21]),
 						CreatorID:        participants[2].ID,
 						Index:            2,
 						LamportTimestamp: 3,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 		},
@@ -2783,13 +2789,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 2,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[a10]): {
+				Others: map[string]*RootEvents{
+					hashString(index[a10]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[a00]),
 						CreatorID:        participants[0].ID,
 						Index:            1,
 						LamportTimestamp: 1,
-						Round:            0},
+						Round:            0}}},
 				},
 			},
 			{
@@ -2800,13 +2806,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            2,
 					LamportTimestamp: 3,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[w12]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w12]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w13]),
 						CreatorID:        participants[3].ID,
 						Index:            1,
 						LamportTimestamp: 4,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 			{
@@ -2817,13 +2823,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[w13]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w13]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[a21]),
 						CreatorID:        participants[2].ID,
 						Index:            2,
 						LamportTimestamp: 3,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 		},
@@ -2836,13 +2842,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 1,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[w10]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w10]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w11]),
 						CreatorID:        participants[1].ID,
 						Index:            3,
 						LamportTimestamp: 6,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -2853,13 +2859,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            3,
 					LamportTimestamp: 6,
 					Round:            2},
-				Others: map[string]*RootEvent{
-					hashString(index[w21]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w21]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w23]),
 						CreatorID:        participants[3].ID,
 						Index:            2,
 						LamportTimestamp: 8,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -2870,13 +2876,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            3,
 					LamportTimestamp: 5,
 					Round:            2},
-				Others: map[string]*RootEvent{
-					hashString(index[b21]): {
+				Others: map[string]*RootEvents{
+					hashString(index[b21]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w11]),
 						CreatorID:        participants[1].ID,
 						Index:            3,
 						LamportTimestamp: 6,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -2887,13 +2893,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[w23]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w23]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[b21]),
 						CreatorID:        participants[2].ID,
 						Index:            4,
 						LamportTimestamp: 7,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 		},
@@ -2905,13 +2911,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					CreatorID:        participants[0].ID,
 					Index:            3,
 					LamportTimestamp: 8, Round: 3},
-				Others: map[string]*RootEvent{
-					hashString(index[w20]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w20]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w22]),
 						CreatorID:        participants[2].ID,
 						Index:            5,
 						LamportTimestamp: 11,
-						Round:            3},
+						Round:            3}}},
 				},
 			},
 			{
@@ -2922,13 +2928,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            5,
 					LamportTimestamp: 10,
 					Round:            3},
-				Others: map[string]*RootEvent{
-					hashString(index[w31]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w31]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w20]),
 						CreatorID:        participants[0].ID,
 						Index:            4,
 						LamportTimestamp: 12,
-						Round:            4},
+						Round:            4}}},
 				},
 			},
 			{
@@ -2939,13 +2945,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            5,
 					LamportTimestamp: 11,
 					Round:            3},
-				Others: map[string]*RootEvent{
-					hashString(index[w32]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w32]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w31]),
 						CreatorID:        participants[1].ID,
 						Index:            6,
 						LamportTimestamp: 13,
-						Round:            4},
+						Round:            4}}},
 				},
 			},
 			{
@@ -2956,13 +2962,13 @@ func TestFunkyPosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[w23]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w23]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[b21]),
 						CreatorID:        participants[2].ID,
 						Index:            4,
 						LamportTimestamp: 7,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 		},
@@ -3270,13 +3276,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[w10]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w10]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[e32]),
 						CreatorID:        participants[3].ID,
 						Index:            1,
 						LamportTimestamp: 3,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 			{
@@ -3287,13 +3293,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[e10]): {
+				Others: map[string]*RootEvents{
+					hashString(index[e10]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w00]),
 						CreatorID:        participants[0].ID,
 						Index:            0,
 						LamportTimestamp: 0,
-						Round:            0},
+						Round:            0}}},
 				},
 			},
 			{
@@ -3304,13 +3310,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[e21]): {
+				Others: map[string]*RootEvents{
+					hashString(index[e21]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[e10]),
 						CreatorID:        participants[1].ID,
 						Index:            1,
 						LamportTimestamp: 1,
-						Round:            0},
+						Round:            0}}},
 				},
 			},
 			NewBaseRoot(participants[3].ID),
@@ -3324,13 +3330,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[f01]): {
+				Others: map[string]*RootEvents{
+					hashString(index[f01]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w11]),
 						CreatorID:        participants[1].ID,
 						Index:            2,
 						LamportTimestamp: 5,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -3341,13 +3347,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 1,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[w11]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w11]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w10]),
 						CreatorID:        participants[0].ID,
 						Index:            1,
 						LamportTimestamp: 4,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 			{
@@ -3358,13 +3364,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 2,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[w12]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w12]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[f01]),
 						CreatorID:        participants[0].ID,
 						Index:            2,
 						LamportTimestamp: 6,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -3375,13 +3381,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            0,
 					LamportTimestamp: 0,
 					Round:            0},
-				Others: map[string]*RootEvent{
-					hashString(index[e32]): {
+				Others: map[string]*RootEvents{
+					hashString(index[e32]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[e21]),
 						CreatorID:        participants[2].ID,
 						Index:            1,
 						LamportTimestamp: 2,
-						Round:            1},
+						Round:            1}}},
 				},
 			},
 		},
@@ -3394,13 +3400,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[f01]): {
+				Others: map[string]*RootEvents{
+					hashString(index[f01]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w11]),
 						CreatorID:        participants[1].ID,
 						Index:            2,
 						LamportTimestamp: 5,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -3411,13 +3417,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            2,
 					LamportTimestamp: 5,
 					Round:            2},
-				Others: map[string]*RootEvent{
-					hashString(index[w21]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w21]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w13]),
 						CreatorID:        participants[3].ID,
 						Index:            2,
 						LamportTimestamp: 8,
-						Round:            3},
+						Round:            3}}},
 				},
 			},
 			{
@@ -3428,13 +3434,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            2,
 					LamportTimestamp: 7,
 					Round:            2},
-				Others: map[string]*RootEvent{
-					hashString(index[w22]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w22]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w21]),
 						CreatorID:        participants[1].ID,
 						Index:            3,
 						LamportTimestamp: 9,
-						Round:            3},
+						Round:            3}}},
 				},
 			},
 			{
@@ -3445,13 +3451,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 3,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[w13]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w13]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w12]),
 						CreatorID:        participants[2].ID,
 						Index:            2,
 						LamportTimestamp: 7,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 		},
@@ -3464,13 +3470,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1},
-				Others: map[string]*RootEvent{
-					hashString(index[f01]): {
+				Others: map[string]*RootEvents{
+					hashString(index[f01]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w11]),
 						CreatorID:        participants[1].ID,
 						Index:            2,
 						LamportTimestamp: 5,
-						Round:            2},
+						Round:            2}}},
 				},
 			},
 			{
@@ -3481,13 +3487,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            3,
 					LamportTimestamp: 9,
 					Round:            3},
-				Others: map[string]*RootEvent{
-					hashString(index[g13]): {
+				Others: map[string]*RootEvents{
+					hashString(index[g13]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w23]),
 						CreatorID:        participants[3].ID,
 						Index:            3,
 						LamportTimestamp: 11,
-						Round:            4},
+						Round:            4}}},
 				},
 			},
 			{
@@ -3498,13 +3504,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            3,
 					LamportTimestamp: 10,
 					Round:            3},
-				Others: map[string]*RootEvent{
-					hashString(index[w32]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w32]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[g13]),
 						CreatorID:        participants[1].ID,
 						Index:            4,
 						LamportTimestamp: 12,
-						Round:            4},
+						Round:            4}}},
 				},
 			},
 			{
@@ -3515,13 +3521,13 @@ func TestSparsePosetFrames(t *testing.T) {
 					Index:            2,
 					LamportTimestamp: 8,
 					Round:            3},
-				Others: map[string]*RootEvent{
-					hashString(index[w23]): {
+				Others: map[string]*RootEvents{
+					hashString(index[w23]): {Value: []*RootEvent{{
 						Hash:             hashBytes(index[w22]),
 						CreatorID:        participants[2].ID,
 						Index:            3,
 						LamportTimestamp: 10,
-						Round:            3},
+						Round:            3}}},
 				},
 			},
 		},
@@ -3712,7 +3718,7 @@ func compareRootEvents(t *testing.T, x, exp *RootEvent, index map[string]EventHa
 	}
 }
 
-func compareOtherParents(t *testing.T, x, exp map[string]*RootEvent, index map[string]EventHash) {
+func compareOtherParents(t *testing.T, x, exp map[string]*RootEvents, index map[string]EventHash) {
 	if len(x) != len(exp) {
 		t.Fatalf("expected number of other parents: %d, got: %d",
 			len(exp), len(x))
@@ -3730,7 +3736,14 @@ func compareOtherParents(t *testing.T, x, exp map[string]*RootEvent, index map[s
 		if !ok {
 			t.Fatalf("root %v not exists in other roots: %s", v, others)
 		}
-		compareRootEvents(t, root, v, index)
+		if len(v.Value) != len(root.Value) {
+			t.Fatalf("expected number of other roots: %d, got: %d",
+				len(v.Value), len(root.Value))
+		}
+		for i, er := range v.Value {
+			xr := root.Value[i]
+			compareRootEvents(t, xr, er, index)
+		}
 	}
 }
 

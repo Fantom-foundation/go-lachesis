@@ -114,7 +114,7 @@ func TestWireEvent(t *testing.T) {
 		t.Fatalf("Error signing Event: %s", err)
 	}
 
-	event.SetWireInfo(1, 66, 2, 67)
+	event.SetWireInfo(1, []uint64{66}, []int64{2}, 67)
 
 	internalTransactions := make([]InternalTransaction, len(event.Message.Body.InternalTransactions))
 	for i, v := range event.Message.Body.InternalTransactions {
@@ -122,14 +122,14 @@ func TestWireEvent(t *testing.T) {
 	}
 	expectedWireEvent := WireEvent{
 		Body: WireBody{
-			Transactions:         event.Message.Body.Transactions,
-			InternalTransactions: internalTransactions,
-			SelfParentIndex:      1,
-			OtherParentCreatorID: 66,
-			OtherParentIndex:     2,
-			CreatorID:            67,
-			Index:                event.Message.Body.Index,
-			BlockSignatures:      event.WireBlockSignatures(),
+			Transactions:          event.Message.Body.Transactions,
+			InternalTransactions:  internalTransactions,
+			SelfParentIndex:       1,
+			OtherParentCreatorIDs: []uint64{66},
+			OtherParentIndexes:    []int64{2},
+			CreatorID:             67,
+			Index:                 event.Message.Body.Index,
+			BlockSignatures:       event.WireBlockSignatures(),
 		},
 		Signature: event.Message.Signature,
 	}

@@ -297,7 +297,7 @@ func TestAddTransaction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := node0.sync(out.Events); err != nil {
+	if err := node0.sync([][]poset.WireEvent{out.Events}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -324,6 +324,7 @@ func initNodes(keys []*ecdsa.PrivateKey,
 	peers *peers.Peers,
 	cacheSize int,
 	syncLimit int64,
+	peersCount int,
 	storeType string,
 	logger *logrus.Logger,
 	t testing.TB) []*Node {
@@ -343,6 +344,7 @@ func initNodes(keys []*ecdsa.PrivateKey,
 			2*time.Second,
 			cacheSize,
 			syncLimit,
+			peersCount,
 			logger,
 		)
 
@@ -450,7 +452,7 @@ func TestGossip(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000, "inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 10000, 1000, 2, "inmem", logger, t)
 
 	target := int64(1)
 
@@ -482,7 +484,7 @@ func TestMissingNodeGossip(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000, "inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 1000, 1, "inmem", logger, t)
 	defer shutdownNodes(nodes)
 
 	err := gossip(nodes[1:], 3, true, 120*time.Second)
@@ -498,7 +500,7 @@ func TestSyncLimit(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000, "inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 1000, 1, "inmem", logger, t)
 
 	err := gossip(nodes, 10, false, 30*time.Second)
 	if err != nil {
@@ -541,8 +543,7 @@ func TestFastForward(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000,
-		"inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 1000, 1, "inmem", logger, t)
 	defer shutdownNodes(nodes)
 
 	target := int64(3)
@@ -584,7 +585,7 @@ func TestCatchUp(t *testing.T) {
 	keys, addresses, ps := initPeers(4, t)
 
 	// Initialize the first 3 nodes only
-	normalNodes := initNodes(keys[0:3], addresses[0:3], ps, 1000, 400, "inmem", logger, t)
+	normalNodes := initNodes(keys[0:3], addresses[0:3], ps, 1000, 400, 1, "inmem", logger, t)
 	defer shutdownNodes(normalNodes)
 
 	target := int64(3)
@@ -595,7 +596,7 @@ func TestCatchUp(t *testing.T) {
 	}
 	checkGossip(normalNodes, 0, t)
 
-	node4 := initNodes(keys[3:], addresses[3:], ps, 1000, 40, "inmem", logger, t)[0]
+	node4 := initNodes(keys[3:], addresses[3:], ps, 1000, 40, 1, "inmem", logger, t)[0]
 
 	// Run parallel routine to check node4 eventually reaches CatchingUp state.
 	timeout := time.After(30 * time.Second)
@@ -643,7 +644,7 @@ func TestFastSync(t *testing.T) {
 
 	// Create  config for 4 nodes
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 400, "inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 400, 1, "inmem", logger, t)
 	defer shutdownNodes(nodes)
 
 	var target int64 = 10
@@ -711,12 +712,13 @@ func TestShutdown(t *testing.T) {
 	logger := common.NewTestLogger(t)
 
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000, "inmem", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 1000, 1, "inmem", logger, t)
 	runNodes(nodes, false)
 
 	nodes[0].Shutdown()
 
-	err := nodes[1].gossip(nodes[0].localAddr, nil)
+	peer := ps.ByPubKey[nodes[0].core.hexID]
+	err := nodes[1].gossip([]*peers.Peer{peer}, nil)
 	if err == nil {
 		t.Fatal("Expected Timeout Error")
 	}
@@ -737,9 +739,9 @@ func TestBootstrapAllNodes(t *testing.T) {
 	// create a first network with BadgerStore
 	// and wait till it reaches 10 consensus rounds before shutting it down
 	keys, addresses, ps := initPeers(4, t)
-	nodes := initNodes(keys, addresses, ps, 1000, 1000, "badger", logger, t)
+	nodes := initNodes(keys, addresses, ps, 1000, 1000, 2, "badger", logger, t)
 
-	err := gossip(nodes, 10, false, 3*time.Second)
+	err := gossip(nodes, 10, false, 20*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -749,7 +751,7 @@ func TestBootstrapAllNodes(t *testing.T) {
 	// Now try to recreate a network from the databases created
 	// in the first step and advance it to 20 consensus rounds
 	newNodes := recycleNodes(nodes, logger, t)
-	err = gossip(newNodes, 20, false, 3*time.Second)
+	err = gossip(newNodes, 20, false, 20*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -792,6 +794,7 @@ func bombardAndWait(nodes []*Node, target int64, timeout time.Duration) error {
 		done := true
 		for _, n := range nodes {
 			ce := n.core.GetLastBlockIndex()
+			fmt.Printf("%d %d\n", n.id, ce)
 			if ce < target {
 				done = false
 				tag = fmt.Sprintf("ce<target:%v<%v", ce, target)
@@ -940,7 +943,7 @@ func checkGossip(nodes []*Node, fromBlock int64, t *testing.T) {
 	}
 }
 
-func makeRandomTransactions(nodes []*Node, quit chan struct{}) {
+func makeRandomTransactions(nodes []*Node, quit <-chan struct{}) {
 	go func() {
 		seq := make(map[int]int)
 		for {
@@ -962,7 +965,6 @@ func makeRandomTransactions(nodes []*Node, quit chan struct{}) {
 }
 
 func submitTransaction(n *Node, tx []byte) error {
-
 	n.proxy.SubmitCh() <- []byte(tx)
 	return nil
 }
@@ -971,7 +973,7 @@ func BenchmarkGossip(b *testing.B) {
 	logger := common.NewTestLogger(b)
 	for n := 0; n < b.N; n++ {
 		keys, addresses, ps := initPeers(4, b)
-		nodes := initNodes(keys, addresses, ps, 1000, 1000, "inmem", logger, b)
+		nodes := initNodes(keys, addresses, ps, 1000, 1000, 1, "inmem", logger, b)
 		if err := gossip(nodes, 50, true, 3*time.Second); err != nil {
 			b.Fatal(err)
 		}

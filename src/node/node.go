@@ -235,10 +235,10 @@ func (n *Node) lachesis(gossip bool) {
 		case <-n.controlTimer.tickCh:
 			n.logStats()
 			if gossip && n.gossipJobs.get() < 1 {
-				peerAddr := n.peerSelector.Next().NetAddr
+				peersSlice := n.peerSelector.Next(n.conf.PeersCount)
 				n.goFunc(func() {
 					n.gossipJobs.increment()
-					if err := n.gossip(peerAddr, returnCh); err != nil {
+					if err := n.gossip(peersSlice, returnCh); err != nil {
 						n.logger.WithError(err).Debug("node::lachesis(bool)::n.controlTimer.tickCh")
 					}
 					n.gossipJobs.decrement()
@@ -333,7 +333,7 @@ func (n *Node) processEagerSyncRequest(rpc *net.RPC, cmd *net.EagerSyncRequest) 
 
 	success := true
 	n.coreLock.Lock()
-	err := n.sync(cmd.Events)
+	err := n.sync([][]poset.WireEvent{cmd.Events})
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
@@ -387,35 +387,71 @@ func (n *Node) processFastForwardRequest(rpc *net.RPC, cmd *net.FastForwardReque
 // This function is usually called in a go-routine and needs to inform the
 // calling routine (usually the lachesis routine) when it is time to exit the
 // Gossiping state and return.
-func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
-
+func (n *Node) gossip(peersSlice []*peers.Peer, parentReturnCh chan struct{}) error {
+	var otherKnownEventsArray []map[uint64]int64
+	allEvents := make([][]poset.WireEvent, len(peersSlice), len(peersSlice))
+	eventsCount := 0
+	var err error
 	// pull
-	syncLimit, otherKnownEvents, err := n.pull(peerAddr)
-	if err != nil {
-		return err
+	for i, p := range peersSlice {
+		syncLimit, otherKnownEvents, events, err := n.pull(p.NetAddr)
+		if err != nil {
+			return err
+		}
+
+		// check and handle syncLimit
+		if syncLimit {
+			n.logger.WithField("from", p.NetAddr).Debug("SyncLimit")
+			n.setState(CatchingUp)
+			parentReturnCh <- struct{}{}
+			return nil
+		}
+
+		otherKnownEventsArray = append(otherKnownEventsArray, otherKnownEvents)
+		allEvents[i] = events
+		eventsCount += len(events)
 	}
 
-	// check and handle syncLimit
-	if syncLimit {
-		n.logger.WithField("from", peerAddr).Debug("SyncLimit")
-		n.setState(CatchingUp)
-		parentReturnCh <- struct{}{}
-		return nil
+	duplicateFilter := func(events [][]poset.WireEvent) [][]poset.WireEvent {
+		result := make([][]poset.WireEvent, len(events), len(events))
+		m := make(map[string]bool)
+		for i, a := range events {
+			for _, b := range a {
+				if _, ok := m[b.Signature]; !ok {
+					result[i] = append(result[i], b)
+					m[b.Signature] = true
+				}
+			}
+		}
+		return result
+	}
+
+	allEvents = duplicateFilter(allEvents)
+
+	// Add Events to poset and create new Head if necessary
+	n.coreLock.Lock()
+	err = n.sync(allEvents)
+	n.coreLock.Unlock()
+	if err != nil {
+		n.logger.WithField("error", err).Error("n.sync(resp.Events)")
+		return err
 	}
 
 	// push
-	err = n.push(peerAddr, otherKnownEvents)
-	if err != nil {
-		return err
+	for i, p := range peersSlice {
+		err = n.push(p.NetAddr, otherKnownEventsArray[i])
+		if err != nil {
+			return err
+		}
 	}
 
 	// update peer selector
-	n.peerSelector.UpdateLast(peerAddr)
+	n.peerSelector.UpdateLast(peersSlice)
 
 	return nil
 }
 
-func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint64]int64, err error) {
+func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint64]int64, events []poset.WireEvent, err error) {
 	// Compute Known
 	n.coreLock.Lock()
 	knownEvents := n.core.KnownEvents()
@@ -432,7 +468,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint6
 	// 	}
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.requestSync(peerAddr, knownEvents)")
-		return resp.SyncLimit, nil, err
+		return resp.SyncLimit, nil, nil, err
 	}
 	n.logger.WithFields(logrus.Fields{
 		"from_id":     resp.FromID,
@@ -443,19 +479,10 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint6
 	}).Debug("SyncResponse")
 
 	if resp.SyncLimit {
-		return true, nil, nil
+		return true, nil, nil, nil
 	}
 
-	// Add Events to poset and create new Head if necessary
-	n.coreLock.Lock()
-	err = n.sync(resp.Events)
-	n.coreLock.Unlock()
-	if err != nil {
-		n.logger.WithField("error", err).Error("n.sync(resp.Events)")
-		return false, nil, err
-	}
-
-	return false, resp.Known, nil
+	return false, resp.Known, resp.Events, nil
 }
 
 func (n *Node) push(peerAddr string, knownEvents map[uint64]int64) error {
@@ -515,9 +542,9 @@ func (n *Node) fastForward() error {
 	n.waitRoutines()
 
 	// fastForwardRequest
-	peer := n.peerSelector.Next()
+	peer := n.peerSelector.Next(1/*n.conf.PeersCount*/)
 	start := time.Now()
-	resp, err := n.requestFastForward(peer.NetAddr)
+	resp, err := n.requestFastForward(peer[0].NetAddr)
 	elapsed := time.Since(start)
 	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestFastForward(peer.NetAddr)")
 	if err != nil {
@@ -535,7 +562,7 @@ func (n *Node) fastForward() error {
 
 	// prepare core. ie: fresh poset
 	n.coreLock.Lock()
-	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
+	err = n.core.FastForward(peer[0].PubKeyHex, resp.Block, resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")
@@ -597,7 +624,7 @@ func (n *Node) requestFastForward(target string) (net.FastForwardResponse, error
 	return out, err
 }
 
-func (n *Node) sync(events []poset.WireEvent) error {
+func (n *Node) sync(events [][]poset.WireEvent) error {
 	// Insert Events in Poset and create new Head if necessary
 	start := time.Now()
 	err := n.core.Sync(events)

@@ -35,8 +35,8 @@ message EventMessage {
   bytes FlagTable = 3;
   repeated bytes ClothoProof = 4;
   int64 SelfParentIndex = 5;
-  uint64 OtherParentCreatorID = 6;
-  int64 OtherParentIndex = 7;
+  repeated uint64 OtherParentCreatorIDs = 6;
+  repeated int64 OtherParentIndexes = 7;
   uint64 CreatorID = 8;
   int64 TopologicalIndex = 9;
   bytes Hash = 10;

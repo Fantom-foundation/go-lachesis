@@ -175,9 +175,8 @@ func TestGrpcMaxMsgSize(t *testing.T) {
 		largeSize  = 100 * 1024 * 1024
 		timeout    = 3 * time.Minute
 		errTimeout = "time is over"
-
 	)
-	addr := utils.GetUnusedNetAddr(t);
+	addr := utils.GetUnusedNetAddr(t)
 	logger := common.NewTestLogger(t)
 
 	s, err := NewGrpcAppProxy(addr, timeout, logger)

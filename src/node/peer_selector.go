@@ -11,15 +11,15 @@ import (
 // to gossip with
 type PeerSelector interface {
 	Peers() *peers.Peers
-	UpdateLast(peer string)
-	Next() *peers.Peer
+	UpdateLast(peers []*peers.Peer)
+	Next(n int) []*peers.Peer
 }
 
 // RandomPeerSelector is a randomized peer selection struct
 type RandomPeerSelector struct {
 	peers     *peers.Peers
 	localAddr string
-	last      string
+	last      []string
 }
 
 // NewRandomPeerSelector creates a new random peer selector
@@ -36,22 +36,48 @@ func (ps *RandomPeerSelector) Peers() *peers.Peers {
 }
 
 // UpdateLast sets the last peer communicated with (to avoid double talk)
-func (ps *RandomPeerSelector) UpdateLast(peer string) {
-	ps.last = peer
+func (ps *RandomPeerSelector) UpdateLast(peers []*peers.Peer) {
+	ps.last = make([]string, len(peers))
+	for i, p := range peers {
+		ps.last[i] = p.NetAddr
+	}
 }
 
 // Next returns the next randomly selected peer(s) to communicate with
-func (ps *RandomPeerSelector) Next() *peers.Peer {
+func (ps *RandomPeerSelector) Next(n int) []*peers.Peer {
 	slice := ps.peers.ToPeerSlice()
-	selectablePeers := peers.ExcludePeers(slice, ps.localAddr, ps.last)
-
-	if len(selectablePeers) < 1 {
-		selectablePeers = slice
+	var lastused []*peers.Peer
+	var selected []*peers.Peer
+	for _, p := range  slice {
+		if p.NetAddr == ps.localAddr {
+			continue
+		}
+		if contains(ps.last, p.NetAddr) || contains(ps.last, p.PubKeyHex) {
+			lastused = append(lastused, p)
+			continue
+		}
+		selected = append(selected, p)
+	}
+	if len(selected) < n {
+		selected = append(selected, lastused...)
 	}
 
-	i := rand.Intn(len(selectablePeers))
+	if len(selected) == n {
+		return selected
+	}
 
-	peer := selectablePeers[i]
+	rand.Shuffle(len(selected), func(i, j int) {
+		selected[i], selected[j] = selected[j], selected[i]
+	})
 
-	return peer
+	return selected[:n]
+}
+
+func contains(stringSlice []string, searchString string) bool {
+	for _, value := range stringSlice {
+		if value == searchString {
+			return true
+		}
+	}
+	return false
 }

@@ -22,7 +22,7 @@ func TestSmartSelectorEmpty(t *testing.T) {
 		},
 	)
 
-	assertO.Nil(ss.Next())
+	assertO.Nil(ss.Next(1))
 }
 
 func TestSmartSelectorLocalAddrOnly(t *testing.T) {
@@ -39,7 +39,7 @@ func TestSmartSelectorLocalAddrOnly(t *testing.T) {
 		},
 	)
 
-	assertO.Nil(ss.Next())
+	assertO.Nil(ss.Next(1))
 }
 
 func TestSmartSelectorUsed(t *testing.T) {
@@ -56,9 +56,9 @@ func TestSmartSelectorUsed(t *testing.T) {
 		},
 	)
 
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
 }
 
 func TestSmartSelectorFlagged(t *testing.T) {
@@ -77,9 +77,9 @@ func TestSmartSelectorFlagged(t *testing.T) {
 		},
 	)
 
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
-	assertO.Equal(fps[1].NetAddr, ss.Next().NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
+	assertO.Equal(fps[1].NetAddr, ss.Next(1)[0].NetAddr)
 }
 
 func TestSmartSelectorGeneral(t *testing.T) {
@@ -102,10 +102,10 @@ func TestSmartSelectorGeneral(t *testing.T) {
 	)
 
 	addresses := []string{fps[0].NetAddr, fps[1].NetAddr}
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
+	assertO.Contains(addresses, ss.Next(1)[0].NetAddr)
+	assertO.Contains(addresses, ss.Next(1)[0].NetAddr)
+	assertO.Contains(addresses, ss.Next(1)[0].NetAddr)
+	assertO.Contains(addresses, ss.Next(1)[0].NetAddr)
 }
 
 /*
@@ -136,23 +136,23 @@ func BenchmarkSmartSelectorNext(b *testing.B) {
 
 	b.Run("smart Next()", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			p := ss1.Next()
+			p := ss1.Next(1)
 			if p == nil {
 				b.Fatal("No next peer")
 				break
 			}
-			ss1.UpdateLast(p.PubKeyHex)
+			ss1.UpdateLast(p)
 		}
 	})
 
 	b.Run("simple Next()", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			p := rnd.Next()
+			p := rnd.Next(1)
 			if p == nil {
 				b.Fatal("No next peer")
 				break
 			}
-			rnd.UpdateLast(p.PubKeyHex)
+			rnd.UpdateLast(p)
 		}
 	})
 

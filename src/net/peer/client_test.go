@@ -24,11 +24,11 @@ var (
 		Events: []poset.WireEvent{
 			{
 				Body: poset.WireBody{
-					Transactions:         [][]byte(nil),
-					SelfParentIndex:      1,
-					OtherParentCreatorID: 10,
-					OtherParentIndex:     0,
-					CreatorID:            9,
+					Transactions:          [][]byte(nil),
+					SelfParentIndex:       1,
+					OtherParentCreatorIDs: []uint64{10},
+					OtherParentIndexes:    []int64{0},
+					CreatorID:             9,
 				},
 			},
 		},
@@ -45,11 +45,11 @@ var (
 		Events: []poset.WireEvent{
 			{
 				Body: poset.WireBody{
-					Transactions:         [][]byte(nil),
-					SelfParentIndex:      1,
-					OtherParentCreatorID: 10,
-					OtherParentIndex:     0,
-					CreatorID:            9,
+					Transactions:          [][]byte(nil),
+					SelfParentIndex:       1,
+					OtherParentCreatorIDs: []uint64{10},
+					OtherParentIndexes:    []int64{0},
+					CreatorID:             9,
 				},
 			},
 		},

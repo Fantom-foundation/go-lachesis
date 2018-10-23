@@ -99,19 +99,20 @@ func NewBaseRoot(creatorID uint64) Root {
 	res := Root{
 		NextRound:  0,
 		SelfParent: &rootEvent,
-		Others:     map[string]*RootEvent{},
+		Others:     map[string]*RootEvents{},
 	}
 	return res
 }
 
 // EqualsMapStringRootEvent compares the equality of two string maps of root events
-func EqualsMapStringRootEvent(this map[string]*RootEvent, that map[string]*RootEvent) bool {
+// TODO: Fix it
+func EqualsMapStringRootEvent(this map[string]*RootEvents, that map[string]*RootEvents) bool {
 	if len(this) != len(that) {
 		return false
 	}
 	for k, v := range this {
 		v2, ok := that[k]
-		if !ok || !v2.Equals(v) {
+		if !ok || len(v.Value) != len(v2.Value) {
 			return false
 		}
 	}

@@ -11,7 +11,7 @@ import (
 type SmartPeerSelector struct {
 	peers        *peers.Peers
 	localAddr    string
-	last         string
+	last         []string
 	GetFlagTable func() (map[string]int64, error)
 }
 
@@ -33,12 +33,15 @@ func (ps *SmartPeerSelector) Peers() *peers.Peers {
 }
 
 // UpdateLast sets the last peer communicated with (avoid double talk)
-func (ps *SmartPeerSelector) UpdateLast(peer string) {
-	ps.last = peer
+func (ps *SmartPeerSelector) UpdateLast(peers []*peers.Peer) {
+	ps.last = make([]string, len(peers))
+	for i, p := range peers {
+		ps.last[i] = p.NetAddr
+	}
 }
 
 // Next returns the next peer based on the flag table cost function selection
-func (ps *SmartPeerSelector) Next() *peers.Peer {
+func (ps *SmartPeerSelector) Next(n int) []*peers.Peer {
 	flagTable, err := ps.GetFlagTable()
 	if err != nil {
 		flagTable = nil
@@ -48,9 +51,9 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 	defer ps.peers.Unlock()
 
 	sortedSrc := ps.peers.ToPeerByUsedSlice()
-	n := int(2*len(sortedSrc)/3 + 1)
-	if n < len(sortedSrc) {
-		sortedSrc = sortedSrc[0:n]
+	m := int(2*len(sortedSrc)/3 + 1)
+	if m < len(sortedSrc) && m < n {
+		sortedSrc = sortedSrc[0:m]
 	}
 	selected := make([]*peers.Peer, len(sortedSrc))
 	sCount := 0
@@ -64,7 +67,7 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 		if p.NetAddr == ps.localAddr {
 			continue
 		}
-		if p.NetAddr == ps.last || p.PubKeyHex == ps.last {
+		if contains(ps.last, p.NetAddr) || contains(ps.last, p.PubKeyHex) {
 			lastused = append(lastused, p)
 			continue
 		}
@@ -84,21 +87,26 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 	}
 
 	selected = selected[minUsedIdx:sCount]
-	if len(selected) < 1 {
+	if len(selected) < n {
 		selected = flagged[0:fCount]
 	}
-	if len(selected) < 1 {
+	if len(selected) < n {
 		selected = lastused
 	}
-	if len(selected) == 1 {
-		selected[0].Used++
-		return selected[0]
-	}
-	if len(selected) < 1 {
+	// if len(selected) == n {
+	// 	selected[0].Used++
+	// 	return selected[0]
+	// }
+	if len(selected) < n {
 		return nil
 	}
 
-	i := rand.Intn(len(selected))
-	selected[i].Used++
-	return selected[i]
+	rand.Shuffle(len(selected), func(i, j int) {
+		selected[i], selected[j] = selected[j], selected[i]
+	})
+	for i := range selected[:n] {
+		selected[i].Used++
+	}
+
+	return selected[:n]
 }

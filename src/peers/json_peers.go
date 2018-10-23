@@ -47,6 +47,11 @@ func (j *JSONPeers) Peers() (*Peers, error) {
 		}
 	}
 
+	// Check for no peers
+	if len(buf) == 0 {
+		return nil, nil
+	}
+
 	// Decode the peers
 	peerSet := make([]*Peer, len(buf))
 	if len(buf) > 0 {

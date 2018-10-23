@@ -214,14 +214,30 @@ func (e *Event) GetCreator() string {
 
 // SelfParent returns the previous event block hash in this creator DAG
 func (e *Event) SelfParent() (hash EventHash) {
-	hash.Set(e.Message.Body.Parents[0])
+	if len(e.Message.Body.Parents) > 0 {
+		hash.Set(e.Message.Body.Parents[0])
+	}
 	return
 }
 
 // OtherParent returns the other (not creators) parent(s) hash(es)
-func (e *Event) OtherParent() (hash EventHash) {
-	hash.Set(e.Message.Body.Parents[1])
+func (e *Event) OtherParent(n int) (hash EventHash) {
+	if n >= 0 && n < len(e.Message.Body.Parents)-1 {
+		hash.Set(e.Message.Body.Parents[1])
+	}
 	return
+}
+
+func (e *Event) OtherParents() EventHashes {
+	if len(e.Message.Body.Parents) > 0 {
+		otherParents := e.Message.Body.Parents[1:]
+		hashes := make(EventHashes, len(otherParents))
+		for i, otherParent := range otherParents {
+			hashes[i].Set(otherParent)
+		}
+		return hashes
+	}
+	return EventHashes{}
 }
 
 // Transactions returns all transactions in the event
@@ -334,10 +350,10 @@ func (e *Event) SetRoundReceived(rr int64) {
 }
 
 // SetWireInfo for event
-func (e *Event) SetWireInfo(selfParentIndex int64, otherParentCreatorID uint64, otherParentIndex int64, creatorID uint64) {
+func (e *Event) SetWireInfo(selfParentIndex int64, otherParentCreatorIDs []uint64, otherParentIndexes []int64, creatorID uint64) {
 	e.Message.SelfParentIndex = selfParentIndex
-	e.Message.OtherParentCreatorID = otherParentCreatorID
-	e.Message.OtherParentIndex = otherParentIndex
+	e.Message.OtherParentCreatorIDs = otherParentCreatorIDs
+	e.Message.OtherParentIndexes = otherParentIndexes
 	e.Message.CreatorID = creatorID
 }
 
@@ -363,14 +379,14 @@ func (e *Event) ToWire() WireEvent {
 	}
 	return WireEvent{
 		Body: WireBody{
-			Transactions:         e.Message.Body.Transactions,
-			InternalTransactions: transactions,
-			SelfParentIndex:      e.Message.SelfParentIndex,
-			OtherParentCreatorID: e.Message.OtherParentCreatorID,
-			OtherParentIndex:     e.Message.OtherParentIndex,
-			CreatorID:            e.Message.CreatorID,
-			Index:                e.Message.Body.Index,
-			BlockSignatures:      e.WireBlockSignatures(),
+			Transactions:          e.Message.Body.Transactions,
+			InternalTransactions:  transactions,
+			SelfParentIndex:       e.Message.SelfParentIndex,
+			OtherParentCreatorIDs: e.Message.OtherParentCreatorIDs,
+			OtherParentIndexes:    e.Message.OtherParentIndexes,
+			CreatorID:             e.Message.CreatorID,
+			Index:                 e.Message.Body.Index,
+			BlockSignatures:       e.WireBlockSignatures(),
 		},
 		Signature:   e.Message.Signature,
 		FlagTable:   e.Message.FlagTable,
@@ -413,8 +429,8 @@ func (e *Event) CreatorID() uint64 {
 }
 
 // OtherParentCreatorID ID of other parent(s)
-func (e *Event) OtherParentCreatorID() uint64 {
-	return e.Message.OtherParentCreatorID
+func (e *Event) OtherParentCreatorIDs() []uint64 {
+	return e.Message.OtherParentCreatorIDs
 }
 
 /*******************************************************************************
@@ -461,10 +477,10 @@ type WireBody struct {
 	InternalTransactions []InternalTransaction
 	BlockSignatures      []WireBlockSignature
 
-	SelfParentIndex      int64
-	OtherParentCreatorID uint64
-	OtherParentIndex     int64
-	CreatorID            uint64
+	SelfParentIndex       int64
+	OtherParentCreatorIDs []uint64
+	OtherParentIndexes    []int64
+	CreatorID             uint64
 
 	Index int64
 }
