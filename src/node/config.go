@@ -15,13 +15,15 @@ type Config struct {
 	CacheSize        int           `mapstructure:"cache-size"`
 	SyncLimit        int           `mapstructure:"sync-limit"`
 	Logger           *logrus.Logger
-	TestDelay uint64 `mapstructure:"test_delay"`
+	TestDelay        uint64        `mapstructure:"test_delay"`
+	KPeerSize        int           `mapstructure:"kpeer-size"`
 }
 
 func NewConfig(heartbeat time.Duration,
 	timeout time.Duration,
 	cacheSize int,
 	syncLimit int,
+	kPeerSize int,
 	logger *logrus.Logger) *Config {
 
 	return &Config{
@@ -29,6 +31,7 @@ func NewConfig(heartbeat time.Duration,
 		TCPTimeout:       timeout,
 		CacheSize:        cacheSize,
 		SyncLimit:        syncLimit,
+		KPeerSize:        kPeerSize,
 		Logger:           logger,
 	}
 }

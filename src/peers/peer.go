@@ -55,12 +55,21 @@ type PeerStore interface {
 	SetPeers([]*Peer) error
 }
 
-// ExcludePeer is used to exclude a single peer from a list of peers.
-func ExcludePeer(peers []*Peer, peer string) (int, []*Peer) {
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// ExcludePeers is used to exclude one or more peers from a list of peers.
+func ExcludePeers(peers []*Peer, exclusionPeers []string) (int, []*Peer) {
 	index := -1
 	otherPeers := make([]*Peer, 0, len(peers))
 	for i, p := range peers {
-		if p.NetAddr != peer && p.PubKeyHex != peer {
+		if !stringInSlice(p.NetAddr, exclusionPeers) && !stringInSlice(p.PubKeyHex, exclusionPeers) {
 			otherPeers = append(otherPeers, p)
 		} else {
 			index = i

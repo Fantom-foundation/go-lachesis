@@ -68,7 +68,7 @@ func NewNode(conf *Config,
 
 	pubKey := core.HexID()
 
-	peerSelector := NewRandomPeerSelector(participants, pubKey)
+	peerSelector := NewRandomPeerSelector(participants, pubKey, conf.KPeerSize)
 
 	node := Node{
 		id:               id,
@@ -207,8 +207,8 @@ func (n *Node) lachesis(gossip bool) {
 		case <-n.controlTimer.tickCh:
 			if gossip {
 				n.logger.Debug("Gossip")
-				peer := n.peerSelector.Next()
-				n.goFunc(func() { n.gossip(peer.NetAddr, returnCh) })
+				peers := n.peerSelector.Next()
+				n.goFunc(func() { n.gossip(peers, returnCh) })
 			}
 			n.resetTimer()
 		case <-returnCh:
@@ -351,32 +351,51 @@ func (n *Node) processFastForwardRequest(rpc net.RPC, cmd *net.FastForwardReques
 // This function is usually called in a go-routine and needs to inform the
 // calling routine (usually the lachesis routine) when it is time to exit the
 // Gossiping state and return.
-func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
+func (n *Node) gossip(peers []*peers.Peer, parentReturnCh chan struct{}) error {
 
-	// pull
-	syncLimit, otherKnownEvents, err := n.pull(peerAddr)
-	if err != nil {
-		return err
-	}
+	gossipToPeer := func(peerAddr string) error {
+		// pull
+		syncLimit, otherKnownEvents, err := n.pull(peerAddr)
+		if err != nil {
+			return err
+		}
 
-	// check and handle syncLimit
-	if syncLimit {
-		n.logger.WithField("from", peerAddr).Debug("SyncLimit")
-		n.setState(CatchingUp)
-		parentReturnCh <- struct{}{}
+		// check and handle syncLimit
+		if syncLimit {
+			n.logger.WithField("from", peerAddr).Debug("SyncLimit")
+			n.setState(CatchingUp)
+			parentReturnCh <- struct{}{}
+			return nil
+		}
+
+		// push
+		err = n.push(peerAddr, otherKnownEvents)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	}
 
-	// push
-	err = n.push(peerAddr, otherKnownEvents)
-	if err != nil {
-		return err
+	updatePeerSelector := func(peerAddresses []string) {
+		if len(peerAddresses) == 0 {
+			return
+		}
+		n.selectorLock.Lock()
+		n.peerSelector.UpdateLast(peerAddresses)
+		n.selectorLock.Unlock()
 	}
 
-	// update peer selector
-	n.selectorLock.Lock()
-	n.peerSelector.UpdateLast(peerAddr)
-	n.selectorLock.Unlock()
+	successfulPeers := make([]string, len(peers))
+	for _, peer := range peers {
+		if err := gossipToPeer(peer.NetAddr); err != nil {
+			// Failing early, ignoring the rest, if any
+			updatePeerSelector(successfulPeers)
+			return err
+		}
+		successfulPeers = append(successfulPeers, peer.NetAddr)
+	}
+	updatePeerSelector(successfulPeers)
 
 	n.logStats()
 
@@ -483,38 +502,48 @@ func (n *Node) fastForward() error {
 	n.waitRoutines()
 
 	// fastForwardRequest
-	peer := n.peerSelector.Next()
-	start := time.Now()
-	resp, err := n.requestFastForward(peer.NetAddr)
-	elapsed := time.Since(start)
-	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestFastForward(peer.NetAddr)")
-	if err != nil {
-		n.logger.WithField("Error", err).Error("n.requestFastForward(peer.NetAddr)")
-		return err
-	}
-	n.logger.WithFields(logrus.Fields{
-		"from_id":              resp.FromID,
-		"block_index":          resp.Block.Index(),
-		"block_round_received": resp.Block.RoundReceived(),
-		"frame_events":         len(resp.Frame.Events),
-		"frame_roots":          resp.Frame.Roots,
-		"snapshot":             resp.Snapshot,
-	}).Debug("FastForwardResponse")
+	randomPeers := n.peerSelector.Next()
 
-	// prepare core. ie: fresh poset
-	n.coreLock.Lock()
-	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
-	n.coreLock.Unlock()
-	if err != nil {
-		n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")
-		return err
+	forward := func(peer *peers.Peer) error {
+		start := time.Now()
+		resp, err := n.requestFastForward(peer.NetAddr)
+		elapsed := time.Since(start)
+		n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestFastForward(peer.NetAddr)")
+		if err != nil {
+			n.logger.WithField("Error", err).Error("n.requestFastForward(peer.NetAddr)")
+			return err
+		}
+		n.logger.WithFields(logrus.Fields{
+			"from_id":              resp.FromID,
+			"block_index":          resp.Block.Index(),
+			"block_round_received": resp.Block.RoundReceived(),
+			"frame_events":         len(resp.Frame.Events),
+			"frame_roots":          resp.Frame.Roots,
+			"snapshot":             resp.Snapshot,
+		}).Debug("FastForwardResponse")
+
+		// prepare core. ie: fresh poset
+		n.coreLock.Lock()
+		err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
+		n.coreLock.Unlock()
+		if err != nil {
+			n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")
+			return err
+		}
+
+		// update app from snapshot
+		err = n.proxy.Restore(resp.Snapshot)
+		if err != nil {
+			n.logger.WithField("Error", err).Error("n.proxy.Restore(resp.Snapshot)")
+			return err
+		}
+		return nil
 	}
 
-	// update app from snapshot
-	err = n.proxy.Restore(resp.Snapshot)
-	if err != nil {
-		n.logger.WithField("Error", err).Error("n.proxy.Restore(resp.Snapshot)")
-		return err
+	for _, peer := range randomPeers {
+		if err := forward(peer); err != nil {
+			return nil
+		}
 	}
 
 	n.setState(Gossiping)
