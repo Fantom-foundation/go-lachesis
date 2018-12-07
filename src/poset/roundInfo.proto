@@ -11,8 +11,13 @@ message RoundEvent {
   bool Consensus = 1;
   bool Witness = 2;
   Trilean Famous = 3;
+  int64 RoundReceived = 4;
 }
 
-message RoundInfoMessage {
+message RoundCreatedMessage {
   map<string, RoundEvent> Events = 1;
+}
+
+message RoundReceived {
+  repeated string Rounds = 1;
 }

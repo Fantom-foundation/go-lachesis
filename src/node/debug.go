@@ -13,7 +13,7 @@ import (
 
 type InfosLite struct {
 	ParticipantEvents map[string]map[string]EventLite
-	Rounds            []poset.RoundInfo
+	Rounds            []poset.RoundCreated
 	Blocks            []poset.Block
 }
 

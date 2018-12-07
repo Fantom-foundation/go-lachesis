@@ -328,6 +328,7 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 		}
 		if ev.Index() > myKnownEvents[ev.CreatorID()] {
 			if err := c.InsertEvent(*ev, false); err != nil {
+				c.logger.Error("SYNC: INSERT ERR", err)
 				return err
 			}
 		}
