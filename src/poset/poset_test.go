@@ -966,11 +966,11 @@ func TestDivideRounds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r := ev.round; r == nil || *r != et.r {
-			t.Fatalf("%s round should be %d, not %d", e, et.r, *r)
+		if r := ev.Message.Round; r != et.r {
+			t.Fatalf("%s round should be %d, not %d", e, et.r, r)
 		}
-		if ts := ev.lamportTimestamp; ts == nil || *ts != et.t {
-			t.Fatalf("%s lamportTimestamp should be %d, not %d", e, et.t, *ts)
+		if ts := ev.Message.LamportTimestamp; ts != et.t {
+			t.Fatalf("%s lamportTimestamp should be %d, not %d", e, et.t, ts)
 		}
 	}
 
@@ -1433,11 +1433,11 @@ func TestDivideRoundsBis(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r := ev.round; r == nil || *r != et.r {
-			t.Fatalf("%s round should be %d, not %d", e, et.r, *r)
+		if r := ev.Message.Round; r != et.r {
+			t.Fatalf("%s round should be %d, not %d", e, et.r, r)
 		}
-		if ts := ev.lamportTimestamp; ts == nil || *ts != et.t {
-			t.Fatalf("%s lamportTimestamp should be %d, not %d", e, et.t, *ts)
+		if ts := ev.Message.LamportTimestamp; ts != et.t {
+			t.Fatalf("%s lamportTimestamp should be %d, not %d", e, et.t, ts)
 		}
 	}
 
@@ -1569,11 +1569,11 @@ func TestDecideRoundReceived(t *testing.T) {
 
 		switch rune(name[0]) {
 		case rune('e'):
-			if r := *e.roundReceived; r != 1 {
+			if r := e.Message.RoundReceived; r != 1 {
 				t.Fatalf("%s round received should be 1 not %d", name, r)
 			}
 		case rune('f'):
-			if r := *e.roundReceived; r != 2 {
+			if r := e.Message.RoundReceived; r != 2 {
 				t.Fatalf("%s round received should be 2 not %d", name, r)
 			}
 		}

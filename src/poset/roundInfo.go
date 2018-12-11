@@ -11,7 +11,6 @@ type pendingRound struct {
 
 type RoundCreated struct {
 	Message RoundCreatedMessage
-	queued bool
 }
 
 func NewRoundCreated() *RoundCreated {
@@ -159,7 +158,7 @@ func (r *RoundReceived) ProtoUnmarshal(data []byte) error {
 }
 
 func (r *RoundCreated) IsQueued() bool {
-	return r.queued
+	return r.Message.Queued
 }
 
 func (this *RoundEvent) Equals(that *RoundEvent) bool {
@@ -182,6 +181,6 @@ func EqualsMapStringRoundEvent(this map[string]*RoundEvent, that map[string]*Rou
 }
 
 func (this *RoundCreated) Equals(that *RoundCreated) bool {
-	return this.queued == that.queued &&
+	return this.Message.Queued == that.Message.Queued &&
 		EqualsMapStringRoundEvent(this.Message.Events, that.Message.Events)
 }

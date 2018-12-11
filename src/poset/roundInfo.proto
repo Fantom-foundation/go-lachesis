@@ -16,6 +16,7 @@ message RoundEvent {
 
 message RoundCreatedMessage {
   map<string, RoundEvent> Events = 1;
+  bool queued = 2;
 }
 
 message RoundReceived {

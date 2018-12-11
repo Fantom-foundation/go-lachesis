@@ -327,6 +327,9 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 
 		}
 		if ev.Index() > myKnownEvents[ev.CreatorID()] {
+			ev.Message.LamportTimestamp = poset.LamportTimestampNIL
+			ev.Message.Round = poset.RoundNIL
+			ev.Message.RoundReceived = poset.RoundNIL
 			if err := c.InsertEvent(*ev, false); err != nil {
 				c.logger.Error("SYNC: INSERT ERR", err)
 				return err
@@ -567,7 +570,7 @@ func (c *Core) GetUndeterminedEvents() []string {
 	return c.poset.UndeterminedEvents
 }
 
-func (c *Core) GetPendingLoadedEvents() int {
+func (c *Core) GetPendingLoadedEvents() int64 {
 	return c.poset.PendingLoadedEvents
 }
 

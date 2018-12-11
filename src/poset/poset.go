@@ -37,7 +37,7 @@ type Poset struct {
 	LastCommitedRoundEvents int               //number of events in round before LastConsensusRound
 	SigPool                 []BlockSignature  //Pool of Block signatures that need to be processed
 	ConsensusTransactions   uint64            //number of consensus transactions
-	PendingLoadedEvents     int               //number of loaded events that are not yet committed
+	PendingLoadedEvents     int64            //number of loaded events that are not yet committed
 	commitCh                chan Block        //channel for committing Blocks
 	topologicalIndex        int64             //counter used to order events in topological order (only local)
 	superMajority           int
@@ -316,7 +316,8 @@ func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
 		return err
 	}
 
-	sentinels[ex.Creator()] = true
+	creator := p.Participants.ById[ex.CreatorID()]
+	sentinels[creator.PubKeyHex] = true
 
 	if x == y {
 		return nil
@@ -493,6 +494,9 @@ func (p *Poset) witness(x string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	if ex.OtherParent() == "" {
+		return true, nil
+	}
 
 	xRound, err := p.round(x)
 	if err != nil {
@@ -512,12 +516,7 @@ func (p *Poset) roundReceived(x string) (int64, error) {
 		return -1, err
 	}
 
-	res := int64(-1)
-	if ex.roundReceived != nil {
-		res = *ex.roundReceived
-	}
-
-	return res, nil
+	return ex.Message.RoundReceived, nil
 }
 
 func (p *Poset) lamportTimestamp(x string) (int64, error) {
@@ -930,7 +929,7 @@ func (p *Poset) DivideRounds() error {
 		   Compute Event's round, update the corresponding Round object, and
 		   add it to the PendingRounds queue if necessary.
 		*/
-		if ev.round == nil {
+		if ev.Message.Round == RoundNIL {
 
 			roundNumber, err := p.round(hash)
 			if err != nil {
@@ -957,12 +956,12 @@ func (p *Poset) DivideRounds() error {
 				other Events to be added on top, but the base layer must not be
 				reprocessed.
 			*/
-			if !roundCreated.queued &&
+			if !roundCreated.Message.Queued &&
 				(p.LastConsensusRound == nil ||
 					roundNumber >= *p.LastConsensusRound) {
 
 				p.PendingRounds = append(p.PendingRounds, &pendingRound{roundNumber, false})
-				roundCreated.queued = true
+				roundCreated.Message.Queued = true
 			}
 
 			witness, err := p.witness(hash)
@@ -991,7 +990,7 @@ func (p *Poset) DivideRounds() error {
 					}
 
 					// special case
-					if ev.Round() == 0 {
+					if ev.GetRound() == 0 {
 						replaceFlagTable(&ev, 0)
 						root, err := p.Store.GetRoot(ev.Creator())
 						if err != nil {
@@ -999,8 +998,8 @@ func (p *Poset) DivideRounds() error {
 						}
 						ev.Message.WitnessProof = []string{root.SelfParent.Hash}
 					} else {
-						replaceFlagTable(&ev, ev.Round())
-						roots := p.Store.RoundWitnesses(ev.Round() - 1)
+						replaceFlagTable(&ev, ev.GetRound())
+						roots := p.Store.RoundWitnesses(ev.GetRound() - 1)
 						ev.Message.WitnessProof = roots
 					}
 				}
@@ -1010,7 +1009,7 @@ func (p *Poset) DivideRounds() error {
 		/*
 			Compute the Event's LamportTimestamp
 		*/
-		if ev.lamportTimestamp == nil {
+		if ev.Message.LamportTimestamp == LamportTimestampNIL {
 
 			lamportTimestamp, err := p.lamportTimestamp(hash)
 			if err != nil {
@@ -1045,6 +1044,7 @@ func (p *Poset) DecideFame() error {
 	}
 
 	decidedRounds := map[int64]int64{} // [round number] => index in p.PendingRounds
+	c := 3
 
 	for pos, r := range p.PendingRounds {
 		roundIndex := r.Index
@@ -1095,7 +1095,7 @@ func (p *Poset) DecideFame() error {
 						}
 
 						//normal round
-						if math.Mod(float64(diff), float64(p.Participants.Len())) > 0 {
+						if math.Mod(float64(diff), float64(c)) > 0 {
 							if t >= p.superMajority {
 								roundInfo.SetFame(x, v)
 								setVote(votes, y, x, v)
@@ -1748,6 +1748,9 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 			OtherParentCreatorID: wevent.Body.OtherParentCreatorID,
 			OtherParentIndex:     wevent.Body.OtherParentIndex,
 			CreatorID:            wevent.Body.CreatorID,
+			LamportTimestamp:     LamportTimestampNIL,
+			Round:                RoundNIL,
+			RoundReceived:        RoundNIL,
 		},
 	}
 
@@ -1814,6 +1817,9 @@ func (p *Poset) GetFlagTableOfRandomUndeterminedEvent() (result map[string]int64
 		}
 		ft, err := ev.GetFlagTable()
 		if err != nil {
+			continue
+		}
+		if len(ft) >= len(p.Participants.Sorted) {
 			continue
 		}
 		return ft, nil
