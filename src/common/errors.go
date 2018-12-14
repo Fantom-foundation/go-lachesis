@@ -13,6 +13,7 @@ const (
 	UnknownParticipant
 	Empty
 	KeyAlreadyExists
+	NoPeerSet
 )
 
 type StoreErr struct {
@@ -46,6 +47,10 @@ func (e StoreErr) Error() string {
 		m = "Unknown Participant"
 	case Empty:
 		m = "Empty"
+	case KeyAlreadyExists:
+		m = "Key Already Exists"
+	case NoPeerSet:
+		m = "No PeerSet"
 	}
 
 	return fmt.Sprintf("%s, %s, %s", e.dataType, e.key, m)

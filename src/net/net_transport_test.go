@@ -34,7 +34,7 @@ func TestNetworkTransport(t *testing.T) {
 
 		expectedReq := &SyncRequest{
 			FromID: 0,
-			Known: map[int64]int64{
+			Known: map[uint32]int64{
 				0: 1,
 				1: 2,
 				2: 3,
@@ -54,7 +54,7 @@ func TestNetworkTransport(t *testing.T) {
 					},
 				},
 			},
-			Known: map[int64]int64{
+			Known: map[uint32]int64{
 				0: 5,
 				1: 5,
 				2: 6,
@@ -128,11 +128,11 @@ func TestNetworkTransport(t *testing.T) {
 		}
 
 		frame := poset.Frame{}
-		block, err := poset.NewBlockFromFrame(1, frame)
+		block, err := poset.NewBlockFromFrame(1, &frame)
 		assert.NoError(err)
 		expectedResp := &FastForwardResponse{
 			FromID:   1,
-			Block:    block,
+			Block:    *block,
 			Frame:    frame,
 			Snapshot: []byte("snapshot"),
 		}
@@ -167,7 +167,7 @@ func TestNetworkTransport(t *testing.T) {
 
 		expectedReq := &SyncRequest{
 			FromID: 0,
-			Known: map[int64]int64{
+			Known: map[uint32]int64{
 				0: 1,
 				1: 2,
 				2: 3,
@@ -187,7 +187,7 @@ func TestNetworkTransport(t *testing.T) {
 					},
 				},
 			},
-			Known: map[int64]int64{
+			Known: map[uint32]int64{
 				0: 5,
 				1: 5,
 				2: 6,

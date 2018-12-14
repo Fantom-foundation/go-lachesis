@@ -17,7 +17,7 @@ import (
 )
 
 type Core struct {
-	id     int64
+	id     uint32
 	key    *ecdsa.PrivateKey
 	pubKey []byte
 	hexID  string
@@ -25,25 +25,30 @@ type Core struct {
 
 	inDegrees map[string]uint64
 
-	participants *peers.Peers // [PubKey] => id
-	head         string
-	Seq          int64
+	// XXX this needs major refactoring. Be careful with race conditions and
+	// deadlocks
+	peerSet      *peers.PeerSet // [PubKey] => id
+	peerSelector PeerSelector
+	selectorLock sync.Mutex
+
+	head string
+	Seq  int64
 
 	transactionPool         [][]byte
-	internalTransactionPool []poset.InternalTransaction
+	internalTransactionPool []*poset.InternalTransaction
 	blockSignaturePool      []poset.BlockSignature
 
 	logger *logrus.Entry
 
 	maxTransactionsInEvent int
 
-	addSelfEventBlockLocker        sync.Mutex
-	transactionPoolLocker          sync.RWMutex
-	internalTransactionPoolLocker  sync.RWMutex
-	blockSignaturePoolLocker       sync.RWMutex
+	addSelfEventBlockLocker       sync.Mutex
+	transactionPoolLocker         sync.RWMutex
+	internalTransactionPoolLocker sync.RWMutex
+	blockSignaturePoolLocker      sync.RWMutex
 }
 
-func NewCore(id int64, key *ecdsa.PrivateKey, participants *peers.Peers,
+func NewCore(id uint32, key *ecdsa.PrivateKey, peerSet *peers.PeerSet,
 	store poset.Store, commitCh chan poset.Block, logger *logrus.Logger) *Core {
 
 	if logger == nil {
@@ -54,19 +59,19 @@ func NewCore(id int64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	logEntry := logger.WithField("id", id)
 
 	inDegrees := make(map[string]uint64)
-	for pubKey := range participants.ByPubKey {
+	for pubKey := range peerSet.ByPubKey {
 		inDegrees[pubKey] = 0
 	}
 
-	p2 := poset.NewPoset(participants, store, commitCh, logEntry)
+	p2 := poset.NewPoset(peerSet, store, commitCh, logEntry)
 	core := &Core{
 		id:                      id,
 		key:                     key,
 		poset:                   p2,
 		inDegrees:               inDegrees,
-		participants:            participants,
+		peerSet:                 peerSet,
 		transactionPool:         [][]byte{},
-		internalTransactionPool: []poset.InternalTransaction{},
+		internalTransactionPool: []*poset.InternalTransaction{},
 		blockSignaturePool:      []poset.BlockSignature{},
 		logger:                  logEntry,
 		head:                    "",
@@ -77,12 +82,16 @@ func NewCore(id int64, key *ecdsa.PrivateKey, participants *peers.Peers,
 		maxTransactionsInEvent: 16384,
 	}
 
+	pubKey := core.HexID()
+	peerSelector := NewSmartPeerSelector(peerSet, pubKey, core.poset.GetFlagTableOfRandomUndeterminedEvent)
+	core.peerSelector = peerSelector
+
 	p2.SetCore(core)
 
 	return core
 }
 
-func (c *Core) ID() int64 {
+func (c *Core) ID() uint32 {
 	return c.id
 }
 
@@ -105,10 +114,10 @@ func (c *Core) Head() string {
 	return c.head
 }
 
-// Heights returns map with heights for each participants
+// Heights returns map with heights for each peerSet
 func (c *Core) Heights() map[string]uint64 {
 	heights := make(map[string]uint64)
-	for pubKey := range c.participants.ByPubKey {
+	for pubKey := range c.peerSet.ByPubKey {
 		participantEvents, err := c.poset.Store.ParticipantEvents(pubKey, -1)
 		if err == nil {
 			heights[pubKey] = uint64(len(participantEvents))
@@ -170,13 +179,13 @@ func (c *Core) Bootstrap() error {
 }
 
 func (c *Core) bootstrapInDegrees() {
-	for pubKey := range c.participants.ByPubKey {
+	for pubKey := range c.peerSet.ByPubKey {
 		c.inDegrees[pubKey] = 0
 		eventHash, _, err := c.poset.Store.LastEventFrom(pubKey)
 		if err != nil {
 			continue
 		}
-		for otherPubKey := range c.participants.ByPubKey {
+		for otherPubKey := range c.peerSet.ByPubKey {
 			if otherPubKey == pubKey {
 				continue
 			}
@@ -199,15 +208,15 @@ func (c *Core) bootstrapInDegrees() {
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (c *Core) SignAndInsertSelfEvent(event poset.Event) error {
-	if err := c.poset.SetWireInfoAndSign(&event, c.key); err != nil {
+func (c *Core) SignAndInsertSelfEvent(event *poset.Event) error {
+	if err := c.poset.SetWireInfoAndSign(event, c.key); err != nil {
 		return err
 	}
 
 	return c.InsertEvent(event, true)
 }
 
-func (c *Core) InsertEvent(event poset.Event, setWireInfo bool) error {
+func (c *Core) InsertEvent(event *poset.Event, setWireInfo bool) error {
 
 	c.logger.WithFields(logrus.Fields{
 		"event":      event,
@@ -234,13 +243,13 @@ func (c *Core) InsertEvent(event poset.Event, setWireInfo bool) error {
 	return nil
 }
 
-func (c *Core) KnownEvents() map[int64]int64 {
+func (c *Core) KnownEvents() map[uint32]int64 {
 	return c.poset.Store.KnownEvents()
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (c *Core) SignBlock(block poset.Block) (poset.BlockSignature, error) {
+func (c *Core) SignBlock(block *poset.Block) (poset.BlockSignature, error) {
 	sig, err := block.Sign(c.key)
 	if err != nil {
 		return poset.BlockSignature{}, err
@@ -251,9 +260,40 @@ func (c *Core) SignBlock(block poset.Block) (poset.BlockSignature, error) {
 	return sig, c.poset.Store.SetBlock(block)
 }
 
+func (c *Core) ProcessAcceptedInternalTransactions(roundReceived int64, txs []*poset.InternalTransaction) error {
+	peers := c.peerSet
+
+	for _, tx := range txs {
+		switch tx.Type {
+		case poset.TransactionType_PEER_ADD:
+			c.logger.WithField("peer", tx.Peer).Debug("adding peer")
+			peers = peers.WithNewPeer(tx.Peer)
+		case poset.TransactionType_PEER_REMOVE:
+			c.logger.WithField("peer", tx.Peer).Debug("removing peer")
+			peers = peers.WithRemovedPeer(tx.Peer)
+		default:
+		}
+	}
+
+	// XXX  +4 is arbitrary. Should be RoundDecided, ie. the round of the first
+	// witness that can decide the fame of a SuperMajority of witnesses from
+	// roundReceived
+	err := c.poset.Store.SetPeerSet(roundReceived+4, peers)
+	if err != nil {
+		return fmt.Errorf("Updating Store PeerSet: %s", err)
+	}
+
+	c.peerSet = peers
+
+	pubKey := c.HexID()
+	c.peerSelector = NewSmartPeerSelector(peers, pubKey, c.poset.GetFlagTableOfRandomUndeterminedEvent)
+
+	return nil
+}
+
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-func (c *Core) OverSyncLimit(knownEvents map[int64]int64, syncLimit int64) bool {
+func (c *Core) OverSyncLimit(knownEvents map[uint32]int64, syncLimit int64) bool {
 	totUnknown := int64(0)
 	myKnownEvents := c.KnownEvents()
 	for i, li := range myKnownEvents {
@@ -267,18 +307,18 @@ func (c *Core) OverSyncLimit(knownEvents map[int64]int64, syncLimit int64) bool 
 	return false
 }
 
-func (c *Core) GetAnchorBlockWithFrame() (poset.Block, poset.Frame, error) {
+func (c *Core) GetAnchorBlockWithFrame() (*poset.Block, *poset.Frame, error) {
 	return c.poset.GetAnchorBlockWithFrame()
 }
 
 // returns events that c knows about and are not in 'known'
-func (c *Core) EventDiff(known map[int64]int64) (events []poset.Event, err error) {
-	var unknown []poset.Event
+func (c *Core) EventDiff(known map[uint32]int64) (events []*poset.Event, err error) {
+	var unknown []*poset.Event
 	// known represents the index of the last event known for every participant
 	// compare this to our view of events and fill unknown with events that we know of
 	// and the other doesn't
 	for id, ct := range known {
-		peer := c.participants.ById[id]
+		peer := c.peerSet.ById[id]
 		if peer == nil {
 			// unknown peer detected.
 			// TODO: we should handle this nicely
@@ -287,12 +327,12 @@ func (c *Core) EventDiff(known map[int64]int64) (events []poset.Event, err error
 		// get participant Events with index > ct
 		participantEvents, err := c.poset.Store.ParticipantEvents(peer.PubKeyHex, ct)
 		if err != nil {
-			return []poset.Event{}, err
+			return []*poset.Event{}, err
 		}
 		for _, e := range participantEvents {
 			ev, err := c.poset.Store.GetEvent(e)
 			if err != nil {
-				return []poset.Event{}, err
+				return []*poset.Event{}, err
 			}
 			c.logger.WithFields(logrus.Fields{
 				"event":      ev,
@@ -336,7 +376,7 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 			ev.Message.LamportTimestamp = poset.LamportTimestampNIL
 			ev.Message.Round = poset.RoundNIL
 			ev.Message.RoundReceived = poset.RoundNIL
-			if err := c.InsertEvent(*ev, false); err != nil {
+			if err := c.InsertEvent(ev, false); err != nil {
 				c.logger.Error("SYNC: INSERT ERR", err)
 				return err
 			}
@@ -359,7 +399,7 @@ func (c *Core) Sync(unknownEvents []poset.WireEvent) error {
 	return nil
 }
 
-func (c *Core) FastForward(peer string, block poset.Block, frame poset.Frame) error {
+func (c *Core) FastForward(peer string, block *poset.Block, frame *poset.Frame) error {
 
 	// Check Block Signatures
 	err := c.poset.CheckBlock(block)
@@ -459,10 +499,10 @@ func (c *Core) AddSelfEventBlock(otherHead string) error {
 	}).Debug("newHead := poset.NewEventBlock")
 
 	c.transactionPoolLocker.Lock()
-	c.transactionPool = c.transactionPool[nTxs:] //[][]byte{}
+	c.transactionPool = c.transactionPool[nTxs:] // [][]byte{}
 	c.transactionPoolLocker.Unlock()
 	c.internalTransactionPoolLocker.Lock()
-	c.internalTransactionPool = []poset.InternalTransaction{}
+	c.internalTransactionPool = []*poset.InternalTransaction{}
 	c.internalTransactionPoolLocker.Unlock()
 	// retain c.blockSignaturePool until c.transactionPool is empty
 	// FIXIT: is there any better strategy?
@@ -487,7 +527,7 @@ func (c *Core) FromWire(wireEvents []poset.WireEvent) ([]poset.Event, error) {
 	return events, nil
 }
 
-func (c *Core) ToWire(events []poset.Event) ([]poset.WireEvent, error) {
+func (c *Core) ToWire(events []*poset.Event) ([]poset.WireEvent, error) {
 	wireEvents := make([]poset.WireEvent, len(events), len(events))
 	for i, e := range events {
 		wireEvents[i] = e.ToWire()
@@ -551,7 +591,7 @@ func (c *Core) AddTransactions(txs [][]byte) {
 	c.transactionPool = append(c.transactionPool, txs...)
 }
 
-func (c *Core) AddInternalTransactions(txs []poset.InternalTransaction) {
+func (c *Core) AddInternalTransactions(txs []*poset.InternalTransaction) {
 	c.internalTransactionPoolLocker.Lock()
 	defer c.internalTransactionPoolLocker.Unlock()
 	c.internalTransactionPool = append(c.internalTransactionPool, txs...)
@@ -563,11 +603,11 @@ func (c *Core) AddBlockSignature(bs poset.BlockSignature) {
 	c.blockSignaturePool = append(c.blockSignaturePool, bs)
 }
 
-func (c *Core) GetHead() (poset.Event, error) {
+func (c *Core) GetHead() (*poset.Event, error) {
 	return c.poset.Store.GetEvent(c.head)
 }
 
-func (c *Core) GetEvent(hash string) (poset.Event, error) {
+func (c *Core) GetEvent(hash string) (*poset.Event, error) {
 	return c.poset.Store.GetEvent(hash)
 }
 

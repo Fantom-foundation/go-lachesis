@@ -5,7 +5,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-//json encoding of Frame
+// json encoding of Frame
 func (f *Frame) ProtoMarshal() ([]byte, error) {
 	var bf proto.Buffer
 	bf.SetDeterministic(true)
@@ -27,7 +27,7 @@ func (f *Frame) Hash() ([]byte, error) {
 	return crypto.SHA256(hashBytes), nil
 }
 
-func RootListEquals(this []*Root, that []*Root) bool {
+func RootMapEquals(this map[string]*Root, that map[string]*Root) bool {
 	if len(this) != len(that) {
 		return false
 	}
@@ -53,6 +53,6 @@ func EventListEquals(this []*EventMessage, that []*EventMessage) bool {
 
 func (this *Frame) Equals(that *Frame) bool {
 	return this.Round == that.Round &&
-		RootListEquals(this.Roots, that.Roots) &&
+		RootMapEquals(this.Roots, that.Roots) &&
 		EventListEquals(this.Events, that.Events)
 }

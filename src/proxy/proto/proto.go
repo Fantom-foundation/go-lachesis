@@ -1,14 +1,22 @@
 package proto
 
-import "github.com/Fantom-foundation/go-lachesis/src/poset"
+import (
+	"github.com/Fantom-foundation/go-lachesis/src/poset"
+)
 
 type StateHash struct {
 	Hash []byte
 }
+
+type Response struct {
+	StateHash []byte
+	AcceptedInternalTransactions []*poset.InternalTransaction
+}
+
 // CommitResponse captures both a response and a potential error.
 type CommitResponse struct {
-	StateHash []byte
-	Error     error
+	Response Response
+	Error    error
 }
 // Commit provides a response mechanism.
 type Commit struct {
@@ -16,8 +24,8 @@ type Commit struct {
 	RespChan chan<- CommitResponse
 }
 // Respond is used to respond with a response, error or both
-func (r *Commit) Respond(stateHash []byte, err error) {
-	r.RespChan <- CommitResponse{stateHash, err}
+func (r *Commit) Respond(response Response, err error) {
+	r.RespChan <- CommitResponse{response, err }
 }
 //------------------------------------------------------------------------------
 type Snapshot struct {

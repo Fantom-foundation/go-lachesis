@@ -2,18 +2,17 @@ package common
 
 import (
 	"fmt"
-	"strconv"
 )
 
 type RollingIndexMap struct {
 	name    string
 	size    int
-	keys    []int64
-	mapping map[int64]*RollingIndex
+	keys    []uint32
+	mapping map[uint32]*RollingIndex
 }
 
-func NewRollingIndexMap(name string, size int, keys []int64) *RollingIndexMap {
-	items := make(map[int64]*RollingIndex)
+func NewRollingIndexMap(name string, size int, keys []uint32) *RollingIndexMap {
+	items := make(map[uint32]*RollingIndex)
 	for _, key := range keys {
 		items[key] = NewRollingIndex(fmt.Sprintf("%s[%d]", name, key), size)
 	}
@@ -25,7 +24,7 @@ func NewRollingIndexMap(name string, size int, keys []int64) *RollingIndexMap {
 	}
 }
 
-func (rim *RollingIndexMap) AddKey(key int64) error {
+func (rim *RollingIndexMap) AddKey(key uint32) error {
 	if _, ok := rim.mapping[key]; ok {
 		return NewStoreErr(rim.name, KeyAlreadyExists, fmt.Sprintf("%d", key))
 	}
@@ -35,10 +34,10 @@ func (rim *RollingIndexMap) AddKey(key int64) error {
 }
 
 //return key items with index > skip
-func (rim *RollingIndexMap) Get(key int64, skipIndex int64) ([]interface{}, error) {
+func (rim *RollingIndexMap) Get(key uint32, skipIndex int64) ([]interface{}, error) {
 	items, ok := rim.mapping[key]
 	if !ok {
-		return nil, NewStoreErr(rim.name, KeyNotFound, strconv.FormatInt(key, 10))
+		return nil, NewStoreErr(rim.name, KeyNotFound, fmt.Sprint(key))
 	}
 
 	cached, err := items.Get(skipIndex)
@@ -49,14 +48,14 @@ func (rim *RollingIndexMap) Get(key int64, skipIndex int64) ([]interface{}, erro
 	return cached, nil
 }
 
-func (rim *RollingIndexMap) GetItem(key int64, index int64) (interface{}, error) {
+func (rim *RollingIndexMap) GetItem(key uint32, index int64) (interface{}, error) {
 	return rim.mapping[key].GetItem(index)
 }
 
-func (rim *RollingIndexMap) GetLast(key int64) (interface{}, error) {
+func (rim *RollingIndexMap) GetLast(key uint32) (interface{}, error) {
 	pe, ok := rim.mapping[key]
 	if !ok {
-		return nil, NewStoreErr(rim.name, KeyNotFound, strconv.FormatInt(key, 10))
+		return nil, NewStoreErr(rim.name, KeyNotFound, fmt.Sprint(key))
 	}
 	cached, _ := pe.GetLastWindow()
 	if len(cached) == 0 {
@@ -65,7 +64,7 @@ func (rim *RollingIndexMap) GetLast(key int64) (interface{}, error) {
 	return cached[len(cached)-1], nil
 }
 
-func (rim *RollingIndexMap) Set(key int64, item interface{}, index int64) error {
+func (rim *RollingIndexMap) Set(key uint32, item interface{}, index int64) error {
 	items, ok := rim.mapping[key]
 	if !ok {
 		items = NewRollingIndex(fmt.Sprintf("%s[%d]", rim.name, key), rim.size)
@@ -75,8 +74,8 @@ func (rim *RollingIndexMap) Set(key int64, item interface{}, index int64) error 
 }
 
 //returns [key] => lastKnownIndex
-func (rim *RollingIndexMap) Known() map[int64]int64 {
-	known := make(map[int64]int64)
+func (rim *RollingIndexMap) Known() map[uint32]int64 {
+	known := make(map[uint32]int64)
 	for k, items := range rim.mapping {
 		_, lastIndex := items.GetLastWindow()
 		known[k] = lastIndex
@@ -85,7 +84,7 @@ func (rim *RollingIndexMap) Known() map[int64]int64 {
 }
 
 func (rim *RollingIndexMap) Reset() error {
-	items := make(map[int64]*RollingIndex)
+	items := make(map[uint32]*RollingIndex)
 	for _, key := range rim.keys {
 		items[key] = NewRollingIndex(fmt.Sprintf("%s[%d]", rim.name, key), rim.size)
 	}

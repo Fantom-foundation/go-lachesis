@@ -11,27 +11,27 @@ import (
 )
 
 type pub struct {
-	id      int64
+	id      uint32
 	privKey *ecdsa.PrivateKey
 	pubKey  []byte
 	hex     string
 }
 
 func initInmemStore(cacheSize int) (*InmemStore, []pub) {
-	n := int64(3)
+	n := uint32(3)
 	var participantPubs []pub
-	participants := peers.NewPeers()
-	for i := int64(0); i < n; i++ {
+	var tempPeers []*peers.Peer
+	for i := uint32(0); i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		pubKey := crypto.FromECDSAPub(&key.PublicKey)
 		peer := peers.NewPeer(fmt.Sprintf("0x%X", pubKey), "")
 		participantPubs = append(participantPubs,
 			pub{i, key, pubKey, peer.PubKeyHex})
-		participants.AddPeer(peer)
+		tempPeers = append(tempPeers, peer)
 		participantPubs[len(participantPubs)-1].id = peer.ID
 	}
 
-	store := NewInmemStore(participants, cacheSize)
+	store := NewInmemStore(peers.NewPeerSet(tempPeers), cacheSize)
 	return store, participantPubs
 }
 
@@ -40,11 +40,11 @@ func TestInmemEvents(t *testing.T) {
 	testSize := int64(15)
 	store, participants := initInmemStore(cacheSize)
 
-	events := make(map[string][]Event)
+	events := make(map[string][]*Event)
 
 	t.Run("Store Events", func(t *testing.T) {
 		for _, p := range participants {
-			var items []Event
+			var items []*Event
 			for k := int64(0); k < testSize; k++ {
 				event := NewEvent([][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
 					nil,
@@ -97,7 +97,7 @@ func TestInmemEvents(t *testing.T) {
 	})
 
 	t.Run("Check KnownEvents", func(t *testing.T) {
-		expectedKnown := make(map[int64]int64)
+		expectedKnown := make(map[uint32]int64)
 		for _, p := range participants {
 			expectedKnown[p.id] = testSize - 1
 		}
@@ -124,7 +124,7 @@ func TestInmemRounds(t *testing.T) {
 	store, participants := initInmemStore(10)
 
 	round := NewRoundCreated()
-	events := make(map[string]Event)
+	events := make(map[string]*Event)
 	for _, p := range participants {
 		event := NewEvent([][]byte{},
 			nil,
@@ -137,7 +137,7 @@ func TestInmemRounds(t *testing.T) {
 	}
 
 	t.Run("Store Round", func(t *testing.T) {
-		if err := store.SetRoundCreated(0, *round); err != nil {
+		if err := store.SetRoundCreated(0, round); err != nil {
 			t.Fatal(err)
 		}
 		storedRound, err := store.GetRoundCreated(0)
@@ -145,7 +145,7 @@ func TestInmemRounds(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !reflect.DeepEqual(*round, storedRound) {
+		if !reflect.DeepEqual(*round, *storedRound) {
 			t.Fatalf("Round and StoredRound do not match")
 		}
 	})
@@ -182,8 +182,12 @@ func TestInmemBlocks(t *testing.T) {
 		[]byte("tx4"),
 		[]byte("tx5"),
 	}
+	internalTransactions := []*InternalTransaction{
+		NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+		NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+	}
 	frameHash := []byte("this is the frame hash")
-	block := NewBlock(index, roundReceived, frameHash, transactions)
+	block := NewBlock(index, roundReceived, frameHash, []*peers.Peer{}, transactions, internalTransactions)
 
 	sig1, err := block.Sign(participants[0].privKey)
 	if err != nil {

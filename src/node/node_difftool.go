@@ -16,7 +16,7 @@ func (n *Node) RoundWitnesses(i int64) []string {
 	return n.core.poset.Store.RoundWitnesses(i)
 }
 
-func (n *Node) GetFrame(i int64) (poset.Frame, error) {
+func (n *Node) GetFrame(i int64) (*poset.Frame, error) {
 	return n.core.poset.Store.GetFrame(i)
 }
 

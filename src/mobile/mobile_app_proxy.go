@@ -3,6 +3,7 @@ package mobile
 import (
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
 	"github.com/sirupsen/logrus"
 )
 
@@ -37,14 +38,14 @@ func newMobileAppProxy(
 	return mobileApp
 }
 
-func (m *mobileAppProxy) CommitHandler(block poset.Block) ([]byte, error) {
+func (m *mobileAppProxy) CommitHandler(block poset.Block) (proto.Response, error) {
 	blockBytes, err := block.ProtoMarshal()
 	if err != nil {
 		m.logger.Debug("mobileAppProxy error marhsalling Block")
-		return nil, err
+		return proto.Response{}, err
 	}
 	stateHash := m.commitHandler.OnCommit(blockBytes)
-	return stateHash, nil
+	return proto.Response{StateHash: stateHash}, nil
 }
 func (m *mobileAppProxy) SnapshotHandler(blockIndex int64) ([]byte, error) {
 	return []byte{}, nil
@@ -57,14 +58,14 @@ func (m *mobileAppProxy) RestoreHandler(snapshot []byte) ([]byte, error) {
 // gomobile cannot export a Block object because it doesn't support arrays of
 // arrays of bytes; so we have to serialize the block.
 // Overrides  InappProxy::CommitBlock
-func (p *mobileAppProxy) CommitBlock(block poset.Block) ([]byte, error) {
+func (p *mobileAppProxy) CommitBlock(block poset.Block) (proto.Response, error) {
 	blockBytes, err := block.ProtoMarshal()
 	if err != nil {
 		p.logger.Debug("mobileAppProxy error marhsalling Block")
-		return nil, err
+		return proto.Response{}, err
 	}
 	stateHash := p.commitHandler.OnCommit(blockBytes)
-	return stateHash, nil
+	return proto.Response{StateHash: stateHash}, nil
 }
 
 //TODO - Implement these two functions

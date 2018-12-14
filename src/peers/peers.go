@@ -6,7 +6,7 @@ import (
 )
 
 type PubKeyPeers map[string]*Peer
-type IdPeers map[int64]*Peer
+type IdPeers map[uint32]*Peer
 type Listener func(*Peer)
 
 type Peers struct {
@@ -46,7 +46,7 @@ func NewPeersFromSlice(source []*Peer) *Peers {
 // Handle with care
 func (p *Peers) addPeerRaw(peer *Peer) {
 	if peer.ID == 0 {
-		peer.computeID()
+		peer.ComputeID()
 	}
 
 	p.ByPubKey[peer.PubKeyHex] = peer
@@ -93,7 +93,7 @@ func (p *Peers) RemovePeerByPubKey(pubKey string) {
 	p.RemovePeer(p.ByPubKey[pubKey])
 }
 
-func (p *Peers) RemovePeerById(id int64) {
+func (p *Peers) RemovePeerById(id uint32) {
 	p.RemovePeer(p.ById[id])
 }
 
@@ -103,10 +103,29 @@ func (p *Peers) ToPeerSlice() []*Peer {
 	return p.Sorted
 }
 
+func (ps *PeerSet) ToPeerSlice() []*Peer {
+	return ps.Peers
+}
+
+func (ps *PeerSet) Sorted() []*Peer {
+	return ps.Peers
+}
+
 func (p *Peers) ToPeerByUsedSlice() []*Peer {
 	res := []*Peer{}
 
 	for _, p := range p.ByPubKey {
+		res = append(res, p)
+	}
+
+	sort.Sort(ByUsed(res))
+	return res
+}
+
+func (ps *PeerSet) ToPeerByUsedSlice() []*Peer {
+	res := []*Peer{}
+
+	for _, p := range ps.ByPubKey {
 		res = append(res, p)
 	}
 
@@ -127,13 +146,26 @@ func (p *Peers) ToPubKeySlice() []string {
 	return res
 }
 
-func (p *Peers) ToIDSlice() []int64 {
+func (p *Peers) ToIDSlice() []uint32 {
 	p.RLock()
 	defer p.RUnlock()
 
-	res := []int64{}
+	res := []uint32{}
 
 	for _, peer := range p.Sorted {
+		res = append(res, peer.ID)
+	}
+
+	return res
+}
+
+func (ps *PeerSet) ToIDSlice() []uint32 {
+	//p.RLock()
+	//defer p.RUnlock()
+
+	res := []uint32{}
+
+	for _, peer := range ps.Peers {
 		res = append(res, peer.ID)
 	}
 
@@ -161,7 +193,7 @@ func (p *Peers) Len() int {
 	return len(p.ByPubKey)
 }
 
-// ByPubHex implements sort.Interface for Peers based on
+// ByPubHex implements sort.Interface for PeerSet based on
 // the PubKeyHex field.
 type ByPubHex []*Peer
 

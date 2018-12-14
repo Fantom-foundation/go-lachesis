@@ -10,6 +10,8 @@ const (
 	jsonPeerPath = "peers.json"
 )
 
+const PeerNIL uint32 = 0
+
 func NewPeer(pubKeyHex, netAddr string) *Peer {
 	peer := &Peer{
 		PubKeyHex: pubKeyHex,
@@ -17,7 +19,7 @@ func NewPeer(pubKeyHex, netAddr string) *Peer {
 		Used: 0,
 	}
 
-	peer.computeID()
+	peer.ComputeID()
 
 	return peer
 }
@@ -32,7 +34,7 @@ func (p *Peer) PubKeyBytes() ([]byte, error) {
 	return hex.DecodeString(p.PubKeyHex[2:])
 }
 
-func (p *Peer) computeID() error {
+func (p *Peer) ComputeID() error {
 	// TODO: Use the decoded bytes from hex
 	pubKey, err := p.PubKeyBytes()
 
@@ -40,7 +42,7 @@ func (p *Peer) computeID() error {
 		return err
 	}
 
-	p.ID = int64(common.Hash32(pubKey))
+	p.ID = common.Hash32(pubKey)
 
 	return nil
 }
@@ -48,7 +50,7 @@ func (p *Peer) computeID() error {
 // PeerStore provides an interface for persistent storage and
 // retrieval of peers.
 type PeerStore interface {
-	// Peers returns the list of known peers.
+	// PeerSet returns the list of known peers.
 	Peers() (*Peers, error)
 
 	// SetPeers sets the list of known peers. This is invoked when a peer is

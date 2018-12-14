@@ -253,7 +253,7 @@ func (p *GrpcLachesisProxy) newCommitResponseCh(uuid xid.ID) chan proto.CommitRe
 		var answer *internal.ToServer
 		resp, ok := <-respCh
 		if ok {
-			answer = newAnswer(uuid[:], resp.StateHash, resp.Error)
+			answer = newAnswer(uuid[:], resp.Response.StateHash, resp.Error)
 		}
 		p.sendToServer(answer)
 	}()
@@ -286,7 +286,7 @@ func (p *GrpcLachesisProxy) newRestoreResponseCh(uuid xid.ID) chan proto.Restore
 	return respCh
 }
 
-func newAnswer(uuid []byte, data []byte, err error) *internal.ToServer {
+func newAnswer(uuid []byte, stateHash []byte, err error) *internal.ToServer {
 	if err != nil {
 		return &internal.ToServer{
 			Event: &internal.ToServer_Answer_{
@@ -304,7 +304,7 @@ func newAnswer(uuid []byte, data []byte, err error) *internal.ToServer {
 			Answer: &internal.ToServer_Answer{
 				Uid: uuid,
 				Payload: &internal.ToServer_Answer_Data{
-					Data: data,
+					Data: stateHash,
 				},
 			},
 		},

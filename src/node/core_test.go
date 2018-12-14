@@ -14,28 +14,30 @@ import (
 )
 
 func initCores(n int, t *testing.T) ([]*Core,
-	map[int64]*ecdsa.PrivateKey, map[string]string) {
+	map[uint32]*ecdsa.PrivateKey, map[string]string) {
 	cacheSize := 1000
 
 	var cores []*Core
 	index := make(map[string]string)
-	participantKeys := map[int64]*ecdsa.PrivateKey{}
+	participantKeys := map[uint32]*ecdsa.PrivateKey{}
 
-	participants := peers.NewPeers()
+	var tempPeers []*peers.Peer
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		pubHex := fmt.Sprintf("0x%X",
 			crypto.FromECDSAPub(&key.PublicKey))
 		peer := peers.NewPeer(pubHex, "")
-		participants.AddPeer(peer)
+		tempPeers = append(tempPeers, peer)
 		participantKeys[peer.ID] = key
 	}
 
-	for i, peer := range participants.ToPeerSlice() {
-		core := NewCore(int64(i),
+	peerSet := peers.NewPeerSet(tempPeers)
+
+	for i, peer := range peerSet.ToPeerSlice() {
+		core := NewCore(uint32(i),
 			participantKeys[peer.ID],
-			participants,
-			poset.NewInmemStore(participants, cacheSize),
+			peerSet,
+			poset.NewInmemStore(peerSet, cacheSize),
 			nil,
 			common.NewTestLogger(t))
 
@@ -46,7 +48,7 @@ func initCores(n int, t *testing.T) ([]*Core,
 
 		// Create and save the first Event
 		initialEvent := poset.NewEvent([][]byte(nil),
-			[]poset.InternalTransaction{},
+			[]*poset.InternalTransaction{},
 			nil,
 			[]string{selfParent, ""}, core.PubKey(), 0, flagTable)
 		err := core.SignAndInsertSelfEvent(initialEvent)
@@ -75,9 +77,9 @@ e01 |   |
 e0  e1  e2
 0   1   2
 */
-func initPoset(t *testing.T, cores []*Core, keys map[int64]*ecdsa.PrivateKey,
-	index map[string]string, participant int64) {
-	for i := int64(0); i < int64(len(cores)); i++ {
+func initPoset(t *testing.T, cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
+	index map[string]string, participant uint32) {
+	for i := uint32(0); i < uint32(len(cores)); i++ {
 		if i != participant {
 			event, err := cores[i].GetEvent(index[fmt.Sprintf("e%d", i)])
 			if err != nil {
@@ -105,12 +107,12 @@ func initPoset(t *testing.T, cores []*Core, keys map[int64]*ecdsa.PrivateKey,
 	event01ft, _ := event0.MergeFlagTable(event1ft)
 
 	event01 := poset.NewEvent([][]byte{},
-		[]poset.InternalTransaction{},
+		[]*poset.InternalTransaction{},
 		nil,
 		[]string{index["e0"], index["e1"]}, // e0 and e1
 		cores[0].PubKey(), 1, event01ft)
 	if err := insertEvent(cores, keys, index, event01, "e01", participant,
-		int64(common.Hash32(cores[0].pubKey))); err != nil {
+		common.Hash32(cores[0].pubKey)); err != nil {
 		t.Fatalf("error inserting e01: %s\n", err)
 	}
 
@@ -123,31 +125,31 @@ func initPoset(t *testing.T, cores []*Core, keys map[int64]*ecdsa.PrivateKey,
 	event20ft, _ := event2.MergeFlagTable(event01ft)
 
 	event20 := poset.NewEvent([][]byte{},
-		[]poset.InternalTransaction{},
+		[]*poset.InternalTransaction{},
 		nil,
 		[]string{index["e2"], index["e01"]}, // e2 and e01
 		cores[2].PubKey(), 1, event20ft)
 	if err := insertEvent(cores, keys, index, event20, "e20", participant,
-		int64(common.Hash32(cores[2].pubKey))); err != nil {
+		common.Hash32(cores[2].pubKey)); err != nil {
 		fmt.Printf("error inserting e20: %s\n", err)
 	}
 
 	event12ft, _ := event1.MergeFlagTable(event20ft)
 
 	event12 := poset.NewEvent([][]byte{},
-		[]poset.InternalTransaction{},
+		[]*poset.InternalTransaction{},
 		nil,
 		[]string{index["e1"], index["e20"]}, // e1 and e20
 		cores[1].PubKey(), 1, event12ft)
 	if err := insertEvent(cores, keys, index, event12, "e12", participant,
-		int64(common.Hash32(cores[1].pubKey))); err != nil {
+		common.Hash32(cores[1].pubKey)); err != nil {
 		fmt.Printf("error inserting e12: %s\n", err)
 	}
 }
 
-func insertEvent(cores []*Core, keys map[int64]*ecdsa.PrivateKey,
-	index map[string]string, event poset.Event, name string, participant int64,
-	creator int64) error {
+func insertEvent(cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
+	index map[string]string, event *poset.Event, name string, participant uint32,
+	creator uint32) error {
 
 	if participant == creator {
 		if err := cores[participant].SignAndInsertSelfEvent(event); err != nil {
@@ -276,13 +278,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy0 := cores[0].KnownEvents()
-	if k := knownBy0[int64(common.Hash32(cores[0].pubKey))]; k != 1 {
+	if k := knownBy0[common.Hash32(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 0 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy0[int64(common.Hash32(cores[1].pubKey))]; k != 0 {
+	if k := knownBy0[common.Hash32(cores[1].pubKey)]; k != 0 {
 		t.Fatalf("core 0 should have last-index 0 for core 1, not %d", k)
 	}
-	if k := knownBy0[int64(common.Hash32(cores[2].pubKey))]; k != -1 {
+	if k := knownBy0[common.Hash32(cores[2].pubKey)]; k != -1 {
 		t.Fatalf("core 0 should have last-index -1 for core 2, not %d", k)
 	}
 	core0Head, _ := cores[0].GetHead()
@@ -334,13 +336,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy2 := cores[2].KnownEvents()
-	if k := knownBy2[int64(common.Hash32(cores[0].pubKey))]; k != 1 {
+	if k := knownBy2[common.Hash32(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy2[int64(common.Hash32(cores[1].pubKey))]; k != 0 {
+	if k := knownBy2[common.Hash32(cores[1].pubKey)]; k != 0 {
 		t.Fatalf("core 2 should have last-index 0 core 1, not %d", k)
 	}
-	if k := knownBy2[int64(common.Hash32(cores[2].pubKey))]; k != 1 {
+	if k := knownBy2[common.Hash32(cores[2].pubKey)]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 2, not %d", k)
 	}
 	core2Head, _ := cores[2].GetHead()
@@ -390,13 +392,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy1 := cores[1].KnownEvents()
-	if k := knownBy1[int64(common.Hash32(cores[0].pubKey))]; k != 1 {
+	if k := knownBy1[common.Hash32(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy1[int64(common.Hash32(cores[1].pubKey))]; k != 1 {
+	if k := knownBy1[common.Hash32(cores[1].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 1, not %d", k)
 	}
-	if k := knownBy1[int64(common.Hash32(cores[2].pubKey))]; k != 1 {
+	if k := knownBy1[common.Hash32(cores[2].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 2, not %d", k)
 	}
 	core1Head, _ := cores[1].GetHead()
@@ -744,10 +746,10 @@ func TestOverSyncLimit(t *testing.T) {
 	cores := initConsensusPoset(t)
 
 	// positive
-	known := map[int64]int64{
-		int64(common.Hash32(cores[0].pubKey)): 1,
-		int64(common.Hash32(cores[1].pubKey)): 1,
-		int64(common.Hash32(cores[2].pubKey)): 1,
+	known := map[uint32]int64{
+		common.Hash32(cores[0].pubKey): 1,
+		common.Hash32(cores[1].pubKey): 1,
+		common.Hash32(cores[2].pubKey): 1,
 	}
 
 	syncLimit := int64(10)
@@ -757,10 +759,10 @@ func TestOverSyncLimit(t *testing.T) {
 	}
 
 	// negative
-	known = map[int64]int64{
-		int64(common.Hash32(cores[0].pubKey)): 6,
-		int64(common.Hash32(cores[1].pubKey)): 6,
-		int64(common.Hash32(cores[2].pubKey)): 6,
+	known = map[uint32]int64{
+		common.Hash32(cores[0].pubKey): 6,
+		common.Hash32(cores[1].pubKey): 6,
+		common.Hash32(cores[2].pubKey): 6,
 	}
 
 	if cores[0].OverSyncLimit(known, syncLimit) {
@@ -768,10 +770,10 @@ func TestOverSyncLimit(t *testing.T) {
 	}
 
 	// edge
-	known = map[int64]int64{
-		int64(common.Hash32(cores[0].pubKey)): 2,
-		int64(common.Hash32(cores[1].pubKey)): 3,
-		int64(common.Hash32(cores[2].pubKey)): 3,
+	known = map[uint32]int64{
+		common.Hash32(cores[0].pubKey): 2,
+		common.Hash32(cores[1].pubKey): 3,
+		common.Hash32(cores[2].pubKey): 3,
 	}
 	if cores[0].OverSyncLimit(known, syncLimit) {
 		t.Fatalf("OverSyncLimit(%v, %v) should return false", known, syncLimit)
@@ -960,11 +962,11 @@ func TestCoreFastForward(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		expectedKnown := map[int64]int64{
-			int64(common.Hash32(cores[0].pubKey)): -1,
-			int64(common.Hash32(cores[1].pubKey)): 0,
-			int64(common.Hash32(cores[2].pubKey)): 1,
-			int64(common.Hash32(cores[3].pubKey)): 0,
+		expectedKnown := map[uint32]int64{
+			common.Hash32(cores[0].pubKey): -1,
+			common.Hash32(cores[1].pubKey): 0,
+			common.Hash32(cores[2].pubKey): 1,
+			common.Hash32(cores[3].pubKey): 0,
 		}
 
 		if !reflect.DeepEqual(knownBy0, expectedKnown) {

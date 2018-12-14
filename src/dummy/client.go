@@ -51,8 +51,8 @@ func NewDummyClient(lachesisProxy proxy.LachesisProxy, handler proxy.ProxyHandle
 					return
 				}
 				logger.Debugf("block commit event: %v", b.Block)
-				hash, err := handler.CommitHandler(b.Block)
-				b.Respond(hash, err)
+				response, err := handler.CommitHandler(b.Block)
+				b.Respond(response, err)
 
 			case r, ok := <-lachesisProxy.RestoreCh():
 				if !ok {

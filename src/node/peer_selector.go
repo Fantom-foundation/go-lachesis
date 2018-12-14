@@ -10,7 +10,7 @@ import (
 // update the last peer it gossiped with and select the next peer
 // to gossip with 
 type PeerSelector interface {
-	Peers() *peers.Peers
+	PeerSet() *peers.PeerSet
 	UpdateLast(peer string)
 	Next() *peers.Peer
 }
@@ -19,19 +19,19 @@ type PeerSelector interface {
 //RANDOM
 
 type RandomPeerSelector struct {
-	peers     *peers.Peers
+	peers     *peers.PeerSet
 	localAddr string
 	last      string
 }
 
-func NewRandomPeerSelector(participants *peers.Peers, localAddr string) *RandomPeerSelector {
+func NewRandomPeerSelector(peerSet *peers.PeerSet, localAddr string) *RandomPeerSelector {
 	return &RandomPeerSelector{
 		localAddr: localAddr,
-		peers:     participants,
+		peers:     peerSet,
 	}
 }
 
-func (ps *RandomPeerSelector) Peers() *peers.Peers {
+func (ps *RandomPeerSelector) PeerSet() *peers.PeerSet {
 	return ps.peers
 }
 
@@ -40,7 +40,7 @@ func (ps *RandomPeerSelector) UpdateLast(peer string) {
 }
 
 func (ps *RandomPeerSelector) Next() *peers.Peer {
-	selectablePeers := ps.peers.ToPeerSlice()
+	selectablePeers := ps.peers.Peers
 
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)

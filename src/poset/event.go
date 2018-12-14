@@ -13,11 +13,19 @@ import (
 /*******************************************************************************
 InternalTransactions
 *******************************************************************************/
-func NewInternalTransaction(tType TransactionType, peer peers.Peer) InternalTransaction {
-	return InternalTransaction{
+func NewInternalTransaction(tType TransactionType, peer peers.Peer) *InternalTransaction {
+	return &InternalTransaction{
 		Type: tType,
 		Peer: &peer,
 	}
+}
+
+func NewInternalTransactionJoin(peer peers.Peer) *InternalTransaction {
+	return NewInternalTransaction(TransactionType_PEER_ADD, peer)
+}
+
+func NewInternalTransactionLeave(peer peers.Peer) *InternalTransaction {
+	return NewInternalTransaction(TransactionType_PEER_REMOVE, peer)
 }
 
 func (t *InternalTransaction) ProtoMarshal() ([]byte, error) {
@@ -124,8 +132,8 @@ type Event struct {
 	Message EventMessage
 }
 
-func (e EventMessage) ToEvent() Event {
-	return Event {
+func (e EventMessage) ToEvent() *Event {
+	return &Event {
 		Message: e,
 	}
 }
@@ -139,15 +147,15 @@ func (this *EventMessage) Equals(that *EventMessage) bool {
 
 // NewEvent creates new block event.
 func NewEvent(transactions [][]byte,
-	internalTransactions []InternalTransaction,
+	internalTransactions []*InternalTransaction,
 	blockSignatures []BlockSignature,
 	parents []string, creator []byte, index int64,
-	flagTable map[string]int64) Event {
+	flagTable map[string]int64) *Event {
 
 	internalTransactionPointers := make([]*InternalTransaction, len(internalTransactions))
 	for i, v := range internalTransactions {
 		internalTransactionPointers[i] = new(InternalTransaction)
-		*internalTransactionPointers[i] = v
+		internalTransactionPointers[i] = v
 	}
 	blockSignaturePointers := make([]*BlockSignature, len(blockSignatures))
 	for i, v := range blockSignatures {
@@ -165,7 +173,7 @@ func NewEvent(transactions [][]byte,
 
 	ft, _ := proto.Marshal(&FlagTableWrapper { Body: flagTable })
 
-	return Event{
+	return &Event{
 		Message: EventMessage {
 			Body:      &body,
 			FlagTable: ft,
@@ -310,10 +318,10 @@ func (e *Event) SetRoundReceived(rr int64) {
 	e.Message.RoundReceived = rr
 }
 
-func (e *Event) SetWireInfo(selfParentIndex,
-	otherParentCreatorID,
-	otherParentIndex,
-	creatorID int64) {
+func (e *Event) SetWireInfo(selfParentIndex int64,
+	otherParentCreatorID uint32,
+	otherParentIndex int64,
+	creatorID uint32) {
 	e.Message.SelfParentIndex = selfParentIndex
 	e.Message.OtherParentCreatorID = otherParentCreatorID
 	e.Message.OtherParentIndex = otherParentIndex
@@ -384,15 +392,15 @@ func (e *Event) MergeFlagTable(
 	return src.Body, err
 }
 
-func (e *Event) CreatorID() int64 {
+func (e *Event) CreatorID() uint32 {
 	return e.Message.CreatorID
 }
 
-func (e *Event) OtherParentCreatorID() int64 {
+func (e *Event) OtherParentCreatorID() uint32 {
 	return e.Message.OtherParentCreatorID
 }
 
-func rootSelfParent(participantID int64) string {
+func rootSelfParent(participantID uint32) string {
 	return fmt.Sprintf("Root%d", participantID)
 }
 
@@ -403,7 +411,7 @@ sorting
 // ByTopologicalOrder implements sort.Interface for []Event based on
 // the topologicalIndex field.
 // THIS IS A PARTIAL ORDER
-type ByTopologicalOrder []Event
+type ByTopologicalOrder []*Event
 
 func (a ByTopologicalOrder) Len() int      { return len(a) }
 func (a ByTopologicalOrder) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -411,10 +419,10 @@ func (a ByTopologicalOrder) Less(i, j int) bool {
 	return a[i].Message.TopologicalIndex < a[j].Message.TopologicalIndex
 }
 
-// ByLamportTimestamp implements sort.Interface for []Event based on
+// ByLamportTimestamp implements sort.Interface for []*Event based on
 // the lamportTimestamp field.
 // THIS IS A TOTAL ORDER
-type ByLamportTimestamp []Event
+type ByLamportTimestamp []*Event
 
 func (a ByLamportTimestamp) Len() int      { return len(a) }
 func (a ByLamportTimestamp) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
@@ -440,9 +448,9 @@ type WireBody struct {
 	BlockSignatures      []WireBlockSignature
 
 	SelfParentIndex      int64
-	OtherParentCreatorID int64
+	OtherParentCreatorID uint32
 	OtherParentIndex     int64
-	CreatorID            int64
+	CreatorID            uint32
 
 	Index int64
 }

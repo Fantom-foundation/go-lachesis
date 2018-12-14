@@ -2,9 +2,11 @@ syntax = "proto3";
 package poset;
 import "root.proto";
 import "event.proto";
+import "github.com/Fantom-foundation/go-lachesis/src/peers/peer.proto";
 
 message Frame {
   int64 Round = 1;
-  repeated Root Roots = 2;
+  map<string, Root> Roots = 2;
   repeated EventMessage Events = 3;
+  repeated peers.Peer Peers = 4;
 }

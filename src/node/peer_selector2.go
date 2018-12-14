@@ -10,7 +10,7 @@ import (
 // update the last peer it gossiped with and select the next peer
 // to gossip with 
 //type PeerSelector interface {
-//	Peers() *peers.Peers
+//	PeerSet() *peers.PeerSet
 //	UpdateLast(peer string)
 //	Next() *peers.Peer
 //}
@@ -19,25 +19,25 @@ import (
 //Selection based on FlagTable of a randomly chosen undermined event
 
 type SmartPeerSelector struct {
-	peers        *peers.Peers
+	peerSet      *peers.PeerSet
 	localAddr    string
 	last         string
 	GetFlagTable func() (map[string]int64, error)
 }
 
-func NewSmartPeerSelector(participants *peers.Peers,
+func NewSmartPeerSelector(peerSet *peers.PeerSet,
 	localAddr string,
 	GetFlagTable func() (map[string]int64, error)) *SmartPeerSelector {
 
 	return &SmartPeerSelector{
-		localAddr: localAddr,
-		peers:     participants,
+		localAddr:    localAddr,
+		peerSet:      peerSet,
 		GetFlagTable: GetFlagTable,
 	}
 }
 
-func (ps *SmartPeerSelector) Peers() *peers.Peers {
-	return ps.peers
+func (ps *SmartPeerSelector) PeerSet() *peers.PeerSet {
+	return ps.peerSet
 }
 
 func (ps *SmartPeerSelector) UpdateLast(peer string) {
@@ -45,9 +45,9 @@ func (ps *SmartPeerSelector) UpdateLast(peer string) {
 }
 
 func (ps *SmartPeerSelector) Next() *peers.Peer {
-	ps.peers.Lock()
-	defer ps.peers.Unlock()
-	selectablePeers := ps.peers.ToPeerByUsedSlice()//[1:]
+	//ps.peerSet.Lock()
+	//defer ps.peerSet.Unlock()
+	selectablePeers := ps.peerSet.ToPeerByUsedSlice() //[1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
 		if len(selectablePeers) > 1 {

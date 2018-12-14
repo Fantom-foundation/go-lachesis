@@ -23,19 +23,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func initPeers(n int) ([]*ecdsa.PrivateKey, *peers.Peers) {
+func initPeers(n int) ([]*ecdsa.PrivateKey, *peers.PeerSet) {
 	var keys []*ecdsa.PrivateKey
-	ps := peers.NewPeers()
+	var tempPeers []*peers.Peer
 
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		keys = append(keys, key)
 
-		ps.AddPeer(peers.NewPeer(
+		tempPeers = append(tempPeers, peers.NewPeer(
 			fmt.Sprintf("0x%X", crypto.FromECDSAPub(&keys[i].PublicKey)),
 			fmt.Sprintf("127.0.0.1:%d", i),
 		))
 	}
+	ps := peers.NewPeerSet(tempPeers)
 
 	return keys, ps
 }
@@ -305,7 +306,7 @@ func TestAddTransaction(t *testing.T) {
 }
 
 func initNodes(keys []*ecdsa.PrivateKey,
-	peers *peers.Peers,
+	peerSet *peers.PeerSet,
 	cacheSize int,
 	syncLimit int64,
 	storeType string,
@@ -316,7 +317,7 @@ func initNodes(keys []*ecdsa.PrivateKey,
 
 	for _, k := range keys {
 		key := fmt.Sprintf("0x%X", crypto.FromECDSAPub(&k.PublicKey))
-		peer := peers.ByPubKey[key]
+		peer := peerSet.ByPubKey[key]
 		id := peer.ID
 
 		conf := NewConfig(
@@ -333,28 +334,28 @@ func initNodes(keys []*ecdsa.PrivateKey,
 			t.Fatalf("failed to create transport for peer %d: %s", id, err)
 		}
 
-		peers.Lock()
+		peerSet.Lock()
 		peer.NetAddr = trans.LocalAddr()
-		peers.Unlock()
+		peerSet.Unlock()
 
 		var store poset.Store
 		switch storeType {
 		case "badger":
 			path, _ := ioutil.TempDir("", "badger")
-			store, err = poset.NewBadgerStore(peers, conf.CacheSize, path)
+			store, err = poset.NewBadgerStore(peerSet, conf.CacheSize, path)
 			if err != nil {
 				t.Fatalf("failed to create BadgerStore for peer %d: %s",
 					id, err)
 			}
 		case "inmem":
-			store = poset.NewInmemStore(peers, conf.CacheSize)
+			store = poset.NewInmemStore(peerSet, conf.CacheSize)
 		}
 		prox := dummy.NewInmemDummyApp(logger)
 
 		node := NewNode(conf,
 			id,
 			k,
-			peers,
+			peerSet,
 			store,
 			trans,
 			prox)
@@ -381,7 +382,7 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 	conf := oldNode.conf
 	id := oldNode.id
 	key := oldNode.core.key
-	ps := oldNode.peerSelector.Peers()
+	ps := oldNode.peerSelector.PeerSet()
 
 	var store poset.Store
 	var err error
@@ -392,7 +393,7 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 			t.Fatal(err)
 		}
 	} else {
-		store = poset.NewInmemStore(oldNode.core.participants, conf.CacheSize)
+		store = poset.NewInmemStore(oldNode.core.peerSet, conf.CacheSize)
 	}
 
 	trans, err := net.NewTCPTransport(oldNode.localAddr,
@@ -711,6 +712,52 @@ func TestBootstrapAllNodes(t *testing.T) {
 	checkGossip([]*Node{nodes[0], newNodes[0]}, 0, t)
 }
 
+func TestAddPeer(t *testing.T) {
+	logger := common.NewTestLogger(t)
+
+	keys, peerSet := initPeers(4)
+	nodes := initNodes(keys, peerSet, 1000, 1000, "inmem", logger, t)
+
+	defer shutdownNodes(nodes)
+
+	// defer drawGraphs(nodes, t)
+
+	runNodes(nodes, true)
+
+	target := int64(20)
+	err := bombardAndWait(nodes, target, 3*time.Second)
+	if err != nil {
+		t.Fatal("Error bombarding: ", err)
+	}
+
+	key, _ := crypto.GenerateECDSAKey()
+	peer := peers.NewPeer(
+		fmt.Sprintf("0x%X", crypto.FromECDSAPub(&key.PublicKey)),
+		fmt.Sprint("127.0.0.1:4242"),
+	)
+
+	// XXX
+	// The id field is not serialized in JSON
+	// Do smarter handling of the ID thing
+	peer.ID = 0
+
+	nodes[0].addInternalTransaction(poset.NewInternalTransactionJoin(*peer))
+
+	target2 := target + int64(20)
+	err = bombardAndWait(nodes, target2, 6*time.Second)
+	if err != nil {
+		t.Fatal("Error bombarding: ", err)
+	}
+
+	for i := range nodes {
+		if nodes[i].core.peerSet.Len() != 5 {
+			t.Errorf("Node %d should have %d peers, not %d", i, 5, nodes[i].core.peerSet.Len())
+		}
+	}
+
+	checkGossip(nodes, 0, t)
+}
+
 func gossip(
 	nodes []*Node, target int64, shutdown bool, timeout time.Duration) error {
 	runNodes(nodes, true)
@@ -848,9 +895,9 @@ func (s *Service) GetGraph(w http.ResponseWriter, r *http.Request) {
 
 func checkGossip(nodes []*Node, fromBlock int64, t *testing.T) {
 
-	nodeBlocks := map[int64][]poset.Block{}
+	nodeBlocks := map[uint32][]*poset.Block{}
 	for _, n := range nodes {
-		var blocks []poset.Block
+		var blocks []*poset.Block
 		lastIndex := n.core.poset.Store.LastBlockIndex()
 		for i := fromBlock; i < lastIndex; i++ {
 			block, err := n.core.poset.Store.GetBlock(i)
@@ -863,14 +910,14 @@ func checkGossip(nodes []*Node, fromBlock int64, t *testing.T) {
 	}
 
 	minB := len(nodeBlocks[0])
-	for k := int64(1); k < int64(len(nodes)); k++ {
+	for k := uint32(1); k < uint32(len(nodes)); k++ {
 		if len(nodeBlocks[k]) < minB {
 			minB = len(nodeBlocks[k])
 		}
 	}
 
 	for i, block := range nodeBlocks[0][:minB] {
-		for k := int64(1); k < int64(len(nodes)); k++ {
+		for k := uint32(1); k < uint32(len(nodes)); k++ {
 			oBlock := nodeBlocks[k][i]
 			if !reflect.DeepEqual(block.Body, oBlock.Body) {
 				t.Fatalf("check gossip: difference in block %d."+
