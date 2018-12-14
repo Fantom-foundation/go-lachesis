@@ -21,12 +21,12 @@ func TestParticipantEventsCache(t *testing.T) {
 	pec := NewParticipantEventsCache(size, participants)
 
 	items := make(map[string][]string)
-	for pk := range participants.ByPubKey {
+	for pk := range participants.GetByPubKeys() {
 		items[pk] = []string{}
 	}
 
 	for i := int64(0); i < testSize; i++ {
-		for pk := range participants.ByPubKey {
+		for pk := range participants.GetByPubKeys() {
 			item := fmt.Sprintf("%s%d", pk, i)
 
 			pec.Set(pk, item, i)
@@ -38,7 +38,7 @@ func TestParticipantEventsCache(t *testing.T) {
 	}
 
 	// GET ITEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	for pk := range participants.ByPubKey {
+	for pk := range participants.GetByPubKeys() {
 
 		index1 := int64(9)
 		_, err := pec.GetItem(pk, index1)
@@ -77,7 +77,7 @@ func TestParticipantEventsCache(t *testing.T) {
 	}
 
 	//GET ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	for pk := range participants.ByPubKey {
+	for pk := range participants.GetByPubKeys() {
 		if _, err := pec.Get(pk, 0); err != nil && !cm.Is(err, cm.TooLate) {
 			t.Fatalf("Skipping 0 elements should return ErrTooLate")
 		}
@@ -125,12 +125,12 @@ func TestParticipantEventsCacheEdge(t *testing.T) {
 	pec := NewParticipantEventsCache(size, participants)
 
 	items := make(map[string][]string)
-	for pk := range participants.ByPubKey {
+	for pk := range participants.GetByPubKeys() {
 		items[pk] = []string{}
 	}
 
 	for i := int64(0); i < testSize; i++ {
-		for pk := range participants.ByPubKey {
+		for pk := range participants.GetByPubKeys() {
 			item := fmt.Sprintf("%s%d", pk, i)
 
 			pec.Set(pk, item, i)
@@ -141,7 +141,7 @@ func TestParticipantEventsCacheEdge(t *testing.T) {
 		}
 	}
 
-	for pk := range participants.ByPubKey {
+	for pk := range participants.GetByPubKeys() {
 		expected := items[pk][size:]
 		cached, err := pec.Get(pk, int64(size-1))
 		if err != nil {

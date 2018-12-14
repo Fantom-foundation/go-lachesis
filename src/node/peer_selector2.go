@@ -12,7 +12,7 @@ import (
 //type PeerSelector interface {
 //	Peers() *peers.Peers
 //	UpdateLast(peer string)
-//	Next() *peers.Peer
+//	Next() peers.Peer
 //}
 
 //+++++++++++++++++++++++++++++++++++++++
@@ -44,9 +44,7 @@ func (ps *SmartPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
 
-func (ps *SmartPeerSelector) Next() *peers.Peer {
-	ps.peers.Lock()
-	defer ps.peers.Unlock()
+func (ps *SmartPeerSelector) Next() peers.Peer {
 	selectablePeers := ps.peers.ToPeerByUsedSlice()//[1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
@@ -68,7 +66,14 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 		}
 	}
 	i := rand.Intn(len(selectablePeers))
-	selectablePeers[i].Used++;
+	ps.peers.IncUsed(selectablePeers[i].ID);
 	return selectablePeers[i]
 }
 
+func (ps *SmartPeerSelector) Len() int {
+	return ps.peers.Len()
+}
+
+func (ps *SmartPeerSelector) ToPeerSlice() []peers.Peer {
+	return ps.peers.ToPeerSlice()
+}

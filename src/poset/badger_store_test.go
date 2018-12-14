@@ -133,8 +133,8 @@ func TestLoadBadgerStore(t *testing.T) {
 			badgerStore.participants.Len())
 	}
 
-	for dbP, dbPeer := range dbParticipants.ByPubKey {
-		peer, ok := badgerStore.participants.ByPubKey[dbP]
+	for dbP, dbPeer := range dbParticipants.GetByPubKeys() {
+		peer, ok := badgerStore.participants.GetByPubKey(dbP)
 		if !ok {
 			t.Fatalf("BadgerStore participants does not contains %s", dbP)
 		}
@@ -312,8 +312,8 @@ func TestDBParticipantMethods(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for p, peer := range store.participants.ByPubKey {
-		dbPeer, ok := participantsFromDB.ByPubKey[p]
+	for p, peer := range store.participants.GetByPubKeys() {
+		dbPeer, ok := participantsFromDB.GetByPubKey(p)
 		if !ok {
 			t.Fatalf("DB does not contain participant %s", p)
 		}

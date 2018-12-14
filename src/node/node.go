@@ -107,7 +107,7 @@ func NewNode(conf *Config,
 
 func (n *Node) Init() error {
 	var peerAddresses []string
-	for _, p := range n.peerSelector.Peers().ToPeerSlice() {
+	for _, p := range n.peerSelector.ToPeerSlice() {
 		peerAddresses = append(peerAddresses, p.NetAddr)
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
@@ -417,7 +417,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int64
 	//	}
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.requestSync(peerAddr, knownEvents)")
-		return false, nil, err
+		return resp.SyncLimit, nil, err
 	}
 	n.logger.WithFields(logrus.Fields{
 		"from_id":     resp.FromID,
@@ -716,7 +716,7 @@ func (n *Node) GetStats() map[string]string {
 		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
 		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
 		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
-		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
+		"num_peers":               strconv.Itoa(n.peerSelector.Len()),
 		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
 		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
 		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),

@@ -3,7 +3,6 @@ package poset
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
@@ -171,7 +170,11 @@ func (p *Poset) ancestor2(x, y string) (bool, error) {
 			return false, err2
 		}
 		if root, ok := roots[y]; ok {
-			yCreator := p.Participants.ById[root.SelfParent.CreatorID].PubKeyHex
+			peer, ok := p.Participants.GetById(root.SelfParent.CreatorID)
+			if !ok {
+				return false, fmt.Errorf("ancestor2: participant not found")
+			}
+			yCreator := peer.PubKeyHex
 			if ex.Creator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -238,7 +241,11 @@ func (p *Poset) selfAncestor2(x, y string) (bool, error) {
 			return false, err2
 		}
 		if root, ok := roots[y]; ok {
-			yCreator := p.Participants.ById[root.SelfParent.CreatorID].PubKeyHex
+			peer, ok := p.Participants.GetById(root.SelfParent.CreatorID)
+			if !ok {
+				return false, fmt.Errorf("selfAncestor2: participant not found")
+			}
+			yCreator := peer.PubKeyHex
 			if ex.Creator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -309,7 +316,10 @@ func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
 		}
 
 		if root, ok := roots[x]; ok {
-			creator := p.Participants.ById[root.SelfParent.CreatorID]
+			creator, ok := p.Participants.GetById(root.SelfParent.CreatorID)
+			if !ok {
+				return fmt.Errorf("MapSentinels: participant not found")
+			}
 
 			sentinels[creator.PubKeyHex] = true
 
@@ -319,7 +329,10 @@ func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
 		return err
 	}
 
-	creator := p.Participants.ById[ex.CreatorID()]
+	creator, ok := p.Participants.GetById(ex.CreatorID())
+	if !ok {
+		return fmt.Errorf("MapSentinels: participant not found, two")
+	}
 	sentinels[creator.PubKeyHex] = true
 
 	if x == y {
@@ -678,9 +691,13 @@ func (p *Poset) createSelfParentRootEvent(ev Event) (RootEvent, error) {
 	if err != nil {
 		return RootEvent{}, err
 	}
+	peer, ok := p.Participants.GetByPubKey(ev.Creator())
+	if !ok {
+		return RootEvent{}, fmt.Errorf("createSelfParentRootEvent: participant not found")
+	}
 	selfParentRootEvent := RootEvent{
 		Hash:             sp,
-		CreatorID:        p.Participants.ByPubKey[ev.Creator()].ID,
+		CreatorID:        peer.ID,
 		Index:            ev.Index() - 1,
 		LamportTimestamp: spLT,
 		Round:            spRound,
@@ -715,9 +732,13 @@ func (p *Poset) createOtherParentRootEvent(ev Event) (RootEvent, error) {
 	if err != nil {
 		return RootEvent{}, err
 	}
+	peer, ok := p.Participants.GetByPubKey(otherParent.Creator())
+	if !ok {
+		return RootEvent{}, fmt.Errorf("createOtherParentRootEvent: participant not found")
+	}
 	otherParentRootEvent := RootEvent{
 		Hash:             op,
-		CreatorID:        p.Participants.ByPubKey[otherParent.Creator()].ID,
+		CreatorID:        peer.ID,
 		Index:            otherParent.Index(),
 		LamportTimestamp: opLT,
 		Round:            opRound,
@@ -810,15 +831,23 @@ func (p *Poset) setWireInfo(event *Event) error {
 			if err != nil {
 				return err
 			}
-			otherParentCreatorID = p.Participants.ByPubKey[otherParent.Creator()].ID
+			peer, ok := p.Participants.GetByPubKey(otherParent.Creator())
+			if !ok {
+				return fmt.Errorf("setWireInfo: participant not found")
+			}
+			otherParentCreatorID = peer.ID
 			otherParentIndex = otherParent.Index()
 		}
 	}
 
+	peer, ok := p.Participants.GetByPubKey(event.Creator())
+	if !ok {
+		return fmt.Errorf("setWireInfo: participant not found, two")
+	}
 	event.SetWireInfo(selfParentIndex,
 		otherParentCreatorID,
 		otherParentIndex,
-		p.Participants.ByPubKey[event.Creator()].ID)
+		peer.ID)
 
 	return nil
 }
@@ -1435,7 +1464,7 @@ func (p *Poset) ProcessSigPool() error {
 	for i, bs := range p.SigPool {
 		//check if validator belongs to list of participants
 		validatorHex := fmt.Sprintf("0x%X", bs.Validator)
-		if _, ok := p.Participants.ByPubKey[validatorHex]; !ok {
+		if _, ok := p.Participants.GetByPubKey(validatorHex); !ok {
 			p.logger.WithFields(logrus.Fields{
 				"index":     bs.Index,
 				"validator": validatorHex,
@@ -1464,7 +1493,9 @@ func (p *Poset) ProcessSigPool() error {
 			if !valid {
 				p.logger.WithFields(logrus.Fields{
 					"index":     bs.Index,
-					"validator": p.Participants.ByPubKey[validatorHex],
+					"validator": func (args ... interface{})interface{} {
+						return args[0]
+					}(p.Participants.GetByPubKey(validatorHex)),
 					"block":     block,
 				}).Warning("Verifying Block signature. Invalid signature")
 				continue
@@ -1636,9 +1667,9 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 	otherParent := ""
 	var err error
 
-	creator := p.Participants.ById[wevent.Body.CreatorID]
+	creator, ok := p.Participants.GetById(wevent.Body.CreatorID)
 	// FIXIT: creator can be nil when wevent.Body.CreatorID == 0
-	if creator == nil {
+	if !ok {
 		return nil, fmt.Errorf("unknown wevent.Body.CreatorID=%v", wevent.Body.CreatorID)
 	}
 	creatorBytes, err := hex.DecodeString(creator.PubKeyHex[2:])
@@ -1653,8 +1684,8 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 		}
 	}
 	if wevent.Body.OtherParentIndex >= 0 {
-		otherParentCreator := p.Participants.ById[wevent.Body.OtherParentCreatorID]
-		if otherParentCreator != nil {
+		otherParentCreator, ok := p.Participants.GetById(wevent.Body.OtherParentCreatorID)
+		if ok {
 			otherParent, err = p.Store.ParticipantEvent(otherParentCreator.PubKeyHex, wevent.Body.OtherParentIndex)
 			if err != nil {
 				//PROBLEM Check if other parent can be found in the root
@@ -1682,7 +1713,7 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 		} else {
 			// unknown participant
 			// TODO: we should handle this nicely
-			return nil, errors.New("unknown participant")
+			return nil, fmt.Errorf("unknown participant ID=%v", wevent.Body.OtherParentCreatorID)
 		}
 	}
 
@@ -1796,7 +1827,7 @@ func (p *Poset) GetFlagTableOfRandomUndeterminedEvent() (result map[string]int64
 		if err != nil {
 			continue
 		}
-		if len(ft) >= len(p.Participants.Sorted) {
+		if len(ft) >= p.Participants.Len() {
 			continue
 		}
 		return ft, nil

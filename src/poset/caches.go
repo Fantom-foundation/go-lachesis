@@ -44,7 +44,7 @@ func NewParticipantEventsCache(size int, participants *peers.Peers) *Participant
 }
 
 func (pec *ParticipantEventsCache) participantID(participant string) (int64, error) {
-	peer, ok := pec.participants.ByPubKey[participant]
+	peer, ok := pec.participants.GetByPubKey(participant)
 
 	if !ok {
 		return -1, cm.NewStoreErr("ParticipantEvents", cm.UnknownParticipant, participant)
@@ -147,7 +147,7 @@ func NewParticipantBlockSignaturesCache(size int, participants *peers.Peers) *Pa
 }
 
 func (psc *ParticipantBlockSignaturesCache) participantID(participant string) (int64, error) {
-	peer, ok := psc.participants.ByPubKey[participant]
+	peer, ok := psc.participants.GetByPubKey(participant)
 
 	if !ok {
 		return -1, cm.NewStoreErr("ParticipantBlockSignatures", cm.UnknownParticipant, participant)
@@ -189,7 +189,11 @@ func (psc *ParticipantBlockSignaturesCache) GetItem(participant string, index in
 }
 
 func (psc *ParticipantBlockSignaturesCache) GetLast(participant string) (BlockSignature, error) {
-	last, err := psc.rim.GetLast(psc.participants.ByPubKey[participant].ID)
+	peer, ok := psc.participants.GetByPubKey(participant)
+	if !ok {
+		return BlockSignature{}, fmt.Errorf("ParticipantBlockSignaturesCache: participant not found")
+	}
+	last, err := psc.rim.GetLast(peer.ID)
 
 	if err != nil {
 		return BlockSignature{}, err
