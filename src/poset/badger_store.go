@@ -87,7 +87,7 @@ func LoadBadgerStore(cacheSize int, path string) (*BadgerStore, error) {
 
 	//read roots from db and put them in InmemStore
 	roots := make(map[string]Root)
-	for p := range participants.ByPubKey {
+	for _, p := range participants.ToPubKeySlice() {
 		root, err := store.dbGetRoot(p)
 		if err != nil {
 			return nil, err
@@ -211,7 +211,7 @@ func (s *BadgerStore) LastConsensusEventFrom(participant string) (last string, i
 
 func (s *BadgerStore) KnownEvents() map[int64]int64 {
 	known := make(map[int64]int64)
-	for p, pid := range s.participants.ByPubKey {
+	for p, pid := range s.participants.GetByPubKeys() {
 		index := int64(-1)
 		last, isRoot, err := s.LastEventFrom(p)
 		if err == nil {
@@ -652,7 +652,7 @@ func (s *BadgerStore) dbSetParticipants(participants *peers.Peers) error {
 	tx := s.db.NewTransaction(true)
 	defer tx.Discard()
 
-	for participant, id := range participants.ByPubKey {
+	for participant, id := range participants.GetByPubKeys() {
 		key := participantKey(participant)
 		val := []byte(strconv.FormatInt(id.ID, 10))
 		//insert [participant_participant] => [id]

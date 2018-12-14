@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func PingNodesN(participants []*peers.Peer, p peers.PubKeyPeers, n uint64, delay uint64, logger *logrus.Logger, ProxyAddr string) {
+func PingNodesN(participants []peers.Peer, p peers.PubKeyPeers, n uint64, delay uint64, logger *logrus.Logger, ProxyAddr string) {
 	// pause before shooting test transactions
 	time.Sleep(time.Duration(delay) * time.Second)
 

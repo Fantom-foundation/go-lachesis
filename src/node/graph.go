@@ -42,7 +42,7 @@ func (g *Graph) GetParticipantEvents() map[string]map[string]poset.Event {
 	store := g.Node.core.poset.Store
 	peers := g.Node.core.poset.Participants
 	known := store.KnownEvents()
-	for _, p := range peers.ByPubKey {
+	for _, p := range peers.GetByPubKeys() {
 		root, err := store.GetRoot(p.PubKeyHex)
 
 		if err != nil {

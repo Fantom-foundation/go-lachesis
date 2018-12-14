@@ -57,7 +57,7 @@ func (j *JSONPeers) Peers() (*Peers, error) {
 }
 
 // SetPeers implements the PeerStore interface.
-func (j *JSONPeers) SetPeers(peers []*Peer) error {
+func (j *JSONPeers) SetPeers(peers []Peer) error {
 	j.l.Lock()
 	defer j.l.Unlock()
 

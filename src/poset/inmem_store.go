@@ -9,6 +9,7 @@ import (
 	cm "github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/hashicorp/golang-lru"
+	"github.com/golang/protobuf/proto"
 )
 
 type InmemStore struct {
@@ -35,7 +36,7 @@ type InmemStore struct {
 func NewInmemStore(participants *peers.Peers, cacheSize int) *InmemStore {
 	rootsByParticipant := make(map[string]Root)
 
-	for pk, pid := range participants.ByPubKey {
+	for pk, pid := range participants.GetByPubKeys() {
 		root := NewBaseRoot(pid.ID)
 		rootsByParticipant[pk] = root
 	}
@@ -85,6 +86,10 @@ func NewInmemStore(participants *peers.Peers, cacheSize int) *InmemStore {
 		store.participantEventsCache = NewParticipantEventsCache(cacheSize, participants)
 		store.participantEventsCache.Import(old)
 	})
+	if err := store.setRootEvents(store.rootsByParticipant); err != nil {
+		// FIXIT: we need to modify this function to return an error state
+		return store
+	}
  	return store
 }
 
@@ -192,7 +197,7 @@ func (s *InmemStore) LastConsensusEventFrom(participant string) (last string, is
 
 func (s *InmemStore) KnownEvents() map[int64]int64 {
 	known := s.participantEventsCache.Known()
-	for p, pid := range s.participants.ByPubKey {
+	for p, pid := range s.participants.GetByPubKeys() {
 		if known[pid.ID] == -1 {
 			root, ok := s.rootsByParticipant[p]
 			if ok {
@@ -365,4 +370,35 @@ func (s *InmemStore) NeedBoostrap() bool {
 
 func (s *InmemStore) StorePath() string {
 	return ""
+}
+
+func (s *InmemStore) setRootEvents(roots map[string]Root) error {
+	for participant, root := range roots {
+		var creator []byte
+		fmt.Sscanf(participant, "0x%X", &creator)
+		flagTable := map[string]int64{root.SelfParent.Hash: 1}
+		ft, _ := proto.Marshal(&FlagTableWrapper { Body: flagTable })
+		body := EventBody{
+			Creator:              creator,/*s.participants.ByPubKey[participant].PubKey,*/
+			Index:                root.SelfParent.Index,
+			Parents:              []string{"",""},
+		}
+		event := Event{
+			Message: EventMessage {
+				Hex: root.SelfParent.Hash,
+				CreatorID: root.SelfParent.CreatorID,
+				TopologicalIndex: -1,
+				Body:      &body,
+				FlagTable: ft,
+				LamportTimestamp: 0,
+				Round:            0,
+				RoundReceived:    0 /*RoundNIL*/,
+				WitnessProof: []string{root.SelfParent.Hash},
+			},
+		}
+		if err := s.SetEvent(event); err != nil {
+			return err
+		}
+	}
+	return nil
 }

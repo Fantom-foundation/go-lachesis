@@ -11,18 +11,18 @@ type Listener func(*Peer)
 
 type Peers struct {
 	sync.RWMutex
-	Sorted    []*Peer
-	ByPubKey  PubKeyPeers
-	ById      IdPeers
-	Listeners []Listener
+	sorted    []*Peer
+	byPubKey  PubKeyPeers
+	byId      IdPeers
+	listeners []Listener
 }
 
 /* Constructors */
 
 func NewPeers() *Peers {
 	return &Peers{
-		ByPubKey: make(PubKeyPeers),
-		ById:     make(IdPeers),
+		byPubKey: make(PubKeyPeers),
+		byId:     make(IdPeers),
 	}
 }
 
@@ -49,8 +49,20 @@ func (p *Peers) addPeerRaw(peer *Peer) {
 		peer.computeID()
 	}
 
-	p.ByPubKey[peer.PubKeyHex] = peer
-	p.ById[peer.ID] = peer
+	p.byPubKey[peer.PubKeyHex] = peer
+	p.byId[peer.ID] = peer
+}
+
+func (p *Peers) internalSort() {
+	res := []*Peer{}
+
+	for _, p := range p.byPubKey {
+		res = append(res, p)
+	}
+
+	sort.Sort(ByID(res))
+
+	p.sorted = res
 }
 
 func (p *Peers) AddPeer(peer *Peer) {
@@ -58,19 +70,7 @@ func (p *Peers) AddPeer(peer *Peer) {
 	p.addPeerRaw(peer)
 	p.internalSort()
 	p.Unlock()
- 	p.EmitNewPeer(peer)
-}
-
-func (p *Peers) internalSort() {
-	res := []*Peer{}
-
-	for _, p := range p.ByPubKey {
-		res = append(res, p)
-	}
-
-	sort.Sort(ByID(res))
-
-	p.Sorted = res
+	p.EmitNewPeer(peer)
 }
 
 /* Remove Methods */
@@ -79,35 +79,109 @@ func (p *Peers) RemovePeer(peer *Peer) {
 	p.Lock()
 	defer p.Unlock()
 
-	if _, ok := p.ByPubKey[peer.PubKeyHex]; !ok {
+	if _, ok := p.byPubKey[peer.PubKeyHex]; !ok {
 		return
 	}
 
-	delete(p.ByPubKey, peer.PubKeyHex)
-	delete(p.ById, peer.ID)
+	delete(p.byPubKey, peer.PubKeyHex)
+	delete(p.byId, peer.ID)
 
 	p.internalSort()
 }
 
 func (p *Peers) RemovePeerByPubKey(pubKey string) {
-	p.RemovePeer(p.ByPubKey[pubKey])
+	p.Lock()
+	defer p.Unlock()
+
+	peer, ok := p.byPubKey[pubKey]
+	if !ok {
+		return
+	}
+	peerID := peer.ID
+
+	delete(p.byPubKey, pubKey)
+	delete(p.byId, peerID)
+
+	p.internalSort()
 }
 
 func (p *Peers) RemovePeerById(id int64) {
-	p.RemovePeer(p.ById[id])
+	p.Lock()
+	defer p.Unlock()
+
+	peer, ok := p.byId[id]
+	if !ok {
+		return
+	}
+	pubKey := peer.PubKeyHex
+
+	delete(p.byPubKey, pubKey)
+	delete(p.byId, id)
+
+	p.internalSort()
+}
+
+func (p *Peers) GetByPubKeys() PubKeyPeers {
+	p.RLock()
+	defer p.RUnlock()
+
+	res := PubKeyPeers{}
+
+	for k, p := range p.byPubKey {
+		res[k] = p
+	}
+
+	return res
+}
+
+func (p *Peers) GetByPubKey(PubKey string) (Peer, bool) {
+	p.RLock()
+	defer p.RUnlock()
+	peer, ok := p.byPubKey[PubKey]
+	return *peer, ok
+}
+
+func (p *Peers) GetByIds() IdPeers {
+	p.RLock()
+	defer p.RUnlock()
+
+	res := IdPeers{}
+
+	for k, p := range p.byId {
+		res[k] = p
+	}
+
+	return res
+}
+
+func (p *Peers) GetById(Id int64) (Peer, bool) {
+	p.RLock()
+	defer p.RUnlock()
+	peer, ok := p.byId[Id]
+	return *peer, ok
 }
 
 /* ToSlice Methods */
 
-func (p *Peers) ToPeerSlice() []*Peer {
-	return p.Sorted
+func (p *Peers) ToPeerSlice() []Peer {
+	p.RLock()
+	defer p.RUnlock()
+
+	res := []Peer{}
+	for _, p := range p.sorted {
+		res = append(res, *p)
+	}
+	return res
 }
 
-func (p *Peers) ToPeerByUsedSlice() []*Peer {
-	res := []*Peer{}
+func (p *Peers) ToPeerByUsedSlice() []Peer {
+	p.RLock()
+	defer p.RUnlock()
 
-	for _, p := range p.ByPubKey {
-		res = append(res, p)
+	res := []Peer{}
+
+	for _, p := range p.byPubKey {
+		res = append(res, *p)
 	}
 
 	sort.Sort(ByUsed(res))
@@ -120,7 +194,7 @@ func (p *Peers) ToPubKeySlice() []string {
 
 	res := []string{}
 
-	for _, peer := range p.Sorted {
+	for _, peer := range p.sorted {
 		res = append(res, peer.PubKeyHex)
 	}
 
@@ -133,7 +207,7 @@ func (p *Peers) ToIDSlice() []int64 {
 
 	res := []int64{}
 
-	for _, peer := range p.Sorted {
+	for _, peer := range p.sorted {
 		res = append(res, peer.ID)
 	}
 
@@ -143,10 +217,17 @@ func (p *Peers) ToIDSlice() []int64 {
 /* EventListener */
 
 func (p *Peers) OnNewPeer(cb func(*Peer)) {
-	p.Listeners = append(p.Listeners, cb)
+	p.Lock()
+	defer p.Unlock()
+
+	p.listeners = append(p.listeners, cb)
 }
+
 func (p *Peers) EmitNewPeer(peer *Peer) {
-	for _, listener := range p.Listeners {
+	p.RLock()
+	defer p.RUnlock()
+
+	for _, listener := range p.listeners {
 		listener(peer)
 	}
 }
@@ -158,7 +239,13 @@ func (p *Peers) Len() int {
 	p.RLock()
 	defer p.RUnlock()
 
-	return len(p.ByPubKey)
+	return len(p.sorted)
+}
+
+func (p *Peers) IncUsed(id int64) {
+	p.Lock()
+	defer p.Unlock()
+	p.byId[id].Used++
 }
 
 // ByPubHex implements sort.Interface for Peers based on
@@ -183,7 +270,7 @@ func (a ByID) Less(i, j int) bool {
 	return ai < aj
 }
 
-type ByUsed []*Peer
+type ByUsed []Peer
 
 func (a ByUsed) Len() int      { return len(a) }
 func (a ByUsed) Swap(i, j int) { a[i], a[j] = a[j], a[i] }

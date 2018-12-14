@@ -12,7 +12,9 @@ import (
 type PeerSelector interface {
 	Peers() *peers.Peers
 	UpdateLast(peer string)
-	Next() *peers.Peer
+	Next() peers.Peer
+	ToPeerSlice() []peers.Peer
+	Len() int
 }
 
 //+++++++++++++++++++++++++++++++++++++++
@@ -39,7 +41,7 @@ func (ps *RandomPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
 
-func (ps *RandomPeerSelector) Next() *peers.Peer {
+func (ps *RandomPeerSelector) Next() peers.Peer {
 	selectablePeers := ps.peers.ToPeerSlice()
 
 	if len(selectablePeers) > 1 {
@@ -55,4 +57,12 @@ func (ps *RandomPeerSelector) Next() *peers.Peer {
 	peer := selectablePeers[i]
 
 	return peer
+}
+
+func (ps *RandomPeerSelector) Len() int {
+	return ps.peers.Len()
+}
+
+func (ps *RandomPeerSelector) ToPeerSlice() []peers.Peer {
+	return ps.peers.ToPeerSlice()
 }
