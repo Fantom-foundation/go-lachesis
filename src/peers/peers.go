@@ -8,7 +8,7 @@ import (
 // PubKeyPeers map of peers sorted by public key
 type PubKeyPeers map[string]*Peer
 // IDPeers map of peers sorted by ID
-type IDPeers map[int64]*Peer
+type IDPeers map[uint32]*Peer
 // Listener for listening for new peers joining
 type Listener func(*Peer)
 
@@ -52,7 +52,7 @@ func NewPeersFromSlice(source []*Peer) *Peers {
 // Handle with care
 func (p *Peers) addPeerRaw(peer *Peer) {
 	if peer.ID == 0 {
-		peer.computeID()
+		peer.ComputeID()
 	}
 
 	p.ByPubKey[peer.PubKeyHex] = peer
@@ -103,7 +103,7 @@ func (p *Peers) RemovePeerByPubKey(pubKey string) {
 }
 
 // RemovePeerByID removes a peer based on their ID
-func (p *Peers) RemovePeerByID(id int64) {
+func (p *Peers) RemovePeerByID(id uint32) {
 	p.RemovePeer(p.ByID[id])
 }
 
@@ -114,11 +114,32 @@ func (p *Peers) ToPeerSlice() []*Peer {
 	return p.Sorted
 }
 
+// ToPeerSlice TODO remove
+func (ps *PeerSet) ToPeerSlice() []*Peer {
+	return ps.Peers
+}
+
+// Sorted TODO remove
+func (ps *PeerSet) Sorted() []*Peer {
+	return ps.Peers
+}
+
 // ToPeerByUsedSlice sorted peers list
 func (p *Peers) ToPeerByUsedSlice() []*Peer {
 	res := []*Peer{}
 
 	for _, p := range p.ByPubKey {
+		res = append(res, p)
+	}
+
+	sort.Sort(ByUsed(res))
+	return res
+}
+
+func (ps *PeerSet) ToPeerByUsedSlice() []*Peer {
+	res := []*Peer{}
+
+	for _, p := range ps.ByPubKey {
 		res = append(res, p)
 	}
 
@@ -141,13 +162,27 @@ func (p *Peers) ToPubKeySlice() []string {
 }
 
 // ToIDSlice peers struct by ID
-func (p *Peers) ToIDSlice() []int64 {
+func (p *Peers) ToIDSlice() []uint32 {
 	p.RLock()
 	defer p.RUnlock()
 
-	res := []int64{}
+	res := []uint32{}
 
 	for _, peer := range p.Sorted {
+		res = append(res, peer.ID)
+	}
+
+	return res
+}
+
+// TODO replace / remove
+func (ps *PeerSet) ToIDSlice() []uint32 {
+	//p.RLock()
+	//defer p.RUnlock()
+
+	res := []uint32{}
+
+	for _, peer := range ps.Peers {
 		res = append(res, peer.ID)
 	}
 
@@ -178,7 +213,7 @@ func (p *Peers) Len() int {
 	return len(p.ByPubKey)
 }
 
-// ByPubHex implements sort.Interface for Peers based on
+// ByPubHex implements sort.Interface for PeerSet based on
 // the PubKeyHex field.
 type ByPubHex []*Peer
 

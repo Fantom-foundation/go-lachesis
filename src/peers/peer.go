@@ -10,6 +10,8 @@ const (
 	jsonPeerPath = "peers.json"
 )
 
+const PeerNIL uint32 = 0
+
 // NewPeer creates a new peer based on public key and network address
 func NewPeer(pubKeyHex, netAddr string) *Peer {
 	peer := &Peer{
@@ -18,7 +20,7 @@ func NewPeer(pubKeyHex, netAddr string) *Peer {
 		Used: 0,
 	}
 
-	peer.computeID()
+	peer.ComputeID()
 
 	return peer
 }
@@ -35,7 +37,7 @@ func (p *Peer) PubKeyBytes() ([]byte, error) {
 	return hex.DecodeString(p.PubKeyHex[2:])
 }
 
-func (p *Peer) computeID() error {
+func (p *Peer) ComputeID() error {
 	// TODO: Use the decoded bytes from hex
 	pubKey, err := p.PubKeyBytes()
 
@@ -43,7 +45,7 @@ func (p *Peer) computeID() error {
 		return err
 	}
 
-	p.ID = int64(common.Hash32(pubKey))
+	p.ID = common.Hash32(pubKey)
 
 	return nil
 }

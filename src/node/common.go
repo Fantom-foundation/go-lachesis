@@ -24,7 +24,7 @@ type NodeList map[*ecdsa.PrivateKey]*Node
 // NewNodeList makes, fills and runs NodeList instance
 func NewNodeList(count int, logger *logrus.Logger) NodeList {
 	nodes := make(NodeList, count)
-	participants := peers.NewPeers()
+	peerSet := peers.NewEmptyPeerSet()
 	config := DefaultConfig()
 	config.Logger = logger
 
@@ -33,16 +33,16 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 		key, _ := crypto.GenerateECDSAKey()
 		pubKey := fmt.Sprintf("0x%X", crypto.FromECDSAPub(&key.PublicKey))
 		peer := peers.NewPeer(pubKey, addr)
+		peerSet := peerSet.WithNewPeer(peer)
 		n := NewNode(
 			config,
 			peer.ID,
 			key,
-			participants,
-			poset.NewInmemStore(participants, config.CacheSize),
+			peerSet,
+			poset.NewInmemStore(peerSet, config.CacheSize),
 			transp,
 			dummy.NewInmemDummyApp(logger))
 
-		participants.AddPeer(peer)
 		nodes[key] = n
 	}
 

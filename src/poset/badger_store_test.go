@@ -15,12 +15,12 @@ import (
 func initBadgerStore(cacheSize int, t *testing.T) (*BadgerStore, []pub) {
 	n := 3
 	var participantPubs []pub
-	participants := peers.NewPeers()
+	var tempPeers []*peers.Peer
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		pubKey := crypto.FromECDSAPub(&key.PublicKey)
 		peer := peers.NewPeer(fmt.Sprintf("0x%X", pubKey), "")
-		participants.AddPeer(peer)
+		tempPeers = append(tempPeers, peer)
 		participantPubs = append(participantPubs,
 			pub{peer.ID, key, pubKey, peer.PubKeyHex})
 	}
@@ -32,7 +32,7 @@ func initBadgerStore(cacheSize int, t *testing.T) (*BadgerStore, []pub) {
 		log.Fatal(err)
 	}
 
-	store, err := NewBadgerStore(participants, cacheSize, dir)
+	store, err := NewBadgerStore(peers.NewPeerSet(tempPeers), cacheSize, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func removeBadgerStore(store *BadgerStore, t *testing.T) {
 }
 
 func createTestDB(dir string, t *testing.T) *BadgerStore {
-	participants := peers.NewPeersFromSlice([]*peers.Peer{
+	peerSet := peers.NewPeerSet([]*peers.Peer{
 		peers.NewPeer("0xAA", ""),
 		peers.NewPeer("0xBB", ""),
 		peers.NewPeer("0xCC", ""),
@@ -58,7 +58,7 @@ func createTestDB(dir string, t *testing.T) *BadgerStore {
 
 	cacheSize := 100
 
-	store, err := NewBadgerStore(participants, cacheSize, dir)
+	store, err := NewBadgerStore(peerSet, cacheSize, dir)
 	if err != nil {
 		t.Fatalf("err: %s", err)
 	}
@@ -93,7 +93,7 @@ func TestNewBadgerStore(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error retrieving DB root for participant %s: %s", participant, err)
 		}
-		if !dbRoot.Equals(&root) {
+		if !dbRoot.Equals(root) {
 			t.Fatalf("%s DB root should be %#v, not %#v", participant, root, dbRoot)
 		}
 	}
@@ -118,23 +118,29 @@ func TestLoadBadgerStore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dbParticipants, err := badgerStore.dbGetParticipants()
+	dbParticipants, err := badgerStore.dbGetPeerSet()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if badgerStore.participants.Len() != 3 {
-		t.Fatalf("store.participants  length should be %d items, not %d", 3, badgerStore.participants.Len())
+	peerSet, err := badgerStore.GetLastPeerSet()
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	if badgerStore.participants.Len() != dbParticipants.Len() {
+	peerCount := peerSet.Len()
+	if peerCount != 3 {
+		t.Fatalf("store.participants  length should be %d items, not %d", 3, peerCount)
+	}
+
+	if peerCount != dbParticipants.Len() {
 		t.Fatalf("store.participants should contain %d items, not %d",
 			dbParticipants.Len(),
-			badgerStore.participants.Len())
+			peerCount)
 	}
 
 	for dbP, dbPeer := range dbParticipants.ByPubKey {
-		peer, ok := badgerStore.participants.ByPubKey[dbP]
+		peer, ok := peerSet.ByPubKey[dbP]
 		if !ok {
 			t.Fatalf("BadgerStore participants does not contains %s", dbP)
 		}
@@ -155,15 +161,15 @@ func TestDBEventMethods(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	// insert events in db directly
-	events := make(map[string][]Event)
+	events := make(map[string][]*Event)
 	topologicalIndex := int64(0)
-	var topologicalEvents []Event
+	var topologicalEvents []*Event
 	for _, p := range participants {
-		var items []Event
+		var items []*Event
 		for k := int64(0); k < testSize; k++ {
 			event := NewEvent(
 				[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
-				[]InternalTransaction{},
+				[]*InternalTransaction{},
 				[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
 				[]string{"", ""},
 				p.pubKey,
@@ -174,7 +180,7 @@ func TestDBEventMethods(t *testing.T) {
 			topologicalEvents = append(topologicalEvents, event)
 
 			items = append(items, event)
-			err := store.dbSetEvents([]Event{event})
+			err := store.dbSetEvents([]*Event{event})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -261,10 +267,10 @@ func TestDBRoundMethods(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	round := NewRoundCreated()
-	events := make(map[string]Event)
+	events := make(map[string]*Event)
 	for _, p := range participants {
 		event := NewEvent([][]byte{},
-			[]InternalTransaction{},
+			[]*InternalTransaction{},
 			[]BlockSignature{},
 			[]string{"", ""},
 			p.pubKey,
@@ -273,7 +279,7 @@ func TestDBRoundMethods(t *testing.T) {
 		round.AddEvent(event.Hex(), true)
 	}
 
-	if err := store.dbSetRoundCreated(0, *round); err != nil {
+	if err := store.dbSetRoundCreated(0, round); err != nil {
 		t.Fatal(err)
 	}
 
@@ -282,7 +288,7 @@ func TestDBRoundMethods(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !round.Equals(&storedRound) {
+	if !round.Equals(storedRound) {
 		t.Fatalf("Round and StoredRound do not match")
 	}
 
@@ -303,16 +309,21 @@ func TestDBParticipantMethods(t *testing.T) {
 	store, _ := initBadgerStore(cacheSize, t)
 	defer removeBadgerStore(store, t)
 
-	if err := store.dbSetParticipants(store.participants); err != nil {
-		t.Fatal(err)
-	}
-
-	participantsFromDB, err := store.dbGetParticipants()
+	peerSet, err := store.GetLastPeerSet()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for p, peer := range store.participants.ByPubKey {
+	if err := store.dbSetPeerSet(peerSet); err != nil {
+		t.Fatal(err)
+	}
+
+	participantsFromDB, err := store.dbGetPeerSet()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for p, peer := range peerSet.ByPubKey {
 		dbPeer, ok := participantsFromDB.ByPubKey[p]
 		if !ok {
 			t.Fatalf("DB does not contain participant %s", p)
@@ -337,9 +348,13 @@ func TestDBBlockMethods(t *testing.T) {
 		[]byte("tx4"),
 		[]byte("tx5"),
 	}
+	internalTransactions := []*InternalTransaction{
+		NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+		NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+	}
 	frameHash := []byte("this is the frame hash")
 
-	block := NewBlock(index, roundReceived, frameHash, transactions)
+	block := NewBlock(index, roundReceived, frameHash, []*peers.Peer{}, transactions, internalTransactions)
 
 	sig1, err := block.Sign(participants[0].privKey)
 	if err != nil {
@@ -364,7 +379,7 @@ func TestDBBlockMethods(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !storedBlock.Equals(&block) {
+		if !storedBlock.Equals(block) {
 			t.Fatalf("Block and StoredBlock do not match")
 		}
 	})
@@ -399,11 +414,11 @@ func TestDBFrameMethods(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	events := make([]*EventMessage, len(participants))
-	roots := make([]*Root, len(participants))
+	roots := make(map[string]*Root)
 	for id, p := range participants {
 		event := NewEvent(
 			[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], 0))},
-			[]InternalTransaction{},
+			[]*InternalTransaction{},
 			[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
 			[]string{"", ""},
 			p.pubKey,
@@ -411,10 +426,10 @@ func TestDBFrameMethods(t *testing.T) {
 		event.Sign(p.privKey)
 		events[id] = event.Message
 
-		root := NewBaseRoot(int64(id))
-		roots[id] = &root
+		root := NewBaseRoot(uint32(id))
+		roots[p.hex] = root
 	}
-	frame := Frame{
+	frame := &Frame{
 		Round:  1,
 		Events: events,
 		Roots:  roots,
@@ -430,7 +445,7 @@ func TestDBFrameMethods(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !storedFrame.Equals(&frame) {
+		if !storedFrame.Equals(frame) {
 			t.Fatalf("Frame and StoredFrame do not match")
 		}
 	})
@@ -448,12 +463,12 @@ func TestBadgerEvents(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	// insert event
-	events := make(map[string][]Event)
+	events := make(map[string][]*Event)
 	for _, p := range participants {
-		var items []Event
+		var items []*Event
 		for k := int64(0); k < testSize; k++ {
 			event := NewEvent([][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
-				[]InternalTransaction{},
+				[]*InternalTransaction{},
 				[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
 				[]string{"", ""},
 				p.pubKey,
@@ -517,7 +532,7 @@ func TestBadgerEvents(t *testing.T) {
 		}
 	}
 
-	expectedKnown := make(map[int64]int64)
+	expectedKnown := make(map[uint32]int64)
 	for _, p := range participants {
 		expectedKnown[p.id] = testSize - 1
 	}
@@ -543,10 +558,10 @@ func TestBadgerRounds(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	round := NewRoundCreated()
-	events := make(map[string]Event)
+	events := make(map[string]*Event)
 	for _, p := range participants {
 		event := NewEvent([][]byte{},
-			[]InternalTransaction{},
+			[]*InternalTransaction{},
 			[]BlockSignature{},
 			[]string{"", ""},
 			p.pubKey,
@@ -555,7 +570,7 @@ func TestBadgerRounds(t *testing.T) {
 		round.AddEvent(event.Hex(), true)
 	}
 
-	if err := store.SetRoundCreated(0, *round); err != nil {
+	if err := store.SetRoundCreated(0, round); err != nil {
 		t.Fatal(err)
 	}
 
@@ -568,7 +583,7 @@ func TestBadgerRounds(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !round.Equals(&storedRound) {
+	if !round.Equals(storedRound) {
 		t.Fatalf("Round and StoredRound do not match")
 	}
 
@@ -598,8 +613,12 @@ func TestBadgerBlocks(t *testing.T) {
 		[]byte("tx4"),
 		[]byte("tx5"),
 	}
+	internalTransactions := []*InternalTransaction{
+		NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+		NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+	}
 	frameHash := []byte("this is the frame hash")
-	block := NewBlock(index, roundReceived, frameHash, transactions)
+	block := NewBlock(index, roundReceived, frameHash, []*peers.Peer{}, transactions, internalTransactions)
 
 	sig1, err := block.Sign(participants[0].privKey)
 	if err != nil {
@@ -624,7 +643,7 @@ func TestBadgerBlocks(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !storedBlock.Equals(&block) {
+		if !storedBlock.Equals(block) {
 			t.Fatalf("Block and StoredBlock do not match")
 		}
 	})
@@ -659,11 +678,11 @@ func TestBadgerFrames(t *testing.T) {
 	defer removeBadgerStore(store, t)
 
 	events := make([]*EventMessage, len(participants))
-	roots := make([]*Root, len(participants))
+	roots := make(map[string]*Root)
 	for id, p := range participants {
 		event := NewEvent(
 			[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], 0))},
-			[]InternalTransaction{},
+			[]*InternalTransaction{},
 			[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
 			[]string{"", ""},
 			p.pubKey,
@@ -671,10 +690,10 @@ func TestBadgerFrames(t *testing.T) {
 		event.Sign(p.privKey)
 		events[id] = event.Message
 
-		root := NewBaseRoot(int64(id))
-		roots[id] = &root
+		root := NewBaseRoot(uint32(id))
+		roots[p.hex] = root
 	}
-	frame := Frame{
+	frame := &Frame{
 		Round:  1,
 		Events: events,
 		Roots:  roots,
@@ -690,7 +709,7 @@ func TestBadgerFrames(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if !storedFrame.Equals(&frame) {
+		if !storedFrame.Equals(frame) {
 			t.Fatalf("Frame and StoredFrame do not match")
 		}
 	})

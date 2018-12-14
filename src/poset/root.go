@@ -64,7 +64,7 @@ ex 2:
 
 // NewBaseRootEvent creates a RootEvent corresponding to the the very beginning
 // of a Poset.
-func NewBaseRootEvent(creatorID int64) RootEvent {
+func NewBaseRootEvent(creatorID uint32) RootEvent {
 	hash := fmt.Sprintf("Root%d", creatorID)
 	res := RootEvent{
 		Hash:             hash,
@@ -93,9 +93,9 @@ func (re *RootEvent) Equals(that *RootEvent) bool {
 // Root's Others.
 
 // NewBaseRoot initializes a Root object for a fresh Poset.
-func NewBaseRoot(creatorID int64) Root {
+func NewBaseRoot(creatorID uint32) *Root {
 	rootEvent := NewBaseRootEvent(creatorID)
-	res := Root{
+	res := &Root{
 		NextRound:  0,
 		SelfParent: &rootEvent,
 		Others:     map[string]*RootEvent{},

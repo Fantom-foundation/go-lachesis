@@ -8,9 +8,9 @@ import (
 
 // Infos struct for graph data (visualizer)
 type Infos struct {
-	ParticipantEvents map[string]map[string]poset.Event
-	Rounds            []poset.RoundCreated
-	Blocks            []poset.Block
+	ParticipantEvents map[string]map[string]*poset.Event
+	Rounds            []*poset.RoundCreated
+	Blocks            []*poset.Block
 }
 
 // Graph stuct to represent the DAG
@@ -19,8 +19,8 @@ type Graph struct {
 }
 
 // GetBlocks returns all blocks in the DAG
-func (g *Graph) GetBlocks() []poset.Block {
-	var res []poset.Block
+func (g *Graph) GetBlocks() []*poset.Block {
+	var res []*poset.Block
 	store := g.Node.core.poset.Store
 	blockIdx := store.LastBlockIndex() - 10
 
@@ -40,8 +40,8 @@ func (g *Graph) GetBlocks() []poset.Block {
 }
 
 // GetParticipantEvents returns all known events per participant
-func (g *Graph) GetParticipantEvents() map[string]map[string]poset.Event {
-	res := make(map[string]map[string]poset.Event)
+func (g *Graph) GetParticipantEvents() map[string]map[string]*poset.Event {
+	res := make(map[string]map[string]*poset.Event)
 
 	store := g.Node.core.poset.Store
 	repertoire := g.Node.core.poset.Store.RepertoireByPubKey()
@@ -64,7 +64,7 @@ func (g *Graph) GetParticipantEvents() map[string]map[string]poset.Event {
 			panic(err)
 		}
 
-		res[p.PubKeyHex] = make(map[string]poset.Event)
+		res[p.PubKeyHex] = make(map[string]*poset.Event)
 
 		selfParent := fmt.Sprintf("Root%d", p.ID)
 
@@ -73,7 +73,7 @@ func (g *Graph) GetParticipantEvents() map[string]map[string]poset.Event {
 
 		// Create and save the first Event
 		initialEvent := poset.NewEvent([][]byte{},
-			[]poset.InternalTransaction{},
+			[]*poset.InternalTransaction{},
 			[]poset.BlockSignature{},
 			[]string{}, []byte{}, 0, flagTable)
 
@@ -96,8 +96,8 @@ func (g *Graph) GetParticipantEvents() map[string]map[string]poset.Event {
 }
 
 // GetRounds returns the created rounds for the DAG
-func (g *Graph) GetRounds() []poset.RoundCreated {
-	var res []poset.RoundCreated
+func (g *Graph) GetRounds() []*poset.RoundCreated {
+	var res []*poset.RoundCreated
 
 	store := g.Node.core.poset.Store
 

@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
 )
 
 func TestInmemAppCalls(t *testing.T) {
@@ -24,7 +26,13 @@ func TestInmemAppCalls(t *testing.T) {
 		[]byte("tx 2"),
 		[]byte("tx 3"),
 	}
-	block := poset.NewBlock(0, 1, []byte{}, transactions)
+	block := poset.NewBlock(0, 1, []byte{},
+		[]*peers.Peer{},
+		transactions,
+		[]*poset.InternalTransaction{
+			poset.NewInternalTransaction(poset.TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+			poset.NewInternalTransaction(poset.TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+		})
 
 	t.Run("#1 Send tx", func(t *testing.T) {
 		asserter := assert.New(t)
@@ -46,7 +54,7 @@ func TestInmemAppCalls(t *testing.T) {
 	t.Run("#2 Commit block", func(t *testing.T) {
 		asserter := assert.New(t)
 
-		stateHash, err := proxy.CommitBlock(block)
+		stateHash, err := proxy.CommitBlock(*block)
 		if asserter.NoError(err) {
 			asserter.EqualValues(goldStateHash(), stateHash)
 			asserter.EqualValues(transactions, proxy.transactions)
@@ -91,7 +99,7 @@ func NewTestProxy(t *testing.T) *TestProxy {
 	return proxy
 }
 
-func (p *TestProxy) CommitHandler(block poset.Block) ([]byte, error) {
+func (p *TestProxy) CommitHandler(block poset.Block) (proto.Response, error) {
 	p.logger.Debug("CommitBlock")
 	p.transactions = append(p.transactions, block.Transactions()...)
 	return goldStateHash(), nil
@@ -104,11 +112,11 @@ func (p *TestProxy) SnapshotHandler(blockIndex int64) ([]byte, error) {
 
 func (p *TestProxy) RestoreHandler(snapshot []byte) ([]byte, error) {
 	p.logger.Debug("RestoreSnapshot")
-	return goldStateHash(), nil
+	return goldStateHash().StateHash, nil
 }
 
-func goldStateHash() []byte {
-	return []byte("statehash")
+func goldStateHash() proto.Response {
+	return proto.Response{StateHash: []byte("statehash")}
 }
 
 func goldSnapshot() []byte {

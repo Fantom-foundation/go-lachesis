@@ -47,15 +47,15 @@ func TestGrpcCalls(t *testing.T) {
 	t.Run("#2 Receive block", func(t *testing.T) {
 		asserter := assert.New(t)
 		block := poset.Block{}
-		gold := []byte("123456")
+		gold := proto.Response{StateHash: []byte("123456")}
 
 		go func() {
 			select {
 			case event := <-c.CommitCh():
 				asserter.Equal(block, event.Block)
 				event.RespChan <- proto.CommitResponse{
-					StateHash: gold,
-					Error:     nil,
+					Response: gold,
+					Error:    nil,
 				}
 			case <-time.After(timeout):
 				asserter.Fail(errTimeout)

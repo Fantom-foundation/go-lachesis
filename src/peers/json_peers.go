@@ -26,8 +26,8 @@ func NewJSONPeers(base string) *JSONPeers {
 	return store
 }
 
-// Peers implements the PeerStore interface.
-func (j *JSONPeers) Peers() (*Peers, error) {
+// PeerSet implements the PeerStore interface.
+func (j *JSONPeers) PeerSet() (*PeerSet, error) {
 	j.l.Lock()
 	defer j.l.Unlock()
 
@@ -46,19 +46,19 @@ func (j *JSONPeers) Peers() (*Peers, error) {
 	}
 
 	// Decode the peers
-	peerSet := make([]*Peer, len(buf))
+	peers := make([]*Peer, len(buf))
 	if len(buf) > 0 {
 		dec := json.NewDecoder(bytes.NewReader(buf))
-		if err := dec.Decode(&peerSet); err != nil {
+		if err := dec.Decode(&peers); err != nil {
 			return nil, err
 		}
 	}
 
-	if len(peerSet) == 0 {
+	if len(peers) == 0 {
 		return nil, fmt.Errorf("peers not found")
 	}
 
-	return NewPeersFromSlice(peerSet), nil
+	return NewPeerSet(peers), nil
 }
 
 // SetPeers implements the PeerStore interface.

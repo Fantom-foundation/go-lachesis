@@ -2,6 +2,7 @@ package poset
 
 import (
 	"fmt"
+	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"testing"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
@@ -12,10 +13,15 @@ func TestSignBlock(t *testing.T) {
 
 	block := NewBlock(0, 1,
 		[]byte("framehash"),
+		[]*peers.Peer{},
 		[][]byte{
 			[]byte("abc"),
 			[]byte("def"),
 			[]byte("ghi"),
+		},
+		[]*InternalTransaction{
+			NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+			NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
 		})
 
 	sig, err := block.Sign(privateKey)
@@ -38,10 +44,15 @@ func TestAppendSignature(t *testing.T) {
 
 	block := NewBlock(0, 1,
 		[]byte("framehash"),
+		[]*peers.Peer{},
 		[][]byte{
 			[]byte("abc"),
 			[]byte("def"),
 			[]byte("ghi"),
+		},
+		[]*InternalTransaction{
+			NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+			NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
 		})
 
 	sig, err := block.Sign(privateKey)

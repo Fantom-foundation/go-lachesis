@@ -10,7 +10,7 @@ import (
 // update the last peer it gossiped with and select the next peer
 // to gossip with
 //type PeerSelector interface {
-//	Peers() *peers.Peers
+//	PeerSet() *peers.PeerSet
 //	UpdateLast(peer string)
 //	Next() *peers.Peer
 //}
@@ -20,27 +20,27 @@ import (
 
 // SmartPeerSelector flag table based smart selection struct
 type SmartPeerSelector struct {
-	peers        *peers.Peers
+	peerSet      *peers.PeerSet
 	localAddr    string
 	last         string
 	GetFlagTable func() (map[string]int64, error)
 }
 
 // NewSmartPeerSelector creates a new smart peer selection struct
-func NewSmartPeerSelector(participants *peers.Peers,
+func NewSmartPeerSelector(peerSet *peers.PeerSet,
 	localAddr string,
 	GetFlagTable func() (map[string]int64, error)) *SmartPeerSelector {
 
 	return &SmartPeerSelector{
-		localAddr: localAddr,
-		peers:     participants,
+		localAddr:    localAddr,
+		peerSet:      peerSet,
 		GetFlagTable: GetFlagTable,
 	}
 }
 
 // Peers returns all known peers
-func (ps *SmartPeerSelector) Peers() *peers.Peers {
-	return ps.peers
+func (ps *SmartPeerSelector) PeerSet() *peers.PeerSet {
+	return ps.peerSet
 }
 
 // UpdateLast sets the last peer communicated with (avoid double talk)
@@ -49,9 +49,10 @@ func (ps *SmartPeerSelector) UpdateLast(peer string) {
 }
 // Next returns the next peer based on the flag table cost function selection
 func (ps *SmartPeerSelector) Next() *peers.Peer {
-	ps.peers.Lock()
-	defer ps.peers.Unlock()
-	selectablePeers := ps.peers.ToPeerByUsedSlice()//[1:]
+	// TODO remove lock?
+	//ps.peerSet.Lock()
+	//defer ps.peerSet.Unlock()
+	selectablePeers := ps.peerSet.ToPeerByUsedSlice() //[1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
 		if len(selectablePeers) > 1 {

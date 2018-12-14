@@ -34,8 +34,8 @@ func (f *Frame) Hash() ([]byte, error) {
 	return crypto.SHA256(hashBytes), nil
 }
 
-// RootListEquals compares the equality of two root lists
-func RootListEquals(this []*Root, that []*Root) bool {
+// RootMapEquals compares the equality of two root maps
+func RootMapEquals(this map[string]*Root, that map[string]*Root) bool {
 	if len(this) != len(that) {
 		return false
 	}
@@ -63,6 +63,6 @@ func EventListEquals(this []*EventMessage, that []*EventMessage) bool {
 // Equals compares the equality of two frames
 func (f *Frame) Equals(that *Frame) bool {
 	return f.Round == that.Round &&
-		RootListEquals(f.Roots, that.Roots) &&
+		RootMapEquals(f.Roots, that.Roots) &&
 		EventListEquals(f.Events, that.Events)
 }

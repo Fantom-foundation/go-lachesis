@@ -5,6 +5,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
 )
 
 // InmemAppProxy implements the AppProxy interface natively
@@ -41,12 +42,12 @@ func (p *InmemAppProxy) SubmitCh() chan []byte {
 
 // ProposePeerAdd propose to add a peer to the rest of the network
 func (p *InmemAppProxy) ProposePeerAdd(peer peers.Peer) {
-	p.submitInternalCh <- poset.NewInternalTransaction(poset.TransactionType_PEER_ADD, peer)
+	p.submitInternalCh <- *poset.NewInternalTransaction(poset.TransactionType_PEER_ADD, peer)
 }
 
 // ProposePeerRemove propose to remove a peer from the network
 func (p *InmemAppProxy) ProposePeerRemove(peer peers.Peer) {
-	p.submitInternalCh <- poset.NewInternalTransaction(poset.TransactionType_PEER_REMOVE, peer)
+	p.submitInternalCh <- *poset.NewInternalTransaction(poset.TransactionType_PEER_REMOVE, peer)
 }
 
 // SubmitInternalCh returns the channel of raw transactions
@@ -55,15 +56,16 @@ func (p *InmemAppProxy) SubmitInternalCh() chan poset.InternalTransaction {
 }
 
 // CommitBlock implements AppProxy interface method, calls handler
-func (p *InmemAppProxy) CommitBlock(block poset.Block) ([]byte, error) {
-	stateHash, err := p.handler.CommitHandler(block)
+func (p *InmemAppProxy) CommitBlock(block poset.Block) (proto.Response, error) {
+	response, err := p.handler.CommitHandler(block)
 	p.logger.WithFields(logrus.Fields{
 		"round_received": block.RoundReceived(),
 		"txs":            len(block.Transactions()),
-		"state_hash":     stateHash,
+		"itxs":           len(response.AcceptedInternalTransactions),
+		"state_hash":     response.StateHash,
 		"err":            err,
 	}).Debug("InmemAppProxy.CommitBlock")
-	return stateHash, err
+	return response, err
 }
 
 // GetSnapshot implements AppProxy interface method, calls handler
@@ -93,8 +95,8 @@ func (p *InmemAppProxy) Restore(snapshot []byte) error {
 
 // SubmitTx is called by the App to submit a transaction to Lachesis
 func (p *InmemAppProxy) SubmitTx(tx []byte) {
-	//have to make a copy, or the tx will be garbage collected and weird stuff
-	//happens in transaction pool
+	// have to make a copy, or the tx will be garbage collected and weird stuff
+	// happens in transaction pool
 	t := make([]byte, len(tx))
 	copy(t, tx)
 	p.submitCh <- t

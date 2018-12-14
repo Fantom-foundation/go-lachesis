@@ -107,14 +107,14 @@ var (
 )
 
 type TestNode struct {
-	ID     int
+	ID     uint32
 	Pub    []byte
 	PubHex string
 	Key    *ecdsa.PrivateKey
-	Events []Event
+	Events []*Event
 }
 
-func NewTestNode(key *ecdsa.PrivateKey, id int) TestNode {
+func NewTestNode(key *ecdsa.PrivateKey) TestNode {
 	pub := crypto.FromECDSAPub(&key.PublicKey)
 	ID := common.Hash32(pub)
 	node := TestNode{
@@ -122,13 +122,13 @@ func NewTestNode(key *ecdsa.PrivateKey, id int) TestNode {
 		Key:    key,
 		Pub:    pub,
 		PubHex: fmt.Sprintf("0x%X", pub),
-		Events: []Event{},
+		Events: []*Event{},
 	}
 	return node
 }
 
-func (node *TestNode) signAndAddEvent(event Event, name string,
-	index map[string]string, orderedEvents *[]Event) {
+func (node *TestNode) signAndAddEvent(event *Event, name string,
+	index map[string]string, orderedEvents *[]*Event) {
 	event.Sign(node.Key)
 	node.Events = append(node.Events, event)
 	index[name] = event.Hex()
@@ -164,10 +164,10 @@ func testLogger(t testing.TB) *logrus.Entry {
 /* Initialisation functions */
 
 func initPosetNodes(n int) ([]TestNode, map[string]string,
-	*[]Event, *peers.Peers) {
+	*[]*Event, *peers.PeerSet) {
 	var (
-		participants  = peers.NewPeers()
-		orderedEvents = &[]Event{}
+		tempPeers     = make([]*peers.Peer, 0)
+		orderedEvents = &[]*Event{}
 		nodes         = make([]TestNode, 0)
 		index         = make(map[string]string)
 		keys          = make(map[string]*ecdsa.PrivateKey)
@@ -177,19 +177,21 @@ func initPosetNodes(n int) ([]TestNode, map[string]string,
 		key, _ := crypto.GenerateECDSAKey()
 		pub := crypto.FromECDSAPub(&key.PublicKey)
 		pubHex := fmt.Sprintf("0x%X", pub)
-		participants.AddPeer(peers.NewPeer(pubHex, ""))
+		tempPeers = append(tempPeers, peers.NewPeer(pubHex, ""))
 		keys[pubHex] = key
 	}
 
-	for i, peer := range participants.ToPeerSlice() {
-		nodes = append(nodes, NewTestNode(keys[peer.PubKeyHex], i))
+	peerSet := peers.NewPeerSet(tempPeers)
+
+	for _, peer := range peerSet.ToPeerSlice() {
+		nodes = append(nodes, NewTestNode(keys[peer.PubKeyHex]))
 	}
 
-	return nodes, index, orderedEvents, participants
+	return nodes, index, orderedEvents, peerSet
 }
 
 func playEvents(plays []play, nodes []TestNode,
-	index map[string]string, orderedEvents *[]Event) {
+	index map[string]string, orderedEvents *[]*Event) {
 	for _, p := range plays {
 		ft := make(map[string]int64)
 		for k := range p.knownRoots {
@@ -205,21 +207,21 @@ func playEvents(plays []play, nodes []TestNode,
 	}
 }
 
-func createPoset(t testing.TB, db bool, orderedEvents *[]Event,
-	participants *peers.Peers,
+func createPoset(t testing.TB, db bool, orderedEvents *[]*Event,
+	peerSet *peers.PeerSet,
 	logger *logrus.Entry) *Poset {
 	var store Store
 	if db {
 		var err error
-		store, err = NewBadgerStore(participants, cacheSize, badgerDir)
+		store, err = NewBadgerStore(peerSet, cacheSize, badgerDir)
 		if err != nil {
 			t.Fatal("ERROR creating badger store", err)
 		}
 	} else {
-		store = NewInmemStore(participants, cacheSize)
+		store = NewInmemStore(peerSet, cacheSize)
 	}
 
-	poset := NewPoset(participants, store, nil, logger)
+	poset := NewPoset(peerSet, store, nil, logger)
 
 	for i, ev := range *orderedEvents {
 		if err := poset.InsertEvent(ev, true); err != nil {
@@ -231,7 +233,7 @@ func createPoset(t testing.TB, db bool, orderedEvents *[]Event,
 }
 
 func initPosetFull(t testing.TB, plays []play, db bool, n int,
-	logger *logrus.Entry) (*Poset, map[string]string, *[]Event, []TestNode) {
+	logger *logrus.Entry) (*Poset, map[string]string, *[]*Event, []TestNode) {
 	nodes, index, orderedEvents, participants := initPosetNodes(n)
 
 	// Needed to have sorted nodes based on participants hash32
@@ -377,7 +379,7 @@ func TestSelfDominator(t *testing.T) {
 		{e20, r2, true, false},
 		{e1, r1, true, false},
 		{e1, r0, false, false},
-		{r1, r0, false, false},
+		{r1, r0, false, true},
 	}
 
 	for _, exp := range expected {
@@ -466,17 +468,18 @@ self-parent sand yet they are both dominators of event e20
 func TestFork(t *testing.T) {
 	index := make(map[string]string)
 	var nodes []TestNode
-	participants := peers.NewPeers()
+	var tempPeers []*peers.Peer
 
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
-		node := NewTestNode(key, i)
+		node := NewTestNode(key)
 		nodes = append(nodes, node)
-		participants.AddPeer(peers.NewPeer(node.PubHex, ""))
+		tempPeers = append(tempPeers, peers.NewPeer(node.PubHex, ""))
 	}
 
-	store := NewInmemStore(participants, cacheSize)
-	poset := NewPoset(participants, store, nil, testLogger(t))
+	peerSet := peers.NewPeerSet(tempPeers)
+	store := NewInmemStore(peerSet, cacheSize)
+	poset := NewPoset(peerSet, store, nil, testLogger(t))
 
 	for i, node := range nodes {
 		event := NewEvent(nil, nil, nil, []string{"", ""}, node.Pub, 0, nil)
@@ -568,9 +571,9 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(e0Event.Message.SelfParentIndex == -1 &&
-			e0Event.Message.OtherParentCreatorID == -1 &&
+			e0Event.Message.OtherParentCreatorID == peers.PeerNIL &&
 			e0Event.Message.OtherParentIndex == -1 &&
-			e0Event.Message.CreatorID == p.Participants.ByPubKey[e0Event.GetCreator()].ID) {
+			e0Event.Message.CreatorID == p.PeerSet.ByPubKey[e0Event.GetCreator()].ID) {
 			t.Fatalf("Invalid wire info on %s", e0)
 		}
 
@@ -585,9 +588,9 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(e21Event.Message.SelfParentIndex == 1 &&
-			e21Event.Message.OtherParentCreatorID == p.Participants.ByPubKey[e10Event.GetCreator()].ID &&
+			e21Event.Message.OtherParentCreatorID == p.PeerSet.ByPubKey[e10Event.GetCreator()].ID &&
 			e21Event.Message.OtherParentIndex == 1 &&
-			e21Event.Message.CreatorID == p.Participants.ByPubKey[e21Event.GetCreator()].ID) {
+			e21Event.Message.CreatorID == p.PeerSet.ByPubKey[e21Event.GetCreator()].ID) {
 			t.Fatalf("Invalid wire info on %s", e21)
 		}
 
@@ -597,13 +600,13 @@ func TestInsertEvent(t *testing.T) {
 		}
 
 		if !(f1Event.Message.SelfParentIndex == 2 &&
-			f1Event.Message.OtherParentCreatorID == p.Participants.ByPubKey[e0Event.GetCreator()].ID &&
+			f1Event.Message.OtherParentCreatorID == p.PeerSet.ByPubKey[e0Event.GetCreator()].ID &&
 			f1Event.Message.OtherParentIndex == 2 &&
-			f1Event.Message.CreatorID == p.Participants.ByPubKey[f1Event.GetCreator()].ID) {
+			f1Event.Message.CreatorID == p.PeerSet.ByPubKey[f1Event.GetCreator()].ID) {
 			t.Fatalf("Invalid wire info on %s", f1)
 		}
 
-		e0CreatorID := strconv.FormatInt(p.Participants.ByPubKey[e0Event.GetCreator()].ID, 10)
+		e0CreatorID := fmt.Sprint(p.PeerSet.ByPubKey[e0Event.GetCreator()].ID)
 
 		type Hierarchy struct {
 			ev, selfDominator, dominator string
@@ -752,14 +755,14 @@ func TestClothos(t *testing.T) {
 		Clotho: true, Atropos: Trilean_UNDEFINED}
 	round0Clotho[index[e2]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(0, RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(0, &RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(0, ..) Err: %v", err)
 	}
 
 	round1Clotho := make(map[string]*RoundEvent)
 	round1Clotho[index[f1]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(1, RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(1, &RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(1, ..) Err: %v", err)
 	}
 
@@ -796,7 +799,7 @@ func TestRound(t *testing.T) {
 		Clotho: true, Atropos: Trilean_UNDEFINED}
 	round0Clotho[index[e2]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(0, RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(0, &RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(0, ..) Err: %v", err)
 	}
 
@@ -807,7 +810,7 @@ func TestRound(t *testing.T) {
 		Clotho: true, Atropos: Trilean_UNDEFINED}
 	round1Clotho[index[f1]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(1, RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(1, &RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(1, ..) Err: %v", err)
 	}
 
@@ -846,7 +849,7 @@ func TestRoundDiff(t *testing.T) {
 		Clotho: true, Atropos: Trilean_UNDEFINED}
 	round0Clotho[index[e2]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(0, RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(0, &RoundCreated{Message: RoundCreatedMessage{Events: round0Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(0, ..) Err: %v", err)
 	}
 
@@ -857,7 +860,7 @@ func TestRoundDiff(t *testing.T) {
 		Clotho: true, Atropos: Trilean_UNDEFINED}
 	round1Clotho[index[f1]] = &RoundEvent{
 		Clotho: true, Atropos: Trilean_UNDEFINED}
-	if err := p.Store.SetRoundCreated(1, RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
+	if err := p.Store.SetRoundCreated(1, &RoundCreated{Message: RoundCreatedMessage{Events: round1Clotho}}); err != nil {
 		t.Fatalf("Failed to SetRoundCreated(1, ..) Err: %v", err)
 	}
 
@@ -995,11 +998,11 @@ func TestCreateRoot(t *testing.T) {
 	p, index, _ := initRoundPoset(t)
 	p.DivideRounds()
 
-	participants := p.Participants.ToPeerSlice()
+	participants := p.PeerSet.ToPeerSlice()
 
 	baseRoot := NewBaseRoot(participants[0].ID)
 
-	expected := map[string]Root{
+	expected := map[string]*Root{
 		e0: baseRoot,
 		e02: {
 			NextRound: 1,
@@ -1095,7 +1098,7 @@ func initDentedPoset(t *testing.T) (*Poset, map[string]string) {
 func TestCreateRootBis(t *testing.T) {
 	p, index := initDentedPoset(t)
 
-	participants := p.Participants.ToPeerSlice()
+	participants := p.PeerSet.ToPeerSlice()
 
 	root := NewBaseRootEvent(participants[1].ID)
 	expected := map[string]Root{
@@ -1118,7 +1121,7 @@ func TestCreateRootBis(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error creating %s Root: %v", evh, err)
 		}
-		if !reflect.DeepEqual(expRoot, root) {
+		if !reflect.DeepEqual(expRoot, *root) {
 			t.Fatalf("%s Root should be %v, not %v", evh, expRoot, root)
 		}
 	}
@@ -1130,21 +1133,24 @@ e0  e1  e2    Block (0, 1)
 0   1    2
 */
 func initBlockPoset(t *testing.T) (*Poset, []TestNode, map[string]string) {
-	nodes, index, orderedEvents, participants := initPosetNodes(n)
+	nodes, index, orderedEvents, peerSet := initPosetNodes(n)
 
-	for i, peer := range participants.ToPeerSlice() {
-		event := NewEvent(nil, nil, nil, []string{rootSelfParent(peer.ID), ""},
-			nodes[i].Pub, 0, nil)
-		nodes[i].signAndAddEvent(event, fmt.Sprintf("e%d", i),
-			index, orderedEvents)
+	for i, peer := range peerSet.Peers {
+		event := NewEvent(nil, nil, nil, []string{rootSelfParent(peer.ID), ""}, nodes[i].Pub, 0, nil)
+		nodes[i].signAndAddEvent(event, fmt.Sprintf("e%d", i), index, orderedEvents)
 	}
 
-	poset := NewPoset(participants, NewInmemStore(participants, cacheSize),
+	poset := NewPoset(peerSet, NewInmemStore(peerSet, cacheSize),
 		nil, testLogger(t))
 
 	// create a block and signatures manually
 	block := NewBlock(0, 1, []byte("framehash"),
-		[][]byte{[]byte("block tx")})
+		peerSet.Peers,
+		[][]byte{[]byte("block tx")},
+		[]*InternalTransaction{
+			NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+			NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+		})
 	err := poset.Store.SetBlock(block)
 	if err != nil {
 		t.Fatalf("error setting block. Err: %s", err)
@@ -1235,7 +1241,11 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 			// The Event should be inserted
 			// The block signature is simply ignored
 
-			block1 := NewBlock(1, 2, []byte("framehash"), [][]byte{})
+			block1 := NewBlock(1, 2, []byte("framehash"), []*peers.Peer{}, [][]byte{},
+				[]*InternalTransaction{
+					NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
+					NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
+				})
 			sig, _ := block1.Sign(nodes[2].Key)
 
 			// unknown block
@@ -1275,7 +1285,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 			// wrong validator
 			// Validator should be same as Event creator (node 0)
 			key, _ := crypto.GenerateECDSAKey()
-			badNode := NewTestNode(key, 666)
+			badNode := NewTestNode(key)
 			badNodeSig, _ := block.Sign(badNode.Key)
 
 			pl := play{0, 2, s00, e21, e02, nil, []BlockSignature{badNodeSig},
@@ -1782,19 +1792,19 @@ func BenchmarkConsensus(b *testing.B) {
 func TestKnown(t *testing.T) {
 	p, _ := initConsensusPoset(false, t)
 
-	participants := p.Participants.ToPeerSlice()
+	participants := p.PeerSet.ToPeerSlice()
 
-	expectedKnown := map[int64]int64{
+	expectedKnown := map[uint32]int64{
 		participants[0].ID: 10,
 		participants[1].ID: 9,
 		participants[2].ID: 9,
 	}
 
 	known := p.Store.KnownEvents()
-	for i := range p.Participants.ToIDSlice() {
-		if l := known[int64(i)]; l != expectedKnown[int64(i)] {
+	for i := range p.PeerSet.ToIDSlice() {
+		if l := known[uint32(i)]; l != expectedKnown[uint32(i)] {
 			t.Fatalf("known event %d should be %d, not %d", i,
-				expectedKnown[int64(i)], l)
+				expectedKnown[uint32(i)], l)
 		}
 	}
 }
@@ -1802,7 +1812,7 @@ func TestKnown(t *testing.T) {
 func TestGetFrame(t *testing.T) {
 	p, index := initConsensusPoset(false, t)
 
-	participants := p.Participants.ToPeerSlice()
+	peers := p.PeerSet.ToPeerSlice()
 
 	p.DivideRounds()
 	p.DecideAtropos()
@@ -1810,10 +1820,10 @@ func TestGetFrame(t *testing.T) {
 	p.ProcessDecidedRounds()
 
 	t.Run("round 1", func(t *testing.T) {
-		expRoots := make([]Root, n)
-		expRoots[0] = NewBaseRoot(participants[0].ID)
-		expRoots[1] = NewBaseRoot(participants[1].ID)
-		expRoots[2] = NewBaseRoot(participants[2].ID)
+		expRoots := make(map[string]*Root, n)
+		expRoots[peers[0].PubKeyHex] = NewBaseRoot(peers[0].ID)
+		expRoots[peers[1].PubKeyHex] = NewBaseRoot(peers[1].ID)
+		expRoots[peers[2].PubKeyHex] = NewBaseRoot(peers[2].ID)
 
 		frame, err := p.GetFrame(1)
 		if err != nil {
@@ -1826,7 +1836,7 @@ func TestGetFrame(t *testing.T) {
 			compareOtherParents(t, r.Others, expRoot.Others, index)
 		}
 
-		var expEvents []Event
+		var expEvents []*Event
 
 		hashes := []string{index[e0], index[e1], index[e2], index[e10]}
 		for _, eh := range hashes {
@@ -1855,12 +1865,12 @@ func TestGetFrame(t *testing.T) {
 	})
 
 	t.Run("round 2", func(t *testing.T) {
-		expRoots := make([]Root, n)
-		expRoots[0] = Root{
+		expRoots := make(map[string]*Root, n)
+		expRoots[peers[0].PubKeyHex] = &Root{
 			NextRound: 1,
 			SelfParent: &RootEvent{
 				Hash:             index[e0],
-				CreatorID:        participants[0].ID,
+				CreatorID:        peers[0].ID,
 				Index:            0,
 				LamportTimestamp: 0,
 				Round:            0,
@@ -1868,18 +1878,18 @@ func TestGetFrame(t *testing.T) {
 			Others: map[string]*RootEvent{
 				index[f0]: {
 					Hash:             index[f2b],
-					CreatorID:        participants[2].ID,
+					CreatorID:        peers[2].ID,
 					Index:            2,
 					LamportTimestamp: 3,
 					Round:            1,
 				},
 			},
 		}
-		expRoots[1] = Root{
+		expRoots[peers[1].PubKeyHex] = &Root{
 			NextRound: 1,
 			SelfParent: &RootEvent{
 				Hash:             index[e10],
-				CreatorID:        participants[1].ID,
+				CreatorID:        peers[1].ID,
 				Index:            1,
 				LamportTimestamp: 1,
 				Round:            0,
@@ -1887,18 +1897,18 @@ func TestGetFrame(t *testing.T) {
 			Others: map[string]*RootEvent{
 				index[f1]: {
 					Hash:             index[f0],
-					CreatorID:        participants[0].ID,
+					CreatorID:        peers[0].ID,
 					Index:            1,
 					LamportTimestamp: 4,
 					Round:            1,
 				},
 			},
 		}
-		expRoots[2] = Root{
+		expRoots[peers[2].PubKeyHex] = &Root{
 			NextRound: 1,
 			SelfParent: &RootEvent{
 				Hash:             index[e2],
-				CreatorID:        participants[2].ID,
+				CreatorID:        peers[2].ID,
 				Index:            0,
 				LamportTimestamp: 0,
 				Round:            0,
@@ -1906,7 +1916,7 @@ func TestGetFrame(t *testing.T) {
 			Others: map[string]*RootEvent{
 				index[f2]: {
 					Hash:             index[e10],
-					CreatorID:        participants[1].ID,
+					CreatorID:        peers[1].ID,
 					Index:            1,
 					LamportTimestamp: 1,
 					Round:            0,
@@ -1931,7 +1941,7 @@ func TestGetFrame(t *testing.T) {
 			index[f0],
 			index[f1],
 		}
-		var expEvents []Event
+		var expEvents []*Event
 		for _, eh := range expectedEventsHashes {
 			e, err := p.Store.GetEventBlock(eh)
 			if err != nil {
@@ -1976,7 +1986,7 @@ func TestGetFrame(t *testing.T) {
 func TestResetFromFrame(t *testing.T) {
 	p, index := initConsensusPoset(false, t)
 
-	participants := p.Participants.ToPeerSlice()
+	participants := p.PeerSet.ToPeerSlice()
 
 	p.DivideRounds()
 	p.DecideAtropos()
@@ -1999,11 +2009,11 @@ func TestResetFromFrame(t *testing.T) {
 	unmarshalledFrame := new(Frame)
 	unmarshalledFrame.ProtoUnmarshal(marshalledFrame)
 
-	p2 := NewPoset(p.Participants,
-		NewInmemStore(p.Participants, cacheSize),
+	p2 := NewPoset(p.PeerSet,
+		NewInmemStore(p.PeerSet, cacheSize),
 		nil,
 		testLogger(t))
-	err = p2.Reset(block, *unmarshalledFrame)
+	err = p2.Reset(block, unmarshalledFrame)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -2023,14 +2033,14 @@ func TestResetFromFrame(t *testing.T) {
 	*/
 
 	// Test Known
-	expectedKnown := map[int64]int64{
+	expectedKnown := map[uint32]int64{
 		participants[0].ID: 2,
 		participants[1].ID: 4,
 		participants[2].ID: 3,
 	}
 
 	known := p2.Store.KnownEvents()
-	for _, peer := range p2.Participants.ByID {
+	for _, peer := range p2.PeerSet.ByID {
 		if l := known[peer.ID]; l != expectedKnown[peer.ID] {
 			t.Fatalf("Known[%d] should be %d, not %d",
 				peer.ID, expectedKnown[peer.ID], l)
@@ -2064,7 +2074,7 @@ func TestResetFromFrame(t *testing.T) {
 		// check event rounds and lamport timestamps
 		for _, em := range frame.Events {
 			e := em.ToEvent()
-			ev := &e
+			ev := e
 			p2r, err := p2.round(ev.Hex())
 			if err != nil {
 				t.Fatalf("Error computing %s Round: %d",
@@ -2118,7 +2128,7 @@ func TestResetFromFrame(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			var events []Event
+			var events []*Event
 			for _, e := range round.RoundEvents() {
 				ev, err := p.Store.GetEventBlock(e)
 				if err != nil {
@@ -2134,7 +2144,7 @@ func TestResetFromFrame(t *testing.T) {
 				marshalledEv, _ := ev.ProtoMarshal()
 				unmarshalledEv := new(Event)
 				unmarshalledEv.ProtoUnmarshal(marshalledEv)
-				p2.InsertEvent(*unmarshalledEv, true)
+				p2.InsertEvent(unmarshalledEv, true)
 			}
 		}
 
@@ -2183,10 +2193,11 @@ func TestBootstrap(t *testing.T) {
 	// Now we want to create a new Poset based on the database of the previous
 	// Poset and see if we can boostrap it to the same state.
 	recycledStore, err := LoadBadgerStore(cacheSize, badgerDir)
+	peerSet, err := recycledStore.GetLastPeerSet()
 	if err != nil {
 		t.Fatal(err)
 	}
-	np := NewPoset(recycledStore.participants,
+	np := NewPoset(peerSet,
 		recycledStore,
 		nil,
 		logrus.New().WithField("id", "bootstrapped"))
@@ -2492,7 +2503,7 @@ func TestFunkyPosetBlocks(t *testing.T) {
 func TestFunkyPosetFrames(t *testing.T) {
 	p, index := initFunkyPoset(t, common.NewTestLogger(t), true)
 
-	participants := p.Participants.ToPeerSlice()
+	peers := p.PeerSet.ToPeerSlice()
 
 	if err := p.DivideRounds(); err != nil {
 		t.Fatal(err)
@@ -2516,185 +2527,185 @@ func TestFunkyPosetFrames(t *testing.T) {
 		frame, err := p.GetFrame(block.RoundReceived())
 		for k, em := range frame.Events {
 			e := em.ToEvent()
-			ev := &e
+			ev := e
 			r, _ := p.round(ev.Hex())
 			t.Logf("frame %d events %d: %s, round %d",
 				frame.Round, k, getName(index, ev.Hex()), r)
 		}
 		for k, r := range frame.Roots {
-			t.Logf("frame %d root %d: next round %d, self parent: %v,"+
+			t.Logf("frame %d root %s: next round %d, self parent: %v,"+
 				" others: %v", frame.Round, k, r.NextRound,
 				r.SelfParent, r.Others)
 		}
 	}
 
-	expFrameRoots := map[int64][]Root{
+	expFrameRoots := map[int64]map[string]*Root{
 		1: {
-			NewBaseRoot(participants[0].ID),
-			NewBaseRoot(participants[1].ID),
-			NewBaseRoot(participants[2].ID),
-			NewBaseRoot(participants[3].ID),
+			peers[0].PubKeyHex: NewBaseRoot(peers[0].ID),
+			peers[1].PubKeyHex: NewBaseRoot(peers[1].ID),
+			peers[2].PubKeyHex: NewBaseRoot(peers[2].ID),
+			peers[3].PubKeyHex: NewBaseRoot(peers[3].ID),
 		},
 		2: {
-			NewBaseRoot(participants[0].ID),
-			{
+			peers[0].PubKeyHex: NewBaseRoot(peers[0].ID),
+			peers[1].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w01],
-					CreatorID: participants[1].ID, Index: 0,
+					CreatorID: peers[1].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[a12]: {Hash: index[a23],
-						CreatorID: participants[2].ID, Index: 1,
+						CreatorID: peers[2].ID, Index: 1,
 						LamportTimestamp: 1, Round: 0},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[a23],
-					CreatorID: participants[2].ID, Index: 1,
+					CreatorID: peers[2].ID, Index: 1,
 					LamportTimestamp: 1, Round: 0},
 				Others: map[string]*RootEvent{
 					index[a21]: {Hash: index[a12],
-						CreatorID: participants[1].ID, Index: 1,
+						CreatorID: peers[1].ID, Index: 1,
 						LamportTimestamp: 2, Round: 1},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w03],
-					CreatorID: participants[3].ID, Index: 0,
+					CreatorID: peers[3].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[w13]: {Hash: index[a21],
-						CreatorID: participants[2].ID, Index: 2,
+						CreatorID: peers[2].ID, Index: 2,
 						LamportTimestamp: 3, Round: 1},
 				},
 			},
 		},
 		3: {
-			NewBaseRoot(participants[0].ID),
-			{
+			peers[0].PubKeyHex: NewBaseRoot(peers[0].ID),
+			peers[1].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[a12],
-					CreatorID: participants[1].ID, Index: 1,
+					CreatorID: peers[1].ID, Index: 1,
 					LamportTimestamp: 2, Round: 1},
 				Others: map[string]*RootEvent{
 					index[a10]: {Hash: index[a00],
-						CreatorID: participants[0].ID, Index: 1,
+						CreatorID: peers[0].ID, Index: 1,
 						LamportTimestamp: 1, Round: 0},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[a21],
-					CreatorID: participants[2].ID, Index: 2,
+					CreatorID: peers[2].ID, Index: 2,
 					LamportTimestamp: 3, Round: 1},
 				Others: map[string]*RootEvent{
 					index[w12]: {Hash: index[w13],
-						CreatorID: participants[3].ID, Index: 1,
+						CreatorID: peers[3].ID, Index: 1,
 						LamportTimestamp: 4, Round: 1},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w03],
-					CreatorID: participants[3].ID, Index: 0,
+					CreatorID: peers[3].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[w13]: {Hash: index[a21],
-						CreatorID: participants[2].ID, Index: 2,
+						CreatorID: peers[2].ID, Index: 2,
 						LamportTimestamp: 3, Round: 1},
 				},
 			},
 		},
 		4: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[a00],
-					CreatorID: participants[0].ID, Index: 1,
+					CreatorID: peers[0].ID, Index: 1,
 					LamportTimestamp: 1, Round: 0},
 				Others: map[string]*RootEvent{
 					index[w10]: {Hash: index[w11],
-						CreatorID: participants[1].ID, Index: 3,
+						CreatorID: peers[1].ID, Index: 3,
 						LamportTimestamp: 6, Round: 2},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 3,
 				SelfParent: &RootEvent{Hash: index[w11],
-					CreatorID: participants[1].ID, Index: 3,
+					CreatorID: peers[1].ID, Index: 3,
 					LamportTimestamp: 6, Round: 2},
 				Others: map[string]*RootEvent{
 					index[w21]: {Hash: index[w23],
-						CreatorID: participants[3].ID, Index: 2,
+						CreatorID: peers[3].ID, Index: 2,
 						LamportTimestamp: 8, Round: 2},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w12],
-					CreatorID: participants[2].ID, Index: 3,
+					CreatorID: peers[2].ID, Index: 3,
 					LamportTimestamp: 5, Round: 2},
 				Others: map[string]*RootEvent{
 					index[b21]: {Hash: index[w11],
-						CreatorID: participants[1].ID, Index: 3,
+						CreatorID: peers[1].ID, Index: 3,
 						LamportTimestamp: 6, Round: 2},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w13],
-					CreatorID: participants[3].ID, Index: 1,
+					CreatorID: peers[3].ID, Index: 1,
 					LamportTimestamp: 4, Round: 1},
 				Others: map[string]*RootEvent{
 					index[w23]: {Hash: index[b21],
-						CreatorID: participants[2].ID, Index: 4,
+						CreatorID: peers[2].ID, Index: 4,
 						LamportTimestamp: 7, Round: 2},
 				},
 			},
 		},
 		5: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[b00],
-					CreatorID: participants[0].ID, Index: 3,
+					CreatorID: peers[0].ID, Index: 3,
 					LamportTimestamp: 8, Round: 3},
 				Others: map[string]*RootEvent{
 					index[w20]: {Hash: index[w22],
-						CreatorID: participants[2].ID, Index: 5,
+						CreatorID: peers[2].ID, Index: 5,
 						LamportTimestamp: 11, Round: 3},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[c10],
-					CreatorID: participants[1].ID, Index: 5,
+					CreatorID: peers[1].ID, Index: 5,
 					LamportTimestamp: 10, Round: 3},
 				Others: map[string]*RootEvent{
 					index[w31]: {Hash: index[w20],
-						CreatorID: participants[0].ID, Index: 4,
+						CreatorID: peers[0].ID, Index: 4,
 						LamportTimestamp: 12, Round: 4},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[w22],
-					CreatorID: participants[2].ID, Index: 5,
+					CreatorID: peers[2].ID, Index: 5,
 					LamportTimestamp: 11, Round: 3},
 				Others: map[string]*RootEvent{
 					index[w32]: {Hash: index[w31],
-						CreatorID: participants[1].ID, Index: 6,
+						CreatorID: peers[1].ID, Index: 6,
 						LamportTimestamp: 13, Round: 4},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w13],
-					CreatorID: participants[3].ID, Index: 1,
+					CreatorID: peers[3].ID, Index: 1,
 					LamportTimestamp: 4, Round: 1},
 				Others: map[string]*RootEvent{
 					index[w23]: {Hash: index[b21],
-						CreatorID: participants[2].ID, Index: 4,
+						CreatorID: peers[2].ID, Index: 4,
 						LamportTimestamp: 7, Round: 2},
 				},
 			},
@@ -2713,7 +2724,7 @@ func TestFunkyPosetFrames(t *testing.T) {
 		}
 
 		for k, r := range frame.Roots {
-			compareRoots(t, r, &expFrameRoots[frame.Round][k], index)
+			compareRoots(t, r, expFrameRoots[frame.Round][k], index)
 		}
 	}
 }
@@ -2743,11 +2754,11 @@ func TestFunkyPosetReset(t *testing.T) {
 		unmarshalledFrame := new(Frame)
 		unmarshalledFrame.ProtoUnmarshal(marshalledFrame)
 
-		p2 := NewPoset(p.Participants,
-			NewInmemStore(p.Participants, cacheSize),
+		p2 := NewPoset(p.PeerSet,
+			NewInmemStore(p.PeerSet, cacheSize),
 			nil,
 			testLogger(t))
-		err = p2.Reset(block, *unmarshalledFrame)
+		err = p2.Reset(block, unmarshalledFrame)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2769,7 +2780,7 @@ func TestFunkyPosetReset(t *testing.T) {
 				t.Fatalf("Reading WireInfo for %s: %s",
 					getName(index, diff[i].Hex()), err)
 			}
-			err = p2.InsertEvent(*ev, false)
+			err = p2.InsertEvent(ev, false)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -2910,7 +2921,7 @@ func initSparsePoset(
 func TestSparsePosetFrames(t *testing.T) {
 	p, index := initSparsePoset(t, common.NewTestLogger(t))
 
-	participants := p.Participants.ToPeerSlice()
+	peers := p.PeerSet.ToPeerSlice()
 
 	if err := p.DivideRounds(); err != nil {
 		t.Fatal(err)
@@ -2953,189 +2964,189 @@ func TestSparsePosetFrames(t *testing.T) {
 				ops = append(ops, getName(index, k))
 			}
 
-			t.Logf("frame %d root %d: self parent index %s:"+
+			t.Logf("frame %d root %s: self parent index %s:"+
 				" %v, others indexes %s: %v", frame.Round, k, sp,
 				r.SelfParent, ops, r.Others)
 		}
 	}
 
-	expectedFrameRoots := map[int64][]Root{
+	expectedFrameRoots := map[int64]map[string]*Root{
 		1: {
-			NewBaseRoot(participants[0].ID),
-			NewBaseRoot(participants[1].ID),
-			NewBaseRoot(participants[2].ID),
-			NewBaseRoot(participants[3].ID),
+			peers[0].PubKeyHex: NewBaseRoot(peers[0].ID),
+			peers[1].PubKeyHex: NewBaseRoot(peers[1].ID),
+			peers[2].PubKeyHex: NewBaseRoot(peers[2].ID),
+			peers[3].PubKeyHex: NewBaseRoot(peers[3].ID),
 		},
 		2: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w00],
-					CreatorID: participants[0].ID, Index: 0,
+					CreatorID: peers[0].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[w10]: {Hash: index[e32],
-						CreatorID: participants[3].ID, Index: 1,
+						CreatorID: peers[3].ID, Index: 1,
 						LamportTimestamp: 3, Round: 1},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 0,
 				SelfParent: &RootEvent{Hash: index[w01],
-					CreatorID: participants[1].ID, Index: 0,
+					CreatorID: peers[1].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[e10]: {Hash: index[w00],
-						CreatorID: participants[0].ID, Index: 0,
+						CreatorID: peers[0].ID, Index: 0,
 						LamportTimestamp: 0, Round: 0},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w02],
-					CreatorID: participants[2].ID, Index: 0,
+					CreatorID: peers[2].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[e21]: {Hash: index[e10],
-						CreatorID: participants[1].ID, Index: 1,
+						CreatorID: peers[1].ID, Index: 1,
 						LamportTimestamp: 1, Round: 0},
 				},
 			},
-			NewBaseRoot(participants[3].ID),
+			peers[3].PubKeyHex: NewBaseRoot(peers[3].ID),
 		},
 		3: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w10],
-					CreatorID: participants[0].ID, Index: 1,
+					CreatorID: peers[0].ID, Index: 1,
 					LamportTimestamp: 4, Round: 1},
 				Others: map[string]*RootEvent{
 					index[f01]: {Hash: index[w11],
-						CreatorID: participants[1].ID, Index: 2,
+						CreatorID: peers[1].ID, Index: 2,
 						LamportTimestamp: 5, Round: 2},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[e10],
-					CreatorID: participants[1].ID, Index: 1,
+					CreatorID: peers[1].ID, Index: 1,
 					LamportTimestamp: 1, Round: 0},
 				Others: map[string]*RootEvent{
 					index[w11]: {Hash: index[w10],
-						CreatorID: participants[0].ID, Index: 1,
+						CreatorID: peers[0].ID, Index: 1,
 						LamportTimestamp: 4, Round: 1},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[e21],
-					CreatorID: participants[2].ID, Index: 1,
+					CreatorID: peers[2].ID, Index: 1,
 					LamportTimestamp: 2, Round: 1},
 				Others: map[string]*RootEvent{
 					index[w12]: {Hash: index[f01],
-						CreatorID: participants[0].ID, Index: 2,
+						CreatorID: peers[0].ID, Index: 2,
 						LamportTimestamp: 6, Round: 2},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 1,
 				SelfParent: &RootEvent{Hash: index[w03],
-					CreatorID: participants[3].ID, Index: 0,
+					CreatorID: peers[3].ID, Index: 0,
 					LamportTimestamp: 0, Round: 0},
 				Others: map[string]*RootEvent{
 					index[e32]: {Hash: index[e21],
-						CreatorID: participants[2].ID, Index: 1,
+						CreatorID: peers[2].ID, Index: 1,
 						LamportTimestamp: 2, Round: 1},
 				},
 			},
 		},
 		4: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w10],
-					CreatorID: participants[0].ID, Index: 1,
+					CreatorID: peers[0].ID, Index: 1,
 					LamportTimestamp: 4, Round: 1},
 				Others: map[string]*RootEvent{
 					index[f01]: {Hash: index[w11],
-						CreatorID: participants[1].ID, Index: 2,
+						CreatorID: peers[1].ID, Index: 2,
 						LamportTimestamp: 5, Round: 2},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 3,
 				SelfParent: &RootEvent{Hash: index[w11],
-					CreatorID: participants[1].ID, Index: 2,
+					CreatorID: peers[1].ID, Index: 2,
 					LamportTimestamp: 5, Round: 2},
 				Others: map[string]*RootEvent{
 					index[w21]: {Hash: index[w13],
-						CreatorID: participants[3].ID, Index: 2,
+						CreatorID: peers[3].ID, Index: 2,
 						LamportTimestamp: 8, Round: 3},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 3,
 				SelfParent: &RootEvent{Hash: index[w12],
-					CreatorID: participants[2].ID, Index: 2,
+					CreatorID: peers[2].ID, Index: 2,
 					LamportTimestamp: 7, Round: 2},
 				Others: map[string]*RootEvent{
 					index[w22]: {Hash: index[w21],
-						CreatorID: participants[1].ID, Index: 3,
+						CreatorID: peers[1].ID, Index: 3,
 						LamportTimestamp: 9, Round: 3},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 3,
 				SelfParent: &RootEvent{Hash: index[e32],
-					CreatorID: participants[3].ID, Index: 1,
+					CreatorID: peers[3].ID, Index: 1,
 					LamportTimestamp: 3, Round: 1},
 				Others: map[string]*RootEvent{
 					index[w13]: {Hash: index[w12],
-						CreatorID: participants[2].ID, Index: 2,
+						CreatorID: peers[2].ID, Index: 2,
 						LamportTimestamp: 7, Round: 2},
 				},
 			},
 		},
 		5: {
-			{
+			peers[0].PubKeyHex: {
 				NextRound: 2,
 				SelfParent: &RootEvent{Hash: index[w10],
-					CreatorID: participants[0].ID, Index: 1,
+					CreatorID: peers[0].ID, Index: 1,
 					LamportTimestamp: 4, Round: 1},
 				Others: map[string]*RootEvent{
 					index[f01]: {Hash: index[w11],
-						CreatorID: participants[1].ID, Index: 2,
+						CreatorID: peers[1].ID, Index: 2,
 						LamportTimestamp: 5, Round: 2},
 				},
 			},
-			{
+			peers[1].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[w21],
-					CreatorID: participants[1].ID, Index: 3,
+					CreatorID: peers[1].ID, Index: 3,
 					LamportTimestamp: 9, Round: 3},
 				Others: map[string]*RootEvent{
 					index[g13]: {Hash: index[w23],
-						CreatorID: participants[3].ID, Index: 3,
+						CreatorID: peers[3].ID, Index: 3,
 						LamportTimestamp: 11, Round: 4},
 				},
 			},
-			{
+			peers[2].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[w22],
-					CreatorID: participants[2].ID, Index: 3,
+					CreatorID: peers[2].ID, Index: 3,
 					LamportTimestamp: 10, Round: 3},
 				Others: map[string]*RootEvent{
 					index[w32]: {Hash: index[g13],
-						CreatorID: participants[1].ID, Index: 4,
+						CreatorID: peers[1].ID, Index: 4,
 						LamportTimestamp: 12, Round: 4},
 				},
 			},
-			{
+			peers[3].PubKeyHex: {
 				NextRound: 4,
 				SelfParent: &RootEvent{Hash: index[w13],
-					CreatorID: participants[3].ID, Index: 2,
+					CreatorID: peers[3].ID, Index: 2,
 					LamportTimestamp: 8, Round: 3},
 				Others: map[string]*RootEvent{
 					index[w23]: {Hash: index[w22],
-						CreatorID: participants[2].ID, Index: 3,
+						CreatorID: peers[2].ID, Index: 3,
 						LamportTimestamp: 10, Round: 3},
 				},
 			},
@@ -3154,7 +3165,7 @@ func TestSparsePosetFrames(t *testing.T) {
 		}
 
 		for k, r := range frame.Roots {
-			compareRoots(t, r, &expectedFrameRoots[frame.Round][k], index)
+			compareRoots(t, r, expectedFrameRoots[frame.Round][k], index)
 		}
 	}
 }
@@ -3184,11 +3195,11 @@ func TestSparsePosetReset(t *testing.T) {
 		unmarshalledFrame := new(Frame)
 		unmarshalledFrame.ProtoUnmarshal(marshalledFrame)
 
-		p2 := NewPoset(p.Participants,
-			NewInmemStore(p.Participants, cacheSize),
+		p2 := NewPoset(p.PeerSet,
+			NewInmemStore(p.PeerSet, cacheSize),
 			nil,
 			testLogger(t))
-		err = p2.Reset(block, *unmarshalledFrame)
+		err = p2.Reset(block, unmarshalledFrame)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -3215,7 +3226,7 @@ func TestSparsePosetReset(t *testing.T) {
 				t.Fatalf("ReadWireInfo(%s): %s", eventName, err)
 			}
 			compareEventMessages(t, ev.Message, diff[i].Message, index)
-			err = p2.InsertEvent(*ev, false)
+			err = p2.InsertEvent(ev, false)
 			if err != nil {
 				t.Fatalf("InsertEvent(%s): %s", eventName, err)
 			}
@@ -3263,10 +3274,10 @@ func compareRoundClothos(p, p2 *Poset, index map[string]string, round int64, che
 
 }
 
-func getDiff(p *Poset, known map[int64]int64, t *testing.T) []Event {
-	var diff []Event
+func getDiff(p *Poset, known map[uint32]int64, t *testing.T) []*Event {
+	var diff []*Event
 	for id, ct := range known {
-		pk := p.Participants.ByID[id].PubKeyHex
+		pk := p.PeerSet.ByID[id].PubKeyHex
 		// get participant Events with index > ct
 		participantEvents, err := p.Store.ParticipantEvents(pk, ct)
 		if err != nil {

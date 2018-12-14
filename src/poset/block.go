@@ -5,15 +5,16 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"github.com/Fantom-foundation/go-lachesis/src/peers"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/golang/protobuf/proto"
 )
 
-//StateHash is the hash of the current state of transactions, if you have one
-//node talking to an app, and another set of nodes talking to inmem, the
-//stateHash will be different
-//statehash should be ignored for validator checking
+// StateHash is the hash of the current state of transactions, if you have one
+// node talking to an app, and another set of nodes talking to inmem, the
+// stateHash will be different
+// statehash should be ignored for validator checking
 
 // ProtoMarshal json encoding of body only
 func (bb *BlockBody) ProtoMarshal() ([]byte, error) {
@@ -39,7 +40,7 @@ func (bb *BlockBody) Hash() ([]byte, error) {
 	return crypto.SHA256(hashBytes), nil
 }
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 // ValidatorHex returns the Hex ID of a validator for this block
 func (bs *BlockSignature) ValidatorHex() string {
@@ -76,29 +77,37 @@ func (bs *BlockSignature) Equals(that *BlockSignature) bool {
 		bs.Signature == that.Signature
 }
 
-//------------------------------------------------------------------------------
+// ------------------------------------------------------------------------------
 
 // NewBlockFromFrame creates a new block from the given frame
-func NewBlockFromFrame(blockIndex int64, frame Frame) (Block, error) {
+func NewBlockFromFrame(blockIndex int64, frame *Frame) (*Block, error) {
 	frameHash, err := frame.Hash()
 	if err != nil {
-		return Block{}, err
+		return nil, err
 	}
 	var transactions [][]byte
+	var internalTransactions []*InternalTransaction
 	for _, e := range frame.Events {
 		transactions = append(transactions, e.Body.Transactions...)
+		internalTransactions = append(internalTransactions, e.Body.InternalTransactions...)
 	}
-	return NewBlock(blockIndex, frame.Round, frameHash, transactions), nil
+
+	return NewBlock(blockIndex, frame.Round, frameHash, frame.Peers, transactions, internalTransactions), nil
 }
 
 // NewBlock creates a new empty block
-func NewBlock(blockIndex, roundReceived int64, frameHash []byte, txs [][]byte) Block {
+func NewBlock(blockIndex, roundReceived int64, frameHash []byte, peerSlice []*peers.Peer, txs [][]byte, itxs []*InternalTransaction) *Block {
+	peerSet := peers.NewPeerSet(peerSlice)
+
 	body := BlockBody{
-		Index:         blockIndex,
-		RoundReceived: roundReceived,
-		Transactions:  txs,
+		Index:                blockIndex,
+		RoundReceived:        roundReceived,
+		Transactions:         txs,
+		InternalTransactions: itxs,
+		PeerSet:              peerSet,
 	}
-	return Block{
+
+	return &Block{
 		Body:       &body,
 		FrameHash:  frameHash,
 		Signatures: make(map[string]string),
@@ -113,6 +122,10 @@ func (b *Block) Index() int64 {
 // Transactions returns the transactions in a block
 func (b *Block) Transactions() [][]byte {
 	return b.Body.Transactions
+}
+
+func (b *Block) InternalTransactions() []*InternalTransaction {
+	return b.Body.InternalTransactions
 }
 
 // RoundReceived returns the round in which the block was received

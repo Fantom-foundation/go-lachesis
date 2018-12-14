@@ -8,6 +8,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
 )
 
 /*
@@ -46,17 +47,22 @@ func NewState(logger *logrus.Logger) *State {
  */
 
 // CommitHandler triggers on block received
-func (s *State) CommitHandler(block poset.Block) ([]byte, error) {
+func (s *State) CommitHandler(block poset.Block) (proto.Response, error) {
 	s.locker.Lock()
 	defer s.locker.Unlock()
 	s.logger.WithField("block", block).Debug("CommitBlock")
 
 	err := s.commit(block)
 	if err != nil {
-		return nil, err
+		return proto.Response{}, err
 	}
 	s.logger.WithField("stateHash", s.stateHash).Debug("CommitBlock Answer")
-	return s.stateHash, nil
+	response := proto.Response{
+		StateHash:                    s.stateHash,
+		AcceptedInternalTransactions: block.InternalTransactions(),
+	}
+
+	return response, nil
 }
 
 // SnapshotHandler triggers on snapshot restore

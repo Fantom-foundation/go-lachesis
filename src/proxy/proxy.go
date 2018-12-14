@@ -10,7 +10,7 @@ import (
 type AppProxy interface {
 	SubmitCh() chan []byte
 	SubmitInternalCh() chan poset.InternalTransaction
-	CommitBlock(block poset.Block) ([]byte, error)
+	CommitBlock(block poset.Block) (proto.Response, error)
 	GetSnapshot(blockIndex int64) ([]byte, error)
 	Restore(snapshot []byte) error
 }

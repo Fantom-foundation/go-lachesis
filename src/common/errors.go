@@ -22,6 +22,7 @@ const (
 	Empty
 	// KeyAlreadyExists key already exists in the store
 	KeyAlreadyExists
+	NoPeerSet
 )
 
 // StoreErr storage error
@@ -57,6 +58,10 @@ func (e StoreErr) Error() string {
 		m = "Unknown Participant"
 	case Empty:
 		m = "Empty"
+	case KeyAlreadyExists:
+		m = "Key Already Exists"
+	case NoPeerSet:
+		m = "No PeerSet"
 	}
 
 	return fmt.Sprintf("%s, %s, %s", e.dataType, e.key, m)

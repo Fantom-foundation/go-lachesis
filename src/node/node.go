@@ -22,7 +22,7 @@ type Node struct {
 	conf   *Config
 	logger *logrus.Entry
 
-	id       int64
+	id       uint32
 	core     *Core
 	coreLock sync.Mutex
 
@@ -55,24 +55,24 @@ type Node struct {
 
 // NewNode create a new node struct
 func NewNode(conf *Config,
-	id int64,
+	id uint32,
 	key *ecdsa.PrivateKey,
-	participants *peers.Peers,
+	peerSet *peers.PeerSet,
 	store poset.Store,
 	trans net.Transport,
 	proxy proxy.AppProxy) *Node {
 
 	localAddr := trans.LocalAddr()
 
-	pmap, _ := store.Participants()
+	pmap, _ := store.GetLastPeerSet()
 
 	commitCh := make(chan poset.Block, 400)
 	core := NewCore(id, key, pmap, store, commitCh, conf.Logger)
 
 	pubKey := core.HexID()
 
-	// peerSelector := NewRandomPeerSelector(participants, localAddr)
-	peerSelector := NewSmartPeerSelector(participants, pubKey,
+	// peerSelector := NewRandomPeerSelector(peerSet, localAddr)
+	peerSelector := NewSmartPeerSelector(peerSet, pubKey,
 		core.poset.GetFlagTableOfRandomUndeterminedEvent)
 
 	node := Node{
@@ -110,7 +110,7 @@ func NewNode(conf *Config,
 // Init initializes all the node processes
 func (n *Node) Init() error {
 	var peerAddresses []string
-	for _, p := range n.peerSelector.Peers().ToPeerSlice() {
+	for _, p := range n.peerSelector.PeerSet().Peers {
 		peerAddresses = append(peerAddresses, p.NetAddr)
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
@@ -187,7 +187,7 @@ func (n *Node) doBackgroundWork() {
 			n.resetTimer()
 		case t := <-n.submitInternalCh:
 			n.logger.Debug("Adding Internal Transaction")
-			n.addInternalTransaction(t)
+			n.addInternalTransaction(&t)
 			n.resetTimer()
 		case block := <-n.commitCh:
 			n.logger.WithFields(logrus.Fields{
@@ -353,8 +353,8 @@ func (n *Node) processFastForwardRequest(rpc net.RPC, cmd *net.FastForwardReques
 		n.logger.WithField("error", err).Error("n.core.GetAnchorBlockWithFrame()")
 		respErr = err
 	} else {
-		resp.Block = block
-		resp.Frame = frame
+		resp.Block = *block
+		resp.Frame = *frame
 
 		// Get snapshot
 		snapshot, err := n.proxy.GetSnapshot(block.Index())
@@ -405,7 +405,7 @@ func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
 	return nil
 }
 
-func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int64]int64, err error) {
+func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint32]int64, err error) {
 	// Compute Known
 	n.coreLock.Lock()
 	knownEvents := n.core.KnownEvents()
@@ -448,7 +448,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[int64
 	return false, resp.Known, nil
 }
 
-func (n *Node) push(peerAddr string, knownEvents map[int64]int64) error {
+func (n *Node) push(peerAddr string, knownEvents map[uint32]int64) error {
 
 	// Check SyncLimit
 	n.coreLock.Lock()
@@ -527,7 +527,7 @@ func (n *Node) fastForward() error {
 
 	// prepare core. ie: fresh poset
 	n.coreLock.Lock()
-	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
+	err = n.core.FastForward(peer.PubKeyHex, &resp.Block, &resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")
@@ -546,7 +546,7 @@ func (n *Node) fastForward() error {
 	return nil
 }
 
-func (n *Node) requestSync(target string, known map[int64]int64) (net.SyncResponse, error) {
+func (n *Node) requestSync(target string, known map[uint32]int64) (net.SyncResponse, error) {
 
 	args := net.SyncRequest{
 		FromID: n.id,
@@ -613,15 +613,15 @@ func (n *Node) sync(events []poset.WireEvent) error {
 
 func (n *Node) commit(block poset.Block) error {
 
-	stateHash := []byte{0, 1, 2}
-	_, err := n.proxy.CommitBlock(block)
+	commitResponse, err := n.proxy.CommitBlock(block)
 	if err != nil {
 		n.logger.WithError(err).Debug("commit(block poset.Block)")
 	}
 
 	n.logger.WithFields(logrus.Fields{
 		"block":      block.Index(),
-		"state_hash": fmt.Sprintf("%X", stateHash),
+		"state_hash": fmt.Sprintf("%X", commitResponse.StateHash),
+		"accepted_internal_transactions": commitResponse.AcceptedInternalTransactions,
 		// "err":        err,
 	}).Debug("commit(eventBlock poset.EventBlock)")
 
@@ -641,14 +641,20 @@ func (n *Node) commit(block poset.Block) error {
 		// this requires a 1:1 relationship with nodes and clients
 		// multiple nodes can't read from the same client
 
-		block.StateHash = stateHash
+		// Handle the response to set Block StateHash and process accepted
+		// InternalTransactions which might update the PeerSet.
+		block.StateHash = commitResponse.StateHash
 		n.coreLock.Lock()
 		defer n.coreLock.Unlock()
-		sig, err := n.core.SignBlock(block)
+		sig, err := n.core.SignBlock(&block)
 		if err != nil {
 			return err
 		}
 		n.core.AddBlockSignature(sig)
+		err = n.core.ProcessAcceptedInternalTransactions(block.RoundReceived(), commitResponse.AcceptedInternalTransactions)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -659,10 +665,10 @@ func (n *Node) addTransaction(tx []byte) {
 	n.core.AddTransactions([][]byte{tx})
 }
 
-func (n *Node) addInternalTransaction(tx poset.InternalTransaction) {
+func (n *Node) addInternalTransaction(tx *poset.InternalTransaction) {
 	n.coreLock.Lock()
 	defer n.coreLock.Unlock()
-	n.core.AddInternalTransactions([]poset.InternalTransaction{tx})
+	n.core.AddInternalTransactions([]*poset.InternalTransaction{tx})
 }
 
 // Shutdown the node
@@ -723,13 +729,13 @@ func (n *Node) GetStats() map[string]string {
 		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
 		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
 		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
-		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
+		"num_peers":               strconv.Itoa(n.peerSelector.PeerSet().Len()),
 		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
 		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
 		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
 		"rounds_per_second":       strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
 		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
-		"id":                      strconv.FormatInt(n.id, 10),
+		"id":                      fmt.Sprint(n.id),
 		"state":                   n.getState().String(),
 	}
 	// n.mqtt.FireEvent(s, "/mq/lachesis/stats")
@@ -771,12 +777,12 @@ func (n *Node) SyncRate() float64 {
 }
 
 // GetParticipants returns all participants this node knows about
-func (n *Node) GetParticipants() (*peers.Peers, error) {
-	return n.core.poset.Store.Participants()
+func (n *Node) GetParticipants() (*peers.PeerSet, error) {
+	return n.core.poset.Store.GetLastPeerSet()
 }
 
 // GetEventBlock returns a specific event block for the given hash
-func (n *Node) GetEventBlock(event string) (poset.Event, error) {
+func (n *Node) GetEventBlock(event string) (*poset.Event, error) {
 	return n.core.poset.Store.GetEventBlock(event)
 }
 
@@ -786,12 +792,12 @@ func (n *Node) GetLastEventFrom(participant string) (string, bool, error) {
 }
 
 // GetKnownEvents returns all known events
-func (n *Node) GetKnownEvents() map[int64]int64 {
+func (n *Node) GetKnownEvents() map[uint32]int64 {
 	return n.core.poset.Store.KnownEvents()
 }
 
 // GetEventBlocks returns all event blocks
-func (n *Node) GetEventBlocks() (map[int64]int64, error) {
+func (n *Node) GetEventBlocks() (map[uint32]int64, error) {
 	res := n.core.KnownEvents()
 	return res, nil
 }
@@ -812,7 +818,7 @@ func (n *Node) GetPendingLoadedEvents() int64 {
 }
 
 // GetRound returns the created round info for a given index
-func (n *Node) GetRound(roundIndex int64) (poset.RoundCreated, error) {
+func (n *Node) GetRound(roundIndex int64) (*poset.RoundCreated, error) {
 	return n.core.poset.Store.GetRoundCreated(roundIndex)
 }
 
@@ -832,17 +838,17 @@ func (n *Node) GetRoundEvents(roundIndex int64) int {
 }
 
 // GetRoot returns the chain root for the frame
-func (n *Node) GetRoot(rootIndex string) (poset.Root, error) {
+func (n *Node) GetRoot(rootIndex string) (*poset.Root, error) {
 	return n.core.poset.Store.GetRoot(rootIndex)
 }
 
 // GetBlock returns the block for a given index
-func (n *Node) GetBlock(blockIndex int64) (poset.Block, error) {
+func (n *Node) GetBlock(blockIndex int64) (*poset.Block, error) {
 	return n.core.poset.Store.GetBlock(blockIndex)
 }
 
 // ID shows the ID of the node
-func (n *Node) ID() int64 {
+func (n *Node) ID() uint32 {
 	return n.id
 }
 

@@ -25,7 +25,7 @@ func Compare(nodes ...*node.Node) (result Result) {
 func compare(n0, n1 *node.Node) (diff *Diff) {
 	diff = &Diff{
 		node: [2]*node.Node{n0, n1},
-		IDs:  [2]int64{n0.ID(), n1.ID()},
+		IDs:  [2]uint32{n0.ID(), n1.ID()},
 	}
 
 	if !compareBlocks(diff) {
@@ -51,7 +51,7 @@ func compareBlocks(diff *Diff) bool {
 		minH, tmp = tmp, minH
 	}
 
-	var b0, b1 poset.Block
+	var b0, b1 *poset.Block
 	var i int64
 	for i = 0; i <= minH; i++ {
 		b0, diff.Err = n0.GetBlock(i)
@@ -87,7 +87,7 @@ func compareRounds(diff *Diff) bool {
 
 	diff.RoundGap = n0.GetLastRound() - n1.GetLastRound()
 
-	var r0, r1 poset.RoundCreated
+	var r0, r1 *poset.RoundCreated
 	var i int64
 	for i = 0; i <= diff.FirstRoundIndex; i++ {
 
@@ -123,7 +123,7 @@ func compareRounds(diff *Diff) bool {
 func compareFrames(diff *Diff) bool {
 	var n0, n1 = diff.node[0], diff.node[1]
 
-	var f0, f1 poset.Frame
+	var f0, f1 *poset.Frame
 	f0, diff.Err = n0.GetFrame(diff.FirstRoundIndex)
 	if diff.Err != nil {
 		return false

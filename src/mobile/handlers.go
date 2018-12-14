@@ -9,7 +9,7 @@ application.
 // that message to the mobile app. It returns the state hash resulting from applying
 // the block's transactions to the state.
 type CommitHandler interface {
-	OnCommit([]byte) []byte
+	OnCommit([]byte) (stateHash []byte)
 }
 
 // ExceptionHandler handles mobile app mobile app exceptions.

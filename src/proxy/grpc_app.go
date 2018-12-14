@@ -20,13 +20,14 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/proxy/internal"
+	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
 )
 
 var ErrNoAnswers = errors.New("no answers")
 
 type ClientStream internal.LachesisNode_ConnectServer
 
-//GrpcAppProxy implements the AppProxy interface
+// GrpcAppProxy implements the AppProxy interface
 type GrpcAppProxy struct {
 	logger   *logrus.Logger
 	listener net.Listener
@@ -159,20 +160,20 @@ func (p *GrpcAppProxy) SubmitInternalCh() chan poset.InternalTransaction {
 }
 
 // CommitBlock implements AppProxy interface method
-func (p *GrpcAppProxy) CommitBlock(block poset.Block) ([]byte, error) {
+func (p *GrpcAppProxy) CommitBlock(block poset.Block) (proto.Response, error) {
 	data, err := block.ProtoMarshal()
 	if err != nil {
-		return nil, err
+		return proto.Response{}, err
 	}
 	answer, ok := <-p.push_block(data)
 	if !ok {
-		return nil, ErrNoAnswers
+		return proto.Response{}, ErrNoAnswers
 	}
 	err_msg := answer.GetError()
 	if err_msg != "" {
-		return nil, errors.New(err_msg)
+		return proto.Response{}, errors.New(err_msg)
 	}
-	return answer.GetData(), nil
+	return proto.Response{StateHash: answer.GetData()}, nil
 }
 
 // GetSnapshot implements AppProxy interface method

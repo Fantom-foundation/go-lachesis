@@ -12,21 +12,21 @@ import (
 func TestParticipantEventsCache(t *testing.T) {
 	size := 10
 	testSize := int64(25)
-	participants := peers.NewPeersFromSlice([]*peers.Peer{
+	peerSet := peers.NewPeerSet([]*peers.Peer{
 		peers.NewPeer("0xaa", ""),
 		peers.NewPeer("0xbb", ""),
 		peers.NewPeer("0xcc", ""),
 	})
 
-	pec := NewParticipantEventsCache(size, participants)
+	pec := NewParticipantEventsCache(size, peerSet)
 
 	items := make(map[string][]string)
-	for pk := range participants.ByPubKey {
+	for pk := range peerSet.ByPubKey {
 		items[pk] = []string{}
 	}
 
 	for i := int64(0); i < testSize; i++ {
-		for pk := range participants.ByPubKey {
+		for pk := range peerSet.ByPubKey {
 			item := fmt.Sprintf("%s%d", pk, i)
 
 			pec.Set(pk, item, i)
@@ -38,7 +38,7 @@ func TestParticipantEventsCache(t *testing.T) {
 	}
 
 	// GET ITEM ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	for pk := range participants.ByPubKey {
+	for pk := range peerSet.ByPubKey {
 
 		index1 := int64(9)
 		_, err := pec.GetItem(pk, index1)
@@ -77,7 +77,7 @@ func TestParticipantEventsCache(t *testing.T) {
 	}
 
 	//GET ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-	for pk := range participants.ByPubKey {
+	for pk := range peerSet.ByPubKey {
 		if _, err := pec.Get(pk, 0); err != nil && !cm.Is(err, cm.TooLate) {
 			t.Fatalf("Skipping 0 elements should return ErrTooLate")
 		}
@@ -116,21 +116,21 @@ func TestParticipantEventsCache(t *testing.T) {
 func TestParticipantEventsCacheEdge(t *testing.T) {
 	size := 10
 	testSize := int64(11)
-	participants := peers.NewPeersFromSlice([]*peers.Peer{
+	peerSet := peers.NewPeerSet([]*peers.Peer{
 		peers.NewPeer("0xaa", ""),
 		peers.NewPeer("0xbb", ""),
 		peers.NewPeer("0xcc", ""),
 	})
 
-	pec := NewParticipantEventsCache(size, participants)
+	pec := NewParticipantEventsCache(size, peerSet)
 
 	items := make(map[string][]string)
-	for pk := range participants.ByPubKey {
+	for pk := range peerSet.ByPubKey {
 		items[pk] = []string{}
 	}
 
 	for i := int64(0); i < testSize; i++ {
-		for pk := range participants.ByPubKey {
+		for pk := range peerSet.ByPubKey {
 			item := fmt.Sprintf("%s%d", pk, i)
 
 			pec.Set(pk, item, i)
@@ -141,7 +141,7 @@ func TestParticipantEventsCacheEdge(t *testing.T) {
 		}
 	}
 
-	for pk := range participants.ByPubKey {
+	for pk := range peerSet.ByPubKey {
 		expected := items[pk][size:]
 		cached, err := pec.Get(pk, int64(size-1))
 		if err != nil {

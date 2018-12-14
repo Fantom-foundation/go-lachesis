@@ -19,7 +19,7 @@ func (n *Node) RoundClothos(i int64) []string {
 }
 
 // GetFrame returns the frame for a given index
-func (n *Node) GetFrame(i int64) (poset.Frame, error) {
+func (n *Node) GetFrame(i int64) (*poset.Frame, error) {
 	return n.core.poset.Store.GetFrame(i)
 }
 

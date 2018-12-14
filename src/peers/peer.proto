@@ -2,8 +2,20 @@ syntax = "proto3";
 package peers;
 
 message Peer {
-  int64 ID = 1;
+  uint32 ID = 1;
   string NetAddr = 2;
   string PubKeyHex = 3;
   int64 used = 4;
+}
+
+// PeerSet is a set of Peers forming a consensus network
+message PeerSet {
+    repeated Peer Peers = 1;
+    map<string, Peer> ByPubKey = 2;
+    map<uint32, Peer> ByID = 3;
+    // cached values
+    bytes hash_ = 4;
+    string hex_ = 5;
+    int64 superMajority_ = 6;
+    int64 trustCount_ = 7;
 }
