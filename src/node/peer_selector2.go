@@ -12,7 +12,10 @@ import (
 //type PeerSelector interface {
 //	Peers() *peers.Peers
 //	UpdateLast(peer string)
+//	UpdateLastById(id int64)
 //	Next() peers.Peer
+//	ToPeerSlice() []peers.Peer
+//	Len() int
 //}
 
 //+++++++++++++++++++++++++++++++++++++++
@@ -42,6 +45,14 @@ func (ps *SmartPeerSelector) Peers() *peers.Peers {
 
 func (ps *SmartPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
+}
+
+func (ps *SmartPeerSelector) UpdateLastById(id int64) {
+	peer, ok := ps.Peers().GetById(id)
+	if ok {
+		ps.last = peer.NetAddr
+		ps.peers.IncUsed(id);
+	}
 }
 
 func (ps *SmartPeerSelector) Next() peers.Peer {
