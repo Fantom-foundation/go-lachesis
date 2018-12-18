@@ -324,6 +324,10 @@ func (n *Node) processEagerSyncRequest(rpc net.RPC, cmd *net.EagerSyncRequest) {
 		success = false
 	}
 
+	n.selectorLock.Lock()
+	n.peerSelector.UpdateLastById(cmd.FromID)
+	n.selectorLock.Unlock()
+
 	resp := &net.EagerSyncResponse{
 		FromID:  n.id,
 		Success: success,

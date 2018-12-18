@@ -12,6 +12,7 @@ import (
 type PeerSelector interface {
 	Peers() *peers.Peers
 	UpdateLast(peer string)
+	UpdateLastById(id int64)
 	Next() peers.Peer
 	ToPeerSlice() []peers.Peer
 	Len() int
@@ -39,6 +40,13 @@ func (ps *RandomPeerSelector) Peers() *peers.Peers {
 
 func (ps *RandomPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
+}
+
+func (ps *RandomPeerSelector) UpdateLastById(id int64) {
+	peer, ok := ps.Peers().GetById(id)
+	if ok {
+		ps.last = peer.NetAddr
+	}
 }
 
 func (ps *RandomPeerSelector) Next() peers.Peer {
