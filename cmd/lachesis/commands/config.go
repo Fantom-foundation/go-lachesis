@@ -10,6 +10,7 @@ type CLIConfig struct {
 	Standalone bool                    `mapstructure:"standalone"`
 	Log2file   bool                    `mapstructure:"log2file"`
 	Pidfile    string                  `mapstructure:"pidfile"`
+	Syslog     bool                    `mapstructure:"syslog"`
 }
 
 //NewDefaultCLIConfig creates a CLIConfig with default values
@@ -21,5 +22,6 @@ func NewDefaultCLIConfig() *CLIConfig {
 		Standalone: false,
 		Log2file:   false,
 		Pidfile:    "/tmp/go-lachesis.pid",
+		Syslog:     false,
 	}
 }
