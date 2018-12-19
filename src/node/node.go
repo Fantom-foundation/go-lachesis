@@ -3,13 +3,14 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"os"
+	"os/signal"
+	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
-
-	"strconv"
-
 	"github.com/Fantom-foundation/go-lachesis/src/net"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
@@ -35,12 +36,12 @@ type Node struct {
 	netCh <-chan net.RPC
 
 	proxy            proxy.AppProxy
+
 	submitCh         chan []byte
 	submitInternalCh chan poset.InternalTransaction
-
-	commitCh chan poset.Block
-
-	shutdownCh chan struct{}
+	commitCh         chan poset.Block
+	shutdownCh       chan struct{}
+	signalTERMch     chan os.Signal
 
 	controlTimer *ControlTimer
 
@@ -93,7 +94,11 @@ func NewNode(conf *Config,
 		gossipJobs:       0,
 		rpcJobs:          0,
 		state:            newNodeState2(),
+		signalTERMch:     make(chan os.Signal, 1),
 	}
+
+	signal.Notify(node.signalTERMch, syscall.SIGTERM)
+	signal.Notify(node.signalTERMch, os.Kill)
 
 	node.logger.WithField("peers", pmap).Debug("pmap")
 	node.logger.WithField("pubKey", pubKey).Debug("pubKey")
@@ -196,6 +201,8 @@ func (n *Node) doBackgroundWork() {
 			}
 		case <-n.shutdownCh:
 			return
+		case <-n.signalTERMch:
+			n.Shutdown()
 		}
 	}
 }
