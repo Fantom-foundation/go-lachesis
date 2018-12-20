@@ -31,16 +31,11 @@ message EventMessage {
   EventBody Body = 1;
   string Signature = 2;
   bytes FlagTable = 3;
-  repeated string WitnessProof = 4;
+  repeated string ClothoProof = 4;
   int64 SelfParentIndex = 5;
   int64 OtherParentCreatorID = 6;
   int64 OtherParentIndex = 7;
   int64 CreatorID = 8;
   int64 TopologicalIndex = 9;
-  string Hex = 10;
-  int64 LamportTimestamp = 11;
-  int64 Round = 12;
-  int64 RoundReceived = 13;
-  string Creator = 14;
-  bytes Hash = 15;
+  bytes Hash = 10;
 }
