@@ -384,17 +384,16 @@ func (s *InmemStore) setRootEvents(roots map[string]Root) error {
 			Parents:              []string{"",""},
 		}
 		event := Event{
-			Message: EventMessage {
-				Hex: root.SelfParent.Hash,
+			Message: &EventMessage {
 				CreatorID: root.SelfParent.CreatorID,
 				TopologicalIndex: -1,
 				Body:      &body,
 				FlagTable: ft,
-				LamportTimestamp: 0,
-				Round:            0,
-				RoundReceived:    0 /*RoundNIL*/,
-				WitnessProof: []string{root.SelfParent.Hash},
+				ClothoProof: []string{root.SelfParent.Hash},
 			},
+			lamportTimestamp: 0,
+			round:            0,
+			roundReceived:    0 /*RoundNIL*/,
 		}
 		if err := s.SetEvent(event); err != nil {
 			return err
