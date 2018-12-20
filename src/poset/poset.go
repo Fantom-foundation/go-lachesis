@@ -729,7 +729,7 @@ func (p *Poset) createOtherParentRootEvent(ev Event) (RootEvent, error) {
 	if err != nil {
 		return RootEvent{}, err
 	}
-	peer, ok := p.Participants.GetByPubKey(otherParent.Creator())
+	peer, ok := p.Participants.GetByPubKey(otherParent.GetCreator())
 	if !ok {
 		return RootEvent{}, fmt.Errorf("createOtherParentRootEvent: participant not found")
 	}
@@ -837,7 +837,7 @@ func (p *Poset) setWireInfo(event *Event) error {
 		}
 	}
 
-	peer, ok := p.Participants.GetByPubKey(event.Creator())
+	peer, ok := p.Participants.GetByPubKey(event.GetCreator())
 	if !ok {
 		return fmt.Errorf("setWireInfo: participant not found, two")
 	}
