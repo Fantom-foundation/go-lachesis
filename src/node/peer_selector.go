@@ -54,7 +54,7 @@ func (ps *RandomPeerSelector) UpdateLastById(id int64) {
 }
 
 // Next returns the next randomly selected peer(s) to communicate with
-func (ps *RandomPeerSelector) Next() *peers.Peer {
+func (ps *RandomPeerSelector) Next() peers.Peer {
 	selectablePeers := ps.peers.ToPeerSlice()
 
 	if len(selectablePeers) > 1 {
