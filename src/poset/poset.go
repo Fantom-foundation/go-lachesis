@@ -296,7 +296,7 @@ func (p *Poset) strictlyDominated2(x, y string) (bool, error) {
 	return len(sentinels) >= p.superMajority, nil
 }
 
-// participants in x's dominator that dominate y
+// MapSentinels participants in x's dominator that dominate y
 func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
 	if x == "" {
 		return nil
@@ -520,16 +520,6 @@ func (p *Poset) clotho(x string) (bool, error) {
 		return false, err
 	}
 	return xRound > spRound, nil
-}
-
-func (p *Poset) roundReceived(x string) (int64, error) {
-
-	ex, err := p.Store.GetEventBlock(x)
-	if err != nil {
-		return -1, err
-	}
-
-	return ex.roundReceived, nil
 }
 
 func (p *Poset) lamportTimestamp(x string) (int64, error) {
@@ -784,9 +774,12 @@ func (p *Poset) createRoot(ev Event) (Root, error) {
 	return root, nil
 }
 
+// SetWireInfo set wire info for the event
 func (p *Poset) SetWireInfo(event *Event) error {
 	return p.setWireInfo(event)
 }
+
+// SetWireInfoAndSign set wire info for the event and sign
 func (p *Poset) SetWireInfoAndSign(event *Event, privKey *ecdsa.PrivateKey) error {
 	if err := p.setWireInfo(event); err != nil {
 		return err
@@ -795,7 +788,7 @@ func (p *Poset) SetWireInfoAndSign(event *Event, privKey *ecdsa.PrivateKey) erro
 }
 
 func (p *Poset) setWireInfo(event *Event) error {
-	selfParentIndex := int64(-1)
+	var selfParentIndex int64
 	otherParentCreatorID := int64(-1)
 	otherParentIndex := int64(-1)
 
@@ -1807,6 +1800,7 @@ func (p *Poset) setAnchorBlock(i int64) {
 Getters
 *******************************************************************************/
 
+// GetFlagTableOfRandomUndeterminedEvent returns the flag table for undermined events
 func (p *Poset) GetFlagTableOfRandomUndeterminedEvent() (result map[string]int64, err error) {
 	p.undeterminedEventsLocker.RLock()
 	defer p.undeterminedEventsLocker.RUnlock()
@@ -1830,18 +1824,21 @@ func (p *Poset) GetFlagTableOfRandomUndeterminedEvent() (result map[string]int64
 	return nil, err
 }
 
+// GetUndeterminedEvents returns all the undetermined events
 func (p *Poset) GetUndeterminedEvents() []string {
 	p.undeterminedEventsLocker.RLock()
 	defer p.undeterminedEventsLocker.RUnlock()
 	return p.UndeterminedEvents
 }
 
+// GetPendingLoadedEvents returns all the pending events
 func (p *Poset) GetPendingLoadedEvents() int64 {
 	p.pendingLoadedEventsLocker.RLock()
 	defer p.pendingLoadedEventsLocker.RUnlock()
 	return p.pendingLoadedEvents
 }
 
+// GetLastConsensusRound returns the last consensus round
 func (p *Poset) GetLastConsensusRound() int64 {
 	p.firstLastConsensusRoundLocker.RLock()
 	defer p.firstLastConsensusRoundLocker.RUnlock()
@@ -1852,6 +1849,7 @@ func (p *Poset) GetLastConsensusRound() int64 {
 	return *p.LastConsensusRound
 }
 
+// GetConsensusTransactionsCount returns the count of finalized transactions
 func (p *Poset) GetConsensusTransactionsCount() uint64 {
 	p.consensusTransactionsLocker.RLock()
 	defer p.consensusTransactionsLocker.RUnlock()

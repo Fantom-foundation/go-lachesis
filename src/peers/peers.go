@@ -5,27 +5,33 @@ import (
 	"sync"
 )
 
+// PubKeyPeers map of peers sorted by public key
 type PubKeyPeers map[string]*Peer
-type IdPeers map[int64]*Peer
+// IDPeers map of peers sorted by ID
+type IDPeers map[int64]*Peer
+// Listener for listening for new peers joining
 type Listener func(*Peer)
 
+// Peers struct for all known peers for this node
 type Peers struct {
 	sync.RWMutex
 	sorted    []*Peer
 	byPubKey  PubKeyPeers
-	byId      IdPeers
+	byId      IDPeers
 	listeners []Listener
 }
 
 /* Constructors */
 
+// NewPeers creates a new peers struct
 func NewPeers() *Peers {
 	return &Peers{
 		byPubKey: make(PubKeyPeers),
-		byId:     make(IdPeers),
+		byId:     make(IDPeers),
 	}
 }
 
+// NewPeersFromSlice create a new peers struct from a subset of peers
 func NewPeersFromSlice(source []*Peer) *Peers {
 	peers := NewPeers()
 
@@ -65,6 +71,7 @@ func (p *Peers) internalSort() {
 	p.sorted = res
 }
 
+// AddPeer adds a peer to the peers struct
 func (p *Peers) AddPeer(peer *Peer) {
 	p.Lock()
 	p.addPeerRaw(peer)
@@ -75,6 +82,7 @@ func (p *Peers) AddPeer(peer *Peer) {
 
 /* Remove Methods */
 
+// RemovePeer removes a peer from the peers struct
 func (p *Peers) RemovePeer(peer *Peer) {
 	p.Lock()
 	defer p.Unlock()
@@ -89,6 +97,7 @@ func (p *Peers) RemovePeer(peer *Peer) {
 	p.internalSort()
 }
 
+// RemovePeerByPubKey removes a peer by their public key
 func (p *Peers) RemovePeerByPubKey(pubKey string) {
 	p.Lock()
 	defer p.Unlock()
@@ -105,6 +114,7 @@ func (p *Peers) RemovePeerByPubKey(pubKey string) {
 	p.internalSort()
 }
 
+// RemovePeerByID removes a peer based on their ID
 func (p *Peers) RemovePeerById(id int64) {
 	p.Lock()
 	defer p.Unlock()
@@ -144,11 +154,11 @@ func (p *Peers) GetByPubKey(PubKey string) (Peer, bool) {
 	return *peer, ok
 }
 
-func (p *Peers) GetByIds() IdPeers {
+func (p *Peers) GetByIds() IDPeers {
 	p.RLock()
 	defer p.RUnlock()
 
-	res := IdPeers{}
+	res := IDPeers{}
 
 	for k, p := range p.byId {
 		res[k] = p
@@ -166,6 +176,7 @@ func (p *Peers) GetById(Id int64) (Peer, bool) {
 
 /* ToSlice Methods */
 
+// ToPeerSlice returns a slice of peers sorted
 func (p *Peers) ToPeerSlice() []Peer {
 	p.RLock()
 	defer p.RUnlock()
@@ -177,6 +188,7 @@ func (p *Peers) ToPeerSlice() []Peer {
 	return res
 }
 
+// ToPeerByUsedSlice sorted peers list
 func (p *Peers) ToPeerByUsedSlice() []Peer {
 	p.RLock()
 	defer p.RUnlock()
@@ -191,6 +203,7 @@ func (p *Peers) ToPeerByUsedSlice() []Peer {
 	return res
 }
 
+// ToPubKeySlice peers struct by public key
 func (p *Peers) ToPubKeySlice() []string {
 	p.RLock()
 	defer p.RUnlock()
@@ -204,6 +217,7 @@ func (p *Peers) ToPubKeySlice() []string {
 	return res
 }
 
+// ToIDSlice peers struct by ID
 func (p *Peers) ToIDSlice() []int64 {
 	p.RLock()
 	defer p.RUnlock()
@@ -219,6 +233,7 @@ func (p *Peers) ToIDSlice() []int64 {
 
 /* EventListener */
 
+// OnNewPeer on new peer joined event trigger listener
 func (p *Peers) OnNewPeer(cb func(*Peer)) {
 	p.Lock()
 	defer p.Unlock()
@@ -226,6 +241,7 @@ func (p *Peers) OnNewPeer(cb func(*Peer)) {
 	p.listeners = append(p.listeners, cb)
 }
 
+// EmitNewPeer emits an event for all listeners as soon as a peer joins
 func (p *Peers) EmitNewPeer(peer *Peer) {
 	p.RLock()
 	defer p.RUnlock()
@@ -238,6 +254,7 @@ func (p *Peers) EmitNewPeer(peer *Peer) {
 
 /* Utilities */
 
+// Len returns the length of peers
 func (p *Peers) Len() int {
 	p.RLock()
 	defer p.RUnlock()
@@ -263,6 +280,7 @@ func (a ByPubHex) Less(i, j int) bool {
 	return ai < aj
 }
 
+// ByID sorted by ID peers list
 type ByID []*Peer
 
 func (a ByID) Len() int      { return len(a) }
@@ -273,6 +291,7 @@ func (a ByID) Less(i, j int) bool {
 	return ai < aj
 }
 
+// ByUsed TODO
 type ByUsed []Peer
 
 func (a ByUsed) Len() int      { return len(a) }

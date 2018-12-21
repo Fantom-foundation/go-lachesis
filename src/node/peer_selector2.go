@@ -6,9 +6,9 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 )
 
-// PeerSelector provides an interface for the lachesis node to 
+// PeerSelector provides an interface for the lachesis node to
 // update the last peer it gossiped with and select the next peer
-// to gossip with 
+// to gossip with
 //type PeerSelector interface {
 //	Peers() *peers.Peers
 //	UpdateLast(peer string)
@@ -21,6 +21,7 @@ import (
 //+++++++++++++++++++++++++++++++++++++++
 //Selection based on FlagTable of a randomly chosen undermined event
 
+// SmartPeerSelector flag table based smart selection struct
 type SmartPeerSelector struct {
 	peers        *peers.Peers
 	localAddr    string
@@ -28,6 +29,7 @@ type SmartPeerSelector struct {
 	GetFlagTable func() (map[string]int64, error)
 }
 
+// NewSmartPeerSelector creates a new smart peer selection struct
 func NewSmartPeerSelector(participants *peers.Peers,
 	localAddr string,
 	GetFlagTable func() (map[string]int64, error)) *SmartPeerSelector {
@@ -39,10 +41,12 @@ func NewSmartPeerSelector(participants *peers.Peers,
 	}
 }
 
+// Peers returns all known peers
 func (ps *SmartPeerSelector) Peers() *peers.Peers {
 	return ps.peers
 }
 
+// UpdateLast sets the last peer communicated with (avoid double talk)
 func (ps *SmartPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
@@ -55,7 +59,11 @@ func (ps *SmartPeerSelector) UpdateLastById(id int64) {
 	}
 }
 
+// Next returns the next peer based on the flag table cost function selection
 func (ps *SmartPeerSelector) Next() peers.Peer {
+// func (ps *SmartPeerSelector) Next() *peers.Peer {
+	ps.peers.Lock()
+	defer ps.peers.Unlock()
 	selectablePeers := ps.peers.ToPeerByUsedSlice()//[1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
