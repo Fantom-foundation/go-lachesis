@@ -61,9 +61,6 @@ func (ps *SmartPeerSelector) UpdateLastById(id int64) {
 
 // Next returns the next peer based on the flag table cost function selection
 func (ps *SmartPeerSelector) Next() peers.Peer {
-// func (ps *SmartPeerSelector) Next() *peers.Peer {
-	ps.peers.Lock()
-	defer ps.peers.Unlock()
 	selectablePeers := ps.peers.ToPeerByUsedSlice()//[1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)

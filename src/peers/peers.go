@@ -171,6 +171,9 @@ func (p *Peers) GetById(Id int64) (Peer, bool) {
 	p.RLock()
 	defer p.RUnlock()
 	peer, ok := p.byId[Id]
+	if peer == nil {
+		return Peer{}, ok
+	}
 	return *peer, ok
 }
 

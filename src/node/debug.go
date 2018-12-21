@@ -73,28 +73,32 @@ func (g *Graph) GetParticipantEventsLite() map[string]map[string]EventLite {
 		}
 
 		hash := event.Hex()
-
-		liteEvent := EventLite{
-			CreatorID: event.CreatorID(),
-			OtherParentCreatorID: event.OtherParentCreatorID(),
-			Message: EventMessageLite {
-				Body: EventBodyLite{
-					Parents: event.Message.Body.Parents,
-					Creator: peers.ByPubKey[event.Creator()].NetAddr,
-					Index: event.Message.Body.Index,
-					Transactions: event.Message.Body.Transactions,
+		peer, ok :=  peers.GetByPubKey(event.GetCreator())
+		if !ok {
+			res[g.Node.localAddr/*p.PubKeyHex*/][hash] = EventLite{}
+		} else {
+			liteEvent := EventLite{
+				CreatorID: event.CreatorID(),
+				OtherParentCreatorID: event.OtherParentCreatorID(),
+				Message: EventMessageLite {
+					Body: EventBodyLite{
+						Parents: event.Message.Body.Parents,
+						Creator: peer.NetAddr,
+						Index: event.Message.Body.Index,
+						Transactions: event.Message.Body.Transactions,
+					},
+					Hex: event.Hex(),
+					Signature: event.Message.Signature,
+					ClothoProof: event.Message.ClothoProof,
+					Round: event.GetRound(),
+					RoundReceived: event.GetRoundReceived(),
+					TopologicalIndex: event.Message.TopologicalIndex,
+					//				FlagTable: event.FlagTable,
 				},
-				Hex: event.Message.Hex,
-				Signature: event.Message.Signature,
-				ClothoProof: event.Message.ClothoProof,
-				Round: event.Message.Round,
-				RoundReceived: event.Message.RoundReceived,
-				TopologicalIndex: event.Message.TopologicalIndex,
-				//				FlagTable: event.FlagTable,
-			},
-		}
+			}
 
-		res[g.Node.localAddr/*p.PubKeyHex*/][hash] = liteEvent
+			res[g.Node.localAddr/*p.PubKeyHex*/][hash] = liteEvent
+		}
 	}
 
 	return res
