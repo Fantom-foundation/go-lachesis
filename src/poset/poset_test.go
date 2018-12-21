@@ -588,13 +588,13 @@ func TestInsertEvent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		peer10, ok := p.Participants.GetByPubKey(e10Event.Creator())
+		peer10, ok := p.Participants.GetByPubKey(e10Event.GetCreator())
 		if !ok {
-			t.Fatalf("Creator e0Event %v not found", e10Event.Creator())
+			t.Fatalf("Creator e0Event %v not found", e10Event.GetCreator())
 		}
-		peer21, ok := p.Participants.GetByPubKey(e21Event.Creator())
+		peer21, ok := p.Participants.GetByPubKey(e21Event.GetCreator())
 		if !ok {
-			t.Fatalf("Creator f1Event %v not found", e21Event.Creator())
+			t.Fatalf("Creator f1Event %v not found", e21Event.GetCreator())
 		}
 		if !(e21Event.Message.SelfParentIndex == 1 &&
 			e21Event.Message.OtherParentCreatorID == peer10.ID &&
@@ -608,13 +608,13 @@ func TestInsertEvent(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		peer0, ok := p.Participants.GetByPubKey(e0Event.Creator())
+		peer0, ok := p.Participants.GetByPubKey(e0Event.GetCreator())
 		if !ok {
-			t.Fatalf("Creator e0Event %v not found", e0Event.Creator())
+			t.Fatalf("Creator e0Event %v not found", e0Event.GetCreator())
 		}
-		peer1, ok := p.Participants.GetByPubKey(f1Event.Creator())
+		peer1, ok := p.Participants.GetByPubKey(f1Event.GetCreator())
 		if !ok {
-			t.Fatalf("Creator f1Event %v not found", f1Event.Creator())
+			t.Fatalf("Creator f1Event %v not found", f1Event.GetCreator())
 		}
 		if !(f1Event.Message.SelfParentIndex == 2 &&
 			f1Event.Message.OtherParentCreatorID == peer0.ID &&
