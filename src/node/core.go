@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/golang/protobuf/proto"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/log"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/utils"
 )
 
 type Core struct {
@@ -78,6 +80,7 @@ func NewCore(id int64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	}
 
 	p2.SetCore(core)
+	core.setRootEvents()
 
 	return core
 }
@@ -640,4 +643,44 @@ func (c *Core) GetBlockSignaturePoolCount() int64 {
 	c.blockSignaturePoolLocker.RLock()
 	defer c.blockSignaturePoolLocker.RUnlock()
 	return int64(len(c.blockSignaturePool))
+}
+
+func (c *Core) setRootEvents() error {
+	roots, err := c.poset.Store.RootsBySelfParent()
+	if err != nil {
+		return err
+	}
+	for participant, root := range roots {
+		var creator []byte
+		fmt.Sscanf(participant, "0x%X", &creator)
+		flagTable := map[string]int64{root.SelfParent.Hash: 1}
+		ft, _ := proto.Marshal(&poset.FlagTableWrapper{Body: flagTable})
+		body := poset.EventBody{
+			Creator: creator, /*s.participants.ByPubKey[participant].PubKey,*/
+			Index:   root.SelfParent.Index,
+			Parents: []string{root.SelfParent.Hash, ""}, //root.SelfParent.Hash, root.SelfParent.Hash},
+		}
+		event := poset.Event{
+			Message: &poset.EventMessage{
+				Hash:             utils.HashFromHex(root.SelfParent.Hash),
+				CreatorID:        root.SelfParent.CreatorID,
+				TopologicalIndex: -1,
+				Body:             &body,
+				FlagTable:        ft,
+				ClothoProof:      []string{root.SelfParent.Hash},
+			},
+//			lamportTimestamp: 0,
+//			round:            0,
+//			roundReceived:    0, /*RoundNIL*/
+		}
+		if _, err := c.poset.Store.GetEventBlock(event.Hex()); err != nil {
+			// if we do not get root event from poset store we must be on a newly created database
+			// so let create one
+			event.Sign(c.key)
+			if err := c.poset.Store.SetEvent(event); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

@@ -138,6 +138,9 @@ func (p *Peers) GetByPubKey(PubKey string) (Peer, bool) {
 	p.RLock()
 	defer p.RUnlock()
 	peer, ok := p.byPubKey[PubKey]
+	if peer == nil {
+		return Peer{}, false
+	}
 	return *peer, ok
 }
 
