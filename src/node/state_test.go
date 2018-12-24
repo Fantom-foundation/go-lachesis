@@ -1,18 +1,22 @@
 package node
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 )
 
-func TestChangeNodeState(t *testing.T) {
+var testLimit = 1000
+
+func TestNodeStateChangeNodeState(t *testing.T) {
 	limit := 10
 
 	wg := sync.WaitGroup{}
 	wg.Add(limit * 2) // 10 write, 10 read
 
-	ns := newNodeState2()
+	ctx := context.Background()
+	ns := newNodeState(ctx, testLimit)
 
 	setInstance := func(state state) {
 		defer wg.Done()
@@ -44,8 +48,9 @@ func TestChangeNodeState(t *testing.T) {
 	wg.Wait()
 }
 
-func TestConcurrentGoFuncs(t *testing.T) {
-	ns := newNodeState2()
+func TestNodeStateConcurrentGoFuncs(t *testing.T) {
+	ctx := context.Background()
+	ns := newNodeState(ctx, testLimit)
 
 	f := func() {
 		time.Sleep(time.Microsecond * 10)

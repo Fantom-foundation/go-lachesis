@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"strconv"
@@ -17,8 +18,9 @@ import (
 
 // Node struct that keeps all high level node functions
 type Node struct {
-	*nodeState2
-
+	*nodeState
+	cancel context.CancelFunc
+	ctx    context.Context
 	conf   *Config
 	logger *logrus.Entry
 
@@ -40,8 +42,6 @@ type Node struct {
 
 	commitCh chan poset.Block
 
-	shutdownCh chan struct{}
-
 	controlTimer *ControlTimer
 
 	start        time.Time
@@ -60,11 +60,14 @@ func NewNode(conf *Config,
 	participants *peers.Peers,
 	store poset.Store,
 	trans net.Transport,
-	proxy proxy.AppProxy) *Node {
+	proxy proxy.AppProxy, gofuncLimit int) (*Node, error) {
 
 	localAddr := trans.LocalAddr()
 
-	pmap, _ := store.Participants()
+	pmap, err := store.Participants()
+	if err != nil {
+		return nil, err
+	}
 
 	commitCh := make(chan poset.Block, 400)
 	core := NewCore(id, key, pmap, store, commitCh, conf.Logger)
@@ -75,7 +78,11 @@ func NewNode(conf *Config,
 	peerSelector := NewSmartPeerSelector(participants, pubKey,
 		core.poset.GetFlagTableOfRandomUndeterminedEvent)
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	node := Node{
+		cancel:           cancel,
+		ctx:              ctx,
 		id:               id,
 		conf:             conf,
 		core:             core,
@@ -88,12 +95,11 @@ func NewNode(conf *Config,
 		submitCh:         proxy.SubmitCh(),
 		submitInternalCh: proxy.SubmitInternalCh(),
 		commitCh:         commitCh,
-		shutdownCh:       make(chan struct{}),
 		controlTimer:     NewRandomControlTimer(),
 		start:            time.Now(),
 		gossipJobs:       0,
 		rpcJobs:          0,
-		nodeState2:       newNodeState2(),
+		nodeState:        newNodeState(ctx, gofuncLimit),
 	}
 
 	node.logger.WithField("peers", pmap).Debug("pmap")
@@ -104,7 +110,7 @@ func NewNode(conf *Config,
 	// Initialize
 	node.setState(Gossiping)
 
-	return &node
+	return &node, nil
 }
 
 // Init initializes all the node processes
@@ -148,19 +154,20 @@ func (n *Node) Run(gossip bool) {
 
 	// Execute Node State Machine
 	for {
-		// Run different routines depending on node state
-		state := n.getState()
-		n.logger.WithField("state", state.String()).Debug("RunAsync(gossip bool)")
-
-		switch state {
-		case Gossiping:
-			n.lachesis(gossip)
-		case CatchingUp:
-			n.fastForward()
-		case Stop:
-			// do nothing in Stop state
-		case Shutdown:
+		select {
+		case <-n.ctx.Done():
 			return
+		default:
+			// Run different routines depending on node state
+			state := n.getState()
+			n.logger.WithField("state", state.String()).Debug("RunAsync(gossip bool)")
+
+			switch state {
+			case Gossiping:
+				n.lachesis(gossip)
+			case CatchingUp:
+				n.fastForward()
+			}
 		}
 	}
 }
@@ -182,26 +189,30 @@ func (n *Node) doBackgroundWork() {
 	for {
 		select {
 		case t := <-n.submitCh:
-			n.logger.Debug("Adding Transactions to Transaction Pool")
-			err := n.addTransaction(t)
+			n.goFunc(func() {
+				n.logger.Debug("Adding Transactions to Transaction Pool")
+				err := n.addTransaction(t)
 			if err != nil {
 				n.logger.Errorf("Adding Transactions to Transaction Pool: %s", err)
 			}
-			n.resetTimer()
+				n.resetTimer()
+			})
 		case t := <-n.submitInternalCh:
-			n.logger.Debug("Adding Internal Transaction")
-			n.addInternalTransaction(t)
-			n.resetTimer()
+			n.goFunc(func() {
+				n.addInternalTransaction(t)
+				n.resetTimer()
+				n.logger.Debug("Adding Internal Transaction")
+			})
 		case block := <-n.commitCh:
-			n.logger.WithFields(logrus.Fields{
-				"index":          block.Index(),
-				"round_received": block.RoundReceived(),
-				"transactions":   len(block.Transactions()),
-			}).Debug("Adding EventBlock")
-			if err := n.commit(block); err != nil {
-				n.logger.WithField("error", err).Error("Adding EventBlock")
-			}
-		case <-n.shutdownCh:
+			n.goFunc(func() {
+				n.logger.WithFields(logrus.Fields{
+					"index":          block.Index(),
+					"round_received": block.RoundReceived(),
+					"transactions":   len(block.Transactions()),
+				}).Debug("Adding EventBlock")
+				n.commit(block)
+			})
+		case <-n.ctx.Done():
 			return
 		}
 	}
@@ -239,7 +250,7 @@ func (n *Node) lachesis(gossip bool) {
 			n.resetTimer()
 		case <-returnCh:
 			return
-		case <-n.shutdownCh:
+		case <-n.ctx.Done():
 			return
 		}
 	}
@@ -614,12 +625,13 @@ func (n *Node) sync(events []poset.WireEvent) error {
 	return nil
 }
 
-func (n *Node) commit(block poset.Block) error {
+func (n *Node) commit(block poset.Block) {
 
 	stateHash := []byte{0, 1, 2}
 	_, err := n.proxy.CommitBlock(block)
 	if err != nil {
 		n.logger.WithError(err).Debug("commit(block poset.Block)")
+		return
 	}
 
 	n.logger.WithFields(logrus.Fields{
@@ -649,12 +661,11 @@ func (n *Node) commit(block poset.Block) error {
 		defer n.coreLock.Unlock()
 		sig, err := n.core.SignBlock(block)
 		if err != nil {
-			return err
+			n.logger.WithError(err).Debug("failed to sign block")
+			return
 		}
 		n.core.AddBlockSignature(sig)
 	}
-
-	return nil
 }
 
 func (n *Node) addTransaction(tx []byte) error {
@@ -670,15 +681,15 @@ func (n *Node) addInternalTransaction(tx poset.InternalTransaction) {
 
 // Shutdown the node
 func (n *Node) Shutdown() {
-	if n.getState() != Shutdown {
+	select {
+	case <-n.ctx.Done():
+		return
+	default:
 		// n.mqtt.FireEvent("Shutdown()", "/mq/lachesis/node")
 		n.logger.Debug("Shutdown()")
 
-		// Exit any non-shutdown state immediately
-		n.setState(Shutdown)
-
 		// Stop and wait for concurrent operations
-		close(n.shutdownCh)
+		n.cancel()
 		n.waitRoutines()
 
 		// For some reason this needs to be called after closing the shutdownCh
@@ -847,9 +858,4 @@ func (n *Node) GetBlock(blockIndex int64) (poset.Block, error) {
 // ID shows the ID of the node
 func (n *Node) ID() int64 {
 	return n.id
-}
-
-// Stop stops the node from gossiping
-func (n *Node) Stop() {
-	n.setState(Stop)
 }

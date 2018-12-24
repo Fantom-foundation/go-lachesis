@@ -149,15 +149,19 @@ func (l *Lachesis) initNode() error {
 		"id":           nodeID,
 	}).Debug("PARTICIPANTS")
 
-	l.Node = node.NewNode(
+	var err error
+	l.Node, err = node.NewNode(
 		&l.Config.NodeConfig,
 		nodeID,
 		key,
 		l.Peers,
 		l.Store,
 		l.Transport,
-		l.Config.Proxy,
+		l.Config.Proxy, node.LimitGoFunc,
 	)
+	if err != nil {
+		return fmt.Errorf("failed to create node: %s", err)
+	}
 
 	if err := l.Node.Init(); err != nil {
 		return fmt.Errorf("failed to initialize node: %s", err)

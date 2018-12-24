@@ -22,7 +22,7 @@ const delay = 100 * time.Millisecond
 type NodeList map[*ecdsa.PrivateKey]*Node
 
 // NewNodeList makes, fills and runs NodeList instance
-func NewNodeList(count int, logger *logrus.Logger) NodeList {
+func NewNodeList(count int, logger *logrus.Logger) (NodeList, error) {
 	nodes := make(NodeList, count)
 	participants := peers.NewPeers()
 	config := DefaultConfig()
@@ -33,14 +33,17 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 		key, _ := crypto.GenerateECDSAKey()
 		pubKey := fmt.Sprintf("0x%X", crypto.FromECDSAPub(&key.PublicKey))
 		peer := peers.NewPeer(pubKey, addr)
-		n := NewNode(
+		n, err := NewNode(
 			config,
 			peer.ID,
 			key,
 			participants,
 			poset.NewInmemStore(participants, config.CacheSize),
 			transp,
-			dummy.NewInmemDummyApp(logger))
+			dummy.NewInmemDummyApp(logger), LimitGoFunc)
+		if err != nil {
+			return NodeList{}, err
+		}
 
 		participants.AddPeer(peer)
 		nodes[key] = n
@@ -51,7 +54,7 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 		n.RunAsync(true)
 	}
 
-	return nodes
+	return nodes, nil
 }
 
 // Keys returns the all PrivateKeys slice
