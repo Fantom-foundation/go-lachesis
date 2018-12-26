@@ -57,7 +57,7 @@ func (n *Node) doBackgroundWork() {
 
 ## Store
 
-The events and transactions are stored either in an in memory database or an on disk KV database ([badger](https://github.com/dgraph-io/badger)). If you use badger, the in-memory store is still used as an LRU cache for recent events.
+The events and transactions are stored either in an in memory database or an on disk KV database ([badger](https://github.com/dgraph-io/badger)). If you use badger, the in-memory store is still used as an cache for recent events.
 
 Enable badger by passing `--store` at startup.
 

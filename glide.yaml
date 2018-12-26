@@ -6,8 +6,6 @@ import:
   version: 8d0c54c1246661d9a51ca0ba455d22116d485eaa
   subpackages:
   - proto
-- package: github.com/hashicorp/golang-lru
-  version: ^0.5.0
 - package: github.com/rifflock/lfshook
   version: ^2.4.0
 - package: github.com/rs/xid

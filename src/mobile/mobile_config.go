@@ -5,7 +5,7 @@ type MobileConfig struct {
 	Heartbeat  int    //heartbeat timeout in milliseconds
 	TCPTimeout int    //TCP timeout in milliseconds
 	MaxPool    int    //Max number of pooled connections
-	CacheSize  int    //Number of items in LRU cache
+	CacheSize  int    //Number of items in cache
 	SyncLimit  int    //Max Events per sync
 	StoreType  string //inmem or badger
 	StorePath  string //File containing the Store DB

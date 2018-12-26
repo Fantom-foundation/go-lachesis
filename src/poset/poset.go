@@ -10,7 +10,6 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
@@ -45,11 +44,11 @@ type Poset struct {
 	trustCount              int
 	core                    Core
 
-	dominatorCache         *lru.Cache
-	selfDominatorCache     *lru.Cache
-	strictlyDominatedCache *lru.Cache
-	roundCache             *lru.Cache
-	timestampCache         *lru.Cache
+	dominatorCache         *common.Cache
+	selfDominatorCache     *common.Cache
+	strictlyDominatedCache *common.Cache
+	roundCache             *common.Cache
+	timestampCache         *common.Cache
 
 	logger *logrus.Entry
 
@@ -73,37 +72,17 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 	trustCount := int(math.Ceil(float64(participants.Len()) / float64(3)))
 
 	cacheSize := store.CacheSize()
-	dominatorCache, err := lru.New(cacheSize)
-	if err != nil {
-		logger.Fatal("Unable to init Poset.dominatorCache")
-	}
-	selfDominatorCache, err := lru.New(cacheSize)
-	if err != nil {
-		logger.Fatal("Unable to init Poset.selfDominatorCache")
-	}
-	strictlyDominatedCache, err := lru.New(cacheSize)
-	if err != nil {
-		logger.Fatal("Unable to init Poset.strictlyDominatedCache")
-	}
-	roundCache, err := lru.New(cacheSize)
-	if err != nil {
-		logger.Fatal("Unable to init Poset.roundCreatedCache")
-	}
-	timestampCache, err := lru.New(cacheSize)
-	if err != nil {
-		logger.Fatal("Unable to init Poset.timestampCache")
-	}
 	poset := Poset{
 		Participants:           participants,
 		Store:                  store,
 		PendingRounds:          []*pendingRound{},
 		PendingRoundReceived:   common.Int64Slice{},
 		commitCh:               commitCh,
-		dominatorCache:         dominatorCache,
-		selfDominatorCache:     selfDominatorCache,
-		strictlyDominatedCache: strictlyDominatedCache,
-		roundCache:             roundCache,
-		timestampCache:         timestampCache,
+		dominatorCache:         common.NewCache(cacheSize),
+		selfDominatorCache:     common.NewCache(cacheSize),
+		strictlyDominatedCache: common.NewCache(cacheSize),
+		roundCache:             common.NewCache(cacheSize),
+		timestampCache:         common.NewCache(cacheSize),
 		logger:                 logger,
 		superMajority:          superMajority,
 		trustCount:             trustCount,
@@ -285,15 +264,15 @@ func (p *Poset) strictlyDominated(x, y string) (bool, error) {
 func (p *Poset) strictlyDominated2(x, y string) (bool, error) {
 	sentinels := make(map[string]bool)
 
-	if err := p.MapSentinels(x, y, sentinels); err != nil {
+	if err := p.mapSentinels(x, y, sentinels); err != nil {
 		return false, err
 	}
 
 	return len(sentinels) >= p.superMajority, nil
 }
 
-// MapSentinels participants in x's dominator that dominate y
-func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
+// mapSentinels participants in x's dominator that dominate y
+func (p *Poset) mapSentinels(x, y string, sentinels map[string]bool) error {
 	if x == "" {
 		return nil
 	}
@@ -329,11 +308,11 @@ func (p *Poset) MapSentinels(x, y string, sentinels map[string]bool) error {
 		return nil
 	}
 
-	if err := p.MapSentinels(ex.OtherParent(), y, sentinels); err != nil {
+	if err := p.mapSentinels(ex.OtherParent(), y, sentinels); err != nil {
 		return err
 	}
 
-	return p.MapSentinels(ex.SelfParent(), y, sentinels)
+	return p.mapSentinels(ex.SelfParent(), y, sentinels)
 }
 
 func (p *Poset) round(x string) (int64, error) {
@@ -777,7 +756,7 @@ func (p *Poset) setWireInfo(event *Event) error {
 	eventCreator := event.GetCreator()
 	creator, ok := p.Store.RepertoireByPubKey()[eventCreator]
 	if !ok {
-		return fmt.Errorf("Creator %s not found", eventCreator)
+		return fmt.Errorf("creator %s not found", eventCreator)
 	}
 	creatorID := creator.ID
 
@@ -812,7 +791,7 @@ func (p *Poset) setWireInfo(event *Event) error {
 			}
 			otherParentCreator, ok := p.Store.RepertoireByPubKey()[otherParent.GetCreator()]
 			if !ok {
-				return fmt.Errorf("Creator %s not found", otherParent.GetCreator())
+				return fmt.Errorf("creator %s not found", otherParent.GetCreator())
 			}
 			otherParentCreatorID = otherParentCreator.ID
 			otherParentIndex = otherParent.Index()
@@ -1575,27 +1554,10 @@ func (p *Poset) Reset(block Block, frame Frame) error {
 	p.pendingLoadedEventsLocker.Unlock()
 	p.topologicalIndex = 0
 
-	cacheSize := p.Store.CacheSize()
-	dominatorCache, err := lru.New(cacheSize)
-	if err != nil {
-		p.logger.Fatal("Unable to reset Poset.dominatorCache")
-	}
-	selfDominatorCache, err := lru.New(cacheSize)
-	if err != nil {
-		p.logger.Fatal("Unable to reset Poset.selfDominatorCache")
-	}
-	strictlyDominatedCache, err := lru.New(cacheSize)
-	if err != nil {
-		p.logger.Fatal("Unable to reset Poset.strictlyDominatedCache")
-	}
-	roundCache, err := lru.New(cacheSize)
-	if err != nil {
-		p.logger.Fatal("Unable to reset Poset.roundCache")
-	}
-	p.dominatorCache = dominatorCache
-	p.selfDominatorCache = selfDominatorCache
-	p.strictlyDominatedCache = strictlyDominatedCache
-	p.roundCache = roundCache
+	p.dominatorCache.Purge()
+	p.selfDominatorCache.Purge()
+	p.strictlyDominatedCache.Purge()
+	p.roundCache.Purge()
 
 	participants := p.Participants.ToPeerSlice()
 

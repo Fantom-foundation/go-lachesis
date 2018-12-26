@@ -2,9 +2,9 @@ package commands
 
 import (
 	"fmt"
-	"time"
 	"io"
 	"os"
+	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/src/dummy"
 	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
@@ -32,7 +32,7 @@ func runSingleLachesis(config *CLIConfig) error {
 	config.Lachesis.NodeConfig.Logger = config.Lachesis.Logger
 	if config.Log2file {
 		f, err := os.OpenFile(fmt.Sprintf("lachesis_%v.log", config.Lachesis.BindAddr),
-			os.O_APPEND | os.O_CREATE | os.O_TRUNC | os.O_RDWR, 0666)
+			os.O_APPEND|os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0666)
 		if err != nil {
 			fmt.Printf("error opening file: %v", err)
 		}
@@ -138,7 +138,7 @@ func AddRunFlags(cmd *cobra.Command) {
 
 	// Store
 	cmd.Flags().Bool("store", config.Lachesis.Store, "Use badgerDB instead of in-mem DB")
-	cmd.Flags().Int("cache-size", config.Lachesis.NodeConfig.CacheSize, "Number of items in LRU caches")
+	cmd.Flags().Int("cache-size", config.Lachesis.NodeConfig.CacheSize, "Number of items in caches")
 
 	// Node configuration
 	cmd.Flags().Duration("heartbeat", config.Lachesis.NodeConfig.HeartbeatTimeout, "Time between gossips")

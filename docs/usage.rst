@@ -182,7 +182,7 @@ Let us take a look at the help provided by the Lachesis CLI:
     lachesis run [flags]
 
   Flags:
-        --cache-size int          Number of items in LRU caches (default 500)
+        --cache-size int          Number of items in caches (default 500)
     -c, --client-connect string   IP:Port to connect to client (default "127.0.0.1:1339")
         --datadir string          Top-level directory for configuration and data (default "/home/martin/.lachesis")
         --heartbeat duration      Time between gossips (default 1s)

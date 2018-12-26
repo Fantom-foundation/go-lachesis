@@ -188,8 +188,8 @@ implementation, the **Poset** object has a dependency on a **Store** object
 which contains the actual data and is abstracted behind an interface.
 
 There are currently two implementations of the **Store** interface. The 
-``InmemStore`` uses a set of in-memory LRU caches which can be extended to 
-persist stale items to disk and the size of the LRU caches is configurable. The 
+``InmemStore`` uses a set of in-memory caches which can be extended to
+persist stale items to disk and the size of the caches is configurable. The
 ``BadgerStore`` is a wrapper around this cache that also persists objects to a 
 key-value store on disk. The database produced by the ``BadgerStore`` can be 
 reused to bootstrap a node back to a specific state.
