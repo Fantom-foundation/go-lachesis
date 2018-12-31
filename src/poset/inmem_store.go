@@ -73,7 +73,6 @@ func NewInmemStore(peerSet *peers.PeerSet, cacheSize int) *InmemStore {
 
 	store := &InmemStore{
 		cacheSize: cacheSize,
-		// participants:           peerSet,
 		eventCache:             eventCache,
 		roundCreatedCache:      roundCreatedCache,
 		roundReceivedCache:     roundReceivedCache,
@@ -89,18 +88,6 @@ func NewInmemStore(peerSet *peers.PeerSet, cacheSize int) *InmemStore {
 		lastBlock:              -1,
 		lastConsensusEvents:    map[string]string{},
 	}
-
-	// peerSet.OnNewPeer(func(peer *peers.Peer) {
-	// 	root := NewBaseRoot(peer.ID)
-	// 	store.rootsByParticipant[peer.PubKeyHex] = root
-	// 	store.repertoireByPubKey[peer.PubKeyHex] = peer
-	// 	store.repertoireByID[peer.ID] = peer
-	// 	store.rootsBySelfParent = nil
-	// 	store.RootsBySelfParent()
-	// 	old := store.participantEventsCache
-	// 	store.participantEventsCache = NewParticipantEventsCache(cacheSize, peerSet)
-	// 	store.participantEventsCache.Import(old)
-	// })
 
 	store.SetPeerSet(0, peerSet)
 	return store

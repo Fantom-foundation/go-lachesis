@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
-	"github.com/Fantom-foundation/go-lachesis/src/peers"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/golang/protobuf/proto"
@@ -92,19 +91,16 @@ func NewBlockFromFrame(blockIndex int64, frame *Frame) (*Block, error) {
 		internalTransactions = append(internalTransactions, e.Body.InternalTransactions...)
 	}
 
-	return NewBlock(blockIndex, frame.Round, frameHash, frame.Peers, transactions, internalTransactions), nil
+	return NewBlock(blockIndex, frame.Round, frameHash, transactions, internalTransactions), nil
 }
 
 // NewBlock creates a new empty block
-func NewBlock(blockIndex, roundReceived int64, frameHash []byte, peerSlice []*peers.Peer, txs [][]byte, itxs []*InternalTransaction) *Block {
-	peerSet := peers.NewPeerSet(peerSlice)
-
+func NewBlock(blockIndex, roundReceived int64, frameHash []byte, txs [][]byte, itxs []*InternalTransaction) *Block {
 	body := BlockBody{
 		Index:                blockIndex,
 		RoundReceived:        roundReceived,
 		Transactions:         txs,
 		InternalTransactions: itxs,
-		PeerSet:              peerSet,
 	}
 
 	return &Block{

@@ -34,18 +34,19 @@ func TestJSONPeers(t *testing.T) {
 	}
 
 	keys := map[string]*ecdsa.PrivateKey{}
-	newPeers := NewPeers()
+	var newPeers []*Peer
 	for i := 0; i < 3; i++ {
 		key, _ := scrypto.GenerateECDSAKey()
-		peer := Peer{
+		peer := &Peer{
 			NetAddr:   fmt.Sprintf("addr%d", i),
 			PubKeyHex: fmt.Sprintf("0x%X", scrypto.FromECDSAPub(&key.PublicKey)),
 		}
-		newPeers.AddPeer(&peer)
+		newPeers = append(newPeers, peer)
 		keys[peer.NetAddr] = key
 	}
 
-	newPeersSlice := newPeers.ToPeerSlice()
+	newPeerSet := NewPeerSet(newPeers)
+	newPeersSlice := newPeerSet.Peers
 
 	if err := store.SetPeers(newPeersSlice); err != nil {
 		t.Fatalf("err: %v", err)
@@ -60,7 +61,7 @@ func TestJSONPeers(t *testing.T) {
 		t.Fatalf("peers: %v", peers)
 	}
 
-	peersSlice := peers.ToPeerSlice()
+	peersSlice := peers.Peers
 
 	for i := 0; i < 3; i++ {
 		if peersSlice[i].NetAddr != newPeersSlice[i].NetAddr {

@@ -1,14 +1,12 @@
 syntax = "proto3";
 package poset;
 import "event.proto";
-import "github.com/Fantom-foundation/go-lachesis/src/peers/peer.proto";
 
 message BlockBody {
   int64 Index = 1;
   int64 RoundReceived = 2;
   repeated bytes Transactions = 5;
   repeated InternalTransaction InternalTransactions = 6;
-  peers.PeerSet PeerSet = 7;
 }
 
 message WireBlockSignature {

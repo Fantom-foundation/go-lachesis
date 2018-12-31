@@ -183,7 +183,7 @@ func initPosetNodes(n int) ([]TestNode, map[string]string,
 
 	peerSet := peers.NewPeerSet(tempPeers)
 
-	for _, peer := range peerSet.ToPeerSlice() {
+	for _, peer := range peerSet.Peers {
 		nodes = append(nodes, NewTestNode(keys[peer.PubKeyHex]))
 	}
 
@@ -237,7 +237,7 @@ func initPosetFull(t testing.TB, plays []play, db bool, n int,
 	nodes, index, orderedEvents, participants := initPosetNodes(n)
 
 	// Needed to have sorted nodes based on participants hash32
-	for i, peer := range participants.ToPeerSlice() {
+	for i, peer := range participants.Peers {
 		event := NewEvent(nil, nil, nil, []string{rootSelfParent(peer.ID), ""},
 			nodes[i].Pub, 0, map[string]int64{rootSelfParent(peer.ID): 1})
 		nodes[i].signAndAddEvent(event, fmt.Sprintf("e%d", i),
@@ -250,7 +250,7 @@ func initPosetFull(t testing.TB, plays []play, db bool, n int,
 	poset := createPoset(t, db, orderedEvents, participants, logger)
 
 	// Add reference to each participants' root event
-	for i, peer := range participants.ToPeerSlice() {
+	for i, peer := range participants.Peers {
 		root, err := poset.Store.GetRoot(peer.PubKeyHex)
 		if err != nil {
 			panic(err)
@@ -998,7 +998,7 @@ func TestCreateRoot(t *testing.T) {
 	p, index, _ := initRoundPoset(t)
 	p.DivideRounds()
 
-	participants := p.PeerSet.ToPeerSlice()
+	participants := p.PeerSet.Peers
 
 	baseRoot := NewBaseRoot(participants[0].ID)
 
@@ -1072,7 +1072,7 @@ e01  e12
 func initDentedPoset(t *testing.T) (*Poset, map[string]string) {
 	nodes, index, orderedEvents, participants := initPosetNodes(n)
 
-	orderedPeers := participants.ToPeerSlice()
+	orderedPeers := participants.Peers
 
 	for _, peer := range orderedPeers {
 		index[rootSelfParent(peer.ID)] = rootSelfParent(peer.ID)
@@ -1098,7 +1098,7 @@ func initDentedPoset(t *testing.T) (*Poset, map[string]string) {
 func TestCreateRootBis(t *testing.T) {
 	p, index := initDentedPoset(t)
 
-	participants := p.PeerSet.ToPeerSlice()
+	participants := p.PeerSet.Peers
 
 	root := NewBaseRootEvent(participants[1].ID)
 	expected := map[string]Root{
@@ -1145,7 +1145,6 @@ func initBlockPoset(t *testing.T) (*Poset, []TestNode, map[string]string) {
 
 	// create a block and signatures manually
 	block := NewBlock(0, 1, []byte("framehash"),
-		peerSet.Peers,
 		[][]byte{[]byte("block tx")},
 		[]*InternalTransaction{
 			NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
@@ -1241,7 +1240,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 			// The Event should be inserted
 			// The block signature is simply ignored
 
-			block1 := NewBlock(1, 2, []byte("framehash"), []*peers.Peer{}, [][]byte{},
+			block1 := NewBlock(1, 2, []byte("framehash"), [][]byte{},
 				[]*InternalTransaction{
 					NewInternalTransaction(TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),
 					NewInternalTransaction(TransactionType_PEER_REMOVE, *peers.NewPeer("peer2", "london")),
@@ -1792,7 +1791,7 @@ func BenchmarkConsensus(b *testing.B) {
 func TestKnown(t *testing.T) {
 	p, _ := initConsensusPoset(false, t)
 
-	participants := p.PeerSet.ToPeerSlice()
+	participants := p.PeerSet.Peers
 
 	expectedKnown := map[uint32]int64{
 		participants[0].ID: 10,
@@ -1812,7 +1811,7 @@ func TestKnown(t *testing.T) {
 func TestGetFrame(t *testing.T) {
 	p, index := initConsensusPoset(false, t)
 
-	peers := p.PeerSet.ToPeerSlice()
+	peers := p.PeerSet.Peers
 
 	p.DivideRounds()
 	p.DecideAtropos()
@@ -1986,7 +1985,7 @@ func TestGetFrame(t *testing.T) {
 func TestResetFromFrame(t *testing.T) {
 	p, index := initConsensusPoset(false, t)
 
-	participants := p.PeerSet.ToPeerSlice()
+	participants := p.PeerSet.Peers
 
 	p.DivideRounds()
 	p.DecideAtropos()
@@ -2300,7 +2299,7 @@ func TestBootstrap(t *testing.T) {
 func initFunkyPoset(t *testing.T, logger *logrus.Logger, full bool) (*Poset, map[string]string) {
 	nodes, index, orderedEvents, participants := initPosetNodes(4)
 
-	for i, peer := range participants.ToPeerSlice() {
+	for i, peer := range participants.Peers {
 		name := fmt.Sprintf("w0%d", i)
 		event := NewEvent([][]byte{[]byte(name)}, nil,
 			nil, []string{rootSelfParent(peer.ID), ""}, nodes[i].Pub, 0,
@@ -2503,7 +2502,7 @@ func TestFunkyPosetBlocks(t *testing.T) {
 func TestFunkyPosetFrames(t *testing.T) {
 	p, index := initFunkyPoset(t, common.NewTestLogger(t), true)
 
-	peers := p.PeerSet.ToPeerSlice()
+	peers := p.PeerSet.Peers
 
 	if err := p.DivideRounds(); err != nil {
 		t.Fatal(err)
@@ -2857,7 +2856,7 @@ func initSparsePoset(
 	t *testing.T, logger *logrus.Logger) (*Poset, map[string]string) {
 	nodes, index, orderedEvents, participants := initPosetNodes(4)
 
-	for i, peer := range participants.ToPeerSlice() {
+	for i, peer := range participants.Peers {
 		name := fmt.Sprintf("w0%d", i)
 		event := NewEvent([][]byte{[]byte(name)}, nil,
 			nil, []string{rootSelfParent(peer.ID), ""}, nodes[i].Pub, 0,
@@ -2921,7 +2920,7 @@ func initSparsePoset(
 func TestSparsePosetFrames(t *testing.T) {
 	p, index := initSparsePoset(t, common.NewTestLogger(t))
 
-	peers := p.PeerSet.ToPeerSlice()
+	peers := p.PeerSet.Peers
 
 	if err := p.DivideRounds(); err != nil {
 		t.Fatal(err)

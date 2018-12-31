@@ -27,7 +27,6 @@ func TestInmemAppCalls(t *testing.T) {
 		[]byte("tx 3"),
 	}
 	block := poset.NewBlock(0, 1, []byte{},
-		[]*peers.Peer{},
 		transactions,
 		[]*poset.InternalTransaction{
 			poset.NewInternalTransaction(poset.TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),

@@ -41,8 +41,6 @@ type Poset struct {
 	pendingLoadedEvents     int64             // number of loaded events that are not yet committed
 	commitCh                chan Block        // channel for committing Blocks
 	topologicalIndex        int64             // counter used to order events in topological order (only local)
-	superMajority           int
-	trustCount              int
 	core                    Core
 
 	dominatorCache         *lru.Cache
@@ -68,9 +66,6 @@ func NewPoset(peerSet *peers.PeerSet, store Store, commitCh chan Block, logger *
 		lachesis_log.NewLocal(log, log.Level.String())
 		logger = logrus.NewEntry(log)
 	}
-
-	superMajority := 2*peerSet.Len()/3 + 1
-	trustCount := int(math.Ceil(float64(peerSet.Len()) / float64(3)))
 
 	cacheSize := store.CacheSize()
 	dominatorCache, err := lru.New(cacheSize)
@@ -105,14 +100,7 @@ func NewPoset(peerSet *peers.PeerSet, store Store, commitCh chan Block, logger *
 		roundCache:             roundCache,
 		timestampCache:         timestampCache,
 		logger:                 logger,
-		superMajority:          superMajority,
-		trustCount:             trustCount,
 	}
-
-	// peerSet.OnNewPeer(func(peer *peers.Peer) {
-	// 	poset.superMajority = 2*peerSet.Len()/3 + 1
-	// 	poset.trustCount = int(math.Ceil(float64(peerSet.Len()) / float64(3)))
-	// })
 
 	return &poset
 }
@@ -281,7 +269,7 @@ func (p *Poset) strictlyDominated2(x, y string) (bool, error) {
 		return false, err
 	}
 
-	return len(sentinels) >= p.superMajority, nil
+	return int64(len(sentinels)) >= p.PeerSet.SuperMajority(), nil
 }
 
 // MapSentinels participants in x's dominator that dominate y
@@ -422,7 +410,7 @@ func (p *Poset) round2(x string) (int64, error) {
 				}
 			}
 
-			if clothoOpRoundRoots >= int64(p.superMajority) {
+			if clothoOpRoundRoots >= int64(p.PeerSet.SuperMajority()) {
 				return opRound + 1, nil
 			}
 
@@ -452,7 +440,7 @@ func (p *Poset) round2(x string) (int64, error) {
 	}
 
 	// check wp
-	if len(ex.Message.ClothoProof) >= p.superMajority {
+	if int64(len(ex.Message.ClothoProof)) >= p.PeerSet.SuperMajority() {
 		count := 0
 
 		for _, root := range ex.Message.ClothoProof {
@@ -461,14 +449,14 @@ func (p *Poset) round2(x string) (int64, error) {
 			}
 		}
 
-		if count >= p.superMajority {
+		if int64(count) >= p.PeerSet.SuperMajority() {
 			return parentRound + 1, err
 		}
 	}
 
 	// check ft
 	ft, _ := ex.GetFlagTable()
-	if len(ft) >= p.superMajority {
+	if int64(len(ft)) >= p.PeerSet.SuperMajority() {
 		count := 0
 
 		for root := range ft {
@@ -477,7 +465,7 @@ func (p *Poset) round2(x string) (int64, error) {
 			}
 		}
 
-		if count >= p.superMajority {
+		if int64(count) >= p.PeerSet.SuperMajority() {
 			return parentRound + 1, err
 		}
 	}
@@ -1080,15 +1068,15 @@ func (p *Poset) DecideAtropos() error {
 							}
 						}
 						v := false
-						t := nays
+						t := int64(nays)
 						if yays >= nays {
 							v = true
-							t = yays
+							t = int64(yays)
 						}
 
 						// normal round
 						if math.Mod(float64(diff), float64(c)) > 0 {
-							if t >= p.superMajority {
+							if t >= p.PeerSet.SuperMajority() {
 								roundInfo.SetAtropos(x, v)
 								setVote(votes, y, x, v)
 								break VoteLoop // break out of j loop
@@ -1096,7 +1084,7 @@ func (p *Poset) DecideAtropos() error {
 								setVote(votes, y, x, v)
 							}
 						} else { // coin round
-							if t >= p.superMajority {
+							if t >= p.PeerSet.SuperMajority() {
 								setVote(votes, y, x, v)
 							} else {
 								setVote(votes, y, x, randomShift(y)) // middle bit of y's hash
@@ -1512,14 +1500,14 @@ func (p *Poset) ProcessSigPool() error {
 				}).Warning("Saving Block")
 			}
 
-			if len(block.Signatures) > p.trustCount &&
+			if int64(len(block.Signatures)) > p.PeerSet.TrustCount() &&
 				(p.AnchorBlock == nil ||
 					block.Index() > *p.AnchorBlock) {
 				p.setAnchorBlock(block.Index())
 				p.logger.WithFields(logrus.Fields{
 					"block_index": block.Index(),
 					"signatures":  len(block.Signatures),
-					"trustCount":  p.trustCount,
+					"trustCount":  p.PeerSet.TrustCount(),
 				}).Debug("Setting AnchorBlock")
 			}
 		}
@@ -1775,15 +1763,15 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 // CheckBlock returns an error if the Block does not contain valid signatures
 // from MORE than 1/3 of participants
 func (p *Poset) CheckBlock(block *Block) error {
-	validSignatures := 0
+	validSignatures := int64(0)
 	for _, s := range block.GetBlockSignatures() {
 		ok, _ := block.Verify(s)
 		if ok {
 			validSignatures++
 		}
 	}
-	if validSignatures <= p.trustCount {
-		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.trustCount+1)
+	if validSignatures <= p.PeerSet.TrustCount() {
+		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.PeerSet.TrustCount()+1)
 	}
 
 	p.logger.WithField("valid_signatures", validSignatures).Debug("CheckBlock")

@@ -77,7 +77,7 @@ func TestDummySocketClient(t *testing.T) {
 	// create a few blocks
 	blocks := [5]*poset.Block{}
 	for i := int64(0); i < 5; i++ {
-		blocks[i] = poset.NewBlock(i, i+1, []byte{}, []*peers.Peer{},
+		blocks[i] = poset.NewBlock(i, i+1, []byte{},
 			[][]byte{[]byte(fmt.Sprintf("block %d transaction", i))},
 			[]*poset.InternalTransaction{
 				poset.NewInternalTransaction(poset.TransactionType_PEER_ADD, *peers.NewPeer("peer1", "paris")),

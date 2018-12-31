@@ -33,7 +33,7 @@ func initCores(n int, t *testing.T) ([]*Core,
 
 	peerSet := peers.NewPeerSet(tempPeers)
 
-	for i, peer := range peerSet.ToPeerSlice() {
+	for i, peer := range peerSet.Peers {
 		core := NewCore(uint32(i),
 			participantKeys[peer.ID],
 			peerSet,

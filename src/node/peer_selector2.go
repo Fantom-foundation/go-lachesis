@@ -9,14 +9,14 @@ import (
 // PeerSelector provides an interface for the lachesis node to
 // update the last peer it gossiped with and select the next peer
 // to gossip with
-//type PeerSelector interface {
-//	PeerSet() *peers.PeerSet
-//	UpdateLast(peer string)
-//	Next() *peers.Peer
-//}
+// type PeerSelector interface {
+// 	PeerSet() *peers.PeerSet
+// 	UpdateLast(peer string)
+// 	Next() *peers.Peer
+// }
 
-//+++++++++++++++++++++++++++++++++++++++
-//Selection based on FlagTable of a randomly chosen undermined event
+// +++++++++++++++++++++++++++++++++++++++
+// Selection based on FlagTable of a randomly chosen undermined event
 
 // SmartPeerSelector flag table based smart selection struct
 type SmartPeerSelector struct {
@@ -47,20 +47,19 @@ func (ps *SmartPeerSelector) PeerSet() *peers.PeerSet {
 func (ps *SmartPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
+
 // Next returns the next peer based on the flag table cost function selection
 func (ps *SmartPeerSelector) Next() *peers.Peer {
-	// TODO remove lock?
-	//ps.peerSet.Lock()
-	//defer ps.peerSet.Unlock()
-	selectablePeers := ps.peerSet.ToPeerByUsedSlice() //[1:]
+	selectablePeers := ps.peerSet.ToPeerByUsedSlice() // [1:]
 	if len(selectablePeers) > 1 {
 		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
 		if len(selectablePeers) > 1 {
 			_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.last)
 			if len(selectablePeers) > 1 {
 				var k int64
-				minUsed := selectablePeers[len(selectablePeers) - 1].Used
-				for k = 0; selectablePeers[k].Used > minUsed; k++ {}
+				minUsed := selectablePeers[len(selectablePeers)-1].Used
+				for k = 0; selectablePeers[k].Used > minUsed; k++ {
+				}
 				selectablePeers = selectablePeers[k:]
 				if ft, err := ps.GetFlagTable(); err == nil {
 					for id, flag := range ft {

@@ -13,7 +13,6 @@ func TestSignBlock(t *testing.T) {
 
 	block := NewBlock(0, 1,
 		[]byte("framehash"),
-		[]*peers.Peer{},
 		[][]byte{
 			[]byte("abc"),
 			[]byte("def"),
@@ -44,7 +43,6 @@ func TestAppendSignature(t *testing.T) {
 
 	block := NewBlock(0, 1,
 		[]byte("framehash"),
-		[]*peers.Peer{},
 		[][]byte{
 			[]byte("abc"),
 			[]byte("def"),

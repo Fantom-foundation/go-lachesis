@@ -11,10 +11,12 @@ import (
 
 /* Constructors */
 
+// NewEmptyPeerSet PeerSet constructor
 func NewEmptyPeerSet() *PeerSet {
 	return &PeerSet{
 		ByPubKey: make(map[string]*Peer),
 		ByID:     make(map[uint32]*Peer),
+		Cache:    &CachedValues{},
 	}
 }
 
@@ -33,14 +35,6 @@ func NewPeerSet(peers []*Peer) *PeerSet {
 	peerSet.Peers = peers
 
 	return peerSet
-}
-
-func (ps *PeerSet) Lock() {
-
-}
-
-func (ps *PeerSet) Unlock() {
-
 }
 
 // WithNewPeer returns a new PeerSet with a list of peers including the new one.
@@ -97,46 +91,48 @@ func (ps *PeerSet) Len() int {
 // Hash uniquely identifies a PeerSet. It is computed by sorting the peers set
 // by ID, and hashing (SHA256) their public keys together, one by one.
 func (ps *PeerSet) Hash() ([]byte, error) {
-	if len(ps.Hash_) == 0 {
+	if len(ps.Cache.Hash) == 0 {
 		var hash []byte
 		for _, p := range ps.Peers {
 			pk, _ := p.PubKeyBytes()
 			hash = crypto.SimpleHashFromTwoHashes(hash, pk)
 		}
-		ps.Hash_ = hash
+		ps.Cache.Hash = hash
 	}
-	return ps.Hash_, nil
+	return ps.Cache.Hash, nil
 }
 
 // Hex is the hexadecimal representation of Hash
 func (ps *PeerSet) Hex() string {
-	if len(ps.Hex_) == 0 {
+	if len(ps.Cache.Hex) == 0 {
 		hash, _ := ps.Hash()
-		ps.Hex_ = fmt.Sprintf("0x%X", hash)
+		ps.Cache.Hex = fmt.Sprintf("0x%X", hash)
 	}
-	return ps.Hex_
+	return ps.Cache.Hex
 }
 
 // SuperMajority return the number of peers that forms a strong majortiy (+2/3)
 // in the PeerSet
 func (ps *PeerSet) SuperMajority() int64 {
-	if ps.SuperMajority_ == 0 {
+	if ps.Cache.SuperMajority == 0 {
 		val := int64(2*ps.Len()/3 + 1)
-		ps.SuperMajority_ = val
+		ps.Cache.SuperMajority = val
 	}
-	return ps.SuperMajority_
+	return ps.Cache.SuperMajority
 }
 
+// TrustCount calculates and returns the trust count
 func (ps *PeerSet) TrustCount() int64 {
-	if ps.TrustCount_ == 0 {
+	if ps.Cache.TrustCount == 0 {
 		val := int64(math.Ceil(float64(ps.Len()) / float64(3)))
-		ps.TrustCount_ = val
+		ps.Cache.TrustCount = val
 	}
-	return ps.TrustCount_
+	return ps.Cache.TrustCount
 }
 
 func (ps *PeerSet) clearCache() {
-	ps.Hash_ = []byte{}
-	ps.Hex_ = ""
-	ps.SuperMajority_ = 0
+	ps.Cache.Hash = []byte{}
+	ps.Cache.Hex = ""
+	ps.Cache.SuperMajority = 0
+	ps.Cache.TrustCount = 0
 }

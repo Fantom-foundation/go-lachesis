@@ -54,7 +54,7 @@ func (p *Peer) ComputeID() error {
 // retrieval of peers.
 type PeerStore interface {
 	// Peers returns the list of known peers.
-	Peers() (*Peers, error)
+	Peers() ([]*Peer, error)
 
 	// SetPeers sets the list of known peers. This is invoked when a peer is
 	// added or removed.

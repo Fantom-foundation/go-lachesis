@@ -49,7 +49,7 @@ func TestProcessSync(t *testing.T) {
 
 	// Start two nodes
 
-	ps := p.ToPeerSlice()
+	ps := p.Peers
 
 	peer0Trans, err := net.NewTCPTransport(utils.GetUnusedNetAddr(t), nil, 2,
 		time.Second, testLogger)
@@ -150,7 +150,7 @@ func TestProcessEagerSync(t *testing.T) {
 
 	// Start two nodes
 
-	ps := p.ToPeerSlice()
+	ps := p.Peers
 
 	peer0Trans, err := net.NewTCPTransport(utils.GetUnusedNetAddr(t), nil, 2,
 		time.Second, testLogger)
@@ -229,7 +229,7 @@ func TestAddTransaction(t *testing.T) {
 
 	// Start two nodes
 
-	ps := p.ToPeerSlice()
+	ps := p.Peers
 
 	peer0Trans, err := net.NewTCPTransport(utils.GetUnusedNetAddr(t), nil, 2,
 		time.Second, common.NewTestLogger(t))
@@ -335,9 +335,7 @@ func initNodes(keys []*ecdsa.PrivateKey,
 			t.Fatalf("failed to create transport for peer %d: %s", id, err)
 		}
 
-		peerSet.Lock()
 		peer.NetAddr = trans.LocalAddr()
-		peerSet.Unlock()
 
 		var store poset.Store
 		switch storeType {
