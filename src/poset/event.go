@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
@@ -127,6 +128,9 @@ Event
 // LamportTimestampNIL nil value for lamport
 const LamportTimestampNIL int64 = -1
 
+// CreatedTimestampNIL nil value for event block creation
+const CreatedTimestampNIL int64 = -1
+
 // RoundNIL nil value for round
 const RoundNIL int64 = -1
 
@@ -134,6 +138,7 @@ const RoundNIL int64 = -1
 func (m *EventMessage) ToEvent() Event {
 	return Event{
 		Message:          m,
+		createdTimestamp: CreatedTimestampNIL,
 		lamportTimestamp: LamportTimestampNIL,
 		round:            RoundNIL,
 		roundReceived:    RoundNIL,
@@ -181,6 +186,7 @@ func NewEvent(transactions [][]byte,
 			Body:      &body,
 			FlagTable: ft,
 		},
+		createdTimestamp: time.Now().Unix(),
 		lamportTimestamp: LamportTimestampNIL,
 		round:            RoundNIL,
 		roundReceived:    RoundNIL,
@@ -190,6 +196,7 @@ func NewEvent(transactions [][]byte,
 // Event struct
 type Event struct {
 	Message          *EventMessage
+	createdTimestamp int64
 	lamportTimestamp int64
 	round            int64
 	roundReceived    int64
