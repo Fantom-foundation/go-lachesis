@@ -153,7 +153,6 @@ func (l *Lachesis) initNode() error {
 		&l.Config.NodeConfig,
 		nodeID,
 		key,
-		l.Peers,
 		l.Store,
 		l.Transport,
 		l.Config.Proxy,

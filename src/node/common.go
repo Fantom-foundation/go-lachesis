@@ -38,7 +38,6 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 			config,
 			peer.ID,
 			key,
-			peerSet,
 			poset.NewInmemStore(peerSet, config.CacheSize),
 			transp,
 			dummy.NewInmemDummyApp(logger))

@@ -58,7 +58,7 @@ func TestProcessSync(t *testing.T) {
 	}
 	defer peer0Trans.Close()
 
-	node0 := NewNode(config, ps[0].ID, keys[0], p,
+	node0 := NewNode(config, ps[0].ID, keys[0],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
 		dummy.NewInmemDummyApp(testLogger))
@@ -74,7 +74,7 @@ func TestProcessSync(t *testing.T) {
 	}
 	defer peer1Trans.Close()
 
-	node1 := NewNode(config, ps[1].ID, keys[1], p,
+	node1 := NewNode(config, ps[1].ID, keys[1],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
 		dummy.NewInmemDummyApp(testLogger))
@@ -159,7 +159,7 @@ func TestProcessEagerSync(t *testing.T) {
 	}
 	defer peer0Trans.Close()
 
-	node0 := NewNode(config, ps[0].ID, keys[0], p,
+	node0 := NewNode(config, ps[0].ID, keys[0],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
 		dummy.NewInmemDummyApp(testLogger))
@@ -175,7 +175,7 @@ func TestProcessEagerSync(t *testing.T) {
 	}
 	defer peer1Trans.Close()
 
-	node1 := NewNode(config, ps[1].ID, keys[1], p,
+	node1 := NewNode(config, ps[1].ID, keys[1],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
 		dummy.NewInmemDummyApp(testLogger))
@@ -239,7 +239,7 @@ func TestAddTransaction(t *testing.T) {
 	peer0Proxy := dummy.NewInmemDummyApp(testLogger)
 	defer peer0Trans.Close()
 
-	node0 := NewNode(TestConfig(t), ps[0].ID, keys[0], p,
+	node0 := NewNode(TestConfig(t), ps[0].ID, keys[0],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer0Trans,
 		peer0Proxy)
@@ -256,7 +256,7 @@ func TestAddTransaction(t *testing.T) {
 	peer1Proxy := dummy.NewInmemDummyApp(testLogger)
 	defer peer1Trans.Close()
 
-	node1 := NewNode(TestConfig(t), ps[1].ID, keys[1], p,
+	node1 := NewNode(TestConfig(t), ps[1].ID, keys[1],
 		poset.NewInmemStore(p, config.CacheSize),
 		peer1Trans,
 		peer1Proxy)
@@ -354,7 +354,6 @@ func initNodes(keys []*ecdsa.PrivateKey,
 		node := NewNode(conf,
 			id,
 			k,
-			peerSet,
 			store,
 			trans,
 			prox)
@@ -381,7 +380,6 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 	conf := oldNode.conf
 	id := oldNode.id
 	key := oldNode.core.key
-	ps := oldNode.peerSelector.PeerSet()
 
 	var store poset.Store
 	var err error
@@ -402,7 +400,7 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 	}
 	prox := dummy.NewInmemDummyApp(logger)
 
-	newNode := NewNode(conf, id, key, ps, store, trans, prox)
+	newNode := NewNode(conf, id, key, store, trans, prox)
 
 	if err := newNode.Init(); err != nil {
 		t.Fatal(err)

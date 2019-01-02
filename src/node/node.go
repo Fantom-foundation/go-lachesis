@@ -28,9 +28,6 @@ type Node struct {
 
 	localAddr string
 
-	peerSelector PeerSelector
-	selectorLock sync.Mutex
-
 	trans net.Transport
 	netCh <-chan net.RPC
 
@@ -57,7 +54,6 @@ type Node struct {
 func NewNode(conf *Config,
 	id uint32,
 	key *ecdsa.PrivateKey,
-	peerSet *peers.PeerSet,
 	store poset.Store,
 	trans net.Transport,
 	proxy proxy.AppProxy) *Node {
@@ -71,17 +67,12 @@ func NewNode(conf *Config,
 
 	pubKey := core.HexID()
 
-	// peerSelector := NewRandomPeerSelector(peerSet, localAddr)
-	peerSelector := NewSmartPeerSelector(peerSet, pubKey,
-		core.poset.GetFlagTableOfRandomUndeterminedEvent)
-
 	node := Node{
 		id:               id,
 		conf:             conf,
 		core:             core,
 		localAddr:        localAddr,
 		logger:           conf.Logger.WithField("this_id", id),
-		peerSelector:     peerSelector,
 		trans:            trans,
 		netCh:            trans.Consumer(),
 		proxy:            proxy,
@@ -110,7 +101,7 @@ func NewNode(conf *Config,
 // Init initializes all the node processes
 func (n *Node) Init() error {
 	var peerAddresses []string
-	for _, p := range n.peerSelector.PeerSet().Peers {
+	for _, p := range n.core.peerSelector.PeerSet().Peers {
 		peerAddresses = append(peerAddresses, p.NetAddr)
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
@@ -225,9 +216,9 @@ func (n *Node) lachesis(gossip bool) {
 			})
 		case <-n.controlTimer.tickCh:
 			if gossip && n.gossipJobs.get() < 1 {
-				n.selectorLock.Lock()
-				peerAddr := n.peerSelector.Next().NetAddr
-				n.selectorLock.Unlock()
+				n.core.selectorLock.Lock()
+				peerAddr := n.core.peerSelector.Next().NetAddr
+				n.core.selectorLock.Unlock()
 				n.goFunc(func() {
 					n.gossipJobs.increment()
 					n.gossip(peerAddr, returnCh)
@@ -401,9 +392,9 @@ func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
 	}
 
 	// update peer selector
-	n.selectorLock.Lock()
-	n.peerSelector.UpdateLast(peerAddr)
-	n.selectorLock.Unlock()
+	n.core.selectorLock.Lock()
+	n.core.peerSelector.UpdateLast(peerAddr)
+	n.core.selectorLock.Unlock()
 
 	return nil
 }
@@ -508,9 +499,9 @@ func (n *Node) fastForward() error {
 	n.waitRoutines()
 
 	// fastForwardRequest
-	n.selectorLock.Lock()
-	peer := n.peerSelector.Next()
-	n.selectorLock.Unlock()
+	n.core.selectorLock.Lock()
+	peer := n.core.peerSelector.Next()
+	n.core.selectorLock.Unlock()
 	start := time.Now()
 	resp, err := n.requestFastForward(peer.NetAddr)
 	elapsed := time.Since(start)
@@ -732,7 +723,7 @@ func (n *Node) GetStats() map[string]string {
 		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
 		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
 		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
-		"num_peers":               strconv.Itoa(n.peerSelector.PeerSet().Len()),
+		"num_peers":               strconv.Itoa(n.core.peerSelector.PeerSet().Len()),
 		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
 		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
 		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
