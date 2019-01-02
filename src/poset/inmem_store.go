@@ -89,7 +89,11 @@ func NewInmemStore(peerSet *peers.PeerSet, cacheSize int) *InmemStore {
 		lastConsensusEvents:    map[string]string{},
 	}
 
-	store.SetPeerSet(0, peerSet)
+	err = store.SetPeerSet(0, peerSet)
+	if err != nil {
+		fmt.Println("Unable to init InmemStore.peerSetCache", err)
+		os.Exit(36)
+	}
 	return store
 }
 
@@ -445,7 +449,7 @@ func (s *InmemStore) Reset(frame *Frame) error {
 
 	// Reset Peer caches
 	peerSet := peers.NewPeerSet(frame.Peers)
-	s.peerSetCache.Set(frame.Round, peerSet)
+	_ = s.peerSetCache.Set(frame.Round, peerSet) // ignore key already exists error
 	s.participantEventsCache = NewParticipantEventsCache(s.cacheSize, peerSet)
 
 	// Reset Event and Round caches

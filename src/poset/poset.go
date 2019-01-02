@@ -1002,7 +1002,9 @@ func (p *Poset) DivideRounds() error {
 
 		if updateEvent {
 			if ev.CreatorID() == 0 {
-				p.setWireInfo(ev)
+				if err := p.setWireInfo(ev); err != nil {
+					return err
+				}
 			}
 			p.Store.SetEvent(ev)
 		}

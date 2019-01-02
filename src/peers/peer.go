@@ -20,7 +20,8 @@ func NewPeer(pubKeyHex, netAddr string) *Peer {
 		Used: 0,
 	}
 
-	peer.ComputeID()
+	// TODO: Do something with the error
+	_ = peer.ComputeID()
 
 	return peer
 }

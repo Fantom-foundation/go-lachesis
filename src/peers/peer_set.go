@@ -25,7 +25,8 @@ func NewPeerSet(peers []*Peer) *PeerSet {
 	peerSet := NewEmptyPeerSet()
 	for _, peer := range peers {
 		if peer.ID == 0 {
-			peer.ComputeID()
+			// TODO: Decide what, if anything, to do with the error
+			_ = peer.ComputeID()
 		}
 
 		peerSet.ByPubKey[peer.PubKeyHex] = peer
@@ -128,11 +129,4 @@ func (ps *PeerSet) TrustCount() int64 {
 		ps.Cache.TrustCount = val
 	}
 	return ps.Cache.TrustCount
-}
-
-func (ps *PeerSet) clearCache() {
-	ps.Cache.Hash = []byte{}
-	ps.Cache.Hex = ""
-	ps.Cache.SuperMajority = 0
-	ps.Cache.TrustCount = 0
 }
