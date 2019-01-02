@@ -1,6 +1,7 @@
 package node
 
 import (
+	"math"
 	"math/rand"
 
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
@@ -50,28 +51,65 @@ func (ps *SmartPeerSelector) UpdateLast(peer string) {
 
 // Next returns the next peer based on the flag table cost function selection
 func (ps *SmartPeerSelector) Next() *peers.Peer {
-	selectablePeers := ps.peerSet.ToPeerByUsedSlice() // [1:]
-	if len(selectablePeers) > 1 {
-		_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.localAddr)
-		if len(selectablePeers) > 1 {
-			_, selectablePeers = peers.ExcludePeer(selectablePeers, ps.last)
-			if len(selectablePeers) > 1 {
-				var k int64
-				minUsed := selectablePeers[len(selectablePeers)-1].Used
-				for k = 0; selectablePeers[k].Used > minUsed; k++ {
-				}
-				selectablePeers = selectablePeers[k:]
-				if ft, err := ps.GetFlagTable(); err == nil {
-					for id, flag := range ft {
-						if flag == 1 && len(selectablePeers) > 1 {
-							peers.ExcludePeer(selectablePeers, id)
-						}
-					}
-				}
-			}
-		}
+	flagTable, err := ps.GetFlagTable()
+	if err != nil {
+		flagTable = nil
 	}
-	i := rand.Intn(len(selectablePeers))
-	selectablePeers[i].Used++;
-	return selectablePeers[i]
+
+
+	sortedSrc := ps.peerSet.ToPeerByUsedSlice()
+	selected := make([]*peers.Peer, len(sortedSrc))
+	sCount := 0
+	flagged := make([]*peers.Peer, len(sortedSrc))
+	fCount := 0
+	minUsedIdx := 0
+	minUsedVal := int64(math.MaxInt64)
+	var lastused []*peers.Peer
+
+	for _, p := range sortedSrc {
+		if p.NetAddr == ps.localAddr {
+			continue
+		}
+		if p.NetAddr == ps.last || p.PubKeyHex == ps.last {
+			lastused = append(lastused, p)
+			continue
+		}
+
+		if f, ok := flagTable[p.NetAddr]; ok && f == 1 {
+			flagged[fCount] = p
+			fCount += 1
+			continue
+		}
+		if f, ok := flagTable[p.PubKeyHex]; ok && f == 1 {
+			flagged[fCount] = p
+			fCount += 1
+			continue
+		}
+
+		if p.Used < minUsedVal {
+			minUsedVal = p.Used
+			minUsedIdx = sCount
+		}
+		selected[sCount] = p
+		sCount += 1
+	}
+
+	selected = selected[minUsedIdx:sCount]
+	if len(selected) < 1 {
+		selected = flagged[0:fCount]
+	}
+	if len(selected) < 1 {
+		selected = lastused
+	}
+	if len(selected) == 1 {
+		selected[0].Used++
+		return selected[0]
+	}
+	if len(selected) < 1 {
+		return nil
+	}
+
+	i := rand.Intn(len(selected))
+	selected[i].Used++
+	return selected[i]
 }
