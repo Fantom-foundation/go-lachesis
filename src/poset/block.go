@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/golang/protobuf/proto"
@@ -101,6 +102,7 @@ func NewBlock(blockIndex, roundReceived int64, frameHash []byte, txs [][]byte) B
 	return Block{
 		Body:       &body,
 		FrameHash:  frameHash,
+		CreatedTimestamp: time.Now().Unix(),
 		Signatures: make(map[string]string),
 	}
 }
