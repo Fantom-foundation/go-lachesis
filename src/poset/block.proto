@@ -19,4 +19,5 @@ message Block {
   string hex = 4;
   bytes StateHash = 5;
   bytes FrameHash = 6;
+  int64 CreatedTimestamp = 7;
 }
