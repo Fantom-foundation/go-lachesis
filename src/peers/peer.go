@@ -10,6 +10,7 @@ const (
 	jsonPeerPath = "peers.json"
 )
 
+// PeerNIL is used for nil peer id
 const PeerNIL uint32 = 0
 
 // NewPeer creates a new peer based on public key and network address
@@ -38,6 +39,7 @@ func (p *Peer) PubKeyBytes() ([]byte, error) {
 	return hex.DecodeString(p.PubKeyHex[2:])
 }
 
+// ComputeID computes the peer id
 func (p *Peer) ComputeID() error {
 	// TODO: Use the decoded bytes from hex
 	pubKey, err := p.PubKeyBytes()
