@@ -12,7 +12,7 @@ type Store interface {
 	GetPeerSet(int64) (*peers.PeerSet, error)
 	SetPeerSet(int64, *peers.PeerSet) error
 	RepertoireByPubKey() map[string]*peers.Peer
-	RepertoireByID() map[uint32]*peers.Peer
+	RepertoireByID() map[uint64]*peers.Peer
 	RootsBySelfParent() map[string]*Root
 	GetEventBlock(string) (*Event, error)
 	SetEvent(*Event) error
@@ -20,7 +20,7 @@ type Store interface {
 	ParticipantEvent(string, int64) (string, error)
 	LastEventFrom(string) (string, bool, error)
 	LastConsensusEventFrom(string) (string, bool, error)
-	KnownEvents() map[uint32]int64
+	KnownEvents() map[uint64]int64
 	ConsensusEvents() []string
 	ConsensusEventsCount() int64
 	AddConsensusEvent(*Event) error

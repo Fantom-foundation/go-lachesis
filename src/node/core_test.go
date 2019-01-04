@@ -14,12 +14,12 @@ import (
 )
 
 func initCores(n int, t *testing.T) ([]*Core,
-	map[uint32]*ecdsa.PrivateKey, map[string]string) {
+	map[uint64]*ecdsa.PrivateKey, map[string]string) {
 	cacheSize := 1000
 
 	var cores []*Core
 	index := make(map[string]string)
-	participantKeys := map[uint32]*ecdsa.PrivateKey{}
+	participantKeys := map[uint64]*ecdsa.PrivateKey{}
 
 	var tempPeers []*peers.Peer
 	for i := 0; i < n; i++ {
@@ -34,7 +34,7 @@ func initCores(n int, t *testing.T) ([]*Core,
 	peerSet := peers.NewPeerSet(tempPeers)
 
 	for i, peer := range peerSet.Peers {
-		core := NewCore(uint32(i),
+		core := NewCore(uint64(i),
 			participantKeys[peer.ID],
 			peerSet,
 			poset.NewInmemStore(peerSet, cacheSize),
@@ -77,9 +77,9 @@ e01 |   |
 e0  e1  e2
 0   1   2
 */
-func initPoset(t *testing.T, cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
-	index map[string]string, participant uint32) {
-	for i := uint32(0); i < uint32(len(cores)); i++ {
+func initPoset(t *testing.T, cores []*Core, keys map[uint64]*ecdsa.PrivateKey,
+	index map[string]string, participant uint64) {
+	for i := uint64(0); i < uint64(len(cores)); i++ {
 		if i != participant {
 			event, err := cores[i].GetEventBlock(index[fmt.Sprintf("e%d", i)])
 			if err != nil {
@@ -112,7 +112,7 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
 		[]string{index["e0"], index["e1"]}, // e0 and e1
 		cores[0].PubKey(), 1, event01ft)
 	if err := insertEvent(cores, keys, index, event01, "e01", participant,
-		common.Hash32(cores[0].pubKey)); err != nil {
+		common.Hash64(cores[0].pubKey)); err != nil {
 		t.Fatalf("error inserting e01: %s\n", err)
 	}
 
@@ -130,7 +130,7 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
 		[]string{index["e2"], index["e01"]}, // e2 and e01
 		cores[2].PubKey(), 1, event20ft)
 	if err := insertEvent(cores, keys, index, event20, "e20", participant,
-		common.Hash32(cores[2].pubKey)); err != nil {
+		common.Hash64(cores[2].pubKey)); err != nil {
 		fmt.Printf("error inserting e20: %s\n", err)
 	}
 
@@ -142,14 +142,14 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
 		[]string{index["e1"], index["e20"]}, // e1 and e20
 		cores[1].PubKey(), 1, event12ft)
 	if err := insertEvent(cores, keys, index, event12, "e12", participant,
-		common.Hash32(cores[1].pubKey)); err != nil {
+		common.Hash64(cores[1].pubKey)); err != nil {
 		fmt.Printf("error inserting e12: %s\n", err)
 	}
 }
 
-func insertEvent(cores []*Core, keys map[uint32]*ecdsa.PrivateKey,
-	index map[string]string, event *poset.Event, name string, participant uint32,
-	creator uint32) error {
+func insertEvent(cores []*Core, keys map[uint64]*ecdsa.PrivateKey,
+	index map[string]string, event *poset.Event, name string, participant uint64,
+	creator uint64) error {
 
 	if participant == creator {
 		if err := cores[participant].SignAndInsertSelfEvent(event); err != nil {
@@ -278,13 +278,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy0 := cores[0].KnownEvents()
-	if k := knownBy0[common.Hash32(cores[0].pubKey)]; k != 1 {
+	if k := knownBy0[common.Hash64(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 0 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy0[common.Hash32(cores[1].pubKey)]; k != 0 {
+	if k := knownBy0[common.Hash64(cores[1].pubKey)]; k != 0 {
 		t.Fatalf("core 0 should have last-index 0 for core 1, not %d", k)
 	}
-	if k := knownBy0[common.Hash32(cores[2].pubKey)]; k != -1 {
+	if k := knownBy0[common.Hash64(cores[2].pubKey)]; k != -1 {
 		t.Fatalf("core 0 should have last-index -1 for core 2, not %d", k)
 	}
 	core0Head, _ := cores[0].GetHead()
@@ -336,13 +336,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy2 := cores[2].KnownEvents()
-	if k := knownBy2[common.Hash32(cores[0].pubKey)]; k != 1 {
+	if k := knownBy2[common.Hash64(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy2[common.Hash32(cores[1].pubKey)]; k != 0 {
+	if k := knownBy2[common.Hash64(cores[1].pubKey)]; k != 0 {
 		t.Fatalf("core 2 should have last-index 0 core 1, not %d", k)
 	}
-	if k := knownBy2[common.Hash32(cores[2].pubKey)]; k != 1 {
+	if k := knownBy2[common.Hash64(cores[2].pubKey)]; k != 1 {
 		t.Fatalf("core 2 should have last-index 1 for core 2, not %d", k)
 	}
 	core2Head, _ := cores[2].GetHead()
@@ -392,13 +392,13 @@ func TestSync(t *testing.T) {
 	checkHeights(cores, expectedHeights, t)
 
 	knownBy1 := cores[1].KnownEvents()
-	if k := knownBy1[common.Hash32(cores[0].pubKey)]; k != 1 {
+	if k := knownBy1[common.Hash64(cores[0].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 0, not %d", k)
 	}
-	if k := knownBy1[common.Hash32(cores[1].pubKey)]; k != 1 {
+	if k := knownBy1[common.Hash64(cores[1].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 1, not %d", k)
 	}
-	if k := knownBy1[common.Hash32(cores[2].pubKey)]; k != 1 {
+	if k := knownBy1[common.Hash64(cores[2].pubKey)]; k != 1 {
 		t.Fatalf("core 1 should have last-index 1 for core 2, not %d", k)
 	}
 	core1Head, _ := cores[1].GetHead()
@@ -746,10 +746,10 @@ func TestOverSyncLimit(t *testing.T) {
 	cores := initConsensusPoset(t)
 
 	// positive
-	known := map[uint32]int64{
-		common.Hash32(cores[0].pubKey): 1,
-		common.Hash32(cores[1].pubKey): 1,
-		common.Hash32(cores[2].pubKey): 1,
+	known := map[uint64]int64{
+		common.Hash64(cores[0].pubKey): 1,
+		common.Hash64(cores[1].pubKey): 1,
+		common.Hash64(cores[2].pubKey): 1,
 	}
 
 	syncLimit := int64(10)
@@ -759,10 +759,10 @@ func TestOverSyncLimit(t *testing.T) {
 	}
 
 	// negative
-	known = map[uint32]int64{
-		common.Hash32(cores[0].pubKey): 6,
-		common.Hash32(cores[1].pubKey): 6,
-		common.Hash32(cores[2].pubKey): 6,
+	known = map[uint64]int64{
+		common.Hash64(cores[0].pubKey): 6,
+		common.Hash64(cores[1].pubKey): 6,
+		common.Hash64(cores[2].pubKey): 6,
 	}
 
 	if cores[0].OverSyncLimit(known, syncLimit) {
@@ -770,10 +770,10 @@ func TestOverSyncLimit(t *testing.T) {
 	}
 
 	// edge
-	known = map[uint32]int64{
-		common.Hash32(cores[0].pubKey): 2,
-		common.Hash32(cores[1].pubKey): 3,
-		common.Hash32(cores[2].pubKey): 3,
+	known = map[uint64]int64{
+		common.Hash64(cores[0].pubKey): 2,
+		common.Hash64(cores[1].pubKey): 3,
+		common.Hash64(cores[2].pubKey): 3,
 	}
 	if cores[0].OverSyncLimit(known, syncLimit) {
 		t.Fatalf("OverSyncLimit(%v, %v) should return false", known, syncLimit)
@@ -962,11 +962,11 @@ func TestCoreFastForward(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		expectedKnown := map[uint32]int64{
-			common.Hash32(cores[0].pubKey): -1,
-			common.Hash32(cores[1].pubKey): 0,
-			common.Hash32(cores[2].pubKey): 1,
-			common.Hash32(cores[3].pubKey): 0,
+		expectedKnown := map[uint64]int64{
+			common.Hash64(cores[0].pubKey): -1,
+			common.Hash64(cores[1].pubKey): 0,
+			common.Hash64(cores[2].pubKey): 1,
+			common.Hash64(cores[3].pubKey): 0,
 		}
 
 		if !reflect.DeepEqual(knownBy0, expectedKnown) {

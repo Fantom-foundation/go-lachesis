@@ -22,7 +22,7 @@ type Node struct {
 	conf   *Config
 	logger *logrus.Entry
 
-	id       uint32
+	id       uint64
 	core     *Core
 	coreLock sync.Mutex
 
@@ -52,7 +52,7 @@ type Node struct {
 
 // NewNode create a new node struct
 func NewNode(conf *Config,
-	id uint32,
+	id uint64,
 	key *ecdsa.PrivateKey,
 	store poset.Store,
 	trans net.Transport,
@@ -399,7 +399,7 @@ func (n *Node) gossip(peerAddr string, parentReturnCh chan struct{}) error {
 	return nil
 }
 
-func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint32]int64, err error) {
+func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint64]int64, err error) {
 	// Compute Known
 	n.coreLock.Lock()
 	knownEvents := n.core.KnownEvents()
@@ -442,7 +442,7 @@ func (n *Node) pull(peerAddr string) (syncLimit bool, otherKnownEvents map[uint3
 	return false, resp.Known, nil
 }
 
-func (n *Node) push(peerAddr string, knownEvents map[uint32]int64) error {
+func (n *Node) push(peerAddr string, knownEvents map[uint64]int64) error {
 
 	// Check SyncLimit
 	n.coreLock.Lock()
@@ -540,7 +540,7 @@ func (n *Node) fastForward() error {
 	return nil
 }
 
-func (n *Node) requestSync(target string, known map[uint32]int64) (net.SyncResponse, error) {
+func (n *Node) requestSync(target string, known map[uint64]int64) (net.SyncResponse, error) {
 
 	args := net.SyncRequest{
 		FromID: n.id,
@@ -786,12 +786,12 @@ func (n *Node) GetLastEventFrom(participant string) (string, bool, error) {
 }
 
 // GetKnownEvents returns all known events
-func (n *Node) GetKnownEvents() map[uint32]int64 {
+func (n *Node) GetKnownEvents() map[uint64]int64 {
 	return n.core.poset.Store.KnownEvents()
 }
 
 // GetEventBlocks returns all event blocks
-func (n *Node) GetEventBlocks() (map[uint32]int64, error) {
+func (n *Node) GetEventBlocks() (map[uint64]int64, error) {
 	res := n.core.KnownEvents()
 	return res, nil
 }
@@ -842,7 +842,7 @@ func (n *Node) GetBlock(blockIndex int64) (*poset.Block, error) {
 }
 
 // ID shows the ID of the node
-func (n *Node) ID() uint32 {
+func (n *Node) ID() uint64 {
 	return n.id
 }
 

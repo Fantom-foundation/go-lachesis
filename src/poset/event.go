@@ -359,9 +359,9 @@ func (e *Event) SetRoundReceived(rr int64) {
 
 // SetWireInfo for event
 func (e *Event) SetWireInfo(selfParentIndex int64,
-	otherParentCreatorID uint32,
+	otherParentCreatorID uint64,
 	otherParentIndex int64,
-	creatorID uint32) {
+	creatorID uint64) {
 	e.Message.SelfParentIndex = selfParentIndex
 	e.Message.OtherParentCreatorID = otherParentCreatorID
 	e.Message.OtherParentIndex = otherParentIndex
@@ -435,16 +435,16 @@ func (e *Event) MergeFlagTable(
 }
 
 // CreatorID returns the creator ID for an event
-func (e *Event) CreatorID() uint32 {
+func (e *Event) CreatorID() uint64 {
 	return e.Message.CreatorID
 }
 
 // OtherParentCreatorID ID of other parent(s)
-func (e *Event) OtherParentCreatorID() uint32 {
+func (e *Event) OtherParentCreatorID() uint64 {
 	return e.Message.OtherParentCreatorID
 }
 
-func rootSelfParent(participantID uint32) string {
+func rootSelfParent(participantID uint64) string {
 	return fmt.Sprintf("Root%d", participantID)
 }
 
@@ -493,9 +493,9 @@ type WireBody struct {
 	BlockSignatures      []WireBlockSignature
 
 	SelfParentIndex      int64
-	OtherParentCreatorID uint32
+	OtherParentCreatorID uint64
 	OtherParentIndex     int64
-	CreatorID            uint32
+	CreatorID            uint64
 
 	Index int64
 }

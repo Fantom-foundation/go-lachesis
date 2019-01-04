@@ -107,7 +107,7 @@ var (
 )
 
 type TestNode struct {
-	ID     uint32
+	ID     uint64
 	Pub    []byte
 	PubHex string
 	Key    *ecdsa.PrivateKey
@@ -116,7 +116,7 @@ type TestNode struct {
 
 func NewTestNode(key *ecdsa.PrivateKey) TestNode {
 	pub := crypto.FromECDSAPub(&key.PublicKey)
-	ID := common.Hash32(pub)
+	ID := common.Hash64(pub)
 	node := TestNode{
 		ID:     ID,
 		Key:    key,
@@ -1793,7 +1793,7 @@ func TestKnown(t *testing.T) {
 
 	participants := p.PeerSet.Peers
 
-	expectedKnown := map[uint32]int64{
+	expectedKnown := map[uint64]int64{
 		participants[0].ID: 10,
 		participants[1].ID: 9,
 		participants[2].ID: 9,
@@ -1801,9 +1801,9 @@ func TestKnown(t *testing.T) {
 
 	known := p.Store.KnownEvents()
 	for i := range p.PeerSet.ToIDSlice() {
-		if l := known[uint32(i)]; l != expectedKnown[uint32(i)] {
+		if l := known[uint64(i)]; l != expectedKnown[uint64(i)] {
 			t.Fatalf("known event %d should be %d, not %d", i,
-				expectedKnown[uint32(i)], l)
+				expectedKnown[uint64(i)], l)
 		}
 	}
 }
@@ -2032,7 +2032,7 @@ func TestResetFromFrame(t *testing.T) {
 	*/
 
 	// Test Known
-	expectedKnown := map[uint32]int64{
+	expectedKnown := map[uint64]int64{
 		participants[0].ID: 2,
 		participants[1].ID: 4,
 		participants[2].ID: 3,
@@ -3275,7 +3275,7 @@ func compareRoundClothos(p, p2 *Poset, index map[string]string, round int64, che
 
 }
 
-func getDiff(p *Poset, known map[uint32]int64, t *testing.T) []*Event {
+func getDiff(p *Poset, known map[uint64]int64, t *testing.T) []*Event {
 	var diff []*Event
 	for id, ct := range known {
 		pk := p.PeerSet.ByID[id].PubKeyHex

@@ -2,7 +2,7 @@ syntax = "proto3";
 package peers;
 
 message Peer {
-  uint32 ID = 1;
+  uint64 ID = 1;
   string NetAddr = 2;
   string PubKeyHex = 3;
   int64 used = 4;
@@ -19,6 +19,6 @@ message CachedValues {
 message PeerSet {
     repeated Peer Peers = 1;
     map<string, Peer> ByPubKey = 2;
-    map<uint32, Peer> ByID = 3;
+    map<uint64, Peer> ByID = 3;
     CachedValues cache = 4;
 }

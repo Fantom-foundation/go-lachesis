@@ -28,7 +28,7 @@ var (
 
 // Core struct that controls the consensus, transaction, and communication
 type Core struct {
-	id     uint32
+	id     uint64
 	key    *ecdsa.PrivateKey
 	pubKey []byte
 	hexID  string
@@ -58,7 +58,7 @@ type Core struct {
 }
 
 // NewCore creates a new core struct
-func NewCore(id uint32, key *ecdsa.PrivateKey, peerSet *peers.PeerSet,
+func NewCore(id uint64, key *ecdsa.PrivateKey, peerSet *peers.PeerSet,
 	store poset.Store, commitCh chan poset.Block, logger *logrus.Logger) *Core {
 
 	if logger == nil {
@@ -98,7 +98,7 @@ func NewCore(id uint32, key *ecdsa.PrivateKey, peerSet *peers.PeerSet,
 }
 
 // ID returns the ID of this core
-func (c *Core) ID() uint32 {
+func (c *Core) ID() uint64 {
 	return c.id
 }
 
@@ -259,7 +259,7 @@ func (c *Core) InsertEvent(event *poset.Event, setWireInfo bool) error {
 }
 
 // KnownEvents returns all known event blocks
-func (c *Core) KnownEvents() map[uint32]int64 {
+func (c *Core) KnownEvents() map[uint64]int64 {
 	return c.poset.Store.KnownEvents()
 }
 
@@ -312,7 +312,7 @@ func (c *Core) ProcessAcceptedInternalTransactions(roundReceived int64, txs []*p
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 // OverSyncLimit checks if the unknown events is over the sync limit and if the node should catch up
-func (c *Core) OverSyncLimit(knownEvents map[uint32]int64, syncLimit int64) bool {
+func (c *Core) OverSyncLimit(knownEvents map[uint64]int64, syncLimit int64) bool {
 	totUnknown := int64(0)
 	myKnownEvents := c.KnownEvents()
 	for i, li := range myKnownEvents {
@@ -329,7 +329,7 @@ func (c *Core) GetAnchorBlockWithFrame() (*poset.Block, *poset.Frame, error) {
 }
 
 // EventDiff returns events that c knows about and are not in 'known'
-func (c *Core) EventDiff(known map[uint32]int64) (events []*poset.Event, err error) {
+func (c *Core) EventDiff(known map[uint64]int64) (events []*poset.Event, err error) {
 	var unknown []*poset.Event
 	// known represents the index of the last event known for every participant
 	// compare this to our view of events and fill unknown with events that we know of

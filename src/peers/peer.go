@@ -11,7 +11,7 @@ const (
 )
 
 // PeerNIL is used for nil peer id
-const PeerNIL uint32 = 0
+const PeerNIL uint64 = 0
 
 // NewPeer creates a new peer based on public key and network address
 func NewPeer(pubKeyHex, netAddr string) *Peer {
@@ -48,7 +48,7 @@ func (p *Peer) ComputeID() error {
 		return err
 	}
 
-	p.ID = common.Hash32(pubKey)
+	p.ID = common.Hash64(pubKey)
 
 	return nil
 }

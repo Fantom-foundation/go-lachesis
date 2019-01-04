@@ -23,7 +23,7 @@ type InmemStore struct {
 	totConsensusEvents     int64
 	peerSetCache           *PeerSetCache // start round => PeerSet
 	repertoireByPubKey     map[string]*peers.Peer
-	repertoireByID         map[uint32]*peers.Peer
+	repertoireByID         map[uint64]*peers.Peer
 	participantEventsCache *ParticipantEventsCache // pubkey => Events
 	rootsByParticipant     map[string]*Root        // [participant] => Root
 	rootsBySelfParent      map[string]*Root        // [Root.SelfParent.Hash] => Root
@@ -81,7 +81,7 @@ func NewInmemStore(peerSet *peers.PeerSet, cacheSize int) *InmemStore {
 		consensusCache:         cm.NewRollingIndex("ConsensusCache", cacheSize),
 		peerSetCache:           NewPeerSetCache(),
 		repertoireByPubKey:     make(map[string]*peers.Peer),
-		repertoireByID:         make(map[uint32]*peers.Peer),
+		repertoireByID:         make(map[uint64]*peers.Peer),
 		participantEventsCache: NewParticipantEventsCache(cacheSize, peerSet),
 		rootsByParticipant:     rootsByParticipant,
 		lastRound:              -1,
@@ -147,7 +147,7 @@ func (s *InmemStore) RepertoireByPubKey() map[string]*peers.Peer {
 }
 
 // RepertoireByID retrieve cached ID map of peers
-func (s *InmemStore) RepertoireByID() map[uint32]*peers.Peer {
+func (s *InmemStore) RepertoireByID() map[uint64]*peers.Peer {
 	return s.repertoireByID
 }
 
@@ -253,7 +253,7 @@ func (s *InmemStore) LastConsensusEventFrom(participant string) (last string, is
 }
 
 // KnownEvents returns all known events
-func (s *InmemStore) KnownEvents() map[uint32]int64 {
+func (s *InmemStore) KnownEvents() map[uint64]int64 {
 	known := s.participantEventsCache.Known()
 	lastPeerSet, _ := s.GetLastPeerSet()
 	for p, pid := range lastPeerSet.ByPubKey {

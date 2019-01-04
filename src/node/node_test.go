@@ -901,7 +901,7 @@ func (s *Service) GetGraph(w http.ResponseWriter, r *http.Request) {
 
 func checkGossip(nodes []*Node, fromBlock int64, t *testing.T) {
 
-	nodeBlocks := map[uint32][]*poset.Block{}
+	nodeBlocks := map[uint64][]*poset.Block{}
 	for _, n := range nodes {
 		var blocks []*poset.Block
 		lastIndex := n.core.poset.Store.LastBlockIndex()
@@ -916,14 +916,14 @@ func checkGossip(nodes []*Node, fromBlock int64, t *testing.T) {
 	}
 
 	minB := len(nodeBlocks[0])
-	for k := uint32(1); k < uint32(len(nodes)); k++ {
+	for k := uint64(1); k < uint64(len(nodes)); k++ {
 		if len(nodeBlocks[k]) < minB {
 			minB = len(nodeBlocks[k])
 		}
 	}
 
 	for i, block := range nodeBlocks[0][:minB] {
-		for k := uint32(1); k < uint32(len(nodes)); k++ {
+		for k := uint64(1); k < uint64(len(nodes)); k++ {
 			oBlock := nodeBlocks[k][i]
 			if !reflect.DeepEqual(block.Body, oBlock.Body) {
 				t.Fatalf("check gossip: difference in block %d."+

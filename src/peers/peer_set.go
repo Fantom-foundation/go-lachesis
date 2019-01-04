@@ -15,7 +15,7 @@ import (
 func NewEmptyPeerSet() *PeerSet {
 	return &PeerSet{
 		ByPubKey: make(map[string]*Peer),
-		ByID:     make(map[uint32]*Peer),
+		ByID:     make(map[uint64]*Peer),
 		Cache:    &CachedValues{},
 	}
 }
@@ -72,8 +72,8 @@ func (ps *PeerSet) PubKeys() []string {
 }
 
 // IDs returns the PeerSet's slice of IDs
-func (ps *PeerSet) IDs() []uint32 {
-	var res []uint32
+func (ps *PeerSet) IDs() []uint64 {
+	var res []uint64
 
 	for _, peer := range ps.Peers {
 		res = append(res, peer.ID)

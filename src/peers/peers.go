@@ -7,7 +7,7 @@ import (
 // PubKeyPeers map of peers sorted by public key
 type PubKeyPeers map[string]*Peer
 // IDPeers map of peers sorted by ID
-type IDPeers map[uint32]*Peer
+type IDPeers map[uint64]*Peer
 // Listener for listening for new peers joining
 type Listener func(*Peer)
 
@@ -25,8 +25,8 @@ func (ps *PeerSet) ToPeerByUsedSlice() []*Peer {
 }
 
 // ToIDSlice convers PeerSet to a slice of Peer id's
-func (ps *PeerSet) ToIDSlice() []uint32 {
-	var res []uint32
+func (ps *PeerSet) ToIDSlice() []uint64 {
+	var res []uint64
 
 	for _, peer := range ps.Peers {
 		res = append(res, peer.ID)
