@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/golang/protobuf/proto"
@@ -94,7 +95,7 @@ func NewBlockFromFrame(blockIndex int64, frame *Frame) (*Block, error) {
 	return NewBlock(blockIndex, frame.Round, frameHash, transactions, internalTransactions), nil
 }
 
-// NewBlock creates a new empty block
+// NewBlock creates a new empty block with current time
 func NewBlock(blockIndex, roundReceived int64, frameHash []byte, txs [][]byte, itxs []*InternalTransaction) *Block {
 	body := BlockBody{
 		Index:                blockIndex,
@@ -104,9 +105,10 @@ func NewBlock(blockIndex, roundReceived int64, frameHash []byte, txs [][]byte, i
 	}
 
 	return &Block{
-		Body:       &body,
-		FrameHash:  frameHash,
-		Signatures: make(map[string]string),
+		Body:        &body,
+		FrameHash:   frameHash,
+		Signatures:  make(map[string]string),
+		CreatedTime: time.Now().Unix(),
 	}
 }
 
