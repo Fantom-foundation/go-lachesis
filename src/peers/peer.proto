@@ -9,10 +9,10 @@ message Peer {
 }
 
 message CachedValues {
-    bytes Hash = 4;
-    string hex = 5;
-    int64 superMajority = 6;
-    int64 trustCount = 7;
+    bytes Hash = 1;
+    string hex = 2;
+    int64 superMajority = 3;
+    int64 trustCount = 4;
 }
 
 // PeerSet is a set of Peers forming a consensus network
