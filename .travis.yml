@@ -5,7 +5,7 @@ go_import_path: github.com/Fantom-foundation/go-lachesis
 cache:
   directories:
   - "$HOME/.glide/cache"
-  - "$TRAVIS_BUILD_DIR/vendor"
+#  - "$TRAVIS_BUILD_DIR/vendor"
 before_install:
 - if ! command -v glide; then curl https://glide.sh/get | sh; fi
 - go get -v github.com/SamuelMarks/batch-ethkey
