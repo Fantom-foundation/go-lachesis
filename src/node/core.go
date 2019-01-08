@@ -89,7 +89,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, peerSet *peers.PeerSet,
 	}
 
 	pubKey := core.HexID()
-	peerSelector := NewSmartPeerSelector(peerSet, pubKey, core.poset.GetFlagTableOfRandomUndeterminedEvent)
+	peerSelector := NewSmartPeerSelector(peerSet, pubKey, core.poset.GetPeerFlagTableOfRandomUndeterminedEvent)
 	core.peerSelector = peerSelector
 
 	p2.SetCore(core)
@@ -304,7 +304,7 @@ func (c *Core) ProcessAcceptedInternalTransactions(roundReceived int64, txs []*p
 	c.peerSet = peers
 
 	pubKey := c.HexID()
-	c.peerSelector = NewSmartPeerSelector(peers, pubKey, c.poset.GetFlagTableOfRandomUndeterminedEvent)
+	c.peerSelector = NewSmartPeerSelector(peers, pubKey, c.poset.GetPeerFlagTableOfRandomUndeterminedEvent)
 
 	return nil
 }
