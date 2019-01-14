@@ -122,6 +122,7 @@ func (b *Block) Transactions() [][]byte {
 	return b.Body.Transactions
 }
 
+// InternalTransactions returns the internal transactions in a block
 func (b *Block) InternalTransactions() []*InternalTransaction {
 	return b.Body.InternalTransactions
 }

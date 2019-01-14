@@ -22,6 +22,7 @@ const (
 	Empty
 	// KeyAlreadyExists key already exists in the store
 	KeyAlreadyExists
+	// NoPeerSet no peer set found
 	NoPeerSet
 )
 
