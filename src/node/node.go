@@ -3,8 +3,11 @@ package node
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"os"
+	"os/signal"
 	"strconv"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -32,12 +35,12 @@ type Node struct {
 	netCh <-chan net.RPC
 
 	proxy            proxy.AppProxy
+
 	submitCh         chan []byte
 	submitInternalCh chan poset.InternalTransaction
-
-	commitCh chan poset.Block
-
-	shutdownCh chan struct{}
+	commitCh         chan poset.Block
+	shutdownCh       chan struct{}
+	signalTERMch     chan os.Signal
 
 	controlTimer *ControlTimer
 
@@ -85,7 +88,10 @@ func NewNode(conf *Config,
 		gossipJobs:       0,
 		rpcJobs:          0,
 		nodeState2:       newNodeState2(),
+		signalTERMch:     make(chan os.Signal, 1),
 	}
+
+	signal.Notify(node.signalTERMch, syscall.SIGTERM, os.Kill)
 
 	node.logger.WithField("peers", pmap).Debug("pmap")
 	node.logger.WithField("pubKey", pubKey).Debug("pubKey")
@@ -194,6 +200,8 @@ func (n *Node) doBackgroundWork() {
 			}
 		case <-n.shutdownCh:
 			return
+		case <-n.signalTERMch:
+			n.Shutdown()
 		}
 	}
 }
@@ -776,12 +784,12 @@ func (n *Node) GetParticipants() (*peers.PeerSet, error) {
 }
 
 // GetEventBlock returns a specific event block for the given hash
-func (n *Node) GetEventBlock(event string) (*poset.Event, error) {
+func (n *Node) GetEventBlock(event poset.EventHash) (*poset.Event, error) {
 	return n.core.poset.Store.GetEventBlock(event)
 }
 
 // GetLastEventFrom returns the last event block for a specific participant
-func (n *Node) GetLastEventFrom(participant string) (string, bool, error) {
+func (n *Node) GetLastEventFrom(participant string) (poset.EventHash, bool, error) {
 	return n.core.poset.Store.LastEventFrom(participant)
 }
 
@@ -797,7 +805,7 @@ func (n *Node) GetEventBlocks() (map[uint64]int64, error) {
 }
 
 // GetConsensusEvents returns all consensus events
-func (n *Node) GetConsensusEvents() []string {
+func (n *Node) GetConsensusEvents() poset.EventHashes {
 	return n.core.poset.Store.ConsensusEvents()
 }
 
@@ -822,7 +830,7 @@ func (n *Node) GetLastRound() int64 {
 }
 
 // GetRoundClothos returns all clotho for a given round index
-func (n *Node) GetRoundClothos(roundIndex int64) []string {
+func (n *Node) GetRoundClothos(roundIndex int64) poset.EventHashes {
 	return n.core.poset.Store.RoundClothos(roundIndex)
 }
 

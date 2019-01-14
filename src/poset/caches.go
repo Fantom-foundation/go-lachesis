@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"strconv"
 
-	cm "github.com/Fantom-foundation/go-lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 )
 
 // Key struct
 type Key struct {
-	x string
-	y string
+	x EventHash
+	y EventHash
 }
 
 // ToString converts key to string
@@ -39,27 +39,27 @@ func NewBaseParentRoundInfo() ParentRoundInfo {
 // ParticipantEventsCache struct
 type ParticipantEventsCache struct {
 	participants *peers.PeerSet
-	rim          *cm.RollingIndexMap
+	rim          *common.RollingIndexMap
 }
 
 // NewParticipantEventsCache constructor
 func NewParticipantEventsCache(size int, participants *peers.PeerSet) *ParticipantEventsCache {
 	return &ParticipantEventsCache{
 		participants: participants,
-		rim:          cm.NewRollingIndexMap("ParticipantEvents", size, participants.IDs()),
+		rim:          common.NewRollingIndexMap("ParticipantEvents", size, participants.IDs()),
 	}
 }
 
 // PeerSetCache struct holds map of PeerSet per round
 type PeerSetCache struct {
-	rounds   cm.Int64Slice
+	rounds   common.Int64Slice
 	peerSets map[int64]*peers.PeerSet
 }
 
 // NewPeerSetCache PeerSetCache constructor
 func NewPeerSetCache() *PeerSetCache {
 	return &PeerSetCache{
-		rounds:   cm.Int64Slice{},
+		rounds:   common.Int64Slice{},
 		peerSets: make(map[int64]*peers.PeerSet),
 	}
 }
@@ -67,7 +67,7 @@ func NewPeerSetCache() *PeerSetCache {
 // Set stores a rounds PeerSet
 func (c *PeerSetCache) Set(round int64, peerSet *peers.PeerSet) error {
 	if _, ok := c.peerSets[round]; ok {
-		return cm.NewStoreErr("PeerSetCache", cm.KeyAlreadyExists, strconv.FormatInt(round, 10))
+		return common.NewStoreErr("PeerSetCache", common.KeyAlreadyExists, strconv.FormatInt(round, 10))
 	}
 	c.peerSets[round] = peerSet
 	c.rounds = append(c.rounds, round)
@@ -85,12 +85,12 @@ func (c *PeerSetCache) Get(round int64) (*peers.PeerSet, error) {
 
 	// situate round in sorted rounds
 	if len(c.rounds) == 0 {
-		return nil, cm.NewStoreErr("PeerSetCache", cm.KeyNotFound, strconv.FormatInt(round, 10))
+		return nil, common.NewStoreErr("PeerSetCache", common.KeyNotFound, strconv.FormatInt(round, 10))
 	}
 
 	if len(c.rounds) == 1 {
 		if round < c.rounds[0] {
-			return nil, cm.NewStoreErr("PeerSetCache", cm.KeyNotFound, strconv.FormatInt(round, 10))
+			return nil, common.NewStoreErr("PeerSetCache", common.KeyNotFound, strconv.FormatInt(round, 10))
 		}
 		return c.peerSets[c.rounds[0]], nil
 	}
@@ -108,7 +108,7 @@ func (c *PeerSetCache) Get(round int64) (*peers.PeerSet, error) {
 // GetLast retrieves the last PeerSet stored
 func (c *PeerSetCache) GetLast() (*peers.PeerSet, error) {
 	if len(c.rounds) == 0 {
-		return nil, cm.NewStoreErr("PeerSetCache", cm.NoPeerSet, "")
+		return nil, common.NewStoreErr("PeerSetCache", common.NoPeerSet, "")
 	}
 	return c.peerSets[c.rounds[len(c.rounds)-1]], nil
 }
@@ -123,80 +123,70 @@ func (pec *ParticipantEventsCache) participantID(participant string) (uint64, er
 	peer, ok := pec.participants.ByPubKey[participant]
 
 	if !ok {
-		return 0, cm.NewStoreErr("ParticipantEvents", cm.UnknownParticipant, participant)
+		return peers.PeerNIL, common.NewStoreErr("ParticipantEvents", common.UnknownParticipant, participant)
 	}
 
 	return peer.ID, nil
 }
 
 // Get return participant events with index > skip
-func (pec *ParticipantEventsCache) Get(participant string, skipIndex int64) ([]string, error) {
+func (pec *ParticipantEventsCache) Get(participant string, skipIndex int64) (EventHashes, error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
-		return []string{}, err
+		return EventHashes{}, err
 	}
 
 	pe, err := pec.rim.Get(id, skipIndex)
 	if err != nil {
-		return []string{}, err
+		return EventHashes{}, err
 	}
 
-	res := make([]string, len(pe))
+	res := make(EventHashes, len(pe))
 	for k := 0; k < len(pe); k++ {
-		res[k] = pe[k].(string)
+		res[k].Set(pe[k].([]byte))
 	}
 	return res, nil
 }
 
 // GetItem get event for participant at index
-func (pec *ParticipantEventsCache) GetItem(participant string, index int64) (string, error) {
+func (pec *ParticipantEventsCache) GetItem(participant string, index int64) (hash EventHash, err error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
-		return "", err
+		return
 	}
 
 	item, err := pec.rim.GetItem(id, index)
 	if err != nil {
-		return "", err
+		return
 	}
-	return item.(string), nil
+
+	hash.Set(item.([]byte))
+	return
 }
 
 // GetLast get last event for participant
-func (pec *ParticipantEventsCache) GetLast(participant string) (string, error) {
+func (pec *ParticipantEventsCache) GetLast(participant string) (hash EventHash, err error) {
 	id, err := pec.participantID(participant)
 	if err != nil {
-		return "", err
+		return
 	}
 
 	last, err := pec.rim.GetLast(id)
 	if err != nil {
-		return "", err
-	}
-	return last.(string), nil
-}
-
-// GetLastConsensus get last consensus for participant
-func (pec *ParticipantEventsCache) GetLastConsensus(participant string) (string, error) {
-	id, err := pec.participantID(participant)
-	if err != nil {
-		return "", err
+		return
 	}
 
-	last, err := pec.rim.GetLast(id)
-	if err != nil {
-		return "", err
-	}
-	return last.(string), nil
+	hash.Set(last.([]byte))
+	return
 }
 
 // Set the event for the participant
-func (pec *ParticipantEventsCache) Set(participant string, hash string, index int64) error {
+func (pec *ParticipantEventsCache) Set(participant string, hash EventHash, index int64) error {
 	id, err := pec.participantID(participant)
 	if err != nil {
 		return err
 	}
-	return pec.rim.Set(id, hash, index)
+	return pec.rim.Set(id, hash.Bytes(), index)
 }
 
 // Known returns [participant id] => lastKnownIndex

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	cm "github.com/Fantom-foundation/go-lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/dgraph-io/badger"
 )
@@ -193,19 +193,19 @@ func (s *BadgerStore) RepertoireByID() map[uint64]*peers.Peer {
 }
 
 // RootsBySelfParent returns the roots for the self parent
-func (s *BadgerStore) RootsBySelfParent() map[string]*Root {
+func (s *BadgerStore) RootsBySelfParent() map[EventHash]*Root {
 	return s.inmemStore.RootsBySelfParent()
 }
 
-// GetEventBlock get specific event block by key
-func (s *BadgerStore) GetEventBlock(key string) (event *Event, err error) {
+// GetEventBlock get specific event block by hash
+func (s *BadgerStore) GetEventBlock(hash EventHash) (event *Event, err error) {
 	// try to get it from cache
-	event, err = s.inmemStore.GetEventBlock(key)
+	event, err = s.inmemStore.GetEventBlock(hash)
 	// if not in cache, try to get it from db
 	if err != nil {
-		event, err = s.dbGetEventBlock(key)
+		event, err = s.dbGetEventBlock(hash)
 	}
-	return event, mapError(err, "Event", key)
+	return event, mapError(err, "Event", hash.String())
 }
 
 // SetEvent set a specific event
@@ -219,7 +219,7 @@ func (s *BadgerStore) SetEvent(event *Event) error {
 }
 
 // ParticipantEvents return all participant events
-func (s *BadgerStore) ParticipantEvents(participant string, skip int64) ([]string, error) {
+func (s *BadgerStore) ParticipantEvents(participant string, skip int64) (EventHashes, error) {
 	res, err := s.inmemStore.ParticipantEvents(participant, skip)
 	if err != nil {
 		res, err = s.dbParticipantEvents(participant, skip)
@@ -228,7 +228,7 @@ func (s *BadgerStore) ParticipantEvents(participant string, skip int64) ([]strin
 }
 
 // ParticipantEvent get specific participant event
-func (s *BadgerStore) ParticipantEvent(participant string, index int64) (string, error) {
+func (s *BadgerStore) ParticipantEvent(participant string, index int64) (EventHash, error) {
 	result, err := s.inmemStore.ParticipantEvent(participant, index)
 	if err != nil {
 		result, err = s.dbParticipantEvent(participant, index)
@@ -237,12 +237,12 @@ func (s *BadgerStore) ParticipantEvent(participant string, index int64) (string,
 }
 
 // LastEventFrom returns the last event for a particpant
-func (s *BadgerStore) LastEventFrom(participant string) (last string, isRoot bool, err error) {
+func (s *BadgerStore) LastEventFrom(participant string) (last EventHash, isRoot bool, err error) {
 	return s.inmemStore.LastEventFrom(participant)
 }
 
 // LastConsensusEventFrom returns the last consensus events for a participant
-func (s *BadgerStore) LastConsensusEventFrom(participant string) (last string, isRoot bool, err error) {
+func (s *BadgerStore) LastConsensusEventFrom(participant string) (last EventHash, isRoot bool, err error) {
 	return s.inmemStore.LastConsensusEventFrom(participant)
 }
 
@@ -273,7 +273,7 @@ func (s *BadgerStore) KnownEvents() map[uint64]int64 {
 }
 
 // ConsensusEvents returns all consensus events
-func (s *BadgerStore) ConsensusEvents() []string {
+func (s *BadgerStore) ConsensusEvents() EventHashes {
 	return s.inmemStore.ConsensusEvents()
 }
 
@@ -327,10 +327,10 @@ func (s *BadgerStore) LastRound() int64 {
 }
 
 // RoundClothos returns all clothos for a round
-func (s *BadgerStore) RoundClothos(r int64) []string {
+func (s *BadgerStore) RoundClothos(r int64) EventHashes {
 	round, err := s.GetRoundCreated(r)
 	if err != nil {
-		return []string{}
+		return EventHashes{}
 	}
 	return round.Clotho()
 }
@@ -418,10 +418,10 @@ func (s *BadgerStore) StorePath() string {
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 // DB Methods
 
-func (s *BadgerStore) dbGetEventBlock(key string) (*Event, error) {
+func (s *BadgerStore) dbGetEventBlock(hash EventHash) (*Event, error) {
 	var eventBytes []byte
 	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
+		item, err := txn.Get(hash.Bytes())
 		if err != nil {
 			return err
 		}
@@ -449,14 +449,14 @@ func (s *BadgerStore) dbSetEvents(events []*Event) error {
 	defer tx.Discard()
 
 	for _, event := range events {
-		eventHex := event.Hex()
+		eventHash := event.Hash()
 		val, err := event.ProtoMarshal()
 		if err != nil {
 			return err
 		}
 		// check if it already exists
 		existent := false
-		val2, err := tx.Get([]byte(eventHex))
+		val2, err := tx.Get(eventHash.Bytes())
 		if err != nil && !isDBKeyNotFound(err) {
 			return err
 		}
@@ -465,19 +465,19 @@ func (s *BadgerStore) dbSetEvents(events []*Event) error {
 		}
 
 		// insert [event hash] => [event bytes]
-		if err := tx.Set([]byte(eventHex), val); err != nil {
+		if err := tx.Set(eventHash.Bytes(), val); err != nil {
 			return err
 		}
 
 		if !existent {
 			// insert [topo_index] => [event hash]
 			topoKey := topologicalEventKey(event.Message.TopologicalIndex)
-			if err := tx.Set(topoKey, []byte(eventHex)); err != nil {
+			if err := tx.Set(topoKey, eventHash.Bytes()); err != nil {
 				return err
 			}
 			// insert [participant_index] => [event hash]
 			peKey := participantEventKey(event.GetCreator(), event.Index())
-			if err := tx.Set(peKey, []byte(eventHex)); err != nil {
+			if err := tx.Set(peKey, eventHash.Bytes()); err != nil {
 				return err
 			}
 		}
@@ -537,15 +537,16 @@ func (s *BadgerStore) dbTopologicalEvents() ([]*Event, error) {
 	return res, err
 }
 
-func (s *BadgerStore) dbParticipantEvents(participant string, skip int64) ([]string, error) {
-	var res []string
-	err := s.db.View(func(txn *badger.Txn) error {
+func (s *BadgerStore) dbParticipantEvents(participant string, skip int64) (res EventHashes, err error) {
+	err = s.db.View(func(txn *badger.Txn) error {
 		i := skip + 1
 		key := participantEventKey(participant, i)
 		item, errr := txn.Get(key)
 		for errr == nil {
 			errrr := item.Value(func(v []byte) error {
-				res = append(res, string(v))
+				var hash EventHash
+				hash.Set(v)
+				res = append(res, hash)
 				return nil
 			})
 			if errrr != nil {
@@ -563,27 +564,25 @@ func (s *BadgerStore) dbParticipantEvents(participant string, skip int64) ([]str
 
 		return nil
 	})
-	return res, err
+	return
 }
 
-func (s *BadgerStore) dbParticipantEvent(participant string, index int64) (string, error) {
-	var data []byte
+func (s *BadgerStore) dbParticipantEvent(participant string, index int64) (hash EventHash, err error) {
 	key := participantEventKey(participant, index)
-	err := s.db.View(func(txn *badger.Txn) error {
+
+	err = s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
 			return err
 		}
 		err = item.Value(func(val []byte) error {
-			data = val
+			hash.Set(val)
 			return nil
 		})
 		return err
 	})
-	if err != nil {
-		return "", err
-	}
-	return string(data), nil
+
+	return
 }
 
 func (s *BadgerStore) dbSetRoots(roots map[string]*Root) error {
@@ -862,7 +861,7 @@ func isDBKeyNotFound(err error) bool {
 func mapError(err error, name, key string) error {
 	if err != nil {
 		if isDBKeyNotFound(err) {
-			return cm.NewStoreErr(name, cm.KeyNotFound, key)
+			return common.NewStoreErr(name, common.KeyNotFound, key)
 		}
 	}
 	return err

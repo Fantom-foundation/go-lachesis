@@ -2,7 +2,6 @@ package node
 
 import (
 	"fmt"
-	"math/rand"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
@@ -15,14 +14,6 @@ import (
 func clonePeers(src *peers.PeerSet) *peers.PeerSet {
 	dst := peers.NewPeerSet(src.Peers)
 	return dst
-}
-
-func fakeFlagTable(participants *peers.PeerSet) map[string]int64 {
-	res := make(map[string]int64, participants.Len())
-	for _, p := range participants.Peers {
-		res[p.PubKeyHex] = rand.Int63n(2)
-	}
-	return res
 }
 
 func fakePeers(n int) *peers.PeerSet {
