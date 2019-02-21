@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/net"
@@ -104,7 +105,7 @@ func NewNode(conf *Config,
 	node.logger.WithField("peers", pmap).Debug("pmap")
 	node.logger.WithField("pubKey", pubKey).Debug("pubKey")
 
-	node.needBoostrap = store.NeedBoostrap()
+	node.needBoostrap = store.NeedBootstrap()
 
 	// Initialize
 	node.setState(Gossiping)
@@ -384,32 +385,64 @@ func (n *Node) processFastForwardRequest(rpc *net.RPC, cmd *net.FastForwardReque
 	rpc.Respond(resp, respErr)
 }
 
+type pullEvent struct {
+	otherKnownEvent map[uint64]int64
+	allEvents       []poset.WireEvent
+}
+
+func runPullWorkers(n *Node, parentReturnCh chan struct{}, addrs <-chan string) chan pullEvent {
+	eventChan := make(chan pullEvent)
+
+	go func() {
+		for addr := range addrs {
+			addr := addr
+			go func() {
+				syncLimit, otherKnownEvents, events, err := n.pull(addr)
+				if err != nil {
+					n.logger.WithField("from", addr).Error("n.pull(addr)")
+				}
+
+				// check and handle syncLimit
+				if syncLimit {
+					n.logger.WithField("from", addr).Debug("SyncLimit")
+					n.setState(CatchingUp)
+					go func() {
+						parentReturnCh <- struct{}{}
+					}()
+				}
+
+				eventChan <- pullEvent{
+					otherKnownEvent: otherKnownEvents,
+					allEvents:       events,
+				}
+			}()
+		}
+
+		close(eventChan)
+	}()
+
+	return eventChan
+}
+
 // This function is usually called in a go-routine and needs to inform the
 // calling routine (usually the lachesis routine) when it is time to exit the
 // Gossiping state and return.
 func (n *Node) gossip(peersSlice []*peers.Peer, parentReturnCh chan struct{}) error {
-	var otherKnownEventsArray []map[uint64]int64
-	allEvents := make([][]poset.WireEvent, len(peersSlice), len(peersSlice))
-	eventsCount := 0
-	var err error
 	// pull
-	for i, p := range peersSlice {
-		syncLimit, otherKnownEvents, events, err := n.pull(p.NetAddr)
-		if err != nil {
-			return err
+	addrsChan := make(chan string, 3)
+	go func() {
+		for _, p := range peersSlice {
+			addrsChan <- p.NetAddr
 		}
+	}()
 
-		// check and handle syncLimit
-		if syncLimit {
-			n.logger.WithField("from", p.NetAddr).Debug("SyncLimit")
-			n.setState(CatchingUp)
-			parentReturnCh <- struct{}{}
-			return nil
-		}
+	otherKnownEventsArray := make([]map[uint64]int64, 0)
+	allEvents := make([][]poset.WireEvent, 0)
 
-		otherKnownEventsArray = append(otherKnownEventsArray, otherKnownEvents)
-		allEvents[i] = events
-		eventsCount += len(events)
+	eventChan := runPullWorkers(n, parentReturnCh, addrsChan)
+	for evnt := range eventChan {
+		otherKnownEventsArray = append(otherKnownEventsArray, evnt.otherKnownEvent)
+		allEvents = append(allEvents, evnt.allEvents)
 	}
 
 	duplicateFilter := func(events [][]poset.WireEvent) [][]poset.WireEvent {
@@ -430,18 +463,17 @@ func (n *Node) gossip(peersSlice []*peers.Peer, parentReturnCh chan struct{}) er
 
 	// Add Events to poset and create new Head if necessary
 	n.coreLock.Lock()
-	err = n.sync(allEvents)
-	n.coreLock.Unlock()
-	if err != nil {
+	if err := n.sync(allEvents); err != nil {
+		n.coreLock.Unlock()
 		n.logger.WithField("error", err).Error("n.sync(resp.Events)")
 		return err
 	}
+	n.coreLock.Unlock()
 
 	// push
 	for i, p := range peersSlice {
-		err = n.push(p.NetAddr, otherKnownEventsArray[i])
-		if err != nil {
-			return err
+		if err := n.push(p.NetAddr, otherKnownEventsArray[i]); err != nil {
+			return errors.Wrapf(err, "push on: %s", p.NetAddr)
 		}
 	}
 
@@ -542,7 +574,7 @@ func (n *Node) fastForward() error {
 	n.waitRoutines()
 
 	// fastForwardRequest
-	peer := n.peerSelector.Next(1/*n.conf.PeersCount*/)
+	peer := n.peerSelector.Next(1 /*n.conf.PeersCount*/)
 	start := time.Now()
 	resp, err := n.requestFastForward(peer[0].NetAddr)
 	elapsed := time.Since(start)
