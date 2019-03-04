@@ -10,6 +10,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/dummy"
+	"github.com/Fantom-foundation/go-lachesis/src/log"
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
 	"github.com/Fantom-foundation/go-lachesis/src/peer/fakenet"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
@@ -63,22 +64,35 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 		transport := peer.NewTransport(logger, producer, backend)
 
 		selectorArgs := SmartPeerSelectorCreationFnArgs{
-			LocalAddr: peer2.NetAddr,
+			LocalAddr:    peer2.NetAddr,
 			GetFlagTable: nil,
 		}
+
+		if logger == nil {
+			logger = logrus.New()
+			logger.Level = logrus.DebugLevel
+			lachesis_log.NewLocal(logger, logger.Level.String())
+		}
+		logEntry := logger.WithField("id", peer2.ID)
+
+		store := poset.NewInmemStore(participants, config.CacheSize, nil)
+		commitCh := make(chan poset.Block, 400)
+		pst := poset.NewPoset(participants, store, commitCh, logEntry)
 
 		n := NewNode(
 			config,
 			peer2.ID,
 			key,
 			participants,
-			poset.NewInmemStore(participants, config.CacheSize, nil),
+			pst,
+			commitCh,
+			store.NeedBootstrap(),
 			transport,
 			dummy.NewInmemDummyApp(logger),
 			NewSmartPeerSelectorWrapper,
 			selectorArgs,
 			peer2.NetAddr,
-			)
+		)
 		if err := n.Init(); err != nil {
 			logger.Fatal(err)
 		}
@@ -153,7 +167,7 @@ LOOP:
 			if target > node.GetLastBlockIndex() {
 				continue LOOP
 			}
-			block, _ := node.GetBlock(target)
+			block, _ := node.core.poset.Store.GetBlock(target)
 			if len(block.GetStateHash()) == 0 {
 				continue LOOP
 			}

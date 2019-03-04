@@ -1985,6 +1985,11 @@ func (p *Poset) GetConsensusTransactionsCount() uint64 {
 	return p.ConsensusTransactions
 }
 
+// GetLastCommittedRoundEventsCount count of events in last round
+func (p *Poset) GetLastCommittedRoundEventsCount() int {
+	return p.LastCommittedRoundEvents
+}
+
 /*******************************************************************************
    Helpers
 *******************************************************************************/

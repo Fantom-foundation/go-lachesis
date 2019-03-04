@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -49,9 +48,9 @@ type Node struct {
 	syncRequests int
 	syncErrors   int
 
-	needBoostrap bool
-	gossipJobs   count64
-	rpcJobs      count64
+	needBootstrap bool
+	gossipJobs    count64
+	rpcJobs       count64
 }
 
 // NewNode create a new node struct
@@ -59,15 +58,16 @@ func NewNode(conf *Config,
 	id uint64,
 	key *ecdsa.PrivateKey,
 	participants *peers.Peers,
-	store poset.Store,
+	pst *poset.Poset,
+	commitCh chan poset.Block,
+	needBootstrap bool,
 	trans peer.SyncPeer,
 	proxy proxy.AppProxy,
 	selectorInitFunc SelectorCreationFn,
 	selectorInitArgs SelectorCreationFnArgs,
 	localAddr string) *Node {
 
-	commitCh := make(chan poset.Block, 400)
-	core := NewCore(id, key, participants, store, commitCh, conf.Logger)
+	core := NewCore(id, key, participants, pst, conf.Logger)
 
 	pubKey := core.HexID()
 
@@ -104,7 +104,7 @@ func NewNode(conf *Config,
 	node.logger.WithField("participants", participants).Debug("participants")
 	node.logger.WithField("pubKey", pubKey).Debug("pubKey")
 
-	node.needBoostrap = store.NeedBootstrap()
+	node.needBootstrap = needBootstrap
 
 	// Initialize
 	node.setState(Gossiping)
@@ -120,7 +120,7 @@ func (n *Node) Init() error {
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
 
-	if n.needBoostrap {
+	if n.needBootstrap {
 		n.logger.Debug("Bootstrap")
 		if err := n.core.Bootstrap(); err != nil {
 			return err
@@ -185,6 +185,13 @@ func (n *Node) resetTimer() {
 	}
 }
 
+// CommitCh return channel to write commit messages.
+// Maybe better way to call n.commit in poset
+// through node interface ???
+func (n *Node) CommitCh() chan<- poset.Block {
+	return n.commitCh
+}
+
 func (n *Node) doBackgroundWork() {
 	for {
 		select {
@@ -236,7 +243,7 @@ func (n *Node) lachesis(gossip bool) {
 				n.rpcJobs.decrement()
 			})
 		case <-n.controlTimer.tickCh:
-			n.logStats()
+			// n.logStats()
 			if gossip && n.gossipJobs.get() < 1 {
 				n.goFunc(func() {
 					n.gossipJobs.increment()
@@ -334,7 +341,7 @@ func (n *Node) processSyncRequest(rpc *peer.RPC, cmd *peer.SyncRequest) {
 
 func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest) {
 	success := true
-	participants, err := n.GetParticipants()
+	participants, err := n.core.poset.Store.Participants()
 	if err != nil {
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
 		success = false
@@ -349,7 +356,6 @@ func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest
 		"from_id": cmd.FromID,
 		"events":  len(cmd.Events),
 	}).Debug("processEagerSyncRequest(rpc net.RPC, cmd *net.ForceSyncRequest)")
-
 
 	resp := &peer.ForceSyncResponse{
 		FromID:  n.id,
@@ -703,53 +709,8 @@ func (n *Node) Shutdown() {
 	}
 }
 
+/*
 // GetStats returns processing stats for the node
-func (n *Node) GetStats() map[string]string {
-	toString := func(i int64) string {
-		if i <= 0 {
-			return "nil"
-		}
-		return strconv.FormatInt(i, 10)
-	}
-
-	timeElapsed := time.Since(n.start)
-
-	consensusEvents := n.core.GetConsensusEventsCount()
-	consensusEventsPerSecond := float64(consensusEvents) / timeElapsed.Seconds()
-	consensusTransactions := n.core.GetConsensusTransactionsCount()
-	transactionsPerSecond := float64(consensusTransactions) / timeElapsed.Seconds()
-
-	lastConsensusRound := n.core.GetLastConsensusRound()
-	var consensusRoundsPerSecond float64
-	if lastConsensusRound > poset.RoundNIL {
-		consensusRoundsPerSecond = float64(lastConsensusRound+1) / timeElapsed.Seconds()
-	}
-
-	s := map[string]string{
-		"last_consensus_round":    toString(lastConsensusRound),
-		"time_elapsed":            strconv.FormatFloat(timeElapsed.Seconds(), 'f', 2, 64),
-		"heartbeat":               strconv.FormatFloat(n.conf.HeartbeatTimeout.Seconds(), 'f', 2, 64),
-		"node_current":            strconv.FormatInt(time.Now().Unix(), 10),
-		"node_start":              strconv.FormatInt(n.start.Unix(), 10),
-		"last_block_index":        strconv.FormatInt(n.core.GetLastBlockIndex(), 10),
-		"consensus_events":        strconv.FormatInt(consensusEvents, 10),
-		"sync_limit":              strconv.FormatInt(n.conf.SyncLimit, 10),
-		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
-		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
-		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
-		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
-		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
-		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
-		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
-		"rounds_per_second":       strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
-		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
-		"id":                      fmt.Sprint(n.id),
-		"state":                   n.getState().String(),
-	}
-	// n.mqtt.FireEvent(s, "/mq/lachesis/stats")
-	return s
-}
-
 func (n *Node) logStats() {
 	stats := n.GetStats()
 	n.logger.WithFields(logrus.Fields{
@@ -778,6 +739,7 @@ func (n *Node) logStats() {
 		//		"id":                     stats["id"],
 	}).Warn("logStats()")
 }
+*/
 
 // SyncRate returns the current synchronization (talking to over nodes) rate in ms
 func (n *Node) SyncRate() float64 {
@@ -788,75 +750,47 @@ func (n *Node) SyncRate() float64 {
 	return 1 - syncErrorRate
 }
 
-// GetParticipants returns all participants this node knows about
-func (n *Node) GetParticipants() (*peers.Peers, error) {
-	return n.core.poset.Store.Participants()
-}
-
-// GetEventBlock returns a specific event block for the given hash
-func (n *Node) GetEventBlock(event poset.EventHash) (poset.Event, error) {
-	return n.core.poset.Store.GetEventBlock(event)
-}
-
-// GetLastEventFrom returns the last event block for a specific participant
-func (n *Node) GetLastEventFrom(participant string) (poset.EventHash, bool, error) {
-	return n.core.poset.Store.LastEventFrom(participant)
-}
-
-// GetKnownEvents returns all known events
-func (n *Node) GetKnownEvents() map[uint64]int64 {
-	return n.core.KnownEvents()
-}
-
 // EventDiff returns events that n knows about and are not in 'known'
 func (n *Node) EventDiff(
 	known map[uint64]int64) (events []poset.Event, err error) {
 	return n.core.EventDiff(known)
 }
 
-// GetConsensusEvents returns all consensus events
-func (n *Node) GetConsensusEvents() poset.EventHashes {
-	return n.core.poset.Store.ConsensusEvents()
-}
-
 // GetConsensusTransactionsCount get the count of finalized transactions
 func (n *Node) GetConsensusTransactionsCount() uint64 {
+	// TODO: remove use poset.
 	return n.core.GetConsensusTransactionsCount()
 }
 
 // GetPendingLoadedEvents returns all the pending events
 func (n *Node) GetPendingLoadedEvents() int64 {
+	// TODO: remove use poset.
 	return n.core.GetPendingLoadedEvents()
 }
 
-// GetRound returns the created round info for a given index
-func (n *Node) GetRound(roundIndex int64) (poset.RoundCreated, error) {
-	return n.core.poset.Store.GetRoundCreated(roundIndex)
+// GetTransactionPoolCount returns the count of all pending transactions
+func (n *Node) GetTransactionPoolCount() int64 {
+	return n.core.GetTransactionPoolCount()
 }
 
-// GetLastRound returns the last round
-func (n *Node) GetLastRound() int64 {
-	return n.core.poset.Store.LastRound()
+func (n *Node) HeartbeatTimeout() time.Duration {
+	return n.conf.HeartbeatTimeout
 }
 
-// GetRoundClothos returns all clotho for a given round index
-func (n *Node) GetRoundClothos(roundIndex int64) poset.EventHashes {
-	return n.core.poset.Store.RoundClothos(roundIndex)
+func (n *Node) KnownEvents() map[uint64]int64 {
+	return n.core.KnownEvents()
 }
 
-// GetRoundEvents returns all the round events for a given round index
-func (n *Node) GetRoundEvents(roundIndex int64) int {
-	return n.core.poset.Store.RoundEvents(roundIndex)
+func (n *Node) StartTime() time.Time {
+	return n.start
 }
 
-// GetRoot returns the chain root for the frame
-func (n *Node) GetRoot(rootIndex string) (poset.Root, error) {
-	return n.core.poset.Store.GetRoot(rootIndex)
+func (n *Node) State() string {
+	return n.state.String()
 }
 
-// GetBlock returns the block for a given index
-func (n *Node) GetBlock(blockIndex int64) (poset.Block, error) {
-	return n.core.poset.Store.GetBlock(blockIndex)
+func (n *Node) SyncLimit() int64 {
+	return n.conf.SyncLimit
 }
 
 // ID shows the ID of the node

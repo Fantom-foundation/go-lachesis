@@ -15,16 +15,23 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/service"
+	"github.com/Fantom-foundation/go-lachesis/src/stats"
 )
+
+// Server is a stats REST API server.
+type Server interface {
+	Serve() error
+}
 
 // Lachesis struct
 type Lachesis struct {
 	Config    *LachesisConfig
 	Node      *node.Node
 	Transport peer.SyncPeer
+	Poset     *poset.Poset
 	Store     poset.Store
 	Peers     *peers.Peers
-	Service   *service.Service
+	Server    Server
 }
 
 // NewLachesis constructor
@@ -157,12 +164,28 @@ func (l *Lachesis) initNode() error {
 		LocalAddr:    l.Config.BindAddr,
 		GetFlagTable: nil,
 	}
+
+	logger := l.Config.Logger
+	if logger == nil {
+		logger = logrus.New()
+		logger.Level = logrus.DebugLevel
+		lachesis_log.NewLocal(logger, logger.Level.String())
+	}
+	logEntry := logger.WithField("id", nodeID)
+
+	commitCh := make(chan poset.Block, 400)
+	pst := poset.NewPoset(l.Peers, l.Store, commitCh, logEntry)
+
+	l.Poset = pst
+
 	l.Node = node.NewNode(
 		&l.Config.NodeConfig,
 		nodeID,
 		key,
 		l.Peers,
-		l.Store,
+		pst,
+		commitCh,
+		l.Store.NeedBootstrap(),
 		l.Transport,
 		l.Config.Proxy,
 		node.NewSmartPeerSelectorWrapper,
@@ -177,9 +200,10 @@ func (l *Lachesis) initNode() error {
 	return nil
 }
 
-func (l *Lachesis) initService() error {
+func (l *Lachesis) initServer() error {
 	if l.Config.ServiceAddr != "" {
-		l.Service = service.NewService(l.Config.ServiceAddr, l.Node, l.Config.Logger)
+		s := stats.NewService(l.Store, l.Poset, l.Node)
+		l.Server = service.NewServer(l.Config.ServiceAddr, s, l.Config.Logger)
 	}
 	return nil
 }
@@ -211,7 +235,7 @@ func (l *Lachesis) Init() error {
 		return err
 	}
 
-	if err := l.initService(); err != nil {
+	if err := l.initServer(); err != nil {
 		return err
 	}
 
@@ -220,8 +244,12 @@ func (l *Lachesis) Init() error {
 
 // Run hosts the services for the lachesis node
 func (l *Lachesis) Run() {
-	if l.Service != nil {
-		go l.Service.Serve()
+	if l.Server != nil {
+		go func() {
+			if err := l.Server.Serve(); err != nil {
+				l.Config.Logger.Error(err)
+			}
+		}()
 	}
 	l.Node.Run(true)
 }

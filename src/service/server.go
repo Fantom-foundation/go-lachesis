@@ -5,51 +5,69 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Fantom-foundation/go-lachesis/src/node"
+	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
-// Service http API service struct
-type Service struct {
+// Service is a service required for handlers.
+type Service interface {
+	Stats() map[string]string
+	Participants() (*peers.Peers, error)
+	EventBlock(event poset.EventHash) (poset.Event, error)
+	LastEventFrom(participant string) (poset.EventHash, bool, error)
+	KnownEvents() map[uint64]int64
+	ConsensusEvents() poset.EventHashes
+	Round(roundIndex int64) (poset.RoundCreated, error)
+	LastRound() int64
+	RoundClothos(roundIndex int64) poset.EventHashes
+	RoundEvents(roundIndex int64) int
+	Root(rootIndex string) (poset.Root, error)
+	Block(blockIndex int64) (poset.Block, error)
+}
+
+// Server http API service struct
+type Server struct {
 	bindAddress string
-	node        *node.Node
-	graph       *node.Graph
+	service     Service
 	logger      *logrus.Logger
 }
 
-// NewService creates a new http API service
-func NewService(bindAddress string, n *node.Node, logger *logrus.Logger) *Service {
-	service := Service{
+// NewServer creates a new http API service
+func NewServer(bindAddress string, service Service, logger *logrus.Logger) *Server {
+	s := Server{
 		bindAddress: bindAddress,
-		node:        n,
-		graph:       node.NewGraph(n),
+		service:     service,
 		logger:      logger,
 	}
 
-	return &service
+	return &s
 }
 
 // Serve serves the API
-func (s *Service) Serve() {
-	s.logger.WithField("bind_address", s.bindAddress).Debug("Service serving")
+func (s *Server) Serve() error {
+	s.logger.WithField("bind_address", s.bindAddress).Debug("Server serving")
 	mux := http.NewServeMux()
-	mux.Handle("/stats", corsHandler(s.GetStats))
-	mux.Handle("/participants/", corsHandler(s.GetParticipants))
-	mux.Handle("/event/", corsHandler(s.GetEventBlock))
-	mux.Handle("/lasteventfrom/", corsHandler(s.GetLastEventFrom))
-	mux.Handle("/events/", corsHandler(s.GetKnownEvents))
-	mux.Handle("/consensusevents/", corsHandler(s.GetConsensusEvents))
-	mux.Handle("/round/", corsHandler(s.GetRound))
-	mux.Handle("/lastround/", corsHandler(s.GetLastRound))
-	mux.Handle("/roundclothos/", corsHandler(s.GetRoundClothos))
-	mux.Handle("/roundevents/", corsHandler(s.GetRoundEvents))
-	mux.Handle("/root/", corsHandler(s.GetRoot))
-	mux.Handle("/block/", corsHandler(s.GetBlock))
-	err := http.ListenAndServe(s.bindAddress, mux)
-	if err != nil {
-		s.logger.WithField("error", err).Error("Service failed")
+
+	mux.Handle("/stats", corsHandler(s.Stats))
+	mux.Handle("/participants/", corsHandler(s.Participants))
+	mux.Handle("/event/", corsHandler(s.EventBlock))
+	mux.Handle("/lasteventfrom/", corsHandler(s.LastEventFrom))
+	mux.Handle("/events/", corsHandler(s.KnownEvents))
+	mux.Handle("/consensusevents/", corsHandler(s.ConsensusEvents))
+	mux.Handle("/round/", corsHandler(s.Round))
+	mux.Handle("/lastround/", corsHandler(s.LastRound))
+	mux.Handle("/roundclothos/", corsHandler(s.RoundClothos))
+	mux.Handle("/roundevents/", corsHandler(s.RoundEvents))
+	mux.Handle("/root/", corsHandler(s.Root))
+	mux.Handle("/block/", corsHandler(s.Block))
+
+	if err := http.ListenAndServe(s.bindAddress, mux); err != nil {
+		return errors.Wrap(err, "listen and serve")
 	}
+
+	return nil
 }
 
 func corsHandler(h http.HandlerFunc) http.HandlerFunc {
@@ -73,11 +91,11 @@ func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-// GetStats returns all the node processing stats
-func (s *Service) GetStats(w http.ResponseWriter, r *http.Request) {
+// Stats returns all the node processing stats
+func (s *Server) Stats(w http.ResponseWriter, r *http.Request) {
 	s.logger.Debug("Stats")
 
-	stats := s.node.GetStats()
+	stats := s.service.Stats()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
@@ -85,9 +103,9 @@ func (s *Service) GetStats(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetParticipants returns all the known participants
-func (s *Service) GetParticipants(w http.ResponseWriter, r *http.Request) {
-	participants, err := s.node.GetParticipants()
+// Participants returns all the known participants
+func (s *Server) Participants(w http.ResponseWriter, r *http.Request) {
+	participants, err := s.service.Participants()
 	if err != nil {
 		s.logger.WithError(err).Errorf("Parsing participants parameter")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -99,8 +117,8 @@ func (s *Service) GetParticipants(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetEventBlock returns a specific event block by id
-func (s *Service) GetEventBlock(w http.ResponseWriter, r *http.Request) {
+// EventBlock returns a specific event block by id
+func (s *Server) EventBlock(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/event/"):]
 
 	var hash poset.EventHash
@@ -111,7 +129,7 @@ func (s *Service) GetEventBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := s.node.GetEventBlock(hash)
+	event, err := s.service.EventBlock(hash)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving event %s", param)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -124,10 +142,10 @@ func (s *Service) GetEventBlock(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetLastEventFrom returns the last event for a specific participant
-func (s *Service) GetLastEventFrom(w http.ResponseWriter, r *http.Request) {
+// LastEventFrom returns the last event for a specific participant
+func (s *Server) LastEventFrom(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/lasteventfrom/"):]
-	event, _, err := s.node.GetLastEventFrom(param)
+	event, _, err := s.service.LastEventFrom(param)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving event %s", event)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -140,9 +158,9 @@ func (s *Service) GetLastEventFrom(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetKnownEvents returns all known events by ID
-func (s *Service) GetKnownEvents(w http.ResponseWriter, r *http.Request) {
-	knownEvents := s.node.GetKnownEvents()
+// KnownEvents returns all known events by ID
+func (s *Server) KnownEvents(w http.ResponseWriter, r *http.Request) {
+	knownEvents := s.service.KnownEvents()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(knownEvents); err != nil {
@@ -150,9 +168,9 @@ func (s *Service) GetKnownEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetConsensusEvents returns all the events that have reached consensus
-func (s *Service) GetConsensusEvents(w http.ResponseWriter, r *http.Request) {
-	consensusEvents := s.node.GetConsensusEvents()
+// ConsensusEvents returns all the events that have reached consensus
+func (s *Server) ConsensusEvents(w http.ResponseWriter, r *http.Request) {
+	consensusEvents := s.service.ConsensusEvents()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(consensusEvents); err != nil {
@@ -160,8 +178,8 @@ func (s *Service) GetConsensusEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetRound returns a round for the given index
-func (s *Service) GetRound(w http.ResponseWriter, r *http.Request) {
+// Round returns a round for the given index
+func (s *Server) Round(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/round/"):]
 	roundIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -170,7 +188,7 @@ func (s *Service) GetRound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	round, err := s.node.GetRound(roundIndex)
+	round, err := s.service.Round(roundIndex)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving round %d", roundIndex)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -183,9 +201,9 @@ func (s *Service) GetRound(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetLastRound returns the last known round
-func (s *Service) GetLastRound(w http.ResponseWriter, r *http.Request) {
-	lastRound := s.node.GetLastRound()
+// LastRound returns the last known round
+func (s *Server) LastRound(w http.ResponseWriter, r *http.Request) {
+	lastRound := s.service.LastRound()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(lastRound); err != nil {
@@ -193,8 +211,8 @@ func (s *Service) GetLastRound(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetRoundClothos returns all clotho for a round
-func (s *Service) GetRoundClothos(w http.ResponseWriter, r *http.Request) {
+// RoundClothos returns all clotho for a round
+func (s *Server) RoundClothos(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/roundclothos/"):]
 	roundClothosIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -203,7 +221,7 @@ func (s *Service) GetRoundClothos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roundClothos := s.node.GetRoundClothos(roundClothosIndex)
+	roundClothos := s.service.RoundClothos(roundClothosIndex)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(roundClothos); err != nil {
@@ -211,8 +229,8 @@ func (s *Service) GetRoundClothos(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetRoundEvents returns all the events for a given round
-func (s *Service) GetRoundEvents(w http.ResponseWriter, r *http.Request) {
+// RoundEvents returns all the events for a given round
+func (s *Server) RoundEvents(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/roundevents/"):]
 	roundEventsIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -221,7 +239,7 @@ func (s *Service) GetRoundEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roundEvent := s.node.GetRoundEvents(roundEventsIndex)
+	roundEvent := s.service.RoundEvents(roundEventsIndex)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(roundEvent); err != nil {
@@ -229,10 +247,10 @@ func (s *Service) GetRoundEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetRoot returns the root for a given frame
-func (s *Service) GetRoot(w http.ResponseWriter, r *http.Request) {
+// Root returns the root for a given frame
+func (s *Server) Root(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/root/"):]
-	root, err := s.node.GetRoot(param)
+	root, err := s.service.Root(param)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving root %s", param)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -245,8 +263,8 @@ func (s *Service) GetRoot(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// GetBlock returns a specific block based on index
-func (s *Service) GetBlock(w http.ResponseWriter, r *http.Request) {
+// Block returns a specific block based on index
+func (s *Server) Block(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/block/"):]
 	blockIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -255,7 +273,7 @@ func (s *Service) GetBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block, err := s.node.GetBlock(blockIndex)
+	block, err := s.service.Block(blockIndex)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving block %d", blockIndex)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
