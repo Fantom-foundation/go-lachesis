@@ -14,7 +14,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
-	"github.com/Fantom-foundation/go-lachesis/src/service"
+	"github.com/Fantom-foundation/go-lachesis/src/server"
 	"github.com/Fantom-foundation/go-lachesis/src/stats"
 )
 
@@ -203,7 +203,7 @@ func (l *Lachesis) initNode() error {
 func (l *Lachesis) initServer() error {
 	if l.Config.ServiceAddr != "" {
 		s := stats.NewService(l.Store, l.Poset, l.Node)
-		l.Server = service.NewServer(l.Config.ServiceAddr, s, l.Config.Logger)
+		l.Server = server.NewServer(l.Config.ServiceAddr, s, l.Config.Logger)
 	}
 	return nil
 }

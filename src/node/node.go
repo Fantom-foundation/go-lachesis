@@ -798,6 +798,17 @@ func (n *Node) ID() uint64 {
 	return n.id
 }
 
+// GetState func for test
+func (n *Node) GetState() state {
+	return n.getState()
+}
+
+// SubmitCh func for test
+func (n *Node) SubmitCh(tx []byte) error {
+	n.proxy.SubmitCh() <- []byte(tx)
+	return nil
+}
+
 // Stop stops the node from gossiping
 func (n *Node) Stop() {
 	n.setState(Stop)

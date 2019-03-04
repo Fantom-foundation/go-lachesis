@@ -18,7 +18,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/dummy"
-	"github.com/Fantom-foundation/go-lachesis/src/net"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/utils"
@@ -616,11 +615,6 @@ func TestCatchUp(t *testing.T) {
 			}
 		}
 	}()
-
-*План* (26.02):
-1. Продолжить разбираться в коде.
-2. Протестировать внесенные изменения.
-3. Внести изменения в node
 
 	node4.RunAsync(true)
 	defer node4.Shutdown()
