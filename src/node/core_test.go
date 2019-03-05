@@ -9,8 +9,10 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/src/log"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/sirupsen/logrus"
 )
 
 func initCores(n int, t *testing.T) ([]*Core,
@@ -31,12 +33,20 @@ func initCores(n int, t *testing.T) ([]*Core,
 		participantKeys[peer.ID] = key
 	}
 
+	logger := logrus.New()
+	logger.Level = logrus.DebugLevel
+	lachesis_log.NewLocal(logger, logger.Level.String())
+	logEntry := logger.WithField("id", 1)
+
+	commitCh := make(chan poset.Block, 400)
+	db := poset.NewInmemStore(participants, cacheSize, nil)
+	pst := poset.NewPoset(participants, db, commitCh, logEntry)
+
 	for i, peer := range participants.ToPeerSlice() {
 		core := NewCore(uint64(i),
 			participantKeys[peer.ID],
 			participants,
-			poset.NewInmemStore(participants, cacheSize, nil),
-			nil,
+			pst,
 			common.NewTestLogger(t))
 
 		selfParent := poset.GenRootSelfParent(peer.ID)
