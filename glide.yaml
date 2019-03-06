@@ -38,6 +38,8 @@ import:
   - windows/svc/eventlog
 - package: google.golang.org/grpc
   version: ^1.18.0
+- package: github.com/awalterschulze/gographviz
+  version: ^2.0.0
 testImport:
 - package: github.com/davecgh/go-spew
   version: ^1.1.1

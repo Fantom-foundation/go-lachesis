@@ -1,12 +1,20 @@
-hash: 7e4fbc56355e314b67d2c339dbee99345a9cb8c9cd466501ccb5fbe632220ae3
-updated: 2019-02-04T15:23:38.821605+11:00
+hash: e4efbe398997f6f879ed2618c7fa82573c875da718b4c979949084347b3761f5
+updated: 2019-02-25T16:42:09.068826576+02:00
 imports:
 - name: github.com/allegro/bigcache
-  version: f31987a23e44c5121ef8c8b2f2ea2e8ffa37b068
+  version: 84a0ff3f153cbd7e280a19029a864bb04b504e62
   subpackages:
   - queue
 - name: github.com/AndreasBriese/bbloom
   version: 343706a395b76e5ca5c7dca46a5d937b48febc74
+- name: github.com/awalterschulze/gographviz
+  version: c84395e536e1a1199093a4e6253d1bee99e4cd2a
+  subpackages:
+  - ast
+  - internal/errors
+  - internal/lexer
+  - internal/parser
+  - internal/token
 - name: github.com/dgraph-io/badger
   version: 439fd464b155d419201a5c195c70d40618376776
   subpackages:
