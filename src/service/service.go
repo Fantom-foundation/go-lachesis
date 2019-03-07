@@ -1,4 +1,4 @@
-package server
+package service
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Service is a service required for handlers.
-type Service interface {
+// Stater is a stats required for handlers.
+type Stater interface {
 	Stats() map[string]string
 	Participants() (*peers.Peers, error)
 	EventBlock(event poset.EventHash) (poset.Event, error)
@@ -27,18 +27,18 @@ type Service interface {
 	Block(blockIndex int64) (poset.Block, error)
 }
 
-// Server http API service struct
-type Server struct {
+// Service http API service struct
+type Service struct {
 	bindAddress string
-	service     Service
+	stats       Stater
 	logger      *logrus.Logger
 }
 
-// NewServer creates a new http API service
-func NewServer(bindAddress string, service Service, logger *logrus.Logger) *Server {
-	s := Server{
+// NewService creates a new http API stats
+func NewService(bindAddress string, stats Stater, logger *logrus.Logger) *Service {
+	s := Service{
 		bindAddress: bindAddress,
-		service:     service,
+		stats:       stats,
 		logger:      logger,
 	}
 
@@ -46,8 +46,8 @@ func NewServer(bindAddress string, service Service, logger *logrus.Logger) *Serv
 }
 
 // Serve serves the API
-func (s *Server) Serve() error {
-	s.logger.WithField("bind_address", s.bindAddress).Debug("Server serving")
+func (s *Service) Serve() error {
+	s.logger.WithField("bind_address", s.bindAddress).Debug("Service serving")
 	mux := http.NewServeMux()
 
 	mux.Handle("/stats", corsHandler(s.Stats))
@@ -92,10 +92,10 @@ func corsHandler(h http.HandlerFunc) http.HandlerFunc {
 }
 
 // Stats returns all the node processing stats
-func (s *Server) Stats(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Stats(w http.ResponseWriter, r *http.Request) {
 	s.logger.Debug("Stats")
 
-	stats := s.service.Stats()
+	stats := s.stats.Stats()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
@@ -104,8 +104,8 @@ func (s *Server) Stats(w http.ResponseWriter, r *http.Request) {
 }
 
 // Participants returns all the known participants
-func (s *Server) Participants(w http.ResponseWriter, r *http.Request) {
-	participants, err := s.service.Participants()
+func (s *Service) Participants(w http.ResponseWriter, r *http.Request) {
+	participants, err := s.stats.Participants()
 	if err != nil {
 		s.logger.WithError(err).Errorf("Parsing participants parameter")
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -118,7 +118,7 @@ func (s *Server) Participants(w http.ResponseWriter, r *http.Request) {
 }
 
 // EventBlock returns a specific event block by id
-func (s *Server) EventBlock(w http.ResponseWriter, r *http.Request) {
+func (s *Service) EventBlock(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/event/"):]
 
 	var hash poset.EventHash
@@ -129,7 +129,7 @@ func (s *Server) EventBlock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := s.service.EventBlock(hash)
+	event, err := s.stats.EventBlock(hash)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving event %s", param)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -143,9 +143,9 @@ func (s *Server) EventBlock(w http.ResponseWriter, r *http.Request) {
 }
 
 // LastEventFrom returns the last event for a specific participant
-func (s *Server) LastEventFrom(w http.ResponseWriter, r *http.Request) {
+func (s *Service) LastEventFrom(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/lasteventfrom/"):]
-	event, _, err := s.service.LastEventFrom(param)
+	event, _, err := s.stats.LastEventFrom(param)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving event %s", event)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -159,8 +159,8 @@ func (s *Server) LastEventFrom(w http.ResponseWriter, r *http.Request) {
 }
 
 // KnownEvents returns all known events by ID
-func (s *Server) KnownEvents(w http.ResponseWriter, r *http.Request) {
-	knownEvents := s.service.KnownEvents()
+func (s *Service) KnownEvents(w http.ResponseWriter, r *http.Request) {
+	knownEvents := s.stats.KnownEvents()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(knownEvents); err != nil {
@@ -169,8 +169,8 @@ func (s *Server) KnownEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // ConsensusEvents returns all the events that have reached consensus
-func (s *Server) ConsensusEvents(w http.ResponseWriter, r *http.Request) {
-	consensusEvents := s.service.ConsensusEvents()
+func (s *Service) ConsensusEvents(w http.ResponseWriter, r *http.Request) {
+	consensusEvents := s.stats.ConsensusEvents()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(consensusEvents); err != nil {
@@ -179,7 +179,7 @@ func (s *Server) ConsensusEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // Round returns a round for the given index
-func (s *Server) Round(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Round(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/round/"):]
 	roundIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -188,7 +188,7 @@ func (s *Server) Round(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	round, err := s.service.Round(roundIndex)
+	round, err := s.stats.Round(roundIndex)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving round %d", roundIndex)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -202,8 +202,8 @@ func (s *Server) Round(w http.ResponseWriter, r *http.Request) {
 }
 
 // LastRound returns the last known round
-func (s *Server) LastRound(w http.ResponseWriter, r *http.Request) {
-	lastRound := s.service.LastRound()
+func (s *Service) LastRound(w http.ResponseWriter, r *http.Request) {
+	lastRound := s.stats.LastRound()
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(lastRound); err != nil {
@@ -212,7 +212,7 @@ func (s *Server) LastRound(w http.ResponseWriter, r *http.Request) {
 }
 
 // RoundClothos returns all clotho for a round
-func (s *Server) RoundClothos(w http.ResponseWriter, r *http.Request) {
+func (s *Service) RoundClothos(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/roundclothos/"):]
 	roundClothosIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -221,7 +221,7 @@ func (s *Server) RoundClothos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roundClothos := s.service.RoundClothos(roundClothosIndex)
+	roundClothos := s.stats.RoundClothos(roundClothosIndex)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(roundClothos); err != nil {
@@ -230,7 +230,7 @@ func (s *Server) RoundClothos(w http.ResponseWriter, r *http.Request) {
 }
 
 // RoundEvents returns all the events for a given round
-func (s *Server) RoundEvents(w http.ResponseWriter, r *http.Request) {
+func (s *Service) RoundEvents(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/roundevents/"):]
 	roundEventsIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -239,7 +239,7 @@ func (s *Server) RoundEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roundEvent := s.service.RoundEvents(roundEventsIndex)
+	roundEvent := s.stats.RoundEvents(roundEventsIndex)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(roundEvent); err != nil {
@@ -248,9 +248,9 @@ func (s *Server) RoundEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // Root returns the root for a given frame
-func (s *Server) Root(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Root(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/root/"):]
-	root, err := s.service.Root(param)
+	root, err := s.stats.Root(param)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving root %s", param)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -264,7 +264,7 @@ func (s *Server) Root(w http.ResponseWriter, r *http.Request) {
 }
 
 // Block returns a specific block based on index
-func (s *Server) Block(w http.ResponseWriter, r *http.Request) {
+func (s *Service) Block(w http.ResponseWriter, r *http.Request) {
 	param := r.URL.Path[len("/block/"):]
 	blockIndex, err := strconv.ParseInt(param, 10, 64)
 	if err != nil {
@@ -273,7 +273,7 @@ func (s *Server) Block(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block, err := s.service.Block(blockIndex)
+	block, err := s.stats.Block(blockIndex)
 	if err != nil {
 		s.logger.WithError(err).Errorf("Retrieving block %d", blockIndex)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

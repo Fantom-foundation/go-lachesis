@@ -14,8 +14,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
-	"github.com/Fantom-foundation/go-lachesis/src/server"
-	"github.com/Fantom-foundation/go-lachesis/src/stats"
+	"github.com/Fantom-foundation/go-lachesis/src/service"
 )
 
 // Server is a stats REST API server.
@@ -31,7 +30,7 @@ type Lachesis struct {
 	Poset     *poset.Poset
 	Store     poset.Store
 	Peers     *peers.Peers
-	Server    Server
+	Service   Server
 }
 
 // NewLachesis constructor
@@ -202,8 +201,8 @@ func (l *Lachesis) initNode() error {
 
 func (l *Lachesis) initServer() error {
 	if l.Config.ServiceAddr != "" {
-		s := stats.NewService(l.Store, l.Poset, l.Node)
-		l.Server = server.NewServer(l.Config.ServiceAddr, s, l.Config.Logger)
+		s := service.NewStats(l.Store, l.Poset, l.Node)
+		l.Service = service.NewService(l.Config.ServiceAddr, s, l.Config.Logger)
 	}
 	return nil
 }
@@ -244,9 +243,9 @@ func (l *Lachesis) Init() error {
 
 // Run hosts the services for the lachesis node
 func (l *Lachesis) Run() {
-	if l.Server != nil {
+	if l.Service != nil {
 		go func() {
-			if err := l.Server.Serve(); err != nil {
+			if err := l.Service.Serve(); err != nil {
 				l.Config.Logger.Error(err)
 			}
 		}()

@@ -1,4 +1,4 @@
-package stats
+package service
 
 import (
 	"fmt"
@@ -45,16 +45,16 @@ type Node interface {
 	KnownEvents() map[uint64]int64
 }
 
-// Service returns stats from postet and store.
-type Service struct {
+// Stats returns stats from postet and store.
+type Stats struct {
 	store Store
 	poset Poset
 	node  Node
 }
 
-// NewService factory to initialize service
-func NewService(s Store, p Poset, n Node) *Service {
-	srv := Service{
+// NewStats factory to initialize service
+func NewStats(s Store, p Poset, n Node) *Stats {
+	srv := Stats{
 		store: s,
 		poset: p,
 		node:  n,
@@ -64,7 +64,7 @@ func NewService(s Store, p Poset, n Node) *Service {
 }
 
 // Stats returns processing stats.
-func (s *Service) Stats() map[string]string {
+func (s *Stats) Stats() map[string]string {
 	toString := func(i int64) string {
 		if i <= 0 {
 			return "nil"
@@ -114,61 +114,61 @@ func (s *Service) Stats() map[string]string {
 }
 
 // Participants returns all participants from store.
-func (s *Service) Participants() (*peers.Peers, error) {
+func (s *Stats) Participants() (*peers.Peers, error) {
 	return s.store.Participants()
 }
 
 // EventBlock returns a specific event block for the given hash
-func (s *Service) EventBlock(event poset.EventHash) (poset.Event, error) {
+func (s *Stats) EventBlock(event poset.EventHash) (poset.Event, error) {
 	return s.store.GetEventBlock(event)
 }
 
 // LastEventFrom returns the last event block for a specific participant
-func (s *Service) LastEventFrom(participant string) (poset.EventHash, bool, error) {
+func (s *Stats) LastEventFrom(participant string) (poset.EventHash, bool, error) {
 	return s.store.LastEventFrom(participant)
 }
 
 // KnownEvents returns all known events
-func (s *Service) KnownEvents() map[uint64]int64 {
+func (s *Stats) KnownEvents() map[uint64]int64 {
 	return s.node.KnownEvents()
 }
 
 // ConsensusEvents returns all consensus events
-func (s *Service) ConsensusEvents() poset.EventHashes {
+func (s *Stats) ConsensusEvents() poset.EventHashes {
 	return s.store.ConsensusEvents()
 }
 
 // Round returns the created round info for a given index
-func (s *Service) Round(roundIndex int64) (poset.RoundCreated, error) {
+func (s *Stats) Round(roundIndex int64) (poset.RoundCreated, error) {
 	return s.store.GetRoundCreated(roundIndex)
 }
 
 // ConsensusTransactionsCount get the count of finalized transactions
-func (s *Service) ConsensusTransactionsCount() uint64 {
+func (s *Stats) ConsensusTransactionsCount() uint64 {
 	return s.poset.GetConsensusTransactionsCount()
 }
 
 // LastRound returns the last round
-func (s *Service) LastRound() int64 {
+func (s *Stats) LastRound() int64 {
 	return s.store.LastRound()
 }
 
 // RoundClothos returns all clotho for a given round index
-func (s *Service) RoundClothos(roundIndex int64) poset.EventHashes {
+func (s *Stats) RoundClothos(roundIndex int64) poset.EventHashes {
 	return s.store.RoundClothos(roundIndex)
 }
 
 // RoundEvents returns all the round events for a given round index
-func (s *Service) RoundEvents(roundIndex int64) int {
+func (s *Stats) RoundEvents(roundIndex int64) int {
 	return s.store.RoundEvents(roundIndex)
 }
 
 // Root returns the chain root for the frame
-func (s *Service) Root(rootIndex string) (poset.Root, error) {
+func (s *Stats) Root(rootIndex string) (poset.Root, error) {
 	return s.store.GetRoot(rootIndex)
 }
 
 // Block returns the block for a given index
-func (s *Service) Block(blockIndex int64) (poset.Block, error) {
+func (s *Stats) Block(blockIndex int64) (poset.Block, error) {
 	return s.store.GetBlock(blockIndex)
 }
