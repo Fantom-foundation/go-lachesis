@@ -16,11 +16,19 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/Fantom-foundation/go-lachesis/src/service"
 )
+
+// Stats used for logStats.
+type Stats interface {
+	Stats() map[string]string
+	LastRound() int64
+}
 
 // Node struct that keeps all high level node functions
 type Node struct {
 	*nodeState2
+	stats Stats
 
 	conf   *Config
 	logger *logrus.Entry
@@ -98,6 +106,9 @@ func NewNode(conf *Config,
 		nodeState2:       newNodeState2(),
 		signalTERMch:     make(chan os.Signal, 1),
 	}
+
+	stats := service.NewStats(pst.Store, pst, &node)
+	node.stats = stats
 
 	signal.Notify(node.signalTERMch, syscall.SIGTERM, os.Kill)
 
@@ -243,7 +254,7 @@ func (n *Node) lachesis(gossip bool) {
 				n.rpcJobs.decrement()
 			})
 		case <-n.controlTimer.tickCh:
-			// n.logStats()
+			n.logStats()
 			if gossip && n.gossipJobs.get() < 1 {
 				n.goFunc(func() {
 					n.gossipJobs.increment()
@@ -709,10 +720,9 @@ func (n *Node) Shutdown() {
 	}
 }
 
-/*
 // GetStats returns processing stats for the node
 func (n *Node) logStats() {
-	stats := n.GetStats()
+	stats := n.stats.Stats()
 	n.logger.WithFields(logrus.Fields{
 		"last_consensus_round":   stats["last_consensus_round"],
 		"last_block_index":       stats["last_block_index"],
@@ -730,7 +740,7 @@ func (n *Node) logStats() {
 		"z_gossipJobs":           n.gossipJobs.get(),
 		"z_rpcJobs":              n.rpcJobs.get(),
 		"pending_loaded_events":  n.GetPendingLoadedEvents(),
-		"last_round":             n.GetLastRound(),
+		"last_round":             n.stats.LastRound(),
 		// "addr" is already defined in Node.logger, see NewNode() function
 		// uncomment when needed
 		//		"addr":                   n.localAddr,
@@ -739,7 +749,6 @@ func (n *Node) logStats() {
 		//		"id":                     stats["id"],
 	}).Warn("logStats()")
 }
-*/
 
 // SyncRate returns the current synchronization (talking to over nodes) rate in ms
 func (n *Node) SyncRate() float64 {
@@ -773,22 +782,27 @@ func (n *Node) GetTransactionPoolCount() int64 {
 	return n.core.GetTransactionPoolCount()
 }
 
+// HeartbeatTimeout returns heartbeat timeout.
 func (n *Node) HeartbeatTimeout() time.Duration {
 	return n.conf.HeartbeatTimeout
 }
 
+// KnownEvents return known events.
 func (n *Node) KnownEvents() map[uint64]int64 {
 	return n.core.KnownEvents()
 }
 
+// StartTime returns node start time.
 func (n *Node) StartTime() time.Time {
 	return n.start
 }
 
+// State returns current state.
 func (n *Node) State() string {
 	return n.state.String()
 }
 
+// SyncLimit returns sync limit from config.
 func (n *Node) SyncLimit() int64 {
 	return n.conf.SyncLimit
 }
@@ -796,11 +810,6 @@ func (n *Node) SyncLimit() int64 {
 // ID shows the ID of the node
 func (n *Node) ID() uint64 {
 	return n.id
-}
-
-// GetState func for test
-func (n *Node) GetState() state {
-	return n.getState()
 }
 
 // SubmitCh func for test
