@@ -24,6 +24,7 @@ type InmemStore struct {
 	roundReceivedCache     *lru.Cache           // round received number => RoundReceived
 	blockCache             *lru.Cache           // index => Block
 	frameCache             *lru.Cache           // round received => Frame
+	clothoCheckCache       *lru.Cache           // frame + hash => hash
 	consensusCache         *common.RollingIndex // consensus index => hash
 	totConsensusEvents     int64
 	participantEventsCache *ParticipantEventsCache // pubkey => Events
@@ -36,6 +37,7 @@ type InmemStore struct {
 	lastRoundLocker          sync.RWMutex
 	lastBlockLocker          sync.RWMutex
 	totConsensusEventsLocker sync.RWMutex
+	clothoCheckLocker        sync.RWMutex
 
 	states    state.Database
 	stateRoot common.Hash
@@ -77,6 +79,11 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 		fmt.Println("Unable to init InmemStore.frameCache:", err)
 		os.Exit(34)
 	}
+	clothoCheckCache, err := lru.New(cacheSize)
+	if err != nil {
+		fmt.Println("Unable to init InmemStore.checkClothoCache:", err)
+		os.Exit(35)
+	}
 
 	store := &InmemStore{
 		cacheSize:              cacheSize,
@@ -86,6 +93,7 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 		roundReceivedCache:     roundReceivedCache,
 		blockCache:             blockCache,
 		frameCache:             frameCache,
+		clothoCheckCache:       clothoCheckCache,
 		consensusCache:         common.NewRollingIndex("ConsensusCache", cacheSize),
 		participantEventsCache: NewParticipantEventsCache(cacheSize, participants),
 		rootsByParticipant:     rootsByParticipant,
@@ -423,6 +431,11 @@ func (s *InmemStore) Reset(roots map[string]Root) error {
 		fmt.Println("Unable to reset InmemStore.roundReceivedCache:", errr)
 		os.Exit(45)
 	}
+	clothoCheckCache, errr := lru.New(s.cacheSize)
+	if errr != nil {
+		fmt.Println("Unable to reset InmemStore.clothoCheckCache:", errr)
+		os.Exit(46)
+	}
 	// FIXIT: Should we recreate blockCache, frameCache and participantEventsCache here as well
 	//        and reset lastConsensusEvents ?
 	s.rootsByParticipant = roots
@@ -431,6 +444,7 @@ func (s *InmemStore) Reset(roots map[string]Root) error {
 	s.eventCache = eventCache
 	s.roundCreatedCache = roundCache
 	s.roundReceivedCache = roundReceivedCache
+	s.clothoCheckCache = clothoCheckCache
 	s.consensusCache = common.NewRollingIndex("ConsensusCache", s.cacheSize)
 	err := s.participantEventsCache.Reset()
 	s.lastRoundLocker.Lock()
@@ -466,4 +480,30 @@ func (s *InmemStore) StateDB() state.Database {
 // StateRoot returns genesis state hash.
 func (s *InmemStore) StateRoot() common.Hash {
 	return s.stateRoot
+}
+
+func checkClothoKeyStr(frame int64, creatorID uint64) string {
+	return fmt.Sprintf("%09d_%d", frame, creatorID)
+}
+
+// AddClothoCheck to store
+func (s *InmemStore) AddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	key := checkClothoKeyStr(frame, creatorID)
+	s.clothoCheckLocker.Lock()
+	defer s.clothoCheckLocker.Unlock()
+	s.clothoCheckCache.Add(key, hash.Bytes())
+	return nil
+}
+
+// GetClothoCheck retrieves EventHash by frame + creatorID
+func (s *InmemStore) GetClothoCheck(frame int64, creatorID uint64) (hash EventHash, err error) {
+	key := checkClothoKeyStr(frame, creatorID)
+	s.clothoCheckLocker.Lock()
+	defer s.clothoCheckLocker.Unlock()
+	res, ok := s.clothoCheckCache.Get(key)
+	if !ok {
+		return EventHash{}, common.NewStoreErr("ClothoCheckCache", common.KeyNotFound, string(key))
+	}
+	hash.Set(res.([]byte))
+	return hash, nil
 }

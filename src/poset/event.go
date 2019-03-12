@@ -1,7 +1,7 @@
 package poset
 
 import (
-	"bytes"
+//	"bytes"
 	"crypto/ecdsa"
 	"fmt"
 	"reflect"
@@ -115,25 +115,29 @@ Event
 // LamportTimestampNIL nil value for lamport
 const LamportTimestampNIL int64 = -1
 
-// RoundNIL nil value for round
-const RoundNIL int64 = -1
+// FrameNIL nil value for event frame number
+const FrameNIL int64 = -1
 
 // ToEvent converts message to event
 func (m *EventMessage) ToEvent() Event {
+	ft := NewFlagTable()
 	return Event{
 		Message:          m,
-		lamportTimestamp: LamportTimestampNIL,
-		round:            RoundNIL,
-		roundReceived:    RoundNIL,
+		LamportTimestamp: LamportTimestampNIL,
+		Frame:            FrameNIL,
+		FlagTableBytes:   ft.Marshal(),
+		RootTableBytes:   ft.Marshal(),
+//		round:            RoundNIL,
+//		roundReceived:    RoundNIL,
 	}
 }
 
 // Equals compares equality of two event messages
 func (m *EventMessage) Equals(that *EventMessage) bool {
 	return m.Body.Equals(that.Body) &&
-		m.Signature == that.Signature &&
-		bytes.Equal(m.FlagTable, that.FlagTable) &&
-		reflect.DeepEqual(m.ClothoProof, that.ClothoProof)
+		m.Signature == that.Signature //&&
+//		bytes.Equal(m.FlagTable, that.FlagTable) &&
+//		reflect.DeepEqual(m.ClothoProof, that.ClothoProof)
 }
 
 // NewEvent creates new block event.
@@ -142,7 +146,7 @@ func NewEvent(
 	internalTransactions []InternalTransaction,
 	blockSignatures []BlockSignature,
 	parents EventHashes, creator []byte, index int64,
-	ft FlagTable) Event {
+	ft FlagTable, rt FlagTable, Frame int64, Root bool) Event {
 
 	internalTransactionPointers := make([]*InternalTransaction, len(internalTransactions))
 	for i, v := range internalTransactions {
@@ -167,45 +171,49 @@ func NewEvent(
 	return Event{
 		Message: &EventMessage{
 			Body:      &body,
-			FlagTable: ft.Marshal(),
+//			FlagTable: ft.Marshal(),
 		},
-		lamportTimestamp: LamportTimestampNIL,
-		round:            RoundNIL,
-		roundReceived:    RoundNIL,
+		LamportTimestamp: LamportTimestampNIL,
+		FlagTableBytes:   ft.Marshal(),
+		RootTableBytes:   rt.Marshal(),
+		Frame:            Frame,
+		Root:             Root,
+//		round:            RoundNIL,
+//		roundReceived:    RoundNIL,
 	}
 }
 
 // Event struct
-type Event struct {
-	Message          *EventMessage
-	lamportTimestamp int64
-	round            int64
-	roundReceived    int64
-}
+//type Event struct {
+//	Message          *EventMessage
+//	lamportTimestamp int64
+//	round            int64
+//	roundReceived    int64
+//}
 
 // GetRound Round returns round of event.
 func (e *Event) GetRound() int64 {
-	if e.round < 0 {
-		return RoundNIL
-	}
-	return e.round
+//	if e.round < 0 {
+//		return RoundNIL
+//	}
+	return FrameNIL //e.round
 }
 
 // GetRoundReceived Round returns round in which the event is received.
 func (e *Event) GetRoundReceived() int64 {
-	if e.roundReceived < 0 {
-		return RoundNIL
-	}
-	return e.roundReceived
+//	if e.roundReceived < 0 {
+		return FrameNIL
+//	}
+//	return e.round
 }
 
 // GetLamportTimestamp returns the lamport timestamp
-func (e *Event) GetLamportTimestamp() int64 {
-	if e.lamportTimestamp < 0 {
-		return LamportTimestampNIL
-	}
-	return e.lamportTimestamp
-}
+//func (e *Event) GetLamportTimestamp() int64 {
+//	if e.lamportTimestamp < 0 {
+//		return LamportTimestampNIL
+//	}
+//	return e.lamportTimestamp
+//}
 
 // GetCreator returns the creator for the event
 func (e *Event) GetCreator() string {
@@ -304,6 +312,22 @@ func (e *Event) ProtoUnmarshal(data []byte) error {
 	return proto.Unmarshal(data, e.Message)
 }
 
+
+// StoreMarshal() marshal whole event to protobuff
+func (e *Event) StoreMarshal() ([]byte, error) {
+	var bf proto.Buffer
+	bf.SetDeterministic(true)
+	if err := bf.Marshal(e); err != nil {
+		return nil, err
+	}
+	return bf.Bytes(), nil
+}
+
+// StoreUnmarshal() unmarshal profotbuff to whole event
+func (e *Event) StoreUnmarshal(data []byte) error {
+	return proto.Unmarshal(data, e)
+}
+
 // Hash sha256 hash of body
 func (e *Event) Hash() (hash EventHash) {
 	var err error
@@ -320,17 +344,17 @@ func (e *Event) Hash() (hash EventHash) {
 
 // SetRound for event
 func (e *Event) SetRound(r int64) {
-	e.round = r
+//	e.round = r
 }
 
 // SetLamportTimestamp for event
 func (e *Event) SetLamportTimestamp(t int64) {
-	e.lamportTimestamp = t
+	e.LamportTimestamp = t
 }
 
 // SetRoundReceived for event
 func (e *Event) SetRoundReceived(rr int64) {
-	e.roundReceived = rr
+//	e.roundReceived = rr
 }
 
 // SetWireInfo for event
@@ -373,35 +397,56 @@ func (e *Event) ToWire() WireEvent {
 			BlockSignatures:      e.WireBlockSignatures(),
 		},
 		Signature:   e.Message.Signature,
-		FlagTable:   e.Message.FlagTable,
-		ClothoProof: e.Message.ClothoProof,
+//		FlagTable:   e.Message.FlagTable,
+//		ClothoProof: e.Message.ClothoProof,
 	}
 }
 
 // ReplaceFlagTable replaces flag table.
 func (e *Event) ReplaceFlagTable(flagTable FlagTable) (err error) {
-	e.Message.FlagTable = flagTable.Marshal()
+	e.FlagTableBytes = flagTable.Marshal()
+	return nil
+}
+
+// ReplaceRootTable replaces root table.
+func (e *Event) ReplaceRootTable(rootTable FlagTable) (err error) {
+	e.RootTableBytes = rootTable.Marshal()
 	return nil
 }
 
 // GetFlagTable returns the flag table.
 func (e *Event) GetFlagTable() (FlagTable, error) {
-	res := FlagTable{}
-	err := res.Unmarshal(e.Message.FlagTable)
+	res := NewFlagTable()
+	err := res.Unmarshal(e.FlagTableBytes)
+	return res, err
+}
+
+// GetRootTable returns the flag table.
+func (e *Event) GetRootTable() (FlagTable, error) {
+	res := NewFlagTable()
+	err := res.Unmarshal(e.RootTableBytes)
 	return res, err
 }
 
 // MergeFlagTable returns merged flag table object.
-func (e *Event) MergeFlagTable(dst FlagTable) (FlagTable, error) {
-	res := FlagTable{}
-	err := res.Unmarshal(e.Message.FlagTable)
+func (e *Event) MergeFlagTable(dst FlagTable, Frame int64) (FlagTable, error) {
+	res := NewFlagTable()
+	src := NewFlagTable()
+	err := src.Unmarshal(e.FlagTableBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	for id, flag := range dst {
-		if res[id] == 0 && flag == 1 {
-			res[id] = 1
+	for id, frame := range src {
+		if frame == Frame {
+			res[id] = frame
+		}
+	}
+	
+	for id, frame := range dst {
+		_, exists := res[id]
+		if !exists && frame == Frame {
+			res[id] = frame
 		}
 	}
 	return res, nil
@@ -440,8 +485,8 @@ type ByLamportTimestamp []Event
 func (a ByLamportTimestamp) Len() int      { return len(a) }
 func (a ByLamportTimestamp) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByLamportTimestamp) Less(i, j int) bool {
-	it := a[i].lamportTimestamp
-	jt := a[j].lamportTimestamp
+	it := a[i].LamportTimestamp
+	jt := a[j].LamportTimestamp
 	if it != jt {
 		return it < jt
 	}
@@ -473,8 +518,8 @@ type WireBody struct {
 type WireEvent struct {
 	Body        WireBody
 	Signature   string
-	FlagTable   []byte
-	ClothoProof [][]byte
+//	FlagTable   []byte
+//	ClothoProof [][]byte
 }
 
 // BlockSignatures TODO

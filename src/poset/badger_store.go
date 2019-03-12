@@ -175,6 +175,10 @@ func frameKey(index int64) []byte {
 	return []byte(fmt.Sprintf("%s_%09d", framePrefix, index))
 }
 
+func checkClothoKey(frame int64, creatorID uint64) []byte {
+	return []byte(fmt.Sprintf("%09d_%d", frame, creatorID))
+}
+
 /*
  * Store interface implementation:
  */
@@ -202,12 +206,12 @@ func (s *BadgerStore) TopologicalEvents() ([]Event, error) {
 			}
 			err = eventItem.Value(func(eventBytes []byte) error {
 				event := &Event{
-					roundReceived:    RoundNIL,
-					round:            RoundNIL,
-					lamportTimestamp: LamportTimestampNIL,
+//					roundReceived:    RoundNIL,
+//					round:            RoundNIL,
+//					lamportTimestamp: LamportTimestampNIL,
 				}
 
-				if err := event.ProtoUnmarshal(eventBytes); err != nil {
+				if err := event.StoreUnmarshal(eventBytes); err != nil {
 					return err
 				}
 				res = append(res, *event)
@@ -476,7 +480,7 @@ func (s *BadgerStore) dbGetEventBlock(hash EventHash) (Event, error) {
 	}
 
 	event := new(Event)
-	if err := event.ProtoUnmarshal(eventBytes); err != nil {
+	if err := event.StoreUnmarshal(eventBytes); err != nil {
 		return Event{}, err
 	}
 
@@ -489,7 +493,7 @@ func (s *BadgerStore) dbSetEvents(events []Event) error {
 
 	for _, event := range events {
 		eventHash := event.Hash()
-		val, err := event.ProtoMarshal()
+		val, err := event.StoreMarshal()
 		if err != nil {
 			return err
 		}
@@ -853,4 +857,58 @@ func mapError(err error, name, key string) error {
 		}
 	}
 	return err
+}
+
+
+// GetClothoCheck retrieves EventHash by frame + EventHash
+func (s *BadgerStore) GetClothoCheck(frame int64, creatorID uint64) (EventHash, error) {
+	res, err := s.inmemStore.GetClothoCheck(frame, creatorID)
+	if err != nil {
+		res, err = s.dbGetClothoCheck(frame, creatorID)
+	}
+	return res, err // mapError(err, "badger_store GetClothoCheck", string(checkClothoKey(frame, hash)))
+}
+
+// AddClothoCheck to store
+func (s *BadgerStore) AddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	if err := s.inmemStore.AddClothoCheck(frame, creatorID, hash); err != nil {
+		return err
+	}
+	return s.dbAddClothoCheck(frame, creatorID, hash)
+}
+
+func (s *BadgerStore) dbGetClothoCheck(frame int64, creatorID uint64) (EventHash, error) {
+	var hashBytes []byte
+	var hash EventHash
+	key := checkClothoKey(frame, creatorID)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			hashBytes = val
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		return EventHash{}, err
+	}
+	hash.Set(hashBytes)
+	return hash, nil
+}
+
+func (s *BadgerStore) dbAddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	tx := s.db.NewTransaction(true)
+	defer tx.Discard()
+
+	key := checkClothoKey(frame, creatorID)
+
+	// insert [frame EventHash] => [EventHash]
+	if err := tx.Set(key, hash.Bytes()); err != nil {
+		return err
+	}
+
+	return tx.Commit(nil)
 }

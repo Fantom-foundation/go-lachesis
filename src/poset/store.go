@@ -42,6 +42,8 @@ type Store interface {
 	Close() error
 	NeedBootstrap() bool // Was the store loaded from existing db
 	StorePath() string
+	GetClothoCheck(int64, uint64) (EventHash, error)
+	AddClothoCheck(int64, uint64, EventHash) error
 	// StateDB returns state database
 	StateDB() state.Database
 	StateRoot() common.Hash

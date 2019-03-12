@@ -59,7 +59,13 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 		logger.Level = logrus.DebugLevel
 		lachesis_log.NewLocal(logger, logger.Level.String())
 	}
-	logEntry := logger.WithField("id", id)
+	n, ok := participants.ReadByID(id)
+	var logEntry *logrus.Entry
+	if ok {
+		logEntry = logger.WithField("id", id).WithField("addr", n.NetAddr)
+	} else {
+		logEntry = logger.WithField("id", id)
+	}
 
 	p2 := poset.NewPoset(participants, store, commitCh, logEntry)
 	core := &Core{
@@ -346,7 +352,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 		return err
 	}
 	// add unknown events
-	for k, we := range unknownEvents {
+	for _/*k*/, we := range unknownEvents {
 		c.logger.WithFields(logrus.Fields{
 			"unknown_events": we,
 		}).Debug("unknownEvents")
@@ -358,8 +364,9 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 		}
 		if ev.Index() > myKnownEvents[ev.CreatorID()] {
 			ev.SetLamportTimestamp(poset.LamportTimestampNIL)
-			ev.SetRound(poset.RoundNIL)
-			ev.SetRoundReceived(poset.RoundNIL)
+//			ev.SetFrame(poset.FrameNIL)  // do we really need it here? It should set in poset.ReadWireInfo()
+//			ev.SetRound(poset.RoundNIL)
+//			ev.SetRoundReceived(poset.RoundNIL)
 			if err := c.InsertEvent(*ev, false); err != nil {
 				c.logger.Error("SYNC: INSERT ERR:", err)
 				return err
@@ -367,7 +374,8 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 		}
 
 		// assume last event corresponds to other-head
-		if k == len(unknownEvents)-1 {
+		//if k == len(unknownEvents)-1 {
+		if ev.GetCreator() == peer.PubKeyHex {
 			otherHead = ev.Hash()
 		}
 	}
@@ -433,35 +441,14 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 	defer c.addSelfEventBlockLocker.Unlock()
 
 	// Get flag tables from parents
-	parentEvent, errSelf := c.poset.Store.GetEventBlock(c.head)
-	if errSelf != nil {
-		c.logger.Warnf("failed to get parent: %s", errSelf)
-	}
-	otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
-	if errOther != nil {
-		c.logger.Warnf("failed to get other parent: %s", errOther)
-	}
-
-	var (
-		flagTable poset.FlagTable
-		err       error
-	)
-
-	if errSelf != nil {
-		flagTable = poset.FlagTable{c.head: 1}
-	} else {
-		flagTable, err = parentEvent.GetFlagTable()
-		if err != nil {
-			return fmt.Errorf("failed to get self flag table: %s", err)
-		}
-	}
-
-	if errOther == nil {
-		flagTable, err = otherParentEvent.MergeFlagTable(flagTable)
-		if err != nil {
-			return fmt.Errorf("failed to marge flag tables: %s", err)
-		}
-	}
+//	parentEvent, errSelf := c.poset.Store.GetEventBlock(c.head)
+//	if errSelf != nil {
+//		c.logger.Warnf("failed to get parent: %s", errSelf)
+//	}
+//	otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
+//	if errOther != nil {
+//		c.logger.Warnf("failed to get other parent: %s", errOther)
+//	}
 
 	// get transactions batch for new Event
 	c.transactionPoolLocker.Lock()
@@ -482,7 +469,8 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 	newHead := poset.NewEvent(batch,
 		c.internalTransactionPool,
 		c.blockSignaturePool,
-		poset.EventHashes{c.head, otherHead}, c.PubKey(), c.participants.NextHeightByPubKeyHex(c.HexID()), flagTable)
+		poset.EventHashes{c.head, otherHead}, c.PubKey(), c.participants.NextHeightByPubKeyHex(c.HexID()),
+		poset.NewFlagTable(), poset.NewFlagTable() /*rootTable*/, poset.FrameNIL, false /*Root*/)
 
 	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
 		// put batch back to transactionPool
@@ -536,16 +524,16 @@ func (c *Core) ToWire(events []poset.Event) ([]poset.WireEvent, error) {
 
 // RunConsensus is the core consensus mechanism, this checks rounds/frames and creates blocks.
 func (c *Core) RunConsensus() error {
-	start := time.Now()
-	err := c.poset.DivideRounds()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DivideRounds()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DivideRounds()")
-		return err
-	}
+//	start := time.Now()
+//	err := c.poset.DivideRounds()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DivideRounds()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DivideRounds()")
+//		return err
+//	}
 
-	start = time.Now()
-	err = c.poset.DecideAtropos()
+	start := time.Now()
+	err := c.poset.DecideAtropos()
 	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideAtropos()")
 	if err != nil {
 		c.logger.WithField("Error", err).Error("c.poset.DecideAtropos()")

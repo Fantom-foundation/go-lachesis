@@ -1,17 +1,24 @@
 package poset
 
 import (
+	"fmt"
+	"strconv"
 	"github.com/golang/protobuf/proto"
 )
 
 // FlagTable is a dedicated type for the Events flags map.
-type FlagTable map[EventHash]int64
+type FlagTable map[uint64]int64
+
+// NewFlagTable creates new empty FlagTable
+func NewFlagTable() FlagTable {
+	return FlagTable(make(map[uint64]int64))
+}
 
 // Marshal converts FlagTable to protobuf.
 func (ft FlagTable) Marshal() []byte {
 	body := make(map[string]int64, len(ft))
 	for k, v := range ft {
-		body[k.String()] = v
+		body[fmt.Sprintf("%v", k)] = v
 	}
 
 	wrapper := &FlagTableWrapper{Body: body}
@@ -32,12 +39,20 @@ func (ft FlagTable) Unmarshal(buf []byte) error {
 	}
 
 	for k, v := range wrapper.Body {
-		var hash EventHash
-		err = hash.Parse(k)
+		var creatorID uint64
+		creatorID, err = strconv.ParseUint(k, 10, 64)
 		if err != nil {
 			return err
 		}
-		ft[hash] = v
+		ft[creatorID] = v
 	}
 	return nil
+}
+
+func (ft FlagTable) Copy() FlagTable {
+	res := NewFlagTable()
+	for id, frame := range ft {
+		res[id] = frame
+	}
+	return res
 }

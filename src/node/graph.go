@@ -45,11 +45,11 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 	repertoire := g.Node.core.poset.Participants.ToPeerSlice()
 	known := g.Node.core.KnownEvents()
 	for _, p := range repertoire {
-		root, err := store.GetRoot(p.PubKeyHex)
-
-		if err != nil {
-			panic(err)
-		}
+//		root, err := store.GetRoot(p.PubKeyHex)
+//
+//		if err != nil {
+//			panic(err)
+//		}
 
 		skip := known[p.ID] - 30
 		if skip < 0 {
@@ -64,21 +64,24 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 
 		res[p.PubKeyHex] = make(map[poset.EventHash]poset.Event)
 
-		selfParent := poset.GenRootSelfParent(p.ID)
-
-		flagTable := poset.FlagTable{}
-		flagTable[selfParent] = 1
-
-		// Create and save the first Event
-		initialEvent := poset.NewEvent([][]byte{},
-			[]poset.InternalTransaction{},
-			[]poset.BlockSignature{},
-			poset.EventHashes{}, []byte{}, 0, flagTable)
-
-		// TODO: initialEvent.Hash() instead of rootSelfParentHash ?
-		rootSelfParentHash := poset.EventHash{}
-		rootSelfParentHash.Set(root.SelfParent.Hash)
-		res[p.PubKeyHex][rootSelfParentHash] = initialEvent
+		// Leaf events are already in store after poset creation, so we do not need to
+		// create them here.
+		//
+//		selfParent := poset.GenRootSelfParent(p.ID)
+//
+//		flagTable := poset.FlagTable{}
+//		flagTable[selfParent] = 1
+//
+//		// Create and save the first Event
+//		initialEvent := poset.NewEvent([][]byte{},
+//			[]poset.InternalTransaction{},
+//			[]poset.BlockSignature{},
+//			poset.EventHashes{}, []byte{}, 0, flagTable)
+//
+//		// TODO: initialEvent.Hash() instead of rootSelfParentHash ?
+//		rootSelfParentHash := poset.EventHash{}
+//		rootSelfParentHash.Set(root.SelfParent.Hash)
+//		res[p.PubKeyHex][rootSelfParentHash] = initialEvent
 
 		for _, e := range evs {
 			event, err := store.GetEventBlock(e)

@@ -70,7 +70,7 @@ func runSingleLachesis(config *CLIConfig) error {
 		"lachesis.node.tcptimeout": config.Lachesis.NodeConfig.TCPTimeout,
 		"lachesis.node.cachesize":  config.Lachesis.NodeConfig.CacheSize,
 		"lachesis.node.synclimit":  config.Lachesis.NodeConfig.SyncLimit,
-	}).Debug("RUN")
+	}).Warn("RUN")
 
 	if !config.Standalone {
 		p, err := aproxy.NewGrpcAppProxy(

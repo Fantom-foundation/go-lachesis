@@ -8,7 +8,7 @@ import (
 )
 
 // GetFlagTableFn declares flag table function signature
-type GetFlagTableFn func() (map[string]int64, error)
+type GetFlagTableFn func() (map[uint64]int64, error)
 
 // SmartPeerSelector provides selection based on FlagTable of a randomly chosen undermined event
 type SmartPeerSelector struct {
@@ -87,7 +87,7 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 			continue
 		}
 
-		if f, ok := flagTable[p.PubKeyHex]; ok && f == 1 {
+		if f, ok := flagTable[p.ID]; ok && f == 1 {
 			flagged[fCount] = p
 			fCount += 1
 			continue
