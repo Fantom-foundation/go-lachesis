@@ -14,21 +14,23 @@ type Store interface {
 	TopologicalEvents() ([]Event, error)
 	CacheSize() int
 	Participants() (*peers.Peers, error)
-	RootsBySelfParent() (map[string]Root, error)
-	GetEventBlock(string) (Event, error)
+	RootsBySelfParent() map[EventHash]Root
+	RootsByParticipant() map[string]Root
+	GetEventBlock(EventHash) (Event, error)
 	SetEvent(Event) error
-	ParticipantEvents(string, int64) ([]string, error)
-	ParticipantEvent(string, int64) (string, error)
-	LastEventFrom(string) (string, bool, error)
-	LastConsensusEventFrom(string) (string, bool, error)
-	KnownEvents() map[int64]int64
-	ConsensusEvents() []string
+	ParticipantEvents(string, int64) (EventHashes, error)
+	ParticipantEvent(string, int64) (EventHash, error)
+	LastEventFrom(string) (EventHash, bool, error)
+	LastConsensusEventFrom(string) (EventHash, bool, error)
+	ConsensusEvents() EventHashes
 	ConsensusEventsCount() int64
 	AddConsensusEvent(Event) error
-	GetRound(int64) (RoundCreated, error)
-	SetRound(int64, RoundCreated) error
+	GetRoundCreated(int64) (RoundCreated, error)
+	SetRoundCreated(int64, RoundCreated) error
+	GetRoundReceived(int64) (RoundReceived, error)
+	SetRoundReceived(int64, RoundReceived) error
 	LastRound() int64
-	RoundClothos(int64) []string
+	RoundClothos(int64) EventHashes
 	RoundEvents(int64) int
 	GetRoot(string) (Root, error)
 	GetBlock(int64) (Block, error)
@@ -40,6 +42,11 @@ type Store interface {
 	Close() error
 	NeedBootstrap() bool // Was the store loaded from existing db
 	StorePath() string
+	GetClothoCheck(int64, EventHash) (EventHash, error)
+	GetClothoCreatorCheck(int64, uint64) (EventHash, error)
+	AddClothoCheck(int64, uint64, EventHash) error
+	AddTimeTable(EventHash, EventHash, int64) error
+	GetTimeTable(EventHash) (FlagTable, error)
 	// StateDB returns state database
 	StateDB() state.Database
 	StateRoot() common.Hash

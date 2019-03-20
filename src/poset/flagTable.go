@@ -7,6 +7,11 @@ import (
 // FlagTable is a dedicated type for the Events flags map.
 type FlagTable map[EventHash]int64
 
+// NewFlagTable creates new empty FlagTable
+func NewFlagTable() FlagTable {
+	return FlagTable(make(map[EventHash]int64))
+}
+
 // Marshal converts FlagTable to protobuf.
 func (ft FlagTable) Marshal() []byte {
 	body := make(map[string]int64, len(ft))
@@ -40,4 +45,12 @@ func (ft FlagTable) Unmarshal(buf []byte) error {
 		ft[hash] = v
 	}
 	return nil
+}
+
+func (ft FlagTable) Copy() FlagTable {
+	res := NewFlagTable()
+	for id, frame := range ft {
+		res[id] = frame
+	}
+	return res
 }

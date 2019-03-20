@@ -175,6 +175,18 @@ func frameKey(index int64) []byte {
 	return []byte(fmt.Sprintf("%s_%09d", framePrefix, index))
 }
 
+func checkClothoKey(frame int64, hash EventHash) []byte {
+	return []byte(fmt.Sprintf("%09d_%s", frame, hash.String()))
+}
+
+func checkClothoCreatorKey(frame int64, creatorID uint64) []byte {
+	return []byte(fmt.Sprintf("%09d_%d", frame, creatorID))
+}
+
+func timeTableKey(hash EventHash) []byte {
+	return []byte(fmt.Sprintf("timeTable_%s", hash.String()))
+}
+
 /*
  * Store interface implementation:
  */
@@ -202,12 +214,12 @@ func (s *BadgerStore) TopologicalEvents() ([]Event, error) {
 			}
 			err = eventItem.Value(func(eventBytes []byte) error {
 				event := &Event{
-					roundReceived:    RoundNIL,
-					round:            RoundNIL,
-					lamportTimestamp: LamportTimestampNIL,
+//					roundReceived:    RoundNIL,
+//					round:            RoundNIL,
+//					lamportTimestamp: LamportTimestampNIL,
 				}
 
-				if err := event.ProtoUnmarshal(eventBytes); err != nil {
+				if err := event.StoreUnmarshal(eventBytes); err != nil {
 					return err
 				}
 				res = append(res, *event)
@@ -476,7 +488,7 @@ func (s *BadgerStore) dbGetEventBlock(hash EventHash) (Event, error) {
 	}
 
 	event := new(Event)
-	if err := event.ProtoUnmarshal(eventBytes); err != nil {
+	if err := event.StoreUnmarshal(eventBytes); err != nil {
 		return Event{}, err
 	}
 
@@ -489,7 +501,7 @@ func (s *BadgerStore) dbSetEvents(events []Event) error {
 
 	for _, event := range events {
 		eventHash := event.Hash()
-		val, err := event.ProtoMarshal()
+		val, err := event.StoreMarshal()
 		if err != nil {
 			return err
 		}
@@ -853,4 +865,162 @@ func mapError(err error, name, key string) error {
 		}
 	}
 	return err
+}
+
+
+// GetClothoCheck retrieves EventHash by frame + EventHash
+func (s *BadgerStore) GetClothoCheck(frame int64, hash EventHash) (EventHash, error) {
+	res, err := s.inmemStore.GetClothoCheck(frame, hash)
+	if err != nil {
+		res, err = s.dbGetClothoCheck(frame, hash)
+	}
+	return res, err // mapError(err, "badger_store GetClothoCheck", string(checkClothoKey(frame, hash)))
+}
+
+// GetClothoCreatorCheck retrieves EventHash by frame + creator
+func (s *BadgerStore) GetClothoCreatorCheck(frame int64, creatorID uint64) (EventHash, error) {
+	res, err := s.inmemStore.GetClothoCreatorCheck(frame, creatorID)
+	if err != nil {
+		res, err = s.dbGetClothoCreatorCheck(frame, creatorID)
+	}
+	return res, err // mapError(err, "badger_store GetClothoCreatorCheck", string(checkClothoCreatorKey(frame, hash)))
+}
+
+// AddClothoCheck to store
+func (s *BadgerStore) AddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	if err := s.inmemStore.AddClothoCheck(frame, creatorID, hash); err != nil {
+		return err
+	}
+	return s.dbAddClothoCheck(frame, creatorID, hash)
+}
+
+func (s *BadgerStore) dbGetClothoCheck(frame int64, phash EventHash) (EventHash, error) {
+	var hashBytes []byte
+	var hash EventHash
+	key := checkClothoKey(frame, phash)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			hashBytes = val
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		return EventHash{}, err
+	}
+	hash.Set(hashBytes)
+	return hash, nil
+}
+
+func (s *BadgerStore) dbGetClothoCreatorCheck(frame int64, creatorID uint64) (EventHash, error) {
+	var hashBytes []byte
+	var hash EventHash
+	key := checkClothoCreatorKey(frame, creatorID)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			hashBytes = val
+			return nil
+		})
+		return err
+	})
+	if err != nil {
+		return EventHash{}, err
+	}
+	hash.Set(hashBytes)
+	return hash, nil
+}
+
+func (s *BadgerStore) dbAddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	tx := s.db.NewTransaction(true)
+	defer tx.Discard()
+
+	key := checkClothoKey(frame, hash)
+
+	// insert [frame EventHash] => [EventHash]
+	if err := tx.Set(key, hash.Bytes()); err != nil {
+		return err
+	}
+
+	key = checkClothoCreatorKey(frame, creatorID)
+
+	// insert [frame EventHash] => [EventHash]
+	if err := tx.Set(key, hash.Bytes()); err != nil {
+		return err
+	}
+
+	return tx.Commit(nil)
+}
+
+// AddTimeTable adds lamport timestamp for pair of events for voting in atropos time selection
+func (s *BadgerStore) AddTimeTable(hashTo EventHash, hashFrom EventHash, lamportTime int64) error {
+	if err := s.inmemStore.AddTimeTable(hashTo, hashFrom, lamportTime); err != nil {
+		return err
+	}
+	return s.dbAddTimeTable(hashTo, hashFrom, lamportTime)
+}
+
+// GetTimeTable retrieve FlagTable with lamport time votes in atropos time selection for specified EventHash
+func (s *BadgerStore) GetTimeTable(hash EventHash) (FlagTable, error) {
+	res, err := s.inmemStore.GetTimeTable(hash)
+	if err != nil {
+		res, err = s.dbGetTimeTable(hash)
+	}
+	return res, err // mapError(err, "badger_store GetTimeTable", string(timeTableKey(hash)))
+}
+
+func (s *BadgerStore) dbAddTimeTable(hashTo EventHash, hashFrom EventHash, lamportTime int64) error {
+	ft := NewFlagTable()
+	key := timeTableKey(hashTo)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			ft.Unmarshal(val)
+			return nil
+		})
+		return err
+	})
+	if !isDBKeyNotFound(err) {
+		return err
+	}
+	ft[hashFrom] = lamportTime
+
+	tx := s.db.NewTransaction(true)
+	defer tx.Discard()
+
+	if err := tx.Set(key, ft.Marshal()); err != nil {
+		return err
+	}
+
+	return tx.Commit(nil)
+}
+
+func (s *BadgerStore) dbGetTimeTable(hash EventHash) (FlagTable, error) {
+	ft := NewFlagTable()
+	key := timeTableKey(hash)
+	err := s.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			ft.Unmarshal(val)
+			return nil
+		})
+		return err
+	})
+	if !isDBKeyNotFound(err) {
+		return nil, err
+	}
+	return ft, nil
 }
