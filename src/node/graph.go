@@ -56,13 +56,13 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 			skip = -1
 		}
 
-		evs, err := store.ParticipantEvents(p.PubKeyHex, skip)
+		evs, err := store.ParticipantEvents(p.Message.PubKeyHex, skip)
 
 		if err != nil {
 			panic(err)
 		}
 
-		res[p.PubKeyHex] = make(map[poset.EventHash]poset.Event)
+		res[p.Message.PubKeyHex] = make(map[poset.EventHash]poset.Event)
 
 		// Leaf events are already in store after poset creation, so we do not need to
 		// create them here.
@@ -92,7 +92,7 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 
 			hash := event.Hash()
 
-			res[p.PubKeyHex][hash] = event
+			res[p.Message.PubKeyHex][hash] = event
 		}
 	}
 

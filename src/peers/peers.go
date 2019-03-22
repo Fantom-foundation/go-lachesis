@@ -44,11 +44,12 @@ func NewPeers() *Peers {
 	}
 }
 
-// NewPeersFromSlice create a new peers struct from a subset of peers
-func NewPeersFromSlice(source []*Peer) *Peers {
+// NewPeersFromMessageSlice create a new peers struct from a subset of peer messages
+func NewPeersFromMessageSlice(source []*PeerMessage) *Peers {
 	peers := NewPeers()
 
-	for _, peer := range source {
+	for _, pm := range source {
+		peer := NewPeer(pm.PubKeyHex, pm.NetAddr)
 		peers.addPeerRaw(peer)
 	}
 
@@ -70,10 +71,10 @@ func (p *Peers) addPeerRaw(peer *Peer) {
 		}
 	}
 
-	p.ByPubKey[peer.PubKeyHex] = peer
+	p.ByPubKey[peer.Message.PubKeyHex] = peer
 	p.ByID[peer.ID] = peer
 	p.ByAddress[peer.Address()] = peer
-	p.ByNetAddr[peer.NetAddr] = peer
+	p.ByNetAddr[peer.Message.NetAddr] = peer
 }
 
 // AddPeer adds a peer to the peers struct
@@ -104,14 +105,14 @@ func (p *Peers) RemovePeer(peer *Peer) {
 	p.Lock()
 	defer p.Unlock()
 
-	if _, ok := p.ByPubKey[peer.PubKeyHex]; !ok {
+	if _, ok := p.ByPubKey[peer.Message.PubKeyHex]; !ok {
 		return
 	}
 
-	delete(p.ByPubKey, peer.PubKeyHex)
+	delete(p.ByPubKey, peer.Message.PubKeyHex)
 	delete(p.ByID, peer.ID)
 	delete(p.ByAddress, peer.Address())
-	delete(p.ByNetAddr, peer.NetAddr)
+	delete(p.ByNetAddr, peer.Message.NetAddr)
 
 	p.internalSort()
 }
@@ -153,7 +154,7 @@ func (p *Peers) ToPubKeySlice() []string {
 	res := []string{}
 
 	for _, peer := range p.Sorted {
-		res = append(res, peer.PubKeyHex)
+		res = append(res, peer.Message.PubKeyHex)
 	}
 
 	return res
@@ -228,32 +229,31 @@ func (p *Peers) ReadByNetAddr(key string) (Peer, bool) {
 func (p *Peers) SetHeightByPubKeyHex(key string, height int64) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].Height = height
+	(p.ByPubKey[key]).SetHeight(height)
 }
 
 func (p *Peers) GetHeightByPubKeyHex(key string) int64 {
 	p.RLock()
 	defer p.RUnlock()
-	return p.ByPubKey[key].Height
+	return (p.ByPubKey[key]).GetHeight()
 }
 
 func (p *Peers) NextHeightByPubKeyHex(key string) int64 {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].Height++
-	return p.ByPubKey[key].Height
+	return (p.ByPubKey[key]).NextHeight()
 }
 
 func (p *Peers) SetInDegreeByPubKeyHex(key string, inDegree int64) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].InDegree = inDegree
+	(p.ByPubKey[key]).SetInDegree(inDegree)
 }
 
 func (p *Peers) IncInDegreeByPubKeyHex(key string) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].InDegree++
+	(p.ByPubKey[key]).IncInDegree()
 }
 
 // ByPubHex implements sort.Interface for Peers based on
@@ -263,8 +263,8 @@ type ByPubHex []*Peer
 func (a ByPubHex) Len() int      { return len(a) }
 func (a ByPubHex) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByPubHex) Less(i, j int) bool {
-	ai := a[i].PubKeyHex
-	aj := a[j].PubKeyHex
+	ai := a[i].Message.PubKeyHex
+	aj := a[j].Message.PubKeyHex
 	return ai < aj
 }
 

@@ -52,10 +52,10 @@ func (ps *FairPeerSelector) UpdateLast(peer string) {
 }
 
 func fairCostFunction(peer *peers.Peer) float64 {
-	if peer.Height == 0 {
+	if peer.GetHeight() == 0 {
 		return 0
 	}
-	return float64(peer.InDegree / peer.Height)
+	return float64(peer.GetInDegree()) / float64(2 + peer.GetHeight())
 }
 
 // Next returns the next peer based on the work cost function selection
@@ -75,10 +75,10 @@ func (ps *FairPeerSelector) Next() *peers.Peer {
 	minCost := math.Inf(1)
 	var selected []*peers.Peer
 	for _, p := range sortedSrc {
-		if p.NetAddr == ps.localAddr {
+		if p.Message.NetAddr == ps.localAddr {
 			continue
 		}
-		if p.NetAddr == ps.last || p.PubKeyHex == ps.last {
+		if p.Message.NetAddr == ps.last || p.Message.PubKeyHex == ps.last {
 			lastUsed = append(lastUsed, p)
 			continue
 		}

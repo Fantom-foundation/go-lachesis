@@ -57,13 +57,13 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 		producer := peer.NewProducer(config.CacheSize, time.Second, createFu)
 		backend := peer.NewBackend(
 			syncBackConfig, logger, network.CreateListener)
-		if err := backend.ListenAndServe(peer.TCP, peer2.NetAddr); err != nil {
+		if err := backend.ListenAndServe(peer.TCP, peer2.Message.NetAddr); err != nil {
 			logger.Panic(err)
 		}
 		transport := peer.NewTransport(logger, producer, backend)
 
 		selectorArgs := SmartPeerSelectorCreationFnArgs{
-			LocalAddr: peer2.NetAddr,
+			LocalAddr: peer2.Message.NetAddr,
 			GetFlagTable: nil,
 		}
 
@@ -77,7 +77,7 @@ func NewNodeList(count int, logger *logrus.Logger) NodeList {
 			dummy.NewInmemDummyApp(logger),
 			NewSmartPeerSelectorWrapper,
 			selectorArgs,
-			peer2.NetAddr,
+			peer2.Message.NetAddr,
 			)
 		if err := n.Init(); err != nil {
 			logger.Fatal(err)

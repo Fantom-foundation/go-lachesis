@@ -62,7 +62,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	n, ok := participants.ReadByID(id)
 	var logEntry *logrus.Entry
 	if ok {
-		logEntry = logger.WithField("id", id).WithField("addr", n.NetAddr)
+		logEntry = logger.WithField("id", id).WithField("addr", n.Message.NetAddr)
 	} else {
 		logEntry = logger.WithField("id", id)
 	}
@@ -81,6 +81,46 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	}
 
 	p2.SetCore(core)
+
+	// Set Leaf Events for each participant
+	for _, peer := range participants.ToPeerSlice() {
+		creator, err := peer.PubKeyBytes()
+		if err != nil {
+			panic(err)
+		}
+		body := poset.EventBody{
+			Creator: creator,
+			Index:   0,
+			Parents: poset.EventHashes{poset.EventHash{}, poset.EventHash{}}.Bytes(),
+		}
+		hash, err := body.Hash()
+		if err != nil {
+			panic(err)
+		}
+		ft := poset.NewFlagTable()
+		ft[hash] = 0
+		event := poset.Event{
+			Message: &poset.EventMessage{
+				Hash:             hash.Bytes(),
+				CreatorID:        peer.ID,
+				TopologicalIndex: -1, //p2.topologicalIndex,
+				Body:             &body,
+			},
+			FlagTableBytes:   ft.Marshal(),
+			RootTableBytes:   ft.Marshal(),
+			LamportTimestamp: int64(creator[15]),
+			AtroposTimestamp: int64(creator[15]),
+			Frame:            0,
+			Atropos:          true,
+			Clotho:           true,
+			Root:             true,
+		}
+		if err := p2.Store.SetEvent(event); err != nil {
+			panic(err)
+		}
+		//p2.topologicalIndex++
+		peer.SetHeight(0)
+	}
 
 	return core
 }
@@ -116,7 +156,7 @@ func (c *Core) Head() poset.EventHash {
 func (c *Core) Heights() map[string]int64 {
 	heights := make(map[string]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		heights[peer.PubKeyHex] = peer.Height
+		heights[peer.Message.PubKeyHex] = peer.GetHeight()
 	}
 	return heights
 }
@@ -125,7 +165,7 @@ func (c *Core) Heights() map[string]int64 {
 func (c *Core) HeightsByID() map[uint64]int64 {
 	heights := make(map[uint64]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		heights[peer.ID] = peer.Height
+		heights[peer.ID] = peer.GetHeight()
 	}
 	return heights
 }
@@ -134,7 +174,7 @@ func (c *Core) HeightsByID() map[uint64]int64 {
 func (c *Core) InDegrees() map[string]int64 {
 	inDegrees := make(map[string]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		inDegrees[peer.PubKeyHex] = peer.InDegree
+		inDegrees[peer.Message.PubKeyHex] = peer.GetInDegree()
 	}
 	return inDegrees
 }
@@ -308,7 +348,7 @@ func (c *Core) EventDiff(known map[uint64]int64) (events []poset.Event, err erro
 			continue
 		}
 		// get participant Events with index > ct
-		participantEvents, err := c.poset.Store.ParticipantEvents(peer.PubKeyHex, ct)
+		participantEvents, err := c.poset.Store.ParticipantEvents(peer.Message.PubKeyHex, ct)
 		if err != nil {
 			return []poset.Event{}, err
 		}
@@ -346,7 +386,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 	}).Debug("Sync(unknownEventBlocks []poset.EventBlock)")
 
 	myKnownEvents := c.KnownEvents()
-	otherHead, _, err := c.poset.Store.LastEventFrom(peer.PubKeyHex)
+	otherHead, _, err := c.poset.Store.LastEventFrom(peer.Message.PubKeyHex)
 	if err != nil {
 		c.logger.WithField("peer", peer).Errorf("c.poset.Store.LastEventFrom(peer.PubKeyHex)")
 		return err
@@ -354,7 +394,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 	// add unknown events
 	for _/*k*/, we := range unknownEvents {
 		c.logger.WithFields(logrus.Fields{
-			"unknown_events": we,
+			"unknown_events": fmt.Sprintf("%#v", we),
 		}).Debug("unknownEvents")
 		ev, err := c.poset.ReadWireInfo(we)
 		if err != nil {
@@ -375,7 +415,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 
 		// assume last event corresponds to other-head
 		//if k == len(unknownEvents)-1 {
-		if ev.GetCreator() == peer.PubKeyHex {
+		if ev.GetCreator() == peer.Message.PubKeyHex {
 			otherHead = ev.Hash()
 		}
 	}

@@ -117,7 +117,7 @@ func NewNode(conf *Config,
 func (n *Node) Init() error {
 	var peerAddresses []string
 	for _, p := range n.peerSelector.Peers().ToPeerSlice() {
-		peerAddresses = append(peerAddresses, p.NetAddr)
+		peerAddresses = append(peerAddresses, p.Message.NetAddr)
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
 
@@ -346,7 +346,7 @@ func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest
 		success = false
 	}
 	n.logger.WithFields(logrus.Fields{
-		"from":    p.NetAddr,
+		"from":    p.Message.NetAddr,
 		"from_id": cmd.FromID,
 		"events":  len(cmd.Events),
 	}).Debug("processEagerSyncRequest(rpc net.RPC, cmd *net.ForceSyncRequest)")
@@ -425,20 +425,20 @@ func (n *Node) gossip(parentReturnCh chan struct{}) error {
 
 	// check and handle syncLimit
 	if syncLimit {
-		n.logger.WithField("from", peer.NetAddr).Debug("SyncLimit")
+		n.logger.WithField("from", peer.Message.NetAddr).Debug("SyncLimit")
 		n.setState(CatchingUp)
 		parentReturnCh <- struct{}{}
 		return nil
 	}
 
 	// push
-	err = n.push(peer.NetAddr, otherKnownEvents)
+	err = n.push(peer.Message.NetAddr, otherKnownEvents)
 	if err != nil {
 		return err
 	}
 
 	// update peer selector
-	n.peerSelector.UpdateLast(peer.NetAddr)
+	n.peerSelector.UpdateLast(peer.Message.NetAddr)
 
 	return nil
 }
@@ -451,7 +451,7 @@ func (n *Node) pull(peer *peers.Peer) (syncLimit bool, otherKnownEvents map[uint
 
 	// Send SyncRequest
 	start := time.Now()
-	resp, err := n.requestSync(peer.NetAddr, knownEvents)
+	resp, err := n.requestSync(peer.Message.NetAddr, knownEvents)
 	elapsed := time.Since(start)
 	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestSync(peer.NetAddr, knownEvents)")
 	// FIXIT: should we catch io.EOF error here and how we process it?
@@ -545,7 +545,7 @@ func (n *Node) fastForward() error {
 	// fastForwardRequest
 	peer := n.peerSelector.Next()
 	start := time.Now()
-	resp, err := n.requestFastForward(peer.NetAddr)
+	resp, err := n.requestFastForward(peer.Message.NetAddr)
 	elapsed := time.Since(start)
 	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestFastForward(peer.NetAddr)")
 	if err != nil {
@@ -563,7 +563,7 @@ func (n *Node) fastForward() error {
 
 	// prepare core. ie: fresh poset
 	n.coreLock.Lock()
-	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
+	err = n.core.FastForward(peer.Message.PubKeyHex, resp.Block, resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")

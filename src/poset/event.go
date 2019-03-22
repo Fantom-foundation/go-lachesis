@@ -19,7 +19,7 @@ InternalTransactions
 func NewInternalTransaction(tType TransactionType, peer peers.Peer) InternalTransaction {
 	return InternalTransaction{
 		Type: tType,
-		Peer: &peer,
+		Peer: peer.Message,
 	}
 }
 

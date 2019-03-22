@@ -122,7 +122,7 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 
 	participants.OnNewPeer(func(peer *peers.Peer) {
 		root := NewBaseRoot(peer.ID)
-		store.rootsByParticipant[peer.PubKeyHex] = root
+		store.rootsByParticipant[peer.Message.PubKeyHex] = root
 		store.rootsBySelfParent = nil
 		_ = store.RootsBySelfParent()
 		old := store.participantEventsCache

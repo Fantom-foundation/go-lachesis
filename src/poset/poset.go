@@ -111,51 +111,6 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 		trustCount:             trustCount,
 	}
 
-	// Leaf events are roots by default, so we need to construct a common
-	// flagtable indicating leaf events can see each other.
-//	ft := NewFlagTable()
-//	for _, root := range poset.Store.RootsByParticipant() {
-//		ft[root.SelfParent.CreatorID] = 0
-//	}
-	// Set Leaf Events for each participant
-	for participant, root := range poset.Store.RootsByParticipant() {
-		var creator []byte
-		if _, err := fmt.Sscanf(participant, "0x%X", &creator); err != nil {
-			panic(err)
-		}
-		body := EventBody{
-			Creator: creator,
-			Index:   0,
-			Parents: EventHashes{EventHash{}, EventHash{}}.Bytes(),
-		}
-		hash, err := body.Hash()
-		if err != nil {
-			panic(err)
-		}
-		ft := NewFlagTable()
-		ft[hash] = 0
-		event := Event{
-			Message: &EventMessage{
-				Hash:             hash.Bytes(),
-				CreatorID:        root.SelfParent.CreatorID,
-				TopologicalIndex: poset.topologicalIndex,
-				Body:             &body,
-			},
-			FlagTableBytes:   ft.Marshal(),
-			RootTableBytes:   ft.Marshal(),
-			LamportTimestamp: int64(creator[15]),
-			AtroposTimestamp: int64(creator[15]),
-			Frame:            0,
-			Atropos:          true,
-			Clotho:           true,
-			Root:             true,
-		}
-		if err := poset.Store.SetEvent(event); err != nil {
-			panic(err)
-		}
-		poset.topologicalIndex++
-	}
-
 	participants.OnNewPeer(func(peer *peers.Peer) {
 		poset.superMajorityLocker.Lock()
 		defer poset.superMajorityLocker.Unlock()
@@ -221,7 +176,7 @@ func (p *Poset) dominator2(x, y EventHash) (bool, error) {
 			if !ok {
 				return false, fmt.Errorf("creator with ID %v not found", root.SelfParent.CreatorID)
 			}
-			yCreator := peer.PubKeyHex
+			yCreator := peer.Message.PubKeyHex
 			if ex.GetCreator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -285,7 +240,7 @@ func (p *Poset) selfDominator2(x, y EventHash) (bool, error) {
 			if !ok {
 				return false, fmt.Errorf("self-parent creator with ID %v not found", root.SelfParent.CreatorID)
 			}
-			yCreator := peer.PubKeyHex
+			yCreator := peer.Message.PubKeyHex
 			if ex.GetCreator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -357,7 +312,7 @@ func (p *Poset) MapSentinels(x, y EventHash, sentinels map[string]bool) error {
 				return fmt.Errorf("self-parent creator with ID %v not found", root.SelfParent.CreatorID)
 			}
 
-			sentinels[creator.PubKeyHex] = true
+			sentinels[creator.Message.PubKeyHex] = true
 
 			return nil
 		}
@@ -369,7 +324,7 @@ func (p *Poset) MapSentinels(x, y EventHash, sentinels map[string]bool) error {
 	if !ok {
 		return fmt.Errorf("creator with ID %v not found", ex.CreatorID())
 	}
-	sentinels[creator.PubKeyHex] = true
+	sentinels[creator.Message.PubKeyHex] = true
 
 	if x == y {
 		return nil
@@ -1020,7 +975,7 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 	hash := event.Hash()
 	p.logger.WithFields(logrus.Fields{
 //		"event":      event,
-		"EventCreator": peer.NetAddr,
+		"EventCreator": peer.Message.NetAddr,
 		"Hash": hash.String(),
 		"lamport": event.GetLamportTimestamp(),
 		"Root": Root,
@@ -1638,7 +1593,7 @@ func (p *Poset) MakeFrame(roundReceived int64) (Frame, error) {
 	// order roots
 	orderedRoots := make([]*Root, p.Participants.Len())
 	for i, peer := range p.Participants.ToPeerSlice() {
-		root := roots[peer.PubKeyHex]
+		root := roots[peer.Message.PubKeyHex]
 		orderedRoots[i] = new(Root)
 		*orderedRoots[i] = root
 	}
@@ -1857,7 +1812,7 @@ func (p *Poset) Reset(block Block, frame Frame) error {
 	rootMap := map[string]Root{}
 	for id, root := range frame.Roots {
 		p := participants[id]
-		rootMap[p.PubKeyHex] = *root
+		rootMap[p.Message.PubKeyHex] = *root
 	}
 	if err := p.Store.Reset(rootMap); err != nil {
 		return err
@@ -1936,29 +1891,29 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown wevent.Body.CreatorID=%v", wevent.Body.CreatorID)
 	}
-	creatorBytes, err := hex.DecodeString(creator.PubKeyHex[2:])
+	creatorBytes, err := hex.DecodeString(creator.Message.PubKeyHex[2:])
 	if err != nil {
 		return nil, fmt.Errorf("hexDecodeString(creator.PubKeyHex[2:]): %v", err)
 	}
 
 	if wevent.Body.SelfParentIndex >= 0 {
-		selfParent, err = p.Store.ParticipantEvent(creator.PubKeyHex, wevent.Body.SelfParentIndex)
+		selfParent, err = p.Store.ParticipantEvent(creator.Message.PubKeyHex, wevent.Body.SelfParentIndex)
 		if err != nil {
 			return nil, fmt.Errorf("p.Store.ParticipantEvent(creator.PubKeyHex %v, wevent.Body.SelfParentIndex %v): %v",
-				creator.PubKeyHex, wevent.Body.SelfParentIndex, err)
+				creator.Message.PubKeyHex, wevent.Body.SelfParentIndex, err)
 		}
 	}
 	if wevent.Body.OtherParentIndex >= 0 {
 		otherParentCreator, ok := p.Participants.ReadByID(wevent.Body.OtherParentCreatorID)
 		if ok {
-			otherParent, err = p.Store.ParticipantEvent(otherParentCreator.PubKeyHex, wevent.Body.OtherParentIndex)
+			otherParent, err = p.Store.ParticipantEvent(otherParentCreator.Message.PubKeyHex, wevent.Body.OtherParentIndex)
 			if err != nil {
 				// PROBLEM Check if other parent can be found in the root
 				// problem, we do not known the WireEvent's EventHash, and
 				// we do not know the creators of the roots RootEvents
-				root, err := p.Store.GetRoot(creator.PubKeyHex)
+				root, err := p.Store.GetRoot(creator.Message.PubKeyHex)
 				if err != nil {
-					return nil, fmt.Errorf("p.Store.GetRoot(creator.PubKeyHex %v): %v", creator.PubKeyHex, err)
+					return nil, fmt.Errorf("p.Store.GetRoot(creator.PubKeyHex %v): %v", creator.Message.PubKeyHex, err)
 				}
 				// loop through others
 				found := false
@@ -2171,7 +2126,7 @@ func (p *Poset) ClothoChecking(e *Event) error {
 					hash := root.Hash()
 					p.logger.WithFields(logrus.Fields{
 						"Frame": frame,
-						"EventCreator": peer.NetAddr,
+						"EventCreator": peer.Message.NetAddr,
 						"Hash": hash.String(),
 						"lamport": root.GetLamportTimestamp(),
 						"ok": ok,
@@ -2256,7 +2211,7 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 				hash := clotho.Hash()
 				p.logger.WithFields(logrus.Fields{
 					"Frame": clotho.Frame,
-					"EventCreator": peer.NetAddr,
+					"EventCreator": peer.Message.NetAddr,
 					"Hash": hash.String(),
 					"AtroposTimestamp": clotho.AtroposTimestamp,
 					"ok": ok,

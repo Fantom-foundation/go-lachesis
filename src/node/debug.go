@@ -85,7 +85,7 @@ func (g *Graph) GetParticipantEventsLite() map[string]map[string]EventLite {
 		if !ok {
 			panic(fmt.Sprintf("Creator %v not found", event.GetCreator()))
 		}
-		creatorParts := strings.Split(peer.NetAddr, ":")
+		creatorParts := strings.Split(peer.Message.NetAddr, ":")
 
 		hash := event.Hash()
 
@@ -138,8 +138,8 @@ func (c *Core) PrintStat(logger *logrus.Entry) {
 	for pidID, index := range c.KnownEvents() {
 		peer, ok := c.participants.ReadByID(uint64(pidID))
 		if ok {
-			logger.Warn("    index=", index, " peer=", peer.NetAddr,
-				" pubKeyHex=", peer.PubKeyHex)
+			logger.Warn("    index=", index, " peer=", peer.Message.NetAddr,
+				" pubKeyHex=", peer.Message.PubKeyHex)
 		}
 	}
 //	c.poset.PrintStat(logger)
