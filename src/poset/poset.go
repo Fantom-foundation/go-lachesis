@@ -59,6 +59,7 @@ type Poset struct {
 	firstLastConsensusRoundLocker sync.RWMutex
 	consensusTransactionsLocker   sync.RWMutex
 	superMajorityLocker           sync.RWMutex
+	topologicalIndexLocker        sync.Mutex
 }
 
 // NewPoset instantiates a Poset from a list of participants, underlying
@@ -988,8 +989,7 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 	}).Warnf("InsertEvent")
 
 	
-	event.Message.TopologicalIndex = p.topologicalIndex
-	p.topologicalIndex++
+	event.Message.TopologicalIndex = p.NextTopologicalIndex()
 
 	if setWireInfo {
 		if err := p.setWireInfo(&event); err != nil {
@@ -2329,6 +2329,14 @@ func (p *Poset) GetSuperMajority() uint64 {
 	p.superMajorityLocker.RLock()
 	defer p.superMajorityLocker.RUnlock()
 	return p.superMajority
+}
+
+func (p *Poset) NextTopologicalIndex() int64 {
+	p.topologicalIndexLocker.Lock()
+	defer p.topologicalIndexLocker.Unlock()
+	result := p.topologicalIndex
+	p.topologicalIndex++
+	return result
 }
 
 /*******************************************************************************

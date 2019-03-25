@@ -103,7 +103,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 			Message: &poset.EventMessage{
 				Hash:             hash.Bytes(),
 				CreatorID:        peer.ID,
-				TopologicalIndex: -1, //p2.topologicalIndex,
+				TopologicalIndex: p2.NextTopologicalIndex(),
 				Body:             &body,
 			},
 			FlagTableBytes:   ft.Marshal(),
