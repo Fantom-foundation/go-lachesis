@@ -50,4 +50,5 @@ message Event {
   bool Clotho = 7;
   bool Atropos = 8;
   int64 AtroposTimestamp = 9;
+  repeated int64 AtTimes = 10;
 }

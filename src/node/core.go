@@ -115,6 +115,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 			Clotho:           true,
 			Root:             true,
 		}
+		event.AtTimes = append(event.AtTimes, event.LamportTimestamp)
 		if err := p2.Store.SetEvent(event); err != nil {
 			panic(err)
 		}

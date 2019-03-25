@@ -2203,7 +2203,10 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 //			}). Warnf("Atropos Selection")
 			if maxVal >= p.GetSuperMajority() {
 				clotho.Atropos = true
-				clotho.AtroposTimestamp = maxInd
+				if maxInd < clotho.AtroposTimestamp || 0 == clotho.AtroposTimestamp {
+					clotho.AtroposTimestamp = maxInd
+					clotho.AtTimes = append(clotho.AtTimes, maxInd)
+				}
 				if err := p.Store.SetEvent(clotho); err != nil {
 					p.logger.Fatal(err)
 				}
@@ -2216,7 +2219,7 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 					"AtroposTimestamp": clotho.AtroposTimestamp,
 					"ok": ok,
 				}). Warnf("Atropos")
-				p.AssignAtroposTime(clotho)
+				p.AssignAtroposTime(&clotho, clotho.AtroposTimestamp)
 			} else {
 				p.Store.AddTimeTable(e.Hash(), key, maxInd)
 			}
@@ -2228,7 +2231,36 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 }
 
 // AssignAtroposTime sorts events according Atropos selection rule
-func (p *Poset) AssignAtroposTime(clotho Event) {
+func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
+	followSelf, followOther := false, false
+	selfParent, selfErr := p.Store.GetEventBlock(e.SelfParent())
+	otherParent, otherErr := p.Store.GetEventBlock(e.OtherParent())
+	if nil == selfErr {
+		if 0 == selfParent.AtroposTimestamp || selfParent.AtroposTimestamp > atroposTimestamp {
+			followSelf = true
+			selfParent.AtroposTimestamp = atroposTimestamp
+			selfParent.AtTimes = append(selfParent.AtTimes, atroposTimestamp)
+			if err := p.Store.SetEvent(selfParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		}
+	}
+	if nil == otherErr {
+		if 0 == otherParent.AtroposTimestamp || otherParent.AtroposTimestamp > atroposTimestamp {
+			followOther = true
+			otherParent.AtroposTimestamp = atroposTimestamp
+			otherParent.AtTimes = append(otherParent.AtTimes, atroposTimestamp)
+			if err := p.Store.SetEvent(otherParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		}
+	}
+	if followSelf {
+		p.AssignAtroposTime(&selfParent, atroposTimestamp)
+	}
+	if followOther {
+		p.AssignAtroposTime(&otherParent, atroposTimestamp)
+	}
 }
 
 

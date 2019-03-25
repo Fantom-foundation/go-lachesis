@@ -57,6 +57,7 @@ type EventLite struct {
 	Message              EventMessageLite
 	FlagTableBytes       []byte // FlagTable stores connection information
 	RootTableBytes       []byte // FlagTable stores connection information
+	AtTimes              []int64
 }
 
 // GetParticipantEventsLite returns all participants
@@ -99,6 +100,7 @@ func (g *Graph) GetParticipantEventsLite() map[string]map[string]EventLite {
 			AtroposTimestamp: event.AtroposTimestamp,
 			FlagTableBytes: event.FlagTableBytes,
 			RootTableBytes: event.RootTableBytes,
+			AtTimes: event.AtTimes,
 			Message: EventMessageLite{
 				Body: EventBodyLite{
 					Parents:      event.Message.Body.Parents,
@@ -162,7 +164,7 @@ func (n *Node) PrintStat() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Fprintf(file, "digraph ANode { /* %v */\nrankdir=RL; ranksep=1.5;\n", n.localAddr)
+	fmt.Fprintf(file, "digraph ANode { /* %v */\nrankdir=RL; ranksep=1.5; splines=false;\n", n.localAddr)
 	fmt.Fprintf(graf, "// Node: %v\n#Vertexes\n", n.localAddr)
 	fmt.Fprintf(graf, "// ID frame creator LamportTimetamp AtroposTimestamp root clotho atropos\n")
 
@@ -205,6 +207,16 @@ func (n *Node) PrintStat() {
 		for _, le := range lightEvents {
 			fmt.Fprintf(file, "v%v [shape=none,layer=\"f%v\" label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"><TR><TD>f</TD><td>l</td><td>a</td><td>atr</td><td>cl</td><td>roo</td><td>cr</td></TR><tr><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td></tr>",
 				le.Message.Hash, le.Message.Frame, le.Message.Frame, le.LamportTimestamp, le.AtroposTimestamp, le.Atropos, le.Clotho, le.Root, le.Message.Body.Creator )
+
+			fmt.Fprintf(file, "<tr><td colspan=\"7\">at:");
+			for k, v := range le.AtTimes {
+				if k > 0 {
+					fmt.Fprintf(file, ", ")
+				}
+				fmt.Fprintf(file, "%v", v)
+			}
+			fmt.Fprintf(file, "</td></tr>")
+
 			// Uncomment the following if FlagTable and RootTable are needed in the node visualisation
 /*
 			fmt.Frpintf(file, "<tr><td colspan=\"7\">ft:");
