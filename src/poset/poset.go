@@ -2240,6 +2240,12 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 			followSelf = true
 			selfParent.AtroposTimestamp = atroposTimestamp
 			selfParent.AtTimes = append(selfParent.AtTimes, atroposTimestamp)
+			selfParent.AtVisited++
+			if err := p.Store.SetEvent(selfParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		} else {
+			selfParent.AtVisited++
 			if err := p.Store.SetEvent(selfParent); err != nil {
 				p.logger.Fatal(err)
 			}
@@ -2250,6 +2256,12 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 			followOther = true
 			otherParent.AtroposTimestamp = atroposTimestamp
 			otherParent.AtTimes = append(otherParent.AtTimes, atroposTimestamp)
+			otherParent.AtVisited++
+			if err := p.Store.SetEvent(otherParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		} else {
+			otherParent.AtVisited++
 			if err := p.Store.SetEvent(otherParent); err != nil {
 				p.logger.Fatal(err)
 			}

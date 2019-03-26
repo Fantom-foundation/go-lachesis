@@ -51,4 +51,5 @@ message Event {
   bool Atropos = 8;
   int64 AtroposTimestamp = 9;
   repeated int64 AtTimes = 10;
+  int64 AtVisited = 11;
 }

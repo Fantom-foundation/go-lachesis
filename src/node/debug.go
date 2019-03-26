@@ -58,6 +58,7 @@ type EventLite struct {
 	FlagTableBytes       []byte // FlagTable stores connection information
 	RootTableBytes       []byte // FlagTable stores connection information
 	AtTimes              []int64
+	AtVisited            int64
 }
 
 // GetParticipantEventsLite returns all participants
@@ -101,6 +102,7 @@ func (g *Graph) GetParticipantEventsLite() map[string]map[string]EventLite {
 			FlagTableBytes: event.FlagTableBytes,
 			RootTableBytes: event.RootTableBytes,
 			AtTimes: event.AtTimes,
+			AtVisited: event.AtVisited,
 			Message: EventMessageLite{
 				Body: EventBodyLite{
 					Parents:      event.Message.Body.Parents,
@@ -208,7 +210,7 @@ func (n *Node) PrintStat() {
 			fmt.Fprintf(file, "v%v [shape=none,layer=\"f%v\" label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\"><TR><TD>f</TD><td>l</td><td>a</td><td>atr</td><td>cl</td><td>roo</td><td>cr</td></TR><tr><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td><td>%v</td></tr>",
 				le.Message.Hash, le.Message.Frame, le.Message.Frame, le.LamportTimestamp, le.AtroposTimestamp, le.Atropos, le.Clotho, le.Root, le.Message.Body.Creator )
 
-			fmt.Fprintf(file, "<tr><td colspan=\"7\">at:");
+			fmt.Fprintf(file, "<tr><td>%v</td><td colspan=\"6\">at:", le.AtVisited);
 			for k, v := range le.AtTimes {
 				if k > 0 {
 					fmt.Fprintf(file, ", ")
