@@ -972,21 +972,20 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 		event.SetLamportTimestamp(lamportTimestamp)
 	}
 
-	peer, ok := p.Participants.ReadByPubKey(event.GetCreator())
-	hash := event.Hash()
-	p.logger.WithFields(logrus.Fields{
-//		"event":      event,
-		"EventCreator": peer.Message.NetAddr,
-		"Hash": hash.String(),
-		"lamport": event.GetLamportTimestamp(),
-		"Root": Root,
-		"Frame": Frame,
-		"parentEvent.Frame": parentEvent.Frame,
-		"otherParentEvent.Frame": otherParentEvent.Frame,
-		"len(rootTable)": len(rootTable),
-		"len(flagTable)": len(flagTable),
-		"ok": ok,
-	}).Warnf("InsertEvent")
+//	peer, ok := p.Participants.ReadByPubKey(event.GetCreator())
+//	hash := event.Hash()
+//	p.logger.WithFields(logrus.Fields{
+//		"EventCreator": peer.Message.NetAddr,
+//		"Hash": hash.String(),
+//		"lamport": event.GetLamportTimestamp(),
+//		"Root": Root,
+//		"Frame": Frame,
+//		"parentEvent.Frame": parentEvent.Frame,
+//		"otherParentEvent.Frame": otherParentEvent.Frame,
+//		"len(rootTable)": len(rootTable),
+//		"len(flagTable)": len(flagTable),
+//		"ok": ok,
+//	}).Warnf("InsertEvent")
 
 	
 	event.Message.TopologicalIndex = p.NextTopologicalIndex()
@@ -2130,7 +2129,7 @@ func (p *Poset) ClothoChecking(e *Event) error {
 						"Hash": hash.String(),
 						"lamport": root.GetLamportTimestamp(),
 						"ok": ok,
-					}). Warnf("Clotho")
+					}).Debugf("Clotho")
 				}
 				p.Store.AddTimeTable(e.Hash(), root.Hash(), e.LamportTimestamp)
 			}
@@ -2204,6 +2203,9 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 			if maxVal >= p.GetSuperMajority() {
 				clotho.Atropos = true
 				if maxInd < clotho.AtroposTimestamp || 0 == clotho.AtroposTimestamp {
+					if 0 == clotho.AtroposTimestamp {
+						p.accountEvent(&clotho)
+					}
 					clotho.AtroposTimestamp = maxInd
 					clotho.AtTimes = append(clotho.AtTimes, maxInd)
 				}
@@ -2218,7 +2220,7 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 					"Hash": hash.String(),
 					"AtroposTimestamp": clotho.AtroposTimestamp,
 					"ok": ok,
-				}). Warnf("Atropos")
+				}). Debugf("Atropos")
 				p.AssignAtroposTime(&clotho, clotho.AtroposTimestamp)
 			} else {
 				p.Store.AddTimeTable(e.Hash(), key, maxInd)
@@ -2238,6 +2240,9 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 	if nil == selfErr {
 		if 0 == selfParent.AtroposTimestamp || selfParent.AtroposTimestamp > atroposTimestamp {
 			followSelf = true
+			if 0 == selfParent.AtroposTimestamp {
+				p.accountEvent(&selfParent)
+			}
 			selfParent.AtroposTimestamp = atroposTimestamp
 			selfParent.AtTimes = append(selfParent.AtTimes, atroposTimestamp)
 			selfParent.AtVisited++
@@ -2254,6 +2259,9 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 	if nil == otherErr {
 		if 0 == otherParent.AtroposTimestamp || otherParent.AtroposTimestamp > atroposTimestamp {
 			followOther = true
+			if 0 == otherParent.AtroposTimestamp {
+				p.accountEvent(&otherParent)
+			}
 			otherParent.AtroposTimestamp = atroposTimestamp
 			otherParent.AtTimes = append(otherParent.AtTimes, atroposTimestamp)
 			otherParent.AtVisited++
@@ -2274,6 +2282,23 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 		p.AssignAtroposTime(&otherParent, atroposTimestamp)
 	}
 }
+
+func (p *Poset) accountEvent(ev *Event) {
+	p.setLastConsensusRound(ev.Frame)
+	if ev.IsLoaded() {
+		p.pendingLoadedEventsLocker.Lock()
+		p.pendingLoadedEvents--
+		p.pendingLoadedEventsLocker.Unlock()
+	}
+	err := p.Store.AddConsensusEvent(*ev)
+	if err != nil {
+		panic(err)
+	}
+	p.consensusTransactionsLocker.Lock()
+	p.ConsensusTransactions += uint64(len(ev.Transactions()))
+	p.consensusTransactionsLocker.Unlock()
+}
+
 
 
 /*******************************************************************************
