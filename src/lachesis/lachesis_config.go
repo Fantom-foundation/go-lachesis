@@ -39,6 +39,7 @@ type LachesisConfig struct {
 	Test      bool   `mapstructure:"test"`
 	TestN     uint64 `mapstructure:"test_n"`
 	TestDelay uint64 `mapstructure:"test_delay"`
+	PeerSelector string `mapstructure:"peer_selector"`
 }
 
 func NewDefaultConfig() *LachesisConfig {
@@ -60,6 +61,7 @@ func NewDefaultConfig() *LachesisConfig {
 		Test:        false,
 		TestN:       ^uint64(0),
 		TestDelay:   1,
+		PeerSelector: "smart",
 	}
 
 	config.Logger.Level = LogLevel(config.LogLevel)

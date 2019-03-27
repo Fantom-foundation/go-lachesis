@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -153,9 +154,39 @@ func (l *Lachesis) initNode() error {
 		"id":           nodeID,
 	}).Debug("PARTICIPANTS")
 
-	selectorArgs := node.SmartPeerSelectorCreationFnArgs{
-		LocalAddr:    l.Config.BindAddr,
+	var selectorArgs node.SelectorCreationFnArgs
+	var selectorFn node.SelectorCreationFn
+
+	switch strings.ToLower(l.Config.PeerSelector) {
+	case "random":
+		selectorArgs = node.RandomPeerSelectorCreationFnArgs{
+			LocalAddr:    l.Config.BindAddr,
+		}
+		selectorFn =  node.NewRandomPeerSelectorWrapper
+	case "smart":
+		selectorArgs = node.SmartPeerSelectorCreationFnArgs{
+			LocalAddr:    l.Config.BindAddr,
+		}
+		selectorFn =  node.NewSmartPeerSelectorWrapper
+	case "fair":
+		selectorArgs = node.FairPeerSelectorCreationFnArgs{
+			LocalAddr:    l.Config.BindAddr,
+		}
+		selectorFn =  node.NewFairPeerSelectorWrapper
+	case "unfair":
+		selectorArgs = node.UnfairPeerSelectorCreationFnArgs{
+			LocalAddr:    l.Config.BindAddr,
+		}
+		selectorFn =  node.NewUnfairPeerSelectorWrapper
+	case "franky":
+		selectorArgs = node.FrankyPeerSelectorCreationFnArgs{
+			LocalAddr:    l.Config.BindAddr,
+		}
+		selectorFn =  node.NewFrankyPeerSelectorWrapper
+	default:
+		panic(fmt.Errorf("Unknown peer selector %v", l.Config.PeerSelector))
 	}
+
 	l.Node = node.NewNode(
 		&l.Config.NodeConfig,
 		nodeID,
@@ -164,7 +195,7 @@ func (l *Lachesis) initNode() error {
 		l.Store,
 		l.Transport,
 		l.Config.Proxy,
-		node.NewSmartPeerSelectorWrapper,
+		selectorFn,
 		selectorArgs,
 		l.Config.BindAddr,
 	)
