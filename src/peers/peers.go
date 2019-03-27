@@ -279,7 +279,7 @@ func (a ByID) Less(i, j int) bool {
 	return ai < aj
 }
 
-// ByUsed TODO
+// ByUsed Sorted by Used count
 type ByUsed []*Peer
 
 func (a ByUsed) Len() int      { return len(a) }
@@ -289,3 +289,15 @@ func (a ByUsed) Less(i, j int) bool {
 	aj := a[j].Used
 	return ai > aj
 }
+
+// ByNetAddr Sorted by Used count
+type ByNetAddr []*Peer
+
+func (a ByNetAddr) Len() int      { return len(a) }
+func (a ByNetAddr) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ByNetAddr) Less(i, j int) bool {
+	ai := a[i].Message.NetAddr
+	aj := a[j].Message.NetAddr
+	return ai > aj
+}
+
