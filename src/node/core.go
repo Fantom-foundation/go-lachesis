@@ -20,6 +20,7 @@ const (
 	// MaxEventsPayloadSize is size limitation of txs in bytes.
 	// TODO: collect the similar magic constants in protocol config.
 	MaxEventsPayloadSize = 100 * 1024 * 1024
+	//MaxEventsPayloadSize = 1024 * 1024
 )
 
 var (
@@ -75,7 +76,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	if id % 3 == 0 {
 		//evCreationRate = 0.05
 	}
-	logEntry.Debug("ZZZZ core id=", id, "has creation ratio", evCreationRate, "\n")
+	logEntry.WithField("rate", evCreationRate).Debug("Event Creation ratio")
 
 	p2 := poset.NewPoset(participants, store, commitCh, logEntry)
 	core := &Core{
@@ -489,11 +490,11 @@ func min(a, b int) int {
 // AddSelfEventBlock adds an event block created by this node
 func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 
-	if (rand.Float64() > c.eventCreationRate) {
+	if c.eventCreationRate < 1.0 && rand.Float64() > c.eventCreationRate {
 		c.logger.WithFields(logrus.Fields{
 			"core": c.HexID(),
-			"otherhead": string(otherHead.Bytes()),
-		}).Debug("calls AddSelfEventBlock()");
+			"rate": c.eventCreationRate,
+		}).Debug("Skipping AddSelfEventBlock()");
 
 		// we only create event according to a fixed eventCreationRate
 		return nil;
