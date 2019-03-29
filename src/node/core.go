@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 	"time"
-
+	"math/rand"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
@@ -38,6 +38,8 @@ type Core struct {
 	participants *peers.Peers // [PubKey] => id
 	head         poset.EventHash
 
+	eventCreationRate float64
+
 	transactionPool         [][]byte
 	internalTransactionPool []poset.InternalTransaction
 	blockSignaturePool      []poset.BlockSignature
@@ -67,12 +69,21 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 		logEntry = logger.WithField("id", id)
 	}
 
+	// add some creation rates for node simulation
+	evCreationRate := 1.0
+
+	if id % 3 == 0 {
+		//evCreationRate = 0.05
+	}
+	logEntry.Debug("ZZZZ core id=", id, "has creation ratio", evCreationRate, "\n")
+
 	p2 := poset.NewPoset(participants, store, commitCh, logEntry)
 	core := &Core{
 		id:                      id,
 		key:                     key,
 		poset:                   p2,
 		participants:            participants,
+		eventCreationRate:       evCreationRate,
 		transactionPool:         [][]byte{},
 		internalTransactionPool: []poset.InternalTransaction{},
 		blockSignaturePool:      []poset.BlockSignature{},
@@ -436,6 +447,16 @@ func min(a, b int) int {
 
 // AddSelfEventBlock adds an event block created by this node
 func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
+
+	if (rand.Float64() > c.eventCreationRate) {
+		c.logger.WithFields(logrus.Fields{
+			"core": c.HexID(),
+			"otherhead": string(otherHead.Bytes()),
+		}).Debug("calls AddSelfEventBlock()");
+
+		// we only create event according to a fixed eventCreationRate
+		return nil;
+	}
 
 	c.addSelfEventBlockLocker.Lock()
 	defer c.addSelfEventBlockLocker.Unlock()
