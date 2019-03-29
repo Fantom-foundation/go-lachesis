@@ -2221,7 +2221,7 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 					"AtroposTimestamp": clotho.AtroposTimestamp,
 					"ok": ok,
 				}). Debugf("Atropos")
-				p.AssignAtroposTime(&clotho, clotho.AtroposTimestamp)
+				p.AssignAtroposTime(&clotho, clotho.AtroposTimestamp, clotho.Frame)
 			} else {
 				p.Store.AddTimeTable(e.Hash(), key, maxInd)
 			}
@@ -2233,11 +2233,15 @@ func (p *Poset) AtroposTimeSelection(e *Event) error {
 }
 
 // AssignAtroposTime sorts events according Atropos selection rule
-func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
+func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64, frame int64) {
 	followSelf, followOther := false, false
 	selfParent, selfErr := p.Store.GetEventBlock(e.SelfParent())
 	otherParent, otherErr := p.Store.GetEventBlock(e.OtherParent())
 	if nil == selfErr {
+		if 0 == selfParent.FrameReceived || selfParent.FrameReceived < frame {
+			selfParent.FrameReceived = frame
+		}
+		selfParent.RecFrames = append(selfParent.RecFrames, frame)
 		if 0 == selfParent.AtroposTimestamp || selfParent.AtroposTimestamp > atroposTimestamp {
 			followSelf = true
 			if 0 == selfParent.AtroposTimestamp {
@@ -2257,6 +2261,10 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 		}
 	}
 	if nil == otherErr {
+		if 0 == otherParent.FrameReceived || otherParent.FrameReceived < frame {
+			otherParent.FrameReceived = frame
+		}
+		otherParent.RecFrames = append(otherParent.RecFrames, frame)
 		if 0 == otherParent.AtroposTimestamp || otherParent.AtroposTimestamp > atroposTimestamp {
 			followOther = true
 			if 0 == otherParent.AtroposTimestamp {
@@ -2276,10 +2284,10 @@ func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64) {
 		}
 	}
 	if followSelf {
-		p.AssignAtroposTime(&selfParent, atroposTimestamp)
+		p.AssignAtroposTime(&selfParent, atroposTimestamp, frame)
 	}
 	if followOther {
-		p.AssignAtroposTime(&otherParent, atroposTimestamp)
+		p.AssignAtroposTime(&otherParent, atroposTimestamp, frame)
 	}
 }
 

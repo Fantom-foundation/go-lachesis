@@ -59,6 +59,8 @@ type EventLite struct {
 	RootTableBytes       []byte // FlagTable stores connection information
 	AtTimes              []int64
 	AtVisited            int64
+	RecFrames            []int64
+	FrameReceived        int64
 }
 
 // GetParticipantEventsLite returns all participants
@@ -103,6 +105,8 @@ func (g *Graph) GetParticipantEventsLite() map[string]map[string]EventLite {
 			RootTableBytes: event.RootTableBytes,
 			AtTimes: event.AtTimes,
 			AtVisited: event.AtVisited,
+			RecFrames: event.RecFrames,
+			FrameReceived: event.FrameReceived,
 			Message: EventMessageLite{
 				Body: EventBodyLite{
 					Parents:      event.Message.Body.Parents,
@@ -214,6 +218,15 @@ func (n *Node) PrintStat() {
 			for k, v := range le.AtTimes {
 				if k > 0 {
 					fmt.Fprintf(file, ", ")
+				}
+				fmt.Fprintf(file, "%v", v)
+			}
+			fmt.Fprintf(file, "</td></tr>")
+
+			fmt.Fprintf(file, "<tr><td>%v</td><td colspan=\"6\">fr:", le.FrameReceived);
+			for k, v := range le.RecFrames {
+				if k > 0 {
+					fmt.Fprintf(file, ": ")
 				}
 				fmt.Fprintf(file, "%v", v)
 			}

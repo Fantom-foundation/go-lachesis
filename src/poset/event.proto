@@ -52,4 +52,6 @@ message Event {
   int64 AtroposTimestamp = 9;
   repeated int64 AtTimes = 10;
   int64 AtVisited = 11;
+  int64 FrameReceived = 12;
+  repeated int64 RecFrames = 13;
 }
