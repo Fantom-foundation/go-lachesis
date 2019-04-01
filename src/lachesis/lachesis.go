@@ -72,7 +72,9 @@ func (l *Lachesis) initPeers() error {
 
 	peerStore := peers.NewJSONPeers(l.Config.DataDir)
 
-	participants, err := peerStore.Peers()
+	// We read "old" format of peers.json here, so only peer messages are specified
+	// TODO: upgrade batch-ethkey to generate peers.json iin new format
+	participants, err := peerStore.GetPeersFromMessages()
 
 	if err != nil {
 		return err

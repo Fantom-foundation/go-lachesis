@@ -48,6 +48,19 @@ func NewPeers() *Peers {
 	}
 }
 
+// NewPeersFromSlice create a new peers struct from a subset of peers
+func NewPeersFromSlice(source []*Peer) *Peers {
+	peers := NewPeers()
+
+	for _, peer := range source {
+		peers.addPeerRaw(peer)
+	}
+
+	peers.internalSort()
+
+	return peers
+}
+
 // NewPeersFromMessageSlice create a new peers struct from a subset of peer messages
 func NewPeersFromMessageSlice(source []*PeerMessage) *Peers {
 	peers := NewPeers()

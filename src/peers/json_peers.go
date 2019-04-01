@@ -27,7 +27,44 @@ func NewJSONPeers(base string) *JSONPeers {
 }
 
 // Peers implements the PeerStore interface.
-func (j *JSONPeers) Peers() (*Peers, error) {
+func (j *JSONPeers) GetPeers() (*Peers, error) {
+	j.l.Lock()
+	defer j.l.Unlock()
+
+	// Read the file or create empty
+	buf, err := ioutil.ReadFile(j.path)
+	if err != nil {
+		err = os.MkdirAll(filepath.Dir(j.path), 0750)
+		if err != nil {
+			return nil, err
+		}
+		f, err := os.OpenFile(j.path, os.O_CREATE|os.O_WRONLY, 0640)
+		if err != nil {
+			return nil, err
+		}
+		if err := f.Close(); err != nil {
+			return nil, err
+		}
+	}
+
+	// Decode the peers
+	peerSet := make([]*Peer, len(buf))
+	if len(buf) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(buf))
+		if err := dec.Decode(&peerSet); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(peerSet) == 0 {
+		return nil, fmt.Errorf("peers not found")
+	}
+
+	return NewPeersFromSlice(peerSet), nil
+}
+
+// GetPeersFromMessagess implements the PeerStore interface.
+func (j *JSONPeers) GetPeersFromMessages() (*Peers, error) {
 	j.l.Lock()
 	defer j.l.Unlock()
 

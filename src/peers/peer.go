@@ -160,8 +160,11 @@ func (p *Peer) SetWeight(w uint64) {
 // PeerStore provides an interface for persistent storage and
 // retrieval of peers.
 type PeerStore interface {
-	// Peers returns the list of known peers.
-	Peers() (*Peers, error)
+	// GetPeers returns the list of known peers.
+	GetPeers() (*Peers, error)
+
+	// GetPeers returns the list of known peers written as peer.PeerMessages.
+	GetPeersFromMessages() (*Peers, error)
 
 	// SetPeers sets the list of known peers. This is invoked when a peer is
 	// added or removed.
