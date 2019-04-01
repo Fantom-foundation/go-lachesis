@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"math"
 	"sort"
 	"sync"
 
@@ -30,6 +31,9 @@ type Peers struct {
 	ByAddress AddressPeers
 	ByNetAddr NetAddrPeers
 	Listeners []Listener
+	Stake     uint64
+	SuperMajority uint64
+	TrustCount    uint64
 }
 
 /* Constructors */
@@ -70,6 +74,9 @@ func (p *Peers) addPeerRaw(peer *Peer) {
 			panic(err)
 		}
 	}
+	p.Stake = p.Stake + peer.GetWeight()
+	p.SuperMajority = uint64(2 * p.Stake / 3 + 1)
+	p.TrustCount = uint64(math.Ceil(float64(p.Stake) / float64(3)))
 
 	p.ByPubKey[peer.Message.PubKeyHex] = peer
 	p.ByID[peer.ID] = peer
@@ -254,6 +261,42 @@ func (p *Peers) IncInDegreeByPubKeyHex(key string) {
 	p.Lock()
 	defer p.Unlock()
 	(p.ByPubKey[key]).IncInDegree()
+}
+
+// Set new weight to a peer and recalculate PoS values
+func (p *Peers) SetPeerWeight(peer *Peer, w uint64) {
+	p.Lock()
+	defer p.Unlock()
+	oldW := peer.GetWeight()
+	p.Stake = p.Stake - oldW
+	peer.SetWeight(w)
+	p.Stake = p.Stake + w
+	p.SuperMajority = uint64(2 * p.Stake / 3 + 1)
+	p.TrustCount = uint64(math.Ceil(float64(p.Stake) / float64(3)))
+}
+
+// Set new weight to a peer by their public Key
+func (p*Peers) SetPeerWeightByPubKey(pubKey string, w uint64) {
+	p.SetPeerWeight(p.ByPubKey[pubKey], w)
+}
+
+// RemovePeerByID removes a peer based on their ID
+func (p *Peers) SetPeerWeightByID(id uint64, w uint64) {
+	p.SetPeerWeight(p.ByID[id], w)
+}
+
+// GetSuperMajority() return the current value of SuperMajority
+func (p *Peers) GetSuperMajority() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.SuperMajority
+}
+
+// GetTrustCount() return the current value of TrustCount
+func (p *Peers) GetTrustCount() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.TrustCount
 }
 
 // ByPubHex implements sort.Interface for Peers based on

@@ -48,6 +48,7 @@ type Peer struct {
 	Used      int64
 	height    int64
 	inDegree  int64
+	weight    uint64
 }
 
 // NewPeer creates a new peer based on public key and network address
@@ -140,6 +141,20 @@ func (p *Peer) IncInDegree() {
 	p.Lock()
 	defer p.Unlock()
 	p.inDegree++
+}
+
+// GetWeight() returns the current weight of the peer for PoS calculation
+func (p *Peer) GetWeight() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.weight
+}
+
+// SetWeight() set the weight of the peer for PoS calculation
+func (p *Peer) SetWeight(w uint64) {
+	p.Lock()
+	defer p.Unlock()
+	p.weight = w
 }
 
 // PeerStore provides an interface for persistent storage and

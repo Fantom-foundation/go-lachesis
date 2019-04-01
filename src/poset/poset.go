@@ -42,8 +42,6 @@ type Poset struct {
 	pendingLoadedEvents      int64             // number of loaded events that are not yet committed
 	commitCh                 chan Block        // channel for committing Blocks
 	topologicalIndex         int64             // counter used to order events in topological order (only local)
-	superMajority            uint64
-	trustCount               uint64
 	core                     Core
 
 	dominatorCache         *lru.Cache
@@ -58,7 +56,6 @@ type Poset struct {
 	pendingLoadedEventsLocker     sync.RWMutex
 	firstLastConsensusRoundLocker sync.RWMutex
 	consensusTransactionsLocker   sync.RWMutex
-	superMajorityLocker           sync.RWMutex
 	topologicalIndexLocker        sync.Mutex
 }
 
@@ -71,9 +68,6 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 		lachesis_log.NewLocal(log, log.Level.String())
 		logger = logrus.NewEntry(log)
 	}
-
-	superMajority := uint64(2*participants.Len()/3 + 1)
-	trustCount := uint64(math.Ceil(float64(participants.Len()) / float64(3)))
 
 	cacheSize := store.CacheSize()
 	dominatorCache, err := lru.New(cacheSize)
@@ -108,16 +102,7 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 		roundCache:             roundCache,
 		timestampCache:         timestampCache,
 		logger:                 logger,
-		superMajority:          superMajority,
-		trustCount:             trustCount,
 	}
-
-	participants.OnNewPeer(func(peer *peers.Peer) {
-		poset.superMajorityLocker.Lock()
-		defer poset.superMajorityLocker.Unlock()
-		poset.superMajority = uint64(2*participants.Len()/3 + 1)
-		poset.trustCount = uint64(math.Ceil(float64(participants.Len()) / float64(3)))
-	})
 
 	return &poset
 }
@@ -1725,14 +1710,14 @@ func (p *Poset) ProcessSigPool() error {
 				}).Warning("Saving Block")
 			}
 
-			if uint64(len(block.Signatures)) > p.trustCount &&
+			if uint64(len(block.Signatures)) > p.GetTrustCount() &&
 				(p.AnchorBlock == nil ||
 					block.Index() > *p.AnchorBlock) {
 				p.setAnchorBlock(block.Index())
 				p.logger.WithFields(logrus.Fields{
 					"block_index": block.Index(),
 					"signatures":  len(block.Signatures),
-					"trustCount":  p.trustCount,
+					"trustCount":  p.GetTrustCount(),
 				}).Debug("Setting AnchorBlock")
 			}
 		}
@@ -1999,8 +1984,8 @@ func (p *Poset) CheckBlock(block Block) error {
 			validSignatures++
 		}
 	}
-	if validSignatures <= p.trustCount {
-		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.trustCount+1)
+	if validSignatures <= p.GetTrustCount() {
+		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.GetTrustCount()+1)
 	}
 
 	p.logger.WithField("valid_signatures", validSignatures).Debug("CheckBlock")
@@ -2401,11 +2386,14 @@ func (p *Poset) GetConsensusTransactionsCount() uint64 {
 	return p.ConsensusTransactions
 }
 
-// GetSuperMajority returns value of poset.superMajority
+// GetSuperMajority returns value of SuperMajority
 func (p *Poset) GetSuperMajority() uint64 {
-	p.superMajorityLocker.RLock()
-	defer p.superMajorityLocker.RUnlock()
-	return p.superMajority
+	return p.Participants.GetSuperMajority()
+}
+
+// GetTrustCount() returns value of TrustCount
+func (p *Poset) GetTrustCount() uint64 {
+	return p.Participants.GetTrustCount()
 }
 
 func (p *Poset) NextTopologicalIndex() int64 {
