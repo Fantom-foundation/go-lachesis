@@ -32,7 +32,7 @@ func (w *BadgerDatabase) Put(key []byte, value []byte) error {
 		return err
 	}
 
-	return tx.Commit(nil)
+	return tx.Commit()
 }
 
 // Has checks if key is in the db.
@@ -70,7 +70,7 @@ func (w *BadgerDatabase) Delete(key []byte) error {
 	tx := w.db.NewTransaction(true)
 	defer tx.Discard()
 
-	return tx.Commit(nil)
+	return tx.Commit()
 }
 
 // Close does nothing.
@@ -123,7 +123,7 @@ func (b *badgerBatch) Write() error {
 		}
 	}
 
-	return tx.Commit(nil)
+	return tx.Commit()
 }
 
 // ValueSize returns values sizes sum.
