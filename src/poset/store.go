@@ -50,4 +50,6 @@ type Store interface {
 	// StateDB returns state database
 	StateDB() state.Database
 	StateRoot() common.Hash
+	CheckFrameFinality(int64) bool
+	ProcessOutFrame(int64, string) error
 }

@@ -28,8 +28,8 @@ const (
 	TOPO_IDX            = "Message.TopologicalIndex"
 	CREATOR_IDX         = "Message.Body.Creator,Message.Body.Index"
 	FRAMERECEIVED_IDX   = "FrameReceived"
-	SORT_IDX            = "FrameReceived,LamportTimestamp,Message.Hash"
-	FRAMEFINALITY_IDX   = "FrameReceived, Frame" // WIP: finality for frame: no records with FrameReceived=0
+	SORT_IDX            = "Frame,LamportTimestamp,AtroposTimestamp,Message.Hash"
+	FRAMEFINALITY_IDX   = "FrameReceived,Frame" // WIP: finality for frame: no records with FrameReceived=0
 	CLOTHOCHK_TBL       = "clotho_chk"
 	CLOTHOCREATORCHK_TBL= "clotho_creator_chk"
 	TIMETABLE_TBL       = "time_table"
@@ -82,6 +82,9 @@ func NewBadgerStore(participants *peers.Peers, cacheSize int, path string, posCo
 		return nil, err
 	}
 	if err:= store.db.Table(EVENTS_TBL).NewIndex(SORT_IDX); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(FRAMEFINALITY_IDX); err != nil {
 		return nil, err
 	}
 
@@ -920,4 +923,38 @@ func (s *BadgerStore) dbGetTimeTable(hash EventHash) (FlagTable, error) {
 		return nil, err
 	}
 	return ft, nil
+}
+
+// CheckFrameFinality checks if a frame is ready to push out in consensus order
+func (s *BadgerStore) CheckFrameFinality(frame int64) bool {
+	_, _, err := s.db.Table(EVENTS_TBL).Index(FRAMEFINALITY_IDX).One(
+		[]interface{}{0, frame}, nil)
+	if err == cete.ErrNotFound {
+		return true
+	}
+	return false
+}
+
+func (s *BadgerStore) ProcessOutFrame(frame int64, address string) error {
+	file, err := os.OpenFile(fmt.Sprintf("Node_%v.finality", address), os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("*** Open  err: %v", err)
+		return err
+	}
+	defer file.Close()
+
+	r := s.db.Table(EVENTS_TBL).Index(SORT_IDX).Between(
+		[]interface{}{frame, cete.MinValue, cete.MinValue, cete.MinValue},
+		[]interface{}{frame, cete.MaxValue, cete.MaxValue, cete.MaxValue})
+	for r.Next() {
+		var ev Event
+		r.Decode(&ev)
+		hash := ev.Hash()
+		fmt.Fprintf(file, "%v:%v:%v:%v:%v\n",
+			hash.String(), ev.Frame, ev.FrameReceived, ev.LamportTimestamp, ev.AtroposTimestamp)
+	}
+	if r.Error() != cete.ErrEndOfRange {
+		return fmt.Errorf("%v", r.Error())
+	}
+	return nil
 }

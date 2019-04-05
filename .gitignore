@@ -35,6 +35,7 @@ lachesis_*
 *.graph
 *.gv
 *.sorted
+*.finality
 
 # patch and diff files
 *.patch

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -616,9 +617,9 @@ func (n *Node) sync(peer *peers.Peer, events []poset.WireEvent) error {
 		return fmt.Errorf("n.core.Sync(peer, events): %v", err)
 	}
 
-//	if err := n.core.RunConsensus(); err != nil {
-//		return err
-//	}
+	if err := n.core.RunConsensus(); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -736,14 +737,14 @@ func (n *Node) GetStats() map[string]string {
 		"consensus_events":        strconv.FormatInt(consensusEvents, 10),
 		"sync_limit":              strconv.FormatInt(n.conf.SyncLimit, 10),
 		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
-		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
+//		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
 		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
 		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
 		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
 		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
 		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
 		"rounds_per_second":       strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
-		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
+//		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
 		"id":                      fmt.Sprint(n.id),
 		"state":                   n.getState().String(),
 	}
@@ -778,6 +779,7 @@ func (n *Node) logStats() {
 		// uncomment when needed
 		//		"id":                     stats["id"],
 	}).Warn("logStats()")
+	runtime.GC()
 }
 
 // SyncRate returns the current synchronization (talking to over nodes) rate in ms

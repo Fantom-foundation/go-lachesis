@@ -94,7 +94,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 
 	p2.SetCore(core)
 
-	// Set Leaf Events for each participant
+	// Set Leaf Events for each participant; tag: leaf
 	for _, peer := range participants.ToPeerSlice() {
 		creator, err := peer.PubKeyBytes()
 		if err != nil {
@@ -595,37 +595,37 @@ func (c *Core) RunConsensus() error {
 //		return err
 //	}
 
+//	start := time.Now()
+//	err := c.poset.DecideAtropos()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideAtropos()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DecideAtropos()")
+//		return err
+//	}
+
+//	start = time.Now()
+//	err = c.poset.DecideRoundReceived()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideRoundReceived()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DecideRoundReceived()")
+//		return err
+//	}
+
 	start := time.Now()
-	err := c.poset.DecideAtropos()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideAtropos()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DecideAtropos()")
-		return err
-	}
-
-	start = time.Now()
-	err = c.poset.DecideRoundReceived()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideRoundReceived()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DecideRoundReceived()")
-		return err
-	}
-
-	start = time.Now()
-	err = c.poset.ProcessDecidedRounds()
+	err := c.poset.ProcessDecidedRounds()
 	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessDecidedRounds()")
 	if err != nil {
 		c.logger.WithField("Error", err).Error("c.poset.ProcessDecidedRounds()")
 		return err
 	}
 
-	start = time.Now()
-	err = c.poset.ProcessSigPool()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessSigPool()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.ProcessSigPool()")
-		return err
-	}
+//	start := time.Now()
+//	err = c.poset.ProcessSigPool()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessSigPool()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.ProcessSigPool()")
+//		return err
+//	}
 
 	c.logger.WithFields(logrus.Fields{
 		"transaction_pool":            c.GetTransactionPoolCount(),

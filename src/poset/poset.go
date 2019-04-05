@@ -43,6 +43,7 @@ type Poset struct {
 	commitCh                 chan Block        // channel for committing Blocks
 	topologicalIndex         int64             // counter used to order events in topological order (only local)
 	core                     Core
+	nextFinalFrame           int64
 
 	dominatorCache         *lru.Cache
 	selfDominatorCache     *lru.Cache
@@ -57,6 +58,7 @@ type Poset struct {
 	firstLastConsensusRoundLocker sync.RWMutex
 	consensusTransactionsLocker   sync.RWMutex
 	topologicalIndexLocker        sync.Mutex
+	DecidedLocker                 sync.Mutex
 }
 
 // NewPoset instantiates a Poset from a list of participants, underlying
@@ -985,6 +987,12 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 		return fmt.Errorf("SetEvent: %s", err)
 	}
 
+	err = p.Store.SetRoundCreated(Frame, RoundCreated{}) // FIXME: SetRoundCreated/SetRoundReceived should be abandoned in favour of SetRound.
+	if err != nil {
+		return err
+	}
+
+
 	if Root {
 		if err := p.Store.AddClothoCheck(Frame, event.CreatorID(), event.Hash()); err != nil {
 			// FIXME: add error handling here
@@ -1361,6 +1369,20 @@ func (p *Poset) DecideRoundReceived() error {
 // corresponding Frames, maps them into Blocks, and commits the Blocks via the
 // commit channel
 func (p *Poset) ProcessDecidedRounds() error {
+
+	p.DecidedLocker.Lock()
+	defer p.DecidedLocker.Unlock()
+
+	for p.Store.CheckFrameFinality(p.nextFinalFrame) {
+		if p.commitCh != nil {
+//			p.Store.ProcessOutFrame(p.nextFinalFrame, p.commitCh) // FIXME: to be implemented
+			if err := p.Store.ProcessOutFrame(p.nextFinalFrame, p.Address()); err != nil {
+				return err
+			}
+//			p.commitCh <- block
+		}
+		p.nextFinalFrame++
+	}
 
 	// Defer removing processed Rounds from the PendingRounds Queue
 	processedIndex := 0
@@ -2402,6 +2424,14 @@ func (p *Poset) NextTopologicalIndex() int64 {
 	result := p.topologicalIndex
 	p.topologicalIndex++
 	return result
+}
+
+func (p *Poset) Address() string {
+	peer, ok := p.Participants.ReadByPubKey(p.core.HexID())
+	if ok {
+		return peer.Message.NetAddr
+	}
+	return "unknown"
 }
 
 /*******************************************************************************

@@ -587,3 +587,13 @@ func (s *InmemStore) GetTimeTable(hash EventHash) (FlagTable, error) {
 	ft.Unmarshal(res.([]byte))
 	return ft, nil
 }
+
+// This is just a stub, yet to bee implemented if needed
+func (s *InmemStore) CheckFrameFinality(frame int64) bool {
+	return true
+}
+
+// This is just a stub, yet to bee implemented if needed
+func (s *InmemStore) ProcessOutFrame(frame int64, address string) error {
+	return nil
+}

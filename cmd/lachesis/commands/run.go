@@ -105,7 +105,7 @@ func runSingleLachesis(config *CLIConfig) error {
 				pdl := engine.Node.GetPendingLoadedEvents()
 				// 3 - number of notes in test; 10 - number of transactions sent at once
 				if ct >= 3*10*config.Lachesis.TestN && pdl < 1 {
-					//engine.Node.PrintStat() // this is for debug tag only
+					engine.Node.PrintStat() // this is for debug tag only
 					time.Sleep(10 * time.Second)
 					engine.Node.Shutdown()
 					break
