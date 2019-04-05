@@ -949,9 +949,11 @@ func (s *BadgerStore) ProcessOutFrame(frame int64, address string) error {
 	for r.Next() {
 		var ev Event
 		r.Decode(&ev)
-		hash := ev.Hash()
-		fmt.Fprintf(file, "%v:%v:%v:%v:%v\n",
-			hash.String(), ev.Frame, ev.FrameReceived, ev.LamportTimestamp, ev.AtroposTimestamp)
+		if ev.IsLoaded() {
+			hash := ev.Hash()
+			fmt.Fprintf(file, "%v:%v:%v:%v:%v\n",
+				hash.String(), ev.Frame, ev.FrameReceived, ev.LamportTimestamp, ev.AtroposTimestamp)
+		}
 	}
 	if r.Error() != cete.ErrEndOfRange {
 		return fmt.Errorf("%v", r.Error())
