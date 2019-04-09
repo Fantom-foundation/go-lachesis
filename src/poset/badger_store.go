@@ -28,7 +28,7 @@ const (
 	TOPO_IDX            = "Message.TopologicalIndex"
 	CREATOR_IDX         = "Message.Body.Creator,Message.Body.Index"
 	FRAMERECEIVED_IDX   = "FrameReceived"
-	SORT_IDX            = "Frame,LamportTimestamp,AtroposTimestamp,Message.Hash"
+	SORT_IDX            = "Frame,AtroposTimestamp,LamportTimestamp,Message.Hash"
 	FRAMEFINALITY_IDX   = "FrameReceived,Frame" // WIP: finality for frame: no records with FrameReceived=0
 	CLOTHOCHK_TBL       = "clotho_chk"
 	CLOTHOCREATORCHK_TBL= "clotho_creator_chk"
