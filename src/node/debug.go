@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -324,6 +325,15 @@ func (n *Node) PrintStat() {
 func (n *Node) Register() {
 	var once sync.Once
 	onceBody := func() {
+		file, err := os.OpenFile("lachesis.trace", os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Printf("*** Open  err: %v", err)
+			return
+		}
+		defer file.Close()
+		buf := make([]byte, 1<<16)
+		stackSize := runtime.Stack(buf, true)
+		fmt.Fprintln(file, string(buf[0:stackSize]))
 		// You must build with debug tag to have PrintStat() defined
 		n.PrintStat()
 	}
