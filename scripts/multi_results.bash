@@ -8,7 +8,7 @@ export BUILD_DIR="$PWD"
 #rm -rf "$BUILD_DIR/results" *.gv *.graph *.finality *.log
 rm -rf *.gv *.graph *.finality *.log
 
-for n in {37..65};
+for n in {3..65};
 do
     export n
     ./scripts/multi.bash
