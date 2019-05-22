@@ -8,7 +8,6 @@ export RM?=rm
 export SED?=sed
 export SH?=sh
 export XARGS?=xargs
-export CGO_ENABLED=0
 
 SUBDIRS := src/.
 TARGETS := build proto clean
@@ -41,10 +40,10 @@ install:
 
 # build compiles and places the binary in /build
 build:
-	$(GO) build \
+	CGO_ENABLED=0 $(GO) build \
 		$(VENDOR_LDFLAG) \
 		-o build/lachesis ./cmd/lachesis/main.go
-	$(GO) build \
+	CGO_ENABLED=0 $(GO) build \
 		$(VENDOR_LDFLAG) \
 		-o build/network ./cmd/network/
 

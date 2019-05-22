@@ -7,7 +7,7 @@ import (
 	"sort"
 	"sync"
 	"time"
-
+	"math/rand"
 	"github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
@@ -21,6 +21,7 @@ const (
 	// MaxEventsPayloadSize is size limitation of txs in bytes.
 	// TODO: collect the similar magic constants in protocol config.
 	MaxEventsPayloadSize = 100 * 1024 * 1024
+	//MaxEventsPayloadSize = 1024 * 1024
 )
 
 var (
@@ -38,6 +39,8 @@ type Core struct {
 
 	participants *peers.Peers // [PubKey] => id
 	head         poset.EventHash
+
+	eventCreationRate float64
 
 	transactionPool         [][]byte
 	internalTransactionPool []*wire.InternalTransaction
@@ -60,7 +63,21 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 		logger.Level = logrus.DebugLevel
 		lachesis_log.NewLocal(logger, logger.Level.String())
 	}
-	logEntry := logger.WithField("id", id)
+	n, ok := participants.ReadByID(id)
+	var logEntry *logrus.Entry
+	if ok {
+		logEntry = logger.WithField("id", id).WithField("addr", n.Message.NetAddr)
+	} else {
+		logEntry = logger.WithField("id", id)
+	}
+
+	// add some creation rates for node simulation
+	evCreationRate := 1.0
+
+	if id % 3 == 0 {
+		//evCreationRate = 0.05
+	}
+	logEntry.WithField("rate", evCreationRate).Debug("Event Creation ratio")
 
 	p2 := poset.NewPoset(participants, store, commitCh, logEntry)
 	core := &Core{
@@ -68,6 +85,7 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 		key:                     key,
 		poset:                   p2,
 		participants:            participants,
+		eventCreationRate:       evCreationRate,
 		transactionPool:         [][]byte{},
 		internalTransactionPool: []*wire.InternalTransaction{},
 		blockSignaturePool:      []poset.BlockSignature{},
@@ -76,6 +94,47 @@ func NewCore(id uint64, key *ecdsa.PrivateKey, participants *peers.Peers,
 	}
 
 	p2.SetCore(core)
+
+	// Set Leaf Events for each participant; tag: leaf
+	for _, peer := range participants.ToPeerSlice() {
+		creator, err := peer.PubKeyBytes()
+		if err != nil {
+			panic(err)
+		}
+		body := poset.EventBody{
+			Creator: creator,
+			Index:   0,
+			Parents: poset.EventHashes{poset.EventHash{}, poset.EventHash{}}.Bytes(),
+		}
+		hash, err := body.Hash()
+		if err != nil {
+			panic(err)
+		}
+		ft := poset.NewFlagTable()
+		ft[hash] = 0
+		event := poset.Event{
+			Message: &poset.EventMessage{
+				Hash:             hash.Bytes(),
+				CreatorID:        peer.ID,
+				TopologicalIndex: p2.NextTopologicalIndex(),
+				Body:             &body,
+			},
+			FlagTableBytes:   ft.Marshal(),
+			RootTableBytes:   ft.Marshal(),
+			LamportTimestamp: int64(creator[15]),
+			AtroposTimestamp: int64(creator[15]),
+			Frame:            0,
+			Atropos:          true,
+			Clotho:           true,
+			Root:             true,
+		}
+		event.AtTimes = append(event.AtTimes, event.LamportTimestamp)
+		if err := p2.Store.SetEvent(event); err != nil {
+			panic(err)
+		}
+		//p2.topologicalIndex++
+		peer.SetHeight(0)
+	}
 
 	return core
 }
@@ -111,7 +170,7 @@ func (c *Core) Head() poset.EventHash {
 func (c *Core) Heights() map[string]int64 {
 	heights := make(map[string]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		heights[peer.PubKeyHex] = peer.Height
+		heights[peer.Message.PubKeyHex] = peer.GetHeight()
 	}
 	return heights
 }
@@ -120,7 +179,7 @@ func (c *Core) Heights() map[string]int64 {
 func (c *Core) HeightsByID() map[uint64]int64 {
 	heights := make(map[uint64]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		heights[peer.ID] = peer.Height
+		heights[peer.ID] = peer.GetHeight()
 	}
 	return heights
 }
@@ -129,7 +188,7 @@ func (c *Core) HeightsByID() map[uint64]int64 {
 func (c *Core) InDegrees() map[string]int64 {
 	inDegrees := make(map[string]int64)
 	for _, peer := range c.participants.ToPeerSlice() {
-		inDegrees[peer.PubKeyHex] = peer.InDegree
+		inDegrees[peer.Message.PubKeyHex] = peer.GetInDegree()
 	}
 	return inDegrees
 }
@@ -303,7 +362,7 @@ func (c *Core) EventDiff(known map[uint64]int64) (events []poset.Event, err erro
 			continue
 		}
 		// get participant Events with index > ct
-		participantEvents, err := c.poset.Store.ParticipantEvents(peer.PubKeyHex, ct)
+		participantEvents, err := c.poset.Store.ParticipantEvents(peer.Message.PubKeyHex, ct)
 		if err != nil {
 			return []poset.Event{}, err
 		}
@@ -341,7 +400,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 	}).Debug("Sync(unknownEventBlocks []poset.EventBlock)")
 
 	myKnownEvents := c.KnownEvents()
-	otherHead, _, err := c.poset.Store.LastEventFrom(peer.PubKeyHex)
+	otherHead, _, err := c.poset.Store.LastEventFrom(peer.Message.PubKeyHex)
 	if err != nil {
 		c.logger.WithField("peer", peer).Errorf("c.poset.Store.LastEventFrom(peer.PubKeyHex)")
 		return err
@@ -349,7 +408,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 	// add unknown events
 	for _, we := range unknownEvents {
 		c.logger.WithFields(logrus.Fields{
-			"unknown_events": we,
+			"unknown_events": fmt.Sprintf("%#v", we),
 		}).Debug("unknownEvents")
 		ev, err := c.poset.ReadWireInfo(we)
 		if err != nil {
@@ -359,8 +418,9 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 		}
 		if ev.Index() > myKnownEvents[ev.CreatorID()] {
 			ev.SetLamportTimestamp(poset.LamportTimestampNIL)
-			ev.SetRound(poset.RoundNIL)
-			ev.SetRoundReceived(poset.RoundNIL)
+//			ev.SetFrame(poset.FrameNIL)  // do we really need it here? It should set in poset.ReadWireInfo()
+//			ev.SetRound(poset.RoundNIL)
+//			ev.SetRoundReceived(poset.RoundNIL)
 			if err := c.InsertEvent(*ev, false); err != nil {
 				c.logger.Error("SYNC: INSERT ERR:", err)
 				return err
@@ -369,7 +429,7 @@ func (c *Core) Sync(peer *peers.Peer, unknownEvents []poset.WireEvent) error {
 
 		// assume events come in in topological order
 		// so the last event corresponds to other-head
-		if peer.PubKeyHex == ev.GetCreator() {
+		if peer.Message.PubKeyHex == ev.GetCreator() {
 			otherHead = ev.Hash()
 		}
 	}
@@ -431,39 +491,28 @@ func min(a, b int) int {
 // AddSelfEventBlock adds an event block created by this node
 func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 
+	if c.eventCreationRate < 1.0 && rand.Float64() > c.eventCreationRate {
+		c.logger.WithFields(logrus.Fields{
+			"core": c.HexID(),
+			"rate": c.eventCreationRate,
+		}).Debug("Skipping AddSelfEventBlock()");
+
+		// we only create event according to a fixed eventCreationRate
+		return nil;
+	}
+
 	c.addSelfEventBlockLocker.Lock()
 	defer c.addSelfEventBlockLocker.Unlock()
 
 	// Get flag tables from parents
-	parentEvent, errSelf := c.poset.Store.GetEventBlock(c.head)
-	if errSelf != nil {
-		c.logger.Warnf("failed to get parent: %s", errSelf)
-	}
-	otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
-	if errOther != nil {
-		c.logger.Warnf("failed to get other parent: %s", errOther)
-	}
-
-	var (
-		flagTable poset.FlagTable
-		err       error
-	)
-
-	if errSelf != nil {
-		flagTable = poset.FlagTable{c.head: 1}
-	} else {
-		flagTable, err = parentEvent.GetFlagTable()
-		if err != nil {
-			return fmt.Errorf("failed to get self flag table: %s", err)
-		}
-	}
-
-	if errOther == nil {
-		flagTable, err = otherParentEvent.MergeFlagTable(flagTable)
-		if err != nil {
-			return fmt.Errorf("failed to marge flag tables: %s", err)
-		}
-	}
+//	parentEvent, errSelf := c.poset.Store.GetEventBlock(c.head)
+//	if errSelf != nil {
+//		c.logger.Warnf("failed to get parent: %s", errSelf)
+//	}
+//	otherParentEvent, errOther := c.poset.Store.GetEventBlock(otherHead)
+//	if errOther != nil {
+//		c.logger.Warnf("failed to get other parent: %s", errOther)
+//	}
 
 	// get transactions batch for new Event
 	c.transactionPoolLocker.Lock()
@@ -484,7 +533,8 @@ func (c *Core) AddSelfEventBlock(otherHead poset.EventHash) error {
 	newHead := poset.NewEvent(batch,
 		c.internalTransactionPool,
 		c.blockSignaturePool,
-		poset.EventHashes{c.head, otherHead}, c.PubKey(), c.participants.NextHeightByPubKeyHex(c.HexID()), flagTable)
+		poset.EventHashes{c.head, otherHead}, c.PubKey(), c.participants.NextHeightByPubKeyHex(c.HexID()),
+		poset.NewFlagTable(), poset.NewFlagTable() /*rootTable*/, poset.FrameNIL, false /*Root*/)
 
 	if err := c.SignAndInsertSelfEvent(newHead); err != nil {
 		// put batch back to transactionPool
@@ -538,45 +588,45 @@ func (c *Core) ToWire(events []poset.Event) ([]poset.WireEvent, error) {
 
 // RunConsensus is the core consensus mechanism, this checks rounds/frames and creates blocks.
 func (c *Core) RunConsensus() error {
+//	start := time.Now()
+//	err := c.poset.DivideRounds()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DivideRounds()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DivideRounds()")
+//		return err
+//	}
+
+//	start := time.Now()
+//	err := c.poset.DecideAtropos()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideAtropos()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DecideAtropos()")
+//		return err
+//	}
+
+//	start = time.Now()
+//	err = c.poset.DecideRoundReceived()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideRoundReceived()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.DecideRoundReceived()")
+//		return err
+//	}
+
 	start := time.Now()
-	err := c.poset.DivideRounds()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DivideRounds()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DivideRounds()")
-		return err
-	}
-
-	start = time.Now()
-	err = c.poset.DecideAtropos()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideAtropos()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DecideAtropos()")
-		return err
-	}
-
-	start = time.Now()
-	err = c.poset.DecideRoundReceived()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.DecideRoundReceived()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.DecideRoundReceived()")
-		return err
-	}
-
-	start = time.Now()
-	err = c.poset.ProcessDecidedRounds()
+	err := c.poset.ProcessDecidedRounds()
 	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessDecidedRounds()")
 	if err != nil {
 		c.logger.WithField("Error", err).Error("c.poset.ProcessDecidedRounds()")
 		return err
 	}
 
-	start = time.Now()
-	err = c.poset.ProcessSigPool()
-	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessSigPool()")
-	if err != nil {
-		c.logger.WithField("Error", err).Error("c.poset.ProcessSigPool()")
-		return err
-	}
+//	start := time.Now()
+//	err = c.poset.ProcessSigPool()
+//	c.logger.WithField("Duration", time.Since(start).Nanoseconds()).Debug("c.poset.ProcessSigPool()")
+//	if err != nil {
+//		c.logger.WithField("Error", err).Error("c.poset.ProcessSigPool()")
+//		return err
+//	}
 
 	c.logger.WithFields(logrus.Fields{
 		"transaction_pool":            c.GetTransactionPoolCount(),

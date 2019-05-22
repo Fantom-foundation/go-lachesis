@@ -3,9 +3,11 @@
 
 package peers
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	fmt "fmt"
+	proto "github.com/golang/protobuf/proto"
+	math "math"
+)
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
@@ -16,102 +18,68 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type Peer struct {
-	ID                   uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
-	NetAddr              string   `protobuf:"bytes,2,opt,name=NetAddr,proto3" json:"NetAddr,omitempty"`
-	PubKeyHex            string   `protobuf:"bytes,3,opt,name=PubKeyHex,proto3" json:"PubKeyHex,omitempty"`
-	Used                 int64    `protobuf:"varint,4,opt,name=used,proto3" json:"used,omitempty"`
-	Height               int64    `protobuf:"varint,5,opt,name=height,proto3" json:"height,omitempty"`
-	InDegree             int64    `protobuf:"varint,6,opt,name=inDegree,proto3" json:"inDegree,omitempty"`
+type PeerMessage struct {
+	NetAddr              string   `protobuf:"bytes,1,opt,name=NetAddr,json=netAddr,proto3" json:"NetAddr,omitempty"`
+	PubKeyHex            string   `protobuf:"bytes,2,opt,name=PubKeyHex,json=pubKeyHex,proto3" json:"PubKeyHex,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *Peer) Reset()         { *m = Peer{} }
-func (m *Peer) String() string { return proto.CompactTextString(m) }
-func (*Peer) ProtoMessage()    {}
-func (*Peer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_peer_6b975f1b1f9b0b13, []int{0}
-}
-func (m *Peer) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Peer.Unmarshal(m, b)
-}
-func (m *Peer) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Peer.Marshal(b, m, deterministic)
-}
-func (dst *Peer) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Peer.Merge(dst, src)
-}
-func (m *Peer) XXX_Size() int {
-	return xxx_messageInfo_Peer.Size(m)
-}
-func (m *Peer) XXX_DiscardUnknown() {
-	xxx_messageInfo_Peer.DiscardUnknown(m)
+func (m *PeerMessage) Reset()         { *m = PeerMessage{} }
+func (m *PeerMessage) String() string { return proto.CompactTextString(m) }
+func (*PeerMessage) ProtoMessage()    {}
+func (*PeerMessage) Descriptor() ([]byte, []int) {
+	return fileDescriptor_055ae5a865fc1c9e, []int{0}
 }
 
-var xxx_messageInfo_Peer proto.InternalMessageInfo
-
-func (m *Peer) GetID() uint64 {
-	if m != nil {
-		return m.ID
-	}
-	return 0
+func (m *PeerMessage) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_PeerMessage.Unmarshal(m, b)
+}
+func (m *PeerMessage) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_PeerMessage.Marshal(b, m, deterministic)
+}
+func (m *PeerMessage) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_PeerMessage.Merge(m, src)
+}
+func (m *PeerMessage) XXX_Size() int {
+	return xxx_messageInfo_PeerMessage.Size(m)
+}
+func (m *PeerMessage) XXX_DiscardUnknown() {
+	xxx_messageInfo_PeerMessage.DiscardUnknown(m)
 }
 
-func (m *Peer) GetNetAddr() string {
+var xxx_messageInfo_PeerMessage proto.InternalMessageInfo
+
+func (m *PeerMessage) GetNetAddr() string {
 	if m != nil {
 		return m.NetAddr
 	}
 	return ""
 }
 
-func (m *Peer) GetPubKeyHex() string {
+func (m *PeerMessage) GetPubKeyHex() string {
 	if m != nil {
 		return m.PubKeyHex
 	}
 	return ""
 }
 
-func (m *Peer) GetUsed() int64 {
-	if m != nil {
-		return m.Used
-	}
-	return 0
-}
-
-func (m *Peer) GetHeight() int64 {
-	if m != nil {
-		return m.Height
-	}
-	return 0
-}
-
-func (m *Peer) GetInDegree() int64 {
-	if m != nil {
-		return m.InDegree
-	}
-	return 0
-}
-
 func init() {
-	proto.RegisterType((*Peer)(nil), "peers.Peer")
+	proto.RegisterType((*PeerMessage)(nil), "peers.PeerMessage")
 }
 
-func init() { proto.RegisterFile("peer.proto", fileDescriptor_peer_6b975f1b1f9b0b13) }
+func init() { proto.RegisterFile("peer.proto", fileDescriptor_055ae5a865fc1c9e) }
 
-var fileDescriptor_peer_6b975f1b1f9b0b13 = []byte{
-	// 160 bytes of a gzipped FileDescriptorProto
+var fileDescriptor_055ae5a865fc1c9e = []byte{
+	// 103 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2a, 0x48, 0x4d, 0x2d,
-	0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0xb1, 0x8b, 0x95, 0xa6, 0x31, 0x72, 0xb1,
-	0x04, 0xa4, 0xa6, 0x16, 0x09, 0xf1, 0x71, 0x31, 0x79, 0xba, 0x48, 0x30, 0x2a, 0x30, 0x6a, 0xb0,
-	0x04, 0x31, 0x79, 0xba, 0x08, 0x49, 0x70, 0xb1, 0xfb, 0xa5, 0x96, 0x38, 0xa6, 0xa4, 0x14, 0x49,
-	0x30, 0x29, 0x30, 0x6a, 0x70, 0x06, 0xc1, 0xb8, 0x42, 0x32, 0x5c, 0x9c, 0x01, 0xa5, 0x49, 0xde,
-	0xa9, 0x95, 0x1e, 0xa9, 0x15, 0x12, 0xcc, 0x60, 0x39, 0x84, 0x80, 0x90, 0x10, 0x17, 0x4b, 0x69,
-	0x71, 0x6a, 0x8a, 0x04, 0x8b, 0x02, 0xa3, 0x06, 0x73, 0x10, 0x98, 0x2d, 0x24, 0xc6, 0xc5, 0x96,
-	0x91, 0x9a, 0x99, 0x9e, 0x51, 0x22, 0xc1, 0x0a, 0x16, 0x85, 0xf2, 0x84, 0xa4, 0xb8, 0x38, 0x32,
-	0xf3, 0x5c, 0x52, 0xd3, 0x8b, 0x52, 0x53, 0x25, 0xd8, 0xc0, 0x32, 0x70, 0x7e, 0x12, 0x1b, 0xd8,
-	0x99, 0xc6, 0x80, 0x00, 0x00, 0x00, 0xff, 0xff, 0x6e, 0xb9, 0xd9, 0xa0, 0xb4, 0x00, 0x00, 0x00,
+	0xd2, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x05, 0xb1, 0x8b, 0x95, 0x5c, 0xb9, 0xb8, 0x03,
+	0x52, 0x53, 0x8b, 0x7c, 0x53, 0x8b, 0x8b, 0x13, 0xd3, 0x53, 0x85, 0x24, 0xb8, 0xd8, 0xfd, 0x52,
+	0x4b, 0x1c, 0x53, 0x52, 0x8a, 0x24, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xd8, 0xf3, 0x20, 0x5c,
+	0x21, 0x19, 0x2e, 0xce, 0x80, 0xd2, 0x24, 0xef, 0xd4, 0x4a, 0x8f, 0xd4, 0x0a, 0x09, 0x26, 0xb0,
+	0x1c, 0x67, 0x01, 0x4c, 0x20, 0x89, 0x0d, 0x6c, 0xa8, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0xef,
+	0x73, 0xb3, 0xed, 0x62, 0x00, 0x00, 0x00,
 }

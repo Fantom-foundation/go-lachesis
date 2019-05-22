@@ -46,3 +46,11 @@ func (ft FlagTable) Unmarshal(buf []byte) error {
 	}
 	return nil
 }
+
+func (ft FlagTable) Copy() FlagTable {
+	res := NewFlagTable()
+	for id, frame := range ft {
+		res[id] = frame
+	}
+	return res
+}

@@ -3,7 +3,7 @@
 package poset
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/state"
 )
@@ -42,7 +42,14 @@ type Store interface {
 	Close() error
 	NeedBootstrap() bool // Was the store loaded from existing db
 	StorePath() string
+	GetClothoCheck(int64, EventHash) (EventHash, error)
+	GetClothoCreatorCheck(int64, uint64) (EventHash, error)
+	AddClothoCheck(int64, uint64, EventHash) error
+	AddTimeTable(EventHash, EventHash, int64) error
+	GetTimeTable(EventHash) (FlagTable, error)
 	// StateDB returns state database
 	StateDB() state.Database
-	StateRoot() common.Hash
+	StateRoot() hash.Hash
+	CheckFrameFinality(int64) bool
+	ProcessOutFrame(int64, string) error
 }

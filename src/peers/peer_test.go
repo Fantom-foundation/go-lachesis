@@ -3,7 +3,7 @@ package peers
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
+//	"os"
 	"testing"
 
 	"crypto/ecdsa"
@@ -20,17 +20,17 @@ func TestJSONPeers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v ", err)
 	}
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			t.Fatal(err)
-		}
-	}()
+//	defer func() {
+//		if err := os.RemoveAll(dir); err != nil {
+//			t.Fatal(err)
+//		}
+//	}()
 
 	// Create the store
 	store := NewJSONPeers(dir)
 
 	// Try a read, should get nothing
-	peers, err := store.Peers()
+	peers, err := store.GetPeers()
 	if err == nil {
 		t.Fatalf("store.Peers() should generate an error")
 	}
@@ -45,9 +45,10 @@ func TestJSONPeers(t *testing.T) {
 		peer := Peer{
 			NetAddr:   fmt.Sprintf("addr%d", i),
 			PubKeyHex: fmt.Sprintf("0x%X", common.FromECDSAPub(&key.PublicKey)),
+			weight: 1,
 		}
 		newPeers.AddPeer(&peer)
-		keys[peer.NetAddr] = key
+		keys[peer.Message.NetAddr] = key
 	}
 
 	newPeersSlice := newPeers.ToPeerSlice()
@@ -57,7 +58,7 @@ func TestJSONPeers(t *testing.T) {
 	}
 
 	// Try a read, should find 3 peers
-	peers, err = store.Peers()
+	peers, err = store.GetPeers()
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -68,13 +69,13 @@ func TestJSONPeers(t *testing.T) {
 	peersSlice := peers.ToPeerSlice()
 
 	for i := 0; i < 3; i++ {
-		if peersSlice[i].NetAddr != newPeersSlice[i].NetAddr {
+		if peersSlice[i].Message.NetAddr != newPeersSlice[i].Message.NetAddr {
 			t.Fatalf("peers[%d] NetAddr should be %s, not %s", i,
-				newPeersSlice[i].NetAddr, peersSlice[i].NetAddr)
+				newPeersSlice[i].Message.NetAddr, peersSlice[i].Message.NetAddr)
 		}
-		if peersSlice[i].PubKeyHex != newPeersSlice[i].PubKeyHex {
+		if peersSlice[i].Message.PubKeyHex != newPeersSlice[i].Message.PubKeyHex {
 			t.Fatalf("peers[%d] PubKeyHex should be %s, not %s", i,
-				newPeersSlice[i].PubKeyHex, peersSlice[i].PubKeyHex)
+				newPeersSlice[i].Message.PubKeyHex, peersSlice[i].Message.PubKeyHex)
 		}
 		pubKeyBytes, err := peersSlice[i].PubKeyBytes()
 		if err != nil {

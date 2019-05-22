@@ -7,43 +7,43 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 )
 
-// FairPeerSelector provides selection to prevent lazy node creation
-type FairPeerSelector struct {
+const EPS float64 = 1e-32
+
+// UnfairPeerSelector provides selection to prevent lazy node creation
+type UnfairPeerSelector struct {
 	// kPeerSize uint64
 	last      string
 	localAddr string
 	peers     *peers.Peers
-	pals      map[string]bool
 }
 
-// FairPeerSelectorCreationFnArgs specifies which additional arguments are require to create a FairPeerSelector
-type FairPeerSelectorCreationFnArgs struct {
+// UnfairPeerSelectorCreationFnArgs specifies which additional arguments are require to create a UnfairPeerSelector
+type UnfairPeerSelectorCreationFnArgs struct {
 	KPeerSize uint64
 	LocalAddr string
 }
 
-// NewFairPeerSelector creates a new fair peer selection struct
-func NewFairPeerSelector(participants *peers.Peers, args FairPeerSelectorCreationFnArgs) *FairPeerSelector {
-	return &FairPeerSelector{
+// NewUnfairPeerSelector creates a new fair peer selection struct
+func NewUnfairPeerSelector(participants *peers.Peers, args UnfairPeerSelectorCreationFnArgs) *UnfairPeerSelector {
+	return &UnfairPeerSelector{
 		localAddr: args.LocalAddr,
 		peers:     participants,
-		pals:      make(map[string]bool),
 		// kPeerSize: args.KPeerSize,
 	}
 }
 
-// NewFairPeerSelectorWrapper implements SelectorCreationFn to allow dynamic creation of FairPeerSelector ie NewNode
-func NewFairPeerSelectorWrapper(participants *peers.Peers, args interface{}) PeerSelector {
-	return NewFairPeerSelector(participants, args.(FairPeerSelectorCreationFnArgs))
+// NewUnfairPeerSelectorWrapper implements SelectorCreationFn to allow dynamic creation of UnfairPeerSelector ie NewNode
+func NewUnfairPeerSelectorWrapper(participants *peers.Peers, args interface{}) PeerSelector {
+	return NewUnfairPeerSelector(participants, args.(UnfairPeerSelectorCreationFnArgs))
 }
 
 // Peers returns all known peers
-func (ps *FairPeerSelector) Peers() *peers.Peers {
+func (ps *UnfairPeerSelector) Peers() *peers.Peers {
 	return ps.peers
 }
 
 // UpdateLast sets the last peer communicated with (avoid double talk)
-func (ps *FairPeerSelector) UpdateLast(peer string) {
+func (ps *UnfairPeerSelector) UpdateLast(peer string) {
 	// We need exclusive access to ps.last for writing;
 	// let use peers' lock instead of adding an additional lock.
 	// ps.last is accessed for read under peers' lock
@@ -53,15 +53,15 @@ func (ps *FairPeerSelector) UpdateLast(peer string) {
 	ps.last = peer
 }
 
-func fairCostFunction(peer *peers.Peer) float64 {
-	if peer.GetHeight() == 0 {
-		return 0
-	}
-	return float64(peer.GetInDegree()) / float64(2 + peer.GetHeight())
-}
+//func fairCostFunction(peer *peers.Peer) float64 {
+//	if peer.GetHeight() == 0 {
+//		return 0
+//	}
+//	return float64(peer.GetInDegree()) / float64(2 + peer.GetHeight())
+//}
 
 // Next returns the next peer based on the work cost function selection
-func (ps *FairPeerSelector) Next() *peers.Peer {
+func (ps *UnfairPeerSelector) Next() *peers.Peer {
 	// Maximum number of peers to select/return. In case configurable KPeerSize is implemented.
 	// maxPeers := ps.kPeerSize
 	// if maxPeers == 0 {
@@ -74,8 +74,8 @@ func (ps *FairPeerSelector) Next() *peers.Peer {
 	sortedSrc := ps.peers.ToPeerByUsedSlice()
 	var lastUsed []*peers.Peer
 
-	minCost := math.Inf(1)
-	var selected []*peers.Peer
+	maxCost := math.Inf(-1)
+	selected := make([]*peers.Peer, 0)
 	for _, p := range sortedSrc {
 		if p.Message.NetAddr == ps.localAddr {
 			continue
@@ -84,18 +84,14 @@ func (ps *FairPeerSelector) Next() *peers.Peer {
 			lastUsed = append(lastUsed, p)
 			continue
 		}
-		// skip peers we are already engaged with
-		if _, ok := ps.pals[p.Message.NetAddr]; ok {
-			continue
-		}
 
 		cost := fairCostFunction(p)
-		if minCost > cost {
-			minCost = cost
+		if math.Abs(maxCost - cost) < EPS {
+			selected = append(selected, p)
+		} else if maxCost < cost {
+			maxCost = cost
 			selected = make([]*peers.Peer, 1)
 			selected[0] = p
-		} else if minCost == cost {
-			selected = append(selected, p)
 		}
 
 	}
@@ -116,20 +112,19 @@ func (ps *FairPeerSelector) Next() *peers.Peer {
 	return selected[i]
 }
 
+
 // Indicate we are in communication with a peer
 // so it would be excluded from next peer selection
-func (ps *FairPeerSelector) Engage(peer string) {
+func (ps *UnfairPeerSelector) Engage(peer string) {
 	ps.peers.Lock()
 	defer ps.peers.Unlock()
-	ps.pals[peer] = true
+	// TBD implement
 }
 
 // Indicate we are not in communication with a peer
 // so it could be selected as a next peer
-func (ps *FairPeerSelector) Dismiss(peer string) {
+func (ps *UnfairPeerSelector) Dismiss(peer string) {
 	ps.peers.Lock()
 	defer ps.peers.Unlock()
-	if _, ok := ps.pals[peer]; ok {
-		delete(ps.pals, peer)
-	}
+	// TBD implement
 }

@@ -21,34 +21,34 @@ func PingNodesN(participants []*peers.Peer, p peers.PubKeyPeers, n uint64, delay
 
 	proxies := make(map[uint64]proxy.LachesisProxy)
 	for _, participant := range participants {
-		node := p[participant.PubKeyHex]
-		if node.NetAddr == "" {
+		node := p[participant.Message.PubKeyHex]
+		if node.Message.NetAddr == "" {
 			fmt.Printf("node missing NetAddr [%v]", node)
 			continue
 		}
-		hostPort := strings.Split(node.NetAddr, ":")
+		hostPort := strings.Split(node.Message.NetAddr, ":")
 		port, err := strconv.Atoi(hostPort[1])
 		if err != nil {
 			fmt.Printf("error:\t\t\t%s\n", err.Error())
-			fmt.Printf("Unable to create port:\t\t\t%s (id=%d)\n", participant.NetAddr, node.ID)
+			fmt.Printf("Unable to create port:\t\t\t%s (id=%d)\n", participant.Message.NetAddr, node.ID)
 		}
 		addr := fmt.Sprintf("%s:%d", hostPort[0], port-3000 /*9000*/)
 		lachesisProxy, err := proxy.NewGrpcLachesisProxy(addr, logger)
 		if err != nil {
 			fmt.Printf("error:\t\t\t%s\n", err.Error())
-			fmt.Printf("Failed to create WebsocketLachesisProxy:\t\t\t%s (id=%d)\n", participant.NetAddr, node.ID)
+			fmt.Printf("Failed to create WebsocketLachesisProxy:\t\t\t%s (id=%d)\n", participant.Message.NetAddr, node.ID)
 		}
 		proxies[node.ID] = lachesisProxy
 	}
 	for iteration := uint64(0); iteration < n; iteration++ {
 		participant := participants[rand.Intn(len(participants))]
-		node := p[participant.PubKeyHex]
+		node := p[participant.Message.PubKeyHex]
 
 		_, err := transact(proxies[node.ID], ProxyAddr, iteration)
 
 		if err != nil {
 			fmt.Printf("error:\t\t\t%s\n", err.Error())
-			fmt.Printf("Failed to ping:\t\t\t%s (id=%d)\n", participant.NetAddr, node.ID)
+			fmt.Printf("Failed to ping:\t\t\t%s (id=%d)\n", participant.Message.NetAddr, node.ID)
 			fmt.Printf("Failed to send transaction:\t%d\n\n", iteration)
 		} /*else {
 			fmt.Printf("Pinged:\t\t\t%s (id=%d)\n", participant.NetAddr, node)
@@ -67,11 +67,12 @@ func transact(proxy proxy.LachesisProxy, proxyAddr string, iteration uint64) (st
 	// Ethereum txns are ~108 bytes. Bitcoin txns are ~250 bytes.
 	// A good assumption is to make txns 120 bytes in size.
 	// However, for speed, we're using 1 byte here. Modify accordingly.
-	// var msg [1]byte
+	msg := []byte{ 0 }
 	for i := 0; i < 10; i++ {
 		// Send 10 txns to the server.
-		msg := fmt.Sprintf("%s.%d.%d", proxyAddr, iteration, i)
-		err := proxy.SubmitTx([]byte(msg))
+		//msg := fmt.Sprintf("%s.%d.%d", proxyAddr, iteration, i)
+		//err := proxy.SubmitTx([]byte(msg))
+		err := proxy.SubmitTx(msg)
 		if err != nil {
 			return "", err
 		}

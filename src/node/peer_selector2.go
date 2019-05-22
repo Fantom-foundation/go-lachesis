@@ -81,19 +81,19 @@ func (ps *SmartPeerSelector) Next() *peers.Peer {
 	var lastused []*peers.Peer
 
 	for _, p := range sortedSrc {
-		if p.NetAddr == ps.localAddr {
+		if p.Message.NetAddr == ps.localAddr {
 			continue
 		}
-		if p.NetAddr == ps.last || p.PubKeyHex == ps.last {
+		if p.Message.NetAddr == ps.last || p.Message.PubKeyHex == ps.last {
 			lastused = append(lastused, p)
 			continue
 		}
 		// skip peers we are already engaged with
-		if _, ok := ps.pals[p.NetAddr]; ok {
+		if _, ok := ps.pals[p.Message.NetAddr]; ok {
 			continue
 		}
 
-		if f, ok := flagTable[p.PubKeyHex]; ok && f == 1 {
+		if f, ok := flagTable[p.Message.PubKeyHex]; ok && f == 1 {
 			flagged[fCount] = p
 			fCount++
 			continue

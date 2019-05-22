@@ -5,10 +5,11 @@ import (
 	"os"
 
 	"github.com/dgraph-io/badger"
+	"github.com/1lann/cete"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/src/common/hexutil"
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/pos"
 	"github.com/Fantom-foundation/go-lachesis/src/state"
@@ -23,13 +24,23 @@ const (
 	blockPrefix         = "block"
 	framePrefix         = "frame"
 	statePrefix         = "state"
+	EVENTS_TBL          = "events"
+	TOPO_IDX            = "Message.TopologicalIndex"
+	CREATOR_IDX         = "Message.Body.Creator,Message.Body.Index"
+	FRAMERECEIVED_IDX   = "FrameReceived"
+	SORT_IDX            = "Frame,AtroposTimestamp,LamportTimestamp,Message.Hash"
+	FRAMEFINALITY_IDX   = "FrameReceived,Frame" // WIP: finality for frame: no records with FrameReceived=0
+	CLOTHOCHK_TBL       = "clotho_chk"
+	CLOTHOCREATORCHK_TBL= "clotho_creator_chk"
+	TIMETABLE_TBL       = "time_table"
+	PEERS_TBL           = "peers"
 )
 
 // BadgerStore struct for badger config data
 type BadgerStore struct {
 	participants  *peers.Peers
 	inmemStore    *InmemStore
-	db            *badger.DB
+	db            *cete.DB
 	path          string
 	needBootstrap bool
 
@@ -41,10 +52,10 @@ type BadgerStore struct {
 func NewBadgerStore(participants *peers.Peers, cacheSize int, path string, posConf *pos.Config) (*BadgerStore, error) {
 	inmemStore := NewInmemStore(participants, cacheSize, posConf)
 	opts := badger.DefaultOptions
-	opts.Dir = path
-	opts.ValueDir = path
+//	opts.Dir = path
+//	opts.ValueDir = path
 	opts.SyncWrites = false
-	handle, err := badger.Open(opts)
+	handle, err := cete.Open(path, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -53,11 +64,46 @@ func NewBadgerStore(participants *peers.Peers, cacheSize int, path string, posCo
 		inmemStore:   inmemStore,
 		db:           handle,
 		path:         path,
-		states: state.NewDatabase(
-			kvdb.NewTable(
-				kvdb.NewBadgerDatabase(
-					handle), statePrefix)),
+//		states: state.NewDatabase(
+//			kvdb.NewTable(
+//				kvdb.NewBadgerDatabase(
+//					handle), statePrefix)),
 	}
+	if err := store.db.NewTable(EVENTS_TBL); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(TOPO_IDX); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(CREATOR_IDX); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(FRAMERECEIVED_IDX); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(SORT_IDX); err != nil {
+		return nil, err
+	}
+	if err:= store.db.Table(EVENTS_TBL).NewIndex(FRAMEFINALITY_IDX); err != nil {
+		return nil, err
+	}
+
+	if err := store.db.NewTable(CLOTHOCHK_TBL); err != nil {
+		return nil, err
+	}
+
+	if err := store.db.NewTable(CLOTHOCREATORCHK_TBL); err != nil {
+		return nil, err
+	}
+
+	if err := store.db.NewTable(TIMETABLE_TBL); err != nil {
+		return nil, err
+	}
+
+	if err := store.db.NewTable(PEERS_TBL); err != nil {
+		return nil, err
+	}
+
 	if err := store.dbSetParticipants(participants); err != nil {
 		return nil, err
 	}
@@ -66,10 +112,10 @@ func NewBadgerStore(participants *peers.Peers, cacheSize int, path string, posCo
 	}
 
 	// TODO: replace with real genesis
-	store.stateRoot, err = pos.FakeGenesis(participants, posConf, store.states)
-	if err != nil {
-		return nil, err
-	}
+	//store.stateRoot, err = pos.FakeGenesis(participants, posConf, store.states)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	return store, nil
 }
@@ -82,10 +128,10 @@ func LoadBadgerStore(cacheSize int, path string) (*BadgerStore, error) {
 	}
 
 	opts := badger.DefaultOptions
-	opts.Dir = path
-	opts.ValueDir = path
+//	opts.Dir = path
+//	opts.ValueDir = path
 	opts.SyncWrites = false
-	handle, err := badger.Open(opts)
+	handle, err := cete.Open(path, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -93,10 +139,10 @@ func LoadBadgerStore(cacheSize int, path string) (*BadgerStore, error) {
 		db:            handle,
 		path:          path,
 		needBootstrap: true,
-		states: state.NewDatabase(
-			kvdb.NewTable(
-				kvdb.NewBadgerDatabase(
-					handle), statePrefix)),
+//		states: state.NewDatabase(
+//			kvdb.NewTable(
+//				kvdb.NewBadgerDatabase(
+//					handle), statePrefix)),
 	}
 
 	participants, err := store.dbGetParticipants()
@@ -176,6 +222,18 @@ func frameKey(index int64) []byte {
 	return []byte(fmt.Sprintf("%s_%09d", framePrefix, index))
 }
 
+func checkClothoKey(frame int64, hash EventHash) string {
+	return string(fmt.Sprintf("%09d_%s", frame, hash.String()))
+}
+
+func checkClothoCreatorKey(frame int64, creatorID uint64) string {
+	return string(fmt.Sprintf("%09d_%d", frame, creatorID))
+}
+
+func timeTableKey(hash EventHash) string {
+	return string(fmt.Sprintf("timeTable_%s", hash.String()))
+}
+
 /*
  * Store interface implementation:
  */
@@ -183,54 +241,17 @@ func frameKey(index int64) []byte {
 // TopologicalEvents returns event in topological order.
 func (s *BadgerStore) TopologicalEvents() ([]Event, error) {
 	var res []Event
-	var evKey string
-	t := int64(0)
-	err := s.db.View(func(txn *badger.Txn) error {
-		key := topologicalEventKey(t)
-		item, errr := txn.Get(key)
-		for errr == nil {
-			errrr := item.Value(func(v []byte) error {
-				evKey = string(v)
-				return nil
-			})
-			if errrr != nil {
-				break
-			}
 
-			eventItem, err := txn.Get([]byte(evKey))
-			if err != nil {
-				return err
-			}
-			err = eventItem.Value(func(eventBytes []byte) error {
-				event := &Event{
-					roundReceived:    RoundNIL,
-					round:            RoundNIL,
-					lamportTimestamp: LamportTimestampNIL,
-				}
-
-				if err := event.ProtoUnmarshal(eventBytes); err != nil {
-					return err
-				}
-				res = append(res, *event)
-				return nil
-			})
-			if err != nil {
-				return err
-			}
-
-			t++
-			key = topologicalEventKey(t)
-			item, errr = txn.Get(key)
-		}
-
-		if !isDBKeyNotFound(errr) {
-			return errr
-		}
-
-		return nil
-	})
-
-	return res, err
+	r := s.db.Table(EVENTS_TBL).Index(TOPO_IDX).Between(cete.MinValue, cete.MaxValue)
+	for r.Next() {
+		var result Event
+		r.Decode(&result)
+		res = append(res, result)
+	}
+	if r.Error() != cete.ErrEndOfRange {
+		return res, fmt.Errorf("%v", r.Error())
+	}
+	return res, nil
 }
 
 // CacheSize returns the cache size for the store
@@ -432,7 +453,8 @@ func (s *BadgerStore) Close() error {
 	if err := s.inmemStore.Close(); err != nil {
 		return err
 	}
-	return s.db.Close()
+	s.db.Close()
+	return nil
 }
 
 // NeedBootstrap checks if bootstrapping is required
@@ -459,187 +481,133 @@ func (s *BadgerStore) StateRoot() hash.Hash {
 // DB Methods
 
 func (s *BadgerStore) dbGetEventBlock(hash EventHash) (Event, error) {
-	var eventBytes []byte
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(hash.Bytes())
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			eventBytes = val
-			return nil
-		})
-		return err
-	})
-
+	var event Event
+	_, err := s.db.Table(EVENTS_TBL).Get(hash.String(), &event)
 	if err != nil {
 		return Event{}, err
 	}
-
-	event := new(Event)
-	if err := event.ProtoUnmarshal(eventBytes); err != nil {
-		return Event{}, err
-	}
-
-	return *event, nil
+	return event, nil
 }
 
 func (s *BadgerStore) dbSetEvents(events []Event) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
 
 	for _, event := range events {
 		eventHash := event.Hash()
-		val, err := event.ProtoMarshal()
+		err := s.db.Table(EVENTS_TBL).Set(eventHash.String(), event)
 		if err != nil {
 			return err
 		}
-		// check if it already exists
-		notFound := true
-		_, err = tx.Get(eventHash.Bytes())
-		if err == nil {
-			notFound = false
-		} else if !isDBKeyNotFound(err) {
-			return err
-		}
-
-		// insert [event hash] => [event bytes]
-		if err := tx.Set(eventHash.Bytes(), val); err != nil {
-			return err
-		}
-
-		if notFound {
-			// insert [topo_index] => [event hash]
-			topoKey := topologicalEventKey(event.Message.TopologicalIndex)
-			if err := tx.Set(topoKey, eventHash.Bytes()); err != nil {
-				return err
-			}
-			// insert [participant_index] => [event hash]
-			peKey := participantEventKey(event.GetCreator(), event.Index())
-			if err := tx.Set(peKey, eventHash.Bytes()); err != nil {
-				return err
-			}
-		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 func (s *BadgerStore) dbParticipantEvents(participant string, skip int64) (res EventHashes, err error) {
-	err = s.db.View(func(txn *badger.Txn) error {
-		i := skip + 1
-		key := participantEventKey(participant, i)
-		item, errr := txn.Get(key)
-		for errr == nil {
-			errrr := item.Value(func(v []byte) error {
-				var hash EventHash
-				hash.Set(v)
-				res = append(res, hash)
-				return nil
-			})
-			if errrr != nil {
-				break
-			}
 
-			i++
-			key = participantEventKey(participant, i)
-			item, errr = txn.Get(key)
-		}
+	creator, err := hexutil.Decode(participant)
+	if err != nil {
+		return nil, err
+	}
 
-		if !isDBKeyNotFound(errr) {
-			return errr
-		}
+	r := s.db.Table(EVENTS_TBL).Index(CREATOR_IDX).Between(
+		[]interface{}{creator, cete.MinValue}, []interface{}{creator, cete.MaxValue})
 
-		return nil
-	})
-	return
+	for r.Next() {
+		var result Event
+		r.Decode(&result)
+		res = append(res, result.Hash())
+	}
+	if r.Error() != cete.ErrEndOfRange {
+		return res, fmt.Errorf("%v", r.Error())
+	}
+	return res, nil
 }
 
 func (s *BadgerStore) dbParticipantEvent(participant string, index int64) (hash EventHash, err error) {
-	key := participantEventKey(participant, index)
 
-	err = s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			hash.Set(val)
-			return nil
-		})
-		return err
-	})
+	creator, err := hexutil.Decode(participant)
+	if err != nil {
+		return
+	}
+	var result Event
 
+	_, _, err = s.db.Table(EVENTS_TBL).Index(CREATOR_IDX).One(
+		[]interface{}{creator, index}, &result)
+
+	if err == nil {
+		hash = result.Hash()
+	}
 	return
 }
 
 func (s *BadgerStore) dbSetRoots(roots map[string]Root) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
-	for participant, root := range roots {
-		val, err := root.ProtoMarshal()
-		if err != nil {
-			return err
-		}
-		key := participantRootKey(participant)
-		// fmt.Println("Setting root", participant, "->", key)
-		// insert [participant_root] => [root bytes]
-		if err := tx.Set(key, val); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
+//	tx := s.db.NewTransaction(true)
+//	defer tx.Discard()
+//	for participant, root := range roots {
+//		val, err := root.ProtoMarshal()
+//		if err != nil {
+//			return err
+//		}
+//		key := participantRootKey(participant)
+//		// fmt.Println("Setting root", participant, "->", key)
+//		// insert [participant_root] => [root bytes]
+//		if err := tx.Set(key, val); err != nil {
+//			return err
+//		}
+//	}
+//	return tx.Commit()
+	return nil
 }
 
 func (s *BadgerStore) dbGetRoot(participant string) (Root, error) {
-	var rootBytes []byte
-	key := participantRootKey(participant)
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			rootBytes = val
-			return nil
-		})
-		return err
-	})
+//	var rootBytes []byte
+//	key := participantRootKey(participant)
+//	err := s.db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get(key)
+//		if err != nil {
+//			return err
+//		}
+//		err = item.Value(func(val []byte) error {
+//			rootBytes = val
+//			return nil
+//		})
+//		return err
+//	})
 
-	if err != nil {
-		return Root{}, err
-	}
+//	if err != nil {
+//		return Root{}, err
+//	}
 
 	root := new(Root)
-	if err := root.ProtoUnmarshal(rootBytes); err != nil {
-		return Root{}, err
-	}
+//	if err := root.ProtoUnmarshal(rootBytes); err != nil {
+//		return Root{}, err
+//	}
 
 	return *root, nil
 }
 
 func (s *BadgerStore) dbGetRoundCreated(index int64) (RoundCreated, error) {
-	var roundBytes []byte
-	key := roundCreatedKey(index)
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			roundBytes = val
-			return nil
-		})
-		return err
-	})
+//	var roundBytes []byte
+//	key := roundCreatedKey(index)
+//	err := s.db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get(key)
+//		if err != nil {
+//			return err
+//		}
+//		err = item.Value(func(val []byte) error {
+//			roundBytes = val
+//			return nil
+//		})
+//		return err
+//	})
 
-	if err != nil {
-		return *NewRoundCreated(), err
-	}
+//	if err != nil {
+//		return *NewRoundCreated(), err
+//	}
 
 	roundInfo := new(RoundCreated)
-	if err := roundInfo.ProtoUnmarshal(roundBytes); err != nil {
-		return *NewRoundCreated(), err
-	}
+//	if err := roundInfo.ProtoUnmarshal(roundBytes); err != nil {
+//		return *NewRoundCreated(), err
+//	}
 	// In the current design, Queued field must be re-calculated every time for
 	// each round. When retrieving a round info from a database, this field
 	// should be ignored.
@@ -649,202 +617,205 @@ func (s *BadgerStore) dbGetRoundCreated(index int64) (RoundCreated, error) {
 }
 
 func (s *BadgerStore) dbSetRoundCreated(index int64, round RoundCreated) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
-
-	key := roundCreatedKey(index)
-	val, err := round.ProtoMarshal()
-	if err != nil {
-		return err
-	}
+//	tx := s.db.NewTransaction(true)
+//	defer tx.Discard()
+//
+//	key := roundCreatedKey(index)
+//	val, err := round.ProtoMarshal()
+//	if err != nil {
+//		return err
+//	}
 
 	// insert [round_index] => [round bytes]
-	if err := tx.Set(key, val); err != nil {
-		return err
-	}
+//	if err := tx.Set(key, val); err != nil {
+//		return err
+//	}
 
-	return tx.Commit()
+//	return tx.Commit()
+	return nil
 }
 
 func (s *BadgerStore) dbGetRoundReceived(index int64) (RoundReceived, error) {
-	var roundBytes []byte
-	key := roundReceivedKey(index)
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			roundBytes = val
-			return nil
-		})
-		return err
-	})
-
-	if err != nil {
-		return *NewRoundReceived(), err
-	}
+//	var roundBytes []byte
+//	key := roundReceivedKey(index)
+//	err := s.db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get(key)
+//		if err != nil {
+//			return err
+//		}
+//		err = item.Value(func(val []byte) error {
+//			roundBytes = val
+//			return nil
+//		})
+//		return err
+//	})
+//
+//	if err != nil {
+//		return *NewRoundReceived(), err
+//	}
 
 	roundInfo := new(RoundReceived)
-	if err := roundInfo.ProtoUnmarshal(roundBytes); err != nil {
-		return *NewRoundReceived(), err
-	}
+//	if err := roundInfo.ProtoUnmarshal(roundBytes); err != nil {
+//		return *NewRoundReceived(), err
+//	}
 
 	return *roundInfo, nil
 }
 
 func (s *BadgerStore) dbSetRoundReceived(index int64, round RoundReceived) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
-
-	key := roundReceivedKey(index)
-	val, err := round.ProtoMarshal()
-	if err != nil {
-		return err
-	}
+//	tx := s.db.NewTransaction(true)
+//	defer tx.Discard()
+//
+//	key := roundReceivedKey(index)
+//	val, err := round.ProtoMarshal()
+//	if err != nil {
+//		return err
+//	}
 
 	// insert [round_index] => [round bytes]
-	if err := tx.Set(key, val); err != nil {
-		return err
-	}
+//	if err := tx.Set(key, val); err != nil {
+//		return err
+//	}
 
-	return tx.Commit()
+//	return tx.Commit()
+	return nil
 }
 
 func (s *BadgerStore) dbGetParticipants() (*peers.Peers, error) {
 	res := peers.NewPeers()
 
-	err := s.db.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-		prefix := []byte(participantPrefix)
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			k := string(item.Key())
-
-			pubKey := k[len(participantPrefix)+1:]
-
-			res.AddPeer(peers.NewPeer(pubKey, ""))
-		}
-
-		return nil
-	})
-
-	return res, err
+	r := s.db.Table(PEERS_TBL).All()
+	for r.Next() {
+		var result peers.Peer
+		r.Decode(&result)
+		res.AddPeer(&result)
+	}
+	if r.Error() != cete.ErrEndOfRange {
+		return res, fmt.Errorf("%v", r.Error())
+	}
+	return res, nil
 }
 
 func (s *BadgerStore) dbSetParticipants(participants *peers.Peers) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
-
 	participants.RLock()
 	defer participants.RUnlock()
-	for participant, id := range participants.ByPubKey {
-		key := participantKey(participant)
-		val := []byte(fmt.Sprint(id.ID))
-		// insert [participant_participant] => [id]
-		if err := tx.Set(key, val); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
-}
-
-func (s *BadgerStore) dbGetBlock(index int64) (Block, error) {
-	var blockBytes []byte
-	key := blockKey(index)
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
+// ===	
+//	for participant, id := range participants.ByPubKey {
+//		key := participantKey(participant)
+//		val := []byte(fmt.Sprint(id.ID))
+//		// insert [participant_participant] => [id]
+//		if err := tx.Set(key, val); err != nil {
+//			return err
+//		}
+//	}
+// >>>>>	
+	for pubKey, peer := range participants.ByPubKey {
+		err := s.db.Table(PEERS_TBL).Set(pubKey, peer)
 		if err != nil {
 			return err
 		}
-		err = item.Value(func(val []byte) error {
-			blockBytes = val
-			return nil
-		})
-		return err
-	})
-
-	if err != nil {
-		return Block{}, err
 	}
+	
+//	return tx.Commit()
+	return nil
+}
+
+func (s *BadgerStore) dbGetBlock(index int64) (Block, error) {
+//	var blockBytes []byte
+//	key := blockKey(index)
+//	err := s.db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get(key)
+//		if err != nil {
+//			return err
+//		}
+//		err = item.Value(func(val []byte) error {
+//			blockBytes = val
+//			return nil
+//		})
+//		return err
+//	})
+
+//	if err != nil {
+//		return Block{}, err
+//	}
 
 	block := new(Block)
-	if err := block.ProtoUnmarshal(blockBytes); err != nil {
-		return Block{}, err
-	}
+//	if err := block.ProtoUnmarshal(blockBytes); err != nil {
+//		return Block{}, err
+//	}
 
 	return *block, nil
 }
 
 func (s *BadgerStore) dbSetBlock(block Block) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
+//	tx := s.db.NewTransaction(true)
+//	defer tx.Discard()
 
-	key := blockKey(block.Index())
-	val, err := block.ProtoMarshal()
-	if err != nil {
-		return err
-	}
+//	key := blockKey(block.Index())
+//	val, err := block.ProtoMarshal()
+//	if err != nil {
+//		return err
+//	}
 
 	// insert [index] => [block bytes]
-	if err := tx.Set(key, val); err != nil {
-		return err
-	}
+//	if err := tx.Set(key, val); err != nil {
+//		return err
+//	}
 
-	return tx.Commit()
+//	return tx.Commit()
+	return nil
 }
 
 func (s *BadgerStore) dbGetFrame(index int64) (Frame, error) {
-	var frameBytes []byte
-	key := frameKey(index)
-	err := s.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			frameBytes = val
-			return nil
-		})
-		return err
-	})
+//	var frameBytes []byte
+//	key := frameKey(index)
+//	err := s.db.View(func(txn *badger.Txn) error {
+//		item, err := txn.Get(key)
+//		if err != nil {
+//			return err
+//		}
+//		err = item.Value(func(val []byte) error {
+//			frameBytes = val
+//			return nil
+//		})
+//		return err
+//	})
 
-	if err != nil {
-		return Frame{}, err
-	}
+//	if err != nil {
+//		return Frame{}, err
+//	}
 
 	frame := new(Frame)
-	if err := frame.ProtoUnmarshal(frameBytes); err != nil {
-		return Frame{}, err
-	}
+//	if err := frame.ProtoUnmarshal(frameBytes); err != nil {
+//		return Frame{}, err
+//	}
 
 	return *frame, nil
 }
 
 func (s *BadgerStore) dbSetFrame(frame Frame) error {
-	tx := s.db.NewTransaction(true)
-	defer tx.Discard()
-
-	key := frameKey(frame.Round)
-	val, err := frame.ProtoMarshal()
-	if err != nil {
-		return err
-	}
+//	tx := s.db.NewTransaction(true)
+//	defer tx.Discard()
+//
+//	key := frameKey(frame.Round)
+//	val, err := frame.ProtoMarshal()
+//	if err != nil {
+//		return err
+//	}
 
 	// insert [index] => [block bytes]
-	if err := tx.Set(key, val); err != nil {
-		return err
-	}
+//	if err := tx.Set(key, val); err != nil {
+//		return err
+//	}
 
-	return tx.Commit()
+//	return tx.Commit()
+	return nil
 }
 
 // ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 func isDBKeyNotFound(err error) bool {
-	return err == badger.ErrKeyNotFound
+	return err == badger.ErrKeyNotFound || err == cete.ErrNotFound
 }
 
 func mapError(err error, name, key string) error {
@@ -854,4 +825,150 @@ func mapError(err error, name, key string) error {
 		}
 	}
 	return err
+}
+
+
+// GetClothoCheck retrieves EventHash by frame + EventHash
+func (s *BadgerStore) GetClothoCheck(frame int64, hash EventHash) (EventHash, error) {
+	res, err := s.inmemStore.GetClothoCheck(frame, hash)
+	if err != nil {
+		res, err = s.dbGetClothoCheck(frame, hash)
+	}
+	return res, err // mapError(err, "badger_store GetClothoCheck", string(checkClothoKey(frame, hash)))
+}
+
+// GetClothoCreatorCheck retrieves EventHash by frame + creator
+func (s *BadgerStore) GetClothoCreatorCheck(frame int64, creatorID uint64) (EventHash, error) {
+	res, err := s.inmemStore.GetClothoCreatorCheck(frame, creatorID)
+	if err != nil {
+		res, err = s.dbGetClothoCreatorCheck(frame, creatorID)
+	}
+	return res, err // mapError(err, "badger_store GetClothoCreatorCheck", string(checkClothoCreatorKey(frame, hash)))
+}
+
+// AddClothoCheck to store
+func (s *BadgerStore) AddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	if err := s.inmemStore.AddClothoCheck(frame, creatorID, hash); err != nil {
+		return err
+	}
+	return s.dbAddClothoCheck(frame, creatorID, hash)
+}
+
+func (s *BadgerStore) dbGetClothoCheck(frame int64, phash EventHash) (EventHash, error) {
+	var hash EventHash
+	key := checkClothoKey(frame, phash)
+	_, err := s.db.Table(CLOTHOCHK_TBL).Get(key, &hash)
+	if err != nil {
+		return EventHash{}, err
+	}
+	return hash, nil
+}
+
+func (s *BadgerStore) dbGetClothoCreatorCheck(frame int64, creatorID uint64) (EventHash, error) {
+	var hash EventHash
+	key := checkClothoCreatorKey(frame, creatorID)
+	_, err := s.db.Table(CLOTHOCREATORCHK_TBL).Get(key, &hash)
+	if err != nil {
+		return EventHash{}, err
+	}
+	return hash, nil
+}
+
+func (s *BadgerStore) dbAddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+
+	key := checkClothoKey(frame, hash)
+
+	// insert [frame EventHash] => [EventHash]
+	if err := s.db.Table(CLOTHOCHK_TBL).Set(key, hash); err != nil {
+		return err
+	}
+
+	key = checkClothoCreatorKey(frame, creatorID)
+
+	// insert [frame EventHash] => [EventHash]
+	if err := s.db.Table(CLOTHOCREATORCHK_TBL).Set(key, hash); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddTimeTable adds lamport timestamp for pair of events for voting in atropos time selection
+func (s *BadgerStore) AddTimeTable(hashTo EventHash, hashFrom EventHash, lamportTime int64) error {
+	if err := s.inmemStore.AddTimeTable(hashTo, hashFrom, lamportTime); err != nil {
+		return err
+	}
+	return s.dbAddTimeTable(hashTo, hashFrom, lamportTime)
+}
+
+// GetTimeTable retrieve FlagTable with lamport time votes in atropos time selection for specified EventHash
+func (s *BadgerStore) GetTimeTable(hash EventHash) (FlagTable, error) {
+	res, err := s.inmemStore.GetTimeTable(hash)
+	if err != nil {
+		res, err = s.dbGetTimeTable(hash)
+	}
+	return res, err // mapError(err, "badger_store GetTimeTable", string(timeTableKey(hash)))
+}
+
+func (s *BadgerStore) dbAddTimeTable(hashTo EventHash, hashFrom EventHash, lamportTime int64) error {
+	ft := NewFlagTable()
+	key := timeTableKey(hashTo)
+	_, err := s.db.Table(TIMETABLE_TBL).Get(key, &ft)
+	if err != cete.ErrNotFound {
+		return err
+	}
+
+	ft[hashFrom] = lamportTime
+
+	if err := s.db.Table(TIMETABLE_TBL).Set(key, ft); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *BadgerStore) dbGetTimeTable(hash EventHash) (FlagTable, error) {
+	ft := NewFlagTable()
+	key := timeTableKey(hash)
+	_, err := s.db.Table(TIMETABLE_TBL).Get(key, &ft)
+	if err != cete.ErrNotFound {
+		return nil, err
+	}
+	return ft, nil
+}
+
+// CheckFrameFinality checks if a frame is ready to push out in consensus order
+func (s *BadgerStore) CheckFrameFinality(frame int64) bool {
+	_, _, err := s.db.Table(EVENTS_TBL).Index(FRAMEFINALITY_IDX).One(
+		[]interface{}{0, frame}, nil)
+	if err == cete.ErrNotFound {
+		return true
+	}
+	return false
+}
+
+func (s *BadgerStore) ProcessOutFrame(frame int64, address string) error {
+	file, err := os.OpenFile(fmt.Sprintf("Node_%v.finality", address), os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("*** Open  err: %v", err)
+		return err
+	}
+	defer file.Close()
+
+	r := s.db.Table(EVENTS_TBL).Index(SORT_IDX).Between(
+		[]interface{}{frame, cete.MinValue, cete.MinValue, cete.MinValue},
+		[]interface{}{frame, cete.MaxValue, cete.MaxValue, cete.MaxValue})
+	for r.Next() {
+		var ev Event
+		r.Decode(&ev)
+		if ev.IsLoaded() {
+			hash := ev.Hash()
+			fmt.Fprintf(file, "%v:%v:%v:%v:%v\n",
+				hash.String(), ev.Frame, ev.FrameReceived, ev.LamportTimestamp, ev.AtroposTimestamp)
+		}
+	}
+	if r.Error() != cete.ErrEndOfRange {
+		return fmt.Errorf("%v", r.Error())
+	}
+	return nil
 }

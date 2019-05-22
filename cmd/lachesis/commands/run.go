@@ -106,6 +106,7 @@ func runSingleLachesis(config *CLIConfig) error {
 				pdl := engine.Node.GetPendingLoadedEvents()
 				// 3 - number of notes in test; 10 - number of transactions sent at once
 				if ct >= 3*10*config.Lachesis.TestN && pdl < 1 {
+					//engine.Node.PrintStat() // this is for debug tag only
 					time.Sleep(10 * time.Second)
 					engine.Node.Shutdown()
 					break
@@ -167,6 +168,7 @@ func AddRunFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("test", config.Lachesis.Test, "Enable testing (sends transactions to random nodes in the network)")
 	cmd.Flags().Uint64("test_n", config.Lachesis.TestN, "Number of transactions to send")
 	cmd.Flags().Uint64("test_delay", config.Lachesis.TestDelay, "Number of second to delay before sending transactions")
+	cmd.Flags().String("peer_selector", config.Lachesis.PeerSelector, "Peer selector to user for the next peer; available: random,smart,fair,unfair,franky")
 }
 
 //Bind all flags and read the config into viper

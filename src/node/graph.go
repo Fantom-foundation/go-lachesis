@@ -1,7 +1,6 @@
 package node
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/inter/wire"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 )
 
@@ -46,40 +45,45 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 	repertoire := g.Node.core.poset.Participants.ToPeerSlice()
 	known := g.Node.core.KnownEvents()
 	for _, p := range repertoire {
-		root, err := store.GetRoot(p.PubKeyHex)
+//		root, err := store.GetRoot(p.Message.PubKeyHex)
 
-		if err != nil {
-			panic(err)
-		}
+//		if err != nil {
+//			panic(err)
+//		}
 
 		skip := known[p.ID] - 30
 		if skip < 0 {
 			skip = -1
 		}
 
-		evs, err := store.ParticipantEvents(p.PubKeyHex, skip)
+		evs, err := store.ParticipantEvents(p.Message.PubKeyHex, skip)
 
 		if err != nil {
 			panic(err)
 		}
 
-		res[p.PubKeyHex] = make(map[poset.EventHash]poset.Event)
+		res[p.Message.PubKeyHex] = make(map[poset.EventHash]poset.Event)
 
-		selfParent := poset.GenRootSelfParent(p.ID)
+//===
+//		// Leaf events are already in store after poset creation, so we do not need to
+//		// create them here.
+//		//
+//		selfParent := poset.GenRootSelfParent(p.ID)
 
-		flagTable := poset.FlagTable{}
-		flagTable[selfParent] = 1
+//		flagTable := poset.FlagTable{}
+//		flagTable[selfParent] = 1
 
-		// Create and save the first Event
-		initialEvent := poset.NewEvent([][]byte{},
-			[]*wire.InternalTransaction{},
-			[]poset.BlockSignature{},
-			poset.EventHashes{}, []byte{}, 0, flagTable)
+//		// Create and save the first Event
+//		initialEvent := poset.NewEvent([][]byte{},
+//			[]*wire.InternalTransaction{},
+//			[]poset.BlockSignature{},
+//			poset.EventHashes{}, []byte{}, 0, flagTable)
 
-		// TODO: initialEvent.Hash() instead of rootSelfParentHash ?
-		rootSelfParentHash := poset.EventHash{}
-		rootSelfParentHash.Set(root.SelfParent.Hash)
-		res[p.PubKeyHex][rootSelfParentHash] = initialEvent
+//		// TODO: initialEvent.Hash() instead of rootSelfParentHash ?
+//		rootSelfParentHash := poset.EventHash{}
+//		rootSelfParentHash.Set(root.SelfParent.Hash)
+//		res[p.Message.PubKeyHex][rootSelfParentHash] = initialEvent
+//<<<<<<
 
 		for _, e := range evs {
 			event, err := store.GetEventBlock(e)
@@ -90,7 +94,7 @@ func (g *Graph) GetParticipantEvents() map[string]map[poset.EventHash]poset.Even
 
 			hash := event.Hash()
 
-			res[p.PubKeyHex][hash] = event
+			res[p.Message.PubKeyHex][hash] = event
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"strconv"
 	"sync"
 	"syscall"
@@ -119,7 +120,7 @@ func NewNode(conf *Config,
 func (n *Node) Init() error {
 	var peerAddresses []string
 	for _, p := range n.peerSelector.Peers().ToPeerSlice() {
-		peerAddresses = append(peerAddresses, p.NetAddr)
+		peerAddresses = append(peerAddresses, p.Message.NetAddr)
 	}
 	n.logger.WithField("peers", peerAddresses).Debug("Initialize Node")
 
@@ -286,10 +287,10 @@ func (n *Node) processSyncRequest(rpc *peer.RPC, cmd *peer.SyncRequest) {
 	if !ok {
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
 	}
-	n.peerSelector.Engage(p.NetAddr)
+	n.peerSelector.Engage(p.Message.NetAddr)
 
 	n.logger.WithFields(logrus.Fields{
-		"from":    p.NetAddr,
+		"from":    p.Message.NetAddr,
 		"from_id": cmd.FromID,
 		"known":   cmd.Known,
 	}).Debug("processSyncRequest(rpc net.RPC, cmd *net.SyncRequest)")
@@ -345,7 +346,7 @@ func (n *Node) processSyncRequest(rpc *peer.RPC, cmd *peer.SyncRequest) {
 	// TODO: context.Background
 	rpc.SendResult(context.Background(), n.logger, resp, respErr)
 
-	n.peerSelector.Dismiss(p.NetAddr)
+	n.peerSelector.Dismiss(p.Message.NetAddr)
 }
 
 func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest) {
@@ -360,10 +361,10 @@ func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
 		success = false
 	}
-	n.peerSelector.Engage(p.NetAddr)
+	n.peerSelector.Engage(p.Message.NetAddr)
 
 	n.logger.WithFields(logrus.Fields{
-		"from":    p.NetAddr,
+		"from":    p.Message.NetAddr,
 		"from_id": cmd.FromID,
 		"events":  len(cmd.Events),
 	}).Debug("processEagerSyncRequest(rpc net.RPC, cmd *net.ForceSyncRequest)")
@@ -383,7 +384,7 @@ func (n *Node) processEagerSyncRequest(rpc *peer.RPC, cmd *peer.ForceSyncRequest
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
 		success = false
 	}
-	n.peerSelector.Dismiss(p.NetAddr)
+	n.peerSelector.Dismiss(p.Message.NetAddr)
 }
 
 func (n *Node) processFastForwardRequest(rpc *peer.RPC, cmd *peer.FastForwardRequest) {
@@ -395,7 +396,7 @@ func (n *Node) processFastForwardRequest(rpc *peer.RPC, cmd *peer.FastForwardReq
 	if !ok {
 		n.logger.WithField("error", err).Error("n.sync(cmd.Events)")
 	}
-	n.peerSelector.Engage(p.NetAddr)
+	n.peerSelector.Engage(p.Message.NetAddr)
 
 	n.logger.WithFields(logrus.Fields{
 		"from": cmd.FromID,
@@ -433,7 +434,7 @@ func (n *Node) processFastForwardRequest(rpc *peer.RPC, cmd *peer.FastForwardReq
 	// TODO: context.Background
 	rpc.SendResult(context.Background(), n.logger, resp, respErr)
 
-	n.peerSelector.Dismiss(p.NetAddr)
+	n.peerSelector.Dismiss(p.Message.NetAddr)
 }
 
 // This function is usually called in a go-routine and needs to inform the
@@ -454,20 +455,20 @@ func (n *Node) gossip(parentReturnCh chan struct{}) error {
 
 	// check and handle syncLimit
 	if syncLimit {
-		n.logger.WithField("from", peer.NetAddr).Debug("SyncLimit")
+		n.logger.WithField("from", peer.Message.NetAddr).Debug("SyncLimit")
 		n.setState(CatchingUp)
 		parentReturnCh <- struct{}{}
 		return nil
 	}
 
 	// push
-	err = n.push(peer.NetAddr, otherKnownEvents)
+	err = n.push(peer.Message.NetAddr, otherKnownEvents)
 	if err != nil {
 		return err
 	}
 
 	// update peer selector
-	n.peerSelector.UpdateLast(peer.NetAddr)
+	n.peerSelector.UpdateLast(peer.Message.NetAddr)
 
 	return nil
 }
@@ -480,7 +481,7 @@ func (n *Node) pull(peer *peers.Peer) (syncLimit bool, otherKnownEvents map[uint
 
 	// Send SyncRequest
 	start := time.Now()
-	resp, err := n.requestSync(peer.NetAddr, knownEvents)
+	resp, err := n.requestSync(peer.Message.NetAddr, knownEvents)
 	elapsed := time.Since(start)
 	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestSync(peer.NetAddr, knownEvents)")
 	// FIXIT: should we catch io.EOF error here and how we process it?
@@ -574,7 +575,7 @@ func (n *Node) fastForward() error {
 	// fastForwardRequest
 	peer := n.peerSelector.Next()
 	start := time.Now()
-	resp, err := n.requestFastForward(peer.NetAddr)
+	resp, err := n.requestFastForward(peer.Message.NetAddr)
 	elapsed := time.Since(start)
 	n.logger.WithField("Duration", elapsed.Nanoseconds()).Debug("n.requestFastForward(peer.NetAddr)")
 	if err != nil {
@@ -592,7 +593,7 @@ func (n *Node) fastForward() error {
 
 	// prepare core. ie: fresh poset
 	n.coreLock.Lock()
-	err = n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)
+	err = n.core.FastForward(peer.Message.PubKeyHex, resp.Block, resp.Frame)
 	n.coreLock.Unlock()
 	if err != nil {
 		n.logger.WithField("Error", err).Error("n.core.FastForward(peer.PubKeyHex, resp.Block, resp.Frame)")
@@ -755,9 +756,9 @@ func (n *Node) GetStats() map[string]string {
 
 	lastConsensusRound := n.core.GetLastConsensusRound()
 	var consensusRoundsPerSecond float64
-	if lastConsensusRound > poset.RoundNIL {
+//	if lastConsensusRound > poset.RoundNIL {
 		consensusRoundsPerSecond = float64(lastConsensusRound+1) / timeElapsed.Seconds()
-	}
+//	}
 
 	s := map[string]string{
 		"last_consensus_round":    toString(lastConsensusRound),
@@ -769,14 +770,14 @@ func (n *Node) GetStats() map[string]string {
 		"consensus_events":        strconv.FormatInt(consensusEvents, 10),
 		"sync_limit":              strconv.FormatInt(n.conf.SyncLimit, 10),
 		"consensus_transactions":  strconv.FormatUint(consensusTransactions, 10),
-		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
+//		"undetermined_events":     strconv.Itoa(len(n.core.GetUndeterminedEvents())),
 		"transaction_pool":        strconv.FormatInt(n.core.GetTransactionPoolCount(), 10),
 		"num_peers":               strconv.Itoa(n.peerSelector.Peers().Len()),
 		"sync_rate":               strconv.FormatFloat(n.SyncRate(), 'f', 2, 64),
 		"transactions_per_second": strconv.FormatFloat(transactionsPerSecond, 'f', 2, 64),
 		"events_per_second":       strconv.FormatFloat(consensusEventsPerSecond, 'f', 2, 64),
 		"rounds_per_second":       strconv.FormatFloat(consensusRoundsPerSecond, 'f', 2, 64),
-		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
+//		"round_events":            strconv.Itoa(n.core.GetLastCommittedRoundEventsCount()),
 		"id":                      fmt.Sprint(n.id),
 		"state":                   n.getState().String(),
 	}
@@ -811,6 +812,7 @@ func (n *Node) logStats() {
 		// uncomment when needed
 		//		"id":                     stats["id"],
 	}).Warn("logStats()")
+	runtime.GC()
 }
 
 // SyncRate returns the current synchronization (talking to over nodes) rate in ms

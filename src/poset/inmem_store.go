@@ -25,6 +25,9 @@ type InmemStore struct {
 	roundReceivedCache     *lru.Cache           // round received number => RoundReceived
 	blockCache             *lru.Cache           // index => Block
 	frameCache             *lru.Cache           // round received => Frame
+	clothoCheckCache       *lru.Cache           // frame + hash => hash
+	clothoCheckCreatorCache *lru.Cache          // frame + creator => hash
+	timeTableCache         *lru.Cache          // 
 	consensusCache         *common.RollingIndex // consensus index => hash
 	totConsensusEvents     int64
 	participantEventsCache *ParticipantEventsCache // pubkey => Events
@@ -37,6 +40,8 @@ type InmemStore struct {
 	lastRoundLocker          sync.RWMutex
 	lastBlockLocker          sync.RWMutex
 	totConsensusEventsLocker sync.RWMutex
+	clothoCheckLocker        sync.RWMutex
+	timeTableLocker          sync.RWMutex
 
 	states    state.Database
 	stateRoot hash.Hash
@@ -78,6 +83,21 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 		fmt.Println("Unable to init InmemStore.frameCache:", err)
 		os.Exit(34)
 	}
+	clothoCheckCache, err := lru.New(cacheSize)
+	if err != nil {
+		fmt.Println("Unable to init InmemStore.checkClothoCache:", err)
+		os.Exit(35)
+	}
+	clothoCheckCreatorCache, err := lru.New(cacheSize)
+	if err != nil {
+		fmt.Println("Unable to init InmemStore.checkClothoCreatorCache:", err)
+		os.Exit(36)
+	}
+	timeTableCache, err := lru.New(cacheSize)
+	if err != nil {
+		fmt.Println("Unable to init InmemStore.timeTableCache:", err)
+		os.Exit(36)
+	}
 
 	store := &InmemStore{
 		cacheSize:              cacheSize,
@@ -87,6 +107,9 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 		roundReceivedCache:     roundReceivedCache,
 		blockCache:             blockCache,
 		frameCache:             frameCache,
+		clothoCheckCache:       clothoCheckCache,
+		clothoCheckCreatorCache:clothoCheckCreatorCache,
+		timeTableCache:         timeTableCache,
 		consensusCache:         common.NewRollingIndex("ConsensusCache", cacheSize),
 		participantEventsCache: NewParticipantEventsCache(cacheSize, participants),
 		rootsByParticipant:     rootsByParticipant,
@@ -100,7 +123,7 @@ func NewInmemStore(participants *peers.Peers, cacheSize int, posConf *pos.Config
 
 	participants.OnNewPeer(func(peer *peers.Peer) {
 		root := NewBaseRoot(peer.ID)
-		store.rootsByParticipant[peer.PubKeyHex] = root
+		store.rootsByParticipant[peer.Message.PubKeyHex] = root
 		store.rootsBySelfParent = nil
 		_ = store.RootsBySelfParent()
 		old := store.participantEventsCache
@@ -424,6 +447,21 @@ func (s *InmemStore) Reset(roots map[string]Root) error {
 		fmt.Println("Unable to reset InmemStore.roundReceivedCache:", errr)
 		os.Exit(45)
 	}
+	clothoCheckCache, errr := lru.New(s.cacheSize)
+	if errr != nil {
+		fmt.Println("Unable to reset InmemStore.clothoCheckCache:", errr)
+		os.Exit(46)
+	}
+	clothoCheckCreatorCache, errr := lru.New(s.cacheSize)
+	if errr != nil {
+		fmt.Println("Unable to reset InmemStore.clothoCheckCreatorCache:", errr)
+		os.Exit(47)
+	}
+	timeTableCache, errr := lru.New(s.cacheSize)
+	if errr != nil {
+		fmt.Println("Unable to reset InmemStore.timeTableCache:", errr)
+		os.Exit(48)
+	}
 	// FIXIT: Should we recreate blockCache, frameCache and participantEventsCache here as well
 	//        and reset lastConsensusEvents ?
 	s.rootsByParticipant = roots
@@ -432,6 +470,9 @@ func (s *InmemStore) Reset(roots map[string]Root) error {
 	s.eventCache = eventCache
 	s.roundCreatedCache = roundCache
 	s.roundReceivedCache = roundReceivedCache
+	s.clothoCheckCache = clothoCheckCache
+	s.clothoCheckCreatorCache = clothoCheckCreatorCache
+	s.timeTableCache = timeTableCache
 	s.consensusCache = common.NewRollingIndex("ConsensusCache", s.cacheSize)
 	err := s.participantEventsCache.Reset()
 	s.lastRoundLocker.Lock()
@@ -467,4 +508,93 @@ func (s *InmemStore) StateDB() state.Database {
 // StateRoot returns genesis state hash.
 func (s *InmemStore) StateRoot() hash.Hash {
 	return s.stateRoot
+}
+
+func checkClothoKeyStr(frame int64, hash EventHash) string {
+	return fmt.Sprintf("%09d_%s", frame, hash.String())
+}
+
+func checkClothoCreatorKeyStr(frame int64, CreatorID uint64) string {
+	return fmt.Sprintf("%09d_%d", frame, CreatorID)
+}
+
+// AddClothoCheck to store
+func (s *InmemStore) AddClothoCheck(frame int64, creatorID uint64, hash EventHash) error {
+	key := checkClothoKeyStr(frame, hash)
+	s.clothoCheckLocker.Lock()
+	defer s.clothoCheckLocker.Unlock()
+	s.clothoCheckCache.Add(key, hash.Bytes())
+	key = checkClothoCreatorKeyStr(frame, creatorID)
+	s.clothoCheckCreatorCache.Add(key, hash.Bytes())
+	return nil
+}
+
+// GetClothoCheck retrieves EventHash by frame + hash
+func (s *InmemStore) GetClothoCheck(frame int64, phash EventHash) (hash EventHash, err error) {
+	key := checkClothoKeyStr(frame, phash)
+	s.clothoCheckLocker.Lock()
+	defer s.clothoCheckLocker.Unlock()
+	res, ok := s.clothoCheckCache.Get(key)
+	if !ok {
+		return EventHash{}, common.NewStoreErr("ClothoCheckCache", common.KeyNotFound, string(key))
+	}
+	hash.Set(res.([]byte))
+	return hash, nil
+}
+
+// GetClothoCreatorCheck retrieves EventHash by frame + creatorID
+func (s *InmemStore) GetClothoCreatorCheck(frame int64, creatorID uint64) (hash EventHash, err error) {
+	key := checkClothoCreatorKeyStr(frame, creatorID)
+	s.clothoCheckLocker.Lock()
+	defer s.clothoCheckLocker.Unlock()
+	res, ok := s.clothoCheckCreatorCache.Get(key)
+	if !ok {
+		return EventHash{}, common.NewStoreErr("ClothoCheckCreatorCache", common.KeyNotFound, string(key))
+	}
+	hash.Set(res.([]byte))
+	return hash, nil
+}
+
+func timeTableKeyStr(hash EventHash) string {
+	return fmt.Sprintf("timeTable_%s", hash.String())
+}
+
+// AddTimeTable adds lamport timestamp for pair of events for voting in atropos time selection
+func (s *InmemStore) AddTimeTable(hashTo EventHash, hashFrom EventHash, lamportTime int64) error {
+	ft := NewFlagTable()
+	key := timeTableKeyStr(hashTo)
+	s.timeTableLocker.Lock()
+	defer s.timeTableLocker.Unlock()
+	res, ok := s.timeTableCache.Get(key)
+	if ok {
+		ft.Unmarshal(res.([]byte))
+	}
+	ft[hashFrom] = lamportTime
+	res = ft.Marshal()
+	s.timeTableCache.Add(key, res)
+	return nil
+}
+
+// GetTimeTable retrieve FlagTable with lamport time votes in atropos time selection for specified EventHash
+func (s *InmemStore) GetTimeTable(hash EventHash) (FlagTable, error) {
+	ft := NewFlagTable()
+	key := timeTableKeyStr(hash)
+	s.timeTableLocker.RLock()
+	defer s.timeTableLocker.RUnlock()
+	res, ok := s.timeTableCache.Get(key)
+	if !ok {
+		return nil, common.NewStoreErr("GetTimeTableCache", common.KeyNotFound, string(key))
+	}
+	ft.Unmarshal(res.([]byte))
+	return ft, nil
+}
+
+// This is just a stub, yet to bee implemented if needed
+func (s *InmemStore) CheckFrameFinality(frame int64) bool {
+	return true
+}
+
+// This is just a stub, yet to bee implemented if needed
+func (s *InmemStore) ProcessOutFrame(frame int64, address string) error {
+	return nil
 }

@@ -32,6 +32,21 @@ certs
 lachesis_*
 !*.go
 
+# Graphviz and debug related
+*.graph
+*.gv
+*.sorted
+*.finality
+
+# patch and diff files
+*.patch
+*.diff
+
+# archives
+*.tar.gz
+*.tgz
+*.zip
+
 # Backup copies
 *~
 *.bak

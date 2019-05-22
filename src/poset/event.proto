@@ -1,6 +1,20 @@
 syntax = "proto3";
 package poset;
+
 import "github.com/Fantom-foundation/go-lachesis/src/inter/wire/event.proto";
+import "github.com/Fantom-foundation/go-lachesis/src/peers/peer.proto";
+
+enum TransactionType {
+  PEER_ADD = 0;
+  PEER_REMOVE = 1;
+  POS_TRANSFER = 2;
+}
+
+message InternalTransaction {
+  TransactionType Type = 1;
+  peers.PeerMessage peer = 2;
+  uint64 Amount = 3;
+}
 
 message BlockSignature {
   bytes Validator = 1;
@@ -20,12 +34,26 @@ message EventBody {
 message EventMessage {
   EventBody Body = 1;
   string Signature = 2;
-  bytes FlagTable = 3;
-  repeated bytes ClothoProof = 4;
-  int64 SelfParentIndex = 5;
-  uint64 OtherParentCreatorID = 6;
-  int64 OtherParentIndex = 7;
-  uint64 CreatorID = 8;
-  int64 TopologicalIndex = 9;
-  bytes Hash = 10;
+  int64 SelfParentIndex = 3;
+  uint64 OtherParentCreatorID = 4;
+  int64 OtherParentIndex = 5;
+  uint64 CreatorID = 6;
+  int64 TopologicalIndex = 7;
+  bytes Hash = 8;
+}
+
+message Event {
+  EventMessage Message = 1;
+  int64 LamportTimestamp = 2;
+  int64 Frame = 3;
+  bytes FlagTableBytes = 4;
+  bytes RootTableBytes = 5;
+  bool Root = 6;
+  bool Clotho = 7;
+  bool Atropos = 8;
+  int64 AtroposTimestamp = 9;
+  repeated int64 AtTimes = 10;
+  int64 AtVisited = 11;
+  int64 FrameReceived = 12;
+  repeated int64 RecFrames = 13;
 }

@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"math"
 	"sort"
 	"sync"
 
@@ -30,6 +31,9 @@ type Peers struct {
 	ByAddress AddressPeers
 	ByNetAddr NetAddrPeers
 	Listeners []Listener
+	Stake     uint64
+	SuperMajority uint64
+	TrustCount    uint64
 }
 
 /* Constructors */
@@ -57,6 +61,20 @@ func NewPeersFromSlice(source []*Peer) *Peers {
 	return peers
 }
 
+// NewPeersFromMessageSlice create a new peers struct from a subset of peer messages
+func NewPeersFromMessageSlice(source []*PeerMessage) *Peers {
+	peers := NewPeers()
+
+	for _, pm := range source {
+		peer := NewPeer(pm.PubKeyHex, pm.NetAddr)
+		peers.addPeerRaw(peer)
+	}
+
+	peers.internalSort()
+
+	return peers
+}
+
 /* Add Methods */
 
 // Add a peer without sorting the set.
@@ -69,11 +87,14 @@ func (p *Peers) addPeerRaw(peer *Peer) {
 			panic(err)
 		}
 	}
+	p.Stake = p.Stake + peer.GetWeight()
+	p.SuperMajority = uint64(2 * p.Stake / 3 + 1)
+	p.TrustCount = uint64(math.Ceil(float64(p.Stake) / float64(3)))
 
-	p.ByPubKey[peer.PubKeyHex] = peer
+	p.ByPubKey[peer.Message.PubKeyHex] = peer
 	p.ByID[peer.ID] = peer
 	p.ByAddress[peer.Address()] = peer
-	p.ByNetAddr[peer.NetAddr] = peer
+	p.ByNetAddr[peer.Message.NetAddr] = peer
 }
 
 // AddPeer adds a peer to the peers struct
@@ -104,14 +125,14 @@ func (p *Peers) RemovePeer(peer *Peer) {
 	p.Lock()
 	defer p.Unlock()
 
-	if _, ok := p.ByPubKey[peer.PubKeyHex]; !ok {
+	if _, ok := p.ByPubKey[peer.Message.PubKeyHex]; !ok {
 		return
 	}
 
-	delete(p.ByPubKey, peer.PubKeyHex)
+	delete(p.ByPubKey, peer.Message.PubKeyHex)
 	delete(p.ByID, peer.ID)
 	delete(p.ByAddress, peer.Address())
-	delete(p.ByNetAddr, peer.NetAddr)
+	delete(p.ByNetAddr, peer.Message.NetAddr)
 
 	p.internalSort()
 }
@@ -153,7 +174,7 @@ func (p *Peers) ToPubKeySlice() []string {
 	res := []string{}
 
 	for _, peer := range p.Sorted {
-		res = append(res, peer.PubKeyHex)
+		res = append(res, peer.Message.PubKeyHex)
 	}
 
 	return res
@@ -228,32 +249,67 @@ func (p *Peers) ReadByNetAddr(key string) (Peer, bool) {
 func (p *Peers) SetHeightByPubKeyHex(key string, height int64) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].Height = height
+	(p.ByPubKey[key]).SetHeight(height)
 }
 
 func (p *Peers) GetHeightByPubKeyHex(key string) int64 {
 	p.RLock()
 	defer p.RUnlock()
-	return p.ByPubKey[key].Height
+	return (p.ByPubKey[key]).GetHeight()
 }
 
 func (p *Peers) NextHeightByPubKeyHex(key string) int64 {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].Height++
-	return p.ByPubKey[key].Height
+	return (p.ByPubKey[key]).NextHeight()
 }
 
 func (p *Peers) SetInDegreeByPubKeyHex(key string, inDegree int64) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].InDegree = inDegree
+	(p.ByPubKey[key]).SetInDegree(inDegree)
 }
 
 func (p *Peers) IncInDegreeByPubKeyHex(key string) {
 	p.Lock()
 	defer p.Unlock()
-	p.ByPubKey[key].InDegree++
+	(p.ByPubKey[key]).IncInDegree()
+}
+
+// Set new weight to a peer and recalculate PoS values
+func (p *Peers) SetPeerWeight(peer *Peer, w uint64) {
+	p.Lock()
+	defer p.Unlock()
+	oldW := peer.GetWeight()
+	p.Stake = p.Stake - oldW
+	peer.SetWeight(w)
+	p.Stake = p.Stake + w
+	p.SuperMajority = uint64(2 * p.Stake / 3 + 1)
+	p.TrustCount = uint64(math.Ceil(float64(p.Stake) / float64(3)))
+}
+
+// Set new weight to a peer by their public Key
+func (p*Peers) SetPeerWeightByPubKey(pubKey string, w uint64) {
+	p.SetPeerWeight(p.ByPubKey[pubKey], w)
+}
+
+// RemovePeerByID removes a peer based on their ID
+func (p *Peers) SetPeerWeightByID(id uint64, w uint64) {
+	p.SetPeerWeight(p.ByID[id], w)
+}
+
+// GetSuperMajority() return the current value of SuperMajority
+func (p *Peers) GetSuperMajority() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.SuperMajority
+}
+
+// GetTrustCount() return the current value of TrustCount
+func (p *Peers) GetTrustCount() uint64 {
+	p.RLock()
+	defer p.RUnlock()
+	return p.TrustCount
 }
 
 // ByPubHex implements sort.Interface for Peers based on
@@ -263,8 +319,8 @@ type ByPubHex []*Peer
 func (a ByPubHex) Len() int      { return len(a) }
 func (a ByPubHex) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 func (a ByPubHex) Less(i, j int) bool {
-	ai := a[i].PubKeyHex
-	aj := a[j].PubKeyHex
+	ai := a[i].Message.PubKeyHex
+	aj := a[j].Message.PubKeyHex
 	return ai < aj
 }
 
@@ -279,7 +335,7 @@ func (a ByID) Less(i, j int) bool {
 	return ai < aj
 }
 
-// ByUsed TODO
+// ByUsed Sorted by Used count
 type ByUsed []*Peer
 
 func (a ByUsed) Len() int      { return len(a) }
@@ -289,3 +345,15 @@ func (a ByUsed) Less(i, j int) bool {
 	aj := a[j].Used
 	return ai > aj
 }
+
+// ByNetAddr Sorted by Used count
+type ByNetAddr []*Peer
+
+func (a ByNetAddr) Len() int      { return len(a) }
+func (a ByNetAddr) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a ByNetAddr) Less(i, j int) bool {
+	ai := a[i].Message.NetAddr
+	aj := a[j].Message.NetAddr
+	return ai > aj
+}
+

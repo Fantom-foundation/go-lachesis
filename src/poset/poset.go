@@ -44,9 +44,8 @@ type Poset struct {
 	pendingLoadedEvents      int64             // number of loaded events that are not yet committed
 	commitCh                 chan Block        // channel for committing Blocks
 	topologicalIndex         int64             // counter used to order events in topological order (only local)
-	superMajority            int
-	trustCount               int
 	core                     Core
+	nextFinalFrame           int64
 
 	dominatorCache         *lru.Cache
 	selfDominatorCache     *lru.Cache
@@ -60,6 +59,8 @@ type Poset struct {
 	pendingLoadedEventsLocker     sync.RWMutex
 	firstLastConsensusRoundLocker sync.RWMutex
 	consensusTransactionsLocker   sync.RWMutex
+	topologicalIndexLocker        sync.Mutex
+	DecidedLocker                 sync.Mutex
 }
 
 // NewPoset instantiates a Poset from a list of participants, underlying
@@ -71,9 +72,6 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 		lachesis_log.NewLocal(log, log.Level.String())
 		logger = logrus.NewEntry(log)
 	}
-
-	superMajority := 2*participants.Len()/3 + 1
-	trustCount := int(math.Ceil(float64(participants.Len()) / float64(3)))
 
 	cacheSize := store.CacheSize()
 	dominatorCache, err := lru.New(cacheSize)
@@ -108,49 +106,7 @@ func NewPoset(participants *peers.Peers, store Store, commitCh chan Block, logge
 		roundCache:             roundCache,
 		timestampCache:         timestampCache,
 		logger:                 logger,
-		superMajority:          superMajority,
-		trustCount:             trustCount,
 	}
-
-	// Leaf events are roots by default, so we need to construct a common
-	// flagtable indicating leaf events can see each other.
-	ft := FlagTable{}
-	for selfParentHash := range poset.Store.RootsBySelfParent() {
-		ft[selfParentHash] = 1
-	}
-	// Set Leaf Events for each participant
-	for participant, root := range poset.Store.RootsByParticipant() {
-		var creator []byte
-		if _, err := fmt.Sscanf(participant, "0x%X", &creator); err != nil {
-			panic(err)
-		}
-		body := EventBody{
-			Creator: creator,
-			Index:   0,
-			Parents: EventHashes{EventHash{}, EventHash{}}.Bytes(),
-		}
-		event := Event{
-			Message: &EventMessage{
-				Hash:             root.SelfParent.Hash,
-				CreatorID:        root.SelfParent.CreatorID,
-				TopologicalIndex: -1,
-				Body:             &body,
-				FlagTable:        ft.Marshal(),
-				ClothoProof:      [][]byte{root.SelfParent.Hash},
-			},
-			lamportTimestamp: 0,
-			round:            0,
-			roundReceived:    0, /*RoundNIL*/
-		}
-		if err := poset.Store.SetEvent(event); err != nil {
-			panic(err)
-		}
-	}
-
-	participants.OnNewPeer(func(peer *peers.Peer) {
-		poset.superMajority = 2*participants.Len()/3 + 1
-		poset.trustCount = int(math.Ceil(float64(participants.Len()) / float64(3)))
-	})
 
 	return &poset
 }
@@ -210,7 +166,7 @@ func (p *Poset) dominator2(x, y EventHash) (bool, error) {
 			if !ok {
 				return false, fmt.Errorf("creator with ID %v not found", root.SelfParent.CreatorID)
 			}
-			yCreator := peer.PubKeyHex
+			yCreator := peer.Message.PubKeyHex
 			if ex.GetCreator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -274,7 +230,7 @@ func (p *Poset) selfDominator2(x, y EventHash) (bool, error) {
 			if !ok {
 				return false, fmt.Errorf("self-parent creator with ID %v not found", root.SelfParent.CreatorID)
 			}
-			yCreator := peer.PubKeyHex
+			yCreator := peer.Message.PubKeyHex
 			if ex.GetCreator() == yCreator {
 				return ex.Index() >= root.SelfParent.Index, nil
 			}
@@ -322,7 +278,7 @@ func (p *Poset) strictlyDominated2(x, y EventHash) (bool, error) {
 		return false, err
 	}
 
-	return len(sentinels) >= p.superMajority, nil
+	return uint64(len(sentinels)) >= p.GetSuperMajority(), nil
 }
 
 // MapSentinels participants in x's dominator that dominate y
@@ -346,7 +302,7 @@ func (p *Poset) MapSentinels(x, y EventHash, sentinels map[string]bool) error {
 				return fmt.Errorf("self-parent creator with ID %v not found", root.SelfParent.CreatorID)
 			}
 
-			sentinels[creator.PubKeyHex] = true
+			sentinels[creator.Message.PubKeyHex] = true
 
 			return nil
 		}
@@ -358,7 +314,7 @@ func (p *Poset) MapSentinels(x, y EventHash, sentinels map[string]bool) error {
 	if !ok {
 		return fmt.Errorf("creator with ID %v not found", ex.CreatorID())
 	}
-	sentinels[creator.PubKeyHex] = true
+	sentinels[creator.Message.PubKeyHex] = true
 
 	if x == y {
 		return nil
@@ -429,13 +385,13 @@ func (p *Poset) round2(x EventHash) (int64, error) {
 	spRound, err := p.round(ex.SelfParent())
 	if err != nil {
 		p.logger.Debug("p.round2(): return RoundNIL")
-		return RoundNIL, err
+		return FrameNIL, err
 	}
 	var parentRound = spRound
 	opRound, err := p.round(ex.OtherParent())
 	if err != nil {
 		p.logger.Debug("p.round2(): return RoundNIL 2")
-		return RoundNIL, err
+		return FrameNIL, err
 	}
 	if opRound > parentRound {
 		parentRound = opRound
@@ -443,7 +399,7 @@ func (p *Poset) round2(x EventHash) (int64, error) {
 	p.logger.WithField("parentRound", parentRound).Debug("p.round2()")
 
 	// base of recursion. If both parents are of RoundNIL they are leaf events
-	if parentRound == RoundNIL {
+	if parentRound == FrameNIL {
 		return 0, nil
 	}
 
@@ -452,42 +408,42 @@ func (p *Poset) round2(x EventHash) (int64, error) {
 		"len(ws)": len(ws),
 	}).Debug("p.round2()")
 
-	isDominated := func(poset *Poset, root EventHash, clothos EventHashes) bool {
-		for _, w := range ws {
-			if w == root && w != ex.Hash() {
-				dominate, err := poset.dominated(ex.Hash(), w)
-				if err != nil {
-					return false
-				}
-				if dominate {
-					return true
-				}
-			}
-		}
-		return false
-	}
+//	isDominated := func(poset *Poset, root EventHash, clothos EventHashes) bool {
+//		for _, w := range ws {
+//			if w == root && w != ex.Hash() {
+//				dominate, err := poset.dominated(ex.Hash(), w)
+//				if err != nil {
+//					return false
+//				}
+//				if dominate {
+//					return true
+//				}
+//			}
+//		}
+//		return false
+//	}
 
 	// check wp
 	p.logger.WithFields(logrus.Fields{
-		"len(ex.Message.ClothoProof)": len(ex.Message.ClothoProof),
-		"p.superMajority":             p.superMajority,
+//		"len(ex.Message.ClothoProof)": len(ex.Message.ClothoProof),
+		"p.superMajority":             p.GetSuperMajority(),
 	}).Debug("p.round2()")
-	if len(ex.Message.ClothoProof) >= p.superMajority {
-		count := 0
-		for _, h := range ex.Message.ClothoProof {
-			var root EventHash
-			root.Set(h)
-			if isDominated(p, root, ws) {
-				count++
-			}
-		}
+	if false /*len(ex.Message.ClothoProof) >= p.GetSuperMajority()*/ {
+		count := uint64(0)
+//		for _, h := range ex.Message.ClothoProof {
+//			var root EventHash
+//			root.Set(h)
+//			if isDominated(p, root, ws) {
+//				count++
+//			}
+//		}
 
 		p.logger.WithFields(logrus.Fields{
-			"len(ex.Message.ClothoProof)": len(ex.Message.ClothoProof),
-			"p.superMajority":             p.superMajority,
+//			"len(ex.Message.ClothoProof)": len(ex.Message.ClothoProof),
+			"p.superMajority":             p.GetSuperMajority(),
 			"count":                       count,
 		}).Debug("p.round2()")
-		if count >= p.superMajority {
+		if count >= p.GetSuperMajority() {
 			p.logger.Debug("p.round2(): return parentRound + 1")
 			return parentRound + 1, err
 		}
@@ -497,23 +453,23 @@ func (p *Poset) round2(x EventHash) (int64, error) {
 		ft, _ := ex.GetFlagTable()
 		p.logger.WithFields(logrus.Fields{
 			"len(ft)":         len(ft),
-			"p.superMajority": p.superMajority,
+			"p.superMajority": p.GetSuperMajority(),
 		}).Debug("p.round2()")
-		if len(ft) >= p.superMajority {
+		if uint64(len(ft)) >= p.GetSuperMajority() {
 			count := 0
 
-			for root := range ft {
-				if isDominated(p, root, ws) {
+//			for root := range ft {
+				//if isDominated(p, root, ws) {
 					count++
-				}
-			}
+				//}
+//			}
 
 			p.logger.WithFields(logrus.Fields{
 				"len(ft)":         len(ft),
 				"count":           count,
-				"p.superMajority": p.superMajority,
+				"p.superMajority": p.GetSuperMajority(),
 			}).Debug("p.round2()")
-			if count >= p.superMajority {
+			if uint64(count) >= p.GetSuperMajority() {
 				p.logger.Debug("p.round2(): return parentRound + 1 (2)")
 				return parentRound + 1, err
 			}
@@ -893,8 +849,135 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 		return fmt.Errorf("CheckOtherParent: %s", err)
 	}
 
-	event.Message.TopologicalIndex = p.topologicalIndex
-	p.topologicalIndex++
+	var (
+		flagTable FlagTable
+		rootTable FlagTable
+		err       error
+		Root      bool
+		Frame     int64
+	)
+
+	parentEvent, errSelf := p.Store.GetEventBlock(event.SelfParent())
+	if errSelf != nil {
+		p.logger.Warnf("failed to get self parent: %s", errSelf)
+	}
+	otherParentEvent, errOther := p.Store.GetEventBlock(event.OtherParent())
+	if errOther != nil {
+		p.logger.Warnf("failed to get other parent: %s", errOther)
+	}
+
+	if parentEvent.Frame == otherParentEvent.Frame {
+		otherFlagTable, err := otherParentEvent.GetFlagTable()
+		if err != nil {
+			return fmt.Errorf("AddSelfEventBlock() otherParentEvent.GetFlagTable(): %v", err)
+		}
+
+//		parentFlagTable, err := parentEvent.GetFlagTable()
+//		if err != nil {
+//			return fmt.Errorf("AddSelfEventBlock() selfParentEvent.GetFlagTable(): %v", err)
+//		}
+
+		flagTable, err = parentEvent.MergeFlagTable(otherFlagTable, parentEvent.Frame)
+		if err != nil {
+			return fmt.Errorf("AddSelfEventBlock() parentEvent.MergeFlagTable(): %v", err)
+		}
+
+//		p.logger.WithFields(logrus.Fields{
+//			"p.GetSuperMajority()": p.GetSuperMajority(),
+//			"len(flagTable)": len(flagTable),
+//			"otherFlagTable": otherFlagTable,
+//			"selfFlagTable": parentFlagTable,
+//		}).Warnf("Majority")
+
+		if uint64(len(flagTable)) >= p.GetSuperMajority() {
+			Root = true
+			Frame = parentEvent.Frame + 1
+			rootTable = flagTable.Copy()
+			flagTable = NewFlagTable()
+			// flagTable should be set to a new one containing this new root only
+			// new root should be added into poset.CheckClotho
+		} else {
+			Root = false
+			Frame = parentEvent.Frame
+		}
+	} else if parentEvent.Frame > otherParentEvent.Frame {
+		Root = false
+		Frame = parentEvent.Frame
+		flagTable, err = parentEvent.GetFlagTable()
+		if err != nil {
+			return fmt.Errorf("parentEvent.GetFlagTable(): %v", err)
+		}
+	} else {
+		Root = true
+		Frame = otherParentEvent.Frame
+		otherRoot, err := p.Store.GetClothoCreatorCheck(otherParentEvent.Frame, otherParentEvent.CreatorID())
+		if err != nil {
+			hash := otherParentEvent.Hash()
+			return fmt.Errorf("GetClothoCheck(otherParentEvent.Frame=%v, otherHead=%v): %v", otherParentEvent.Frame, hash.String(), err)
+		}
+
+		otherRootEvent, err := p.Store.GetEventBlock(otherRoot)
+		if err != nil {
+			p.logger.Warnf("failed to get other parent: %s", err)
+		}
+
+		otherRootTable, err := otherRootEvent.GetRootTable()
+		if err != nil {
+			return fmt.Errorf("otherRootEvent.GetFlagTable(): %v", err)
+		}
+
+		rootTable, err = parentEvent.MergeFlagTable(otherRootTable, Frame - 1)
+		if err != nil {
+			return fmt.Errorf("AddSelfEventBlock() parentEvent.MergeFlagTable(otherRootTable): %v", err)
+		}
+
+		flagTable, err = otherParentEvent.GetFlagTable()
+		if err != nil {
+			return fmt.Errorf("otherParentEvent.GetFlagTable(): %v", err)
+		}
+	}
+
+	event.Root = Root
+	if Root {
+		flagTable[event.Hash()] = Frame
+	}
+	event.Frame = Frame
+	event.FlagTableBytes = flagTable.Marshal()
+	event.RootTableBytes = rootTable.Marshal()
+	if event.GetLamportTimestamp() == LamportTimestampNIL {
+
+		plt := parentEvent.GetLamportTimestamp()
+		opLT := otherParentEvent.GetLamportTimestamp()
+		if opLT > plt {
+			plt = opLT
+		}
+		lamportTimestamp := plt + 1
+
+//		lamportTimestamp, err := p.lamportTimestamp(event.Hash())
+//		if err != nil {
+//			return err
+//		}
+//
+		event.SetLamportTimestamp(lamportTimestamp)
+	}
+
+//	peer, ok := p.Participants.ReadByPubKey(event.GetCreator())
+//	hash := event.Hash()
+//	p.logger.WithFields(logrus.Fields{
+//		"EventCreator": peer.Message.NetAddr,
+//		"Hash": hash.String(),
+//		"lamport": event.GetLamportTimestamp(),
+//		"Root": Root,
+//		"Frame": Frame,
+//		"parentEvent.Frame": parentEvent.Frame,
+//		"otherParentEvent.Frame": otherParentEvent.Frame,
+//		"len(rootTable)": len(rootTable),
+//		"len(flagTable)": len(flagTable),
+//		"ok": ok,
+//	}).Warnf("InsertEvent")
+
+
+	event.Message.TopologicalIndex = p.NextTopologicalIndex()
 
 	if setWireInfo {
 		if err := p.setWireInfo(&event); err != nil {
@@ -904,6 +987,25 @@ func (p *Poset) InsertEvent(event Event, setWireInfo bool) error {
 
 	if err := p.Store.SetEvent(event); err != nil {
 		return fmt.Errorf("SetEvent: %s", err)
+	}
+
+	err = p.Store.SetRoundCreated(Frame, RoundCreated{}) // FIXME: SetRoundCreated/SetRoundReceived should be abandoned in favour of SetRound.
+	if err != nil {
+		return err
+	}
+
+
+	if Root {
+		if err := p.Store.AddClothoCheck(Frame, event.CreatorID(), event.Hash()); err != nil {
+			// FIXME: add error handling here
+			panic(err)
+		}
+		if err := p.ClothoChecking(&event); err != nil {
+			return fmt.Errorf("CheckClotho(newHead):%v", err)
+		}
+		if err := p.AtroposTimeSelection(&event); err != nil {
+			return fmt.Errorf("AtroposTimeSelection(newHead):%v", err)
+		}
 	}
 
 	p.undeterminedEventsLocker.Lock()
@@ -947,7 +1049,7 @@ func (p *Poset) DivideRounds() error {
 		   Compute Event's round, update the corresponding Round object, and
 		   add it to the PendingRounds queue if necessary.
 		*/
-		if ev.GetRound() == RoundNIL {
+		if ev.GetRound() == FrameNIL {
 
 			roundNumber, err := p.round(hash)
 			if err != nil {
@@ -1004,10 +1106,10 @@ func (p *Poset) DivideRounds() error {
 
 					replaceFlagTable := func(event *Event, round int64) {
 						ft := make(FlagTable)
-						ws := p.Store.RoundClothos(round)
-						for _, v := range ws {
-							ft[v] = 1
-						}
+//						ws := p.Store.RoundClothos(round)
+//						for _, v := range ws {
+							//ft[v] = 1
+//						}
 						if err := event.ReplaceFlagTable(ft); err != nil {
 							p.logger.Fatal(err)
 						}
@@ -1016,15 +1118,15 @@ func (p *Poset) DivideRounds() error {
 					// special case
 					if ev.GetRound() == 0 {
 						replaceFlagTable(&ev, 0)
-						root, err := p.Store.GetRoot(ev.GetCreator())
-						if err != nil {
-							return err
-						}
-						ev.Message.ClothoProof = [][]byte{root.SelfParent.Hash}
+//						root, err := p.Store.GetRoot(ev.GetCreator())
+//						if err != nil {
+//							return err
+//						}
+//						ev.Message.ClothoProof = [][]byte{root.SelfParent.Hash}
 					} else {
 						replaceFlagTable(&ev, ev.GetRound())
-						roots := p.Store.RoundClothos(ev.GetRound() - 1)
-						ev.Message.ClothoProof = roots.Bytes()
+//						roots := p.Store.RoundClothos(ev.GetRound() - 1)
+//						ev.Message.ClothoProof = roots.Bytes()
 					}
 				}
 			}
@@ -1106,8 +1208,8 @@ func (p *Poset) DecideAtropos() error {
 								ssClotho = append(ssClotho, w)
 							}
 						}
-						yays := 0
-						nays := 0
+						yays := uint64(0)
+						nays := uint64(0)
 						for _, w := range ssClotho {
 							if votes[w][x] {
 								yays++
@@ -1124,7 +1226,7 @@ func (p *Poset) DecideAtropos() error {
 
 						// normal round
 						if math.Mod(float64(diff), float64(c)) > 0 {
-							if t >= p.superMajority {
+							if t >= p.GetSuperMajority() {
 								roundInfo.SetAtropos(x, v)
 								setVote(votes, y, x, v)
 								break VoteLoop // break out of j loop
@@ -1132,7 +1234,7 @@ func (p *Poset) DecideAtropos() error {
 								setVote(votes, y, x, v)
 							}
 						} else { // coin round
-							if t >= p.superMajority {
+							if t >= p.GetSuperMajority() {
 								setVote(votes, y, x, v)
 							} else {
 								setVote(votes, y, x, randomShift(y)) // middle bit of y's hash
@@ -1269,6 +1371,20 @@ func (p *Poset) DecideRoundReceived() error {
 // corresponding Frames, maps them into Blocks, and commits the Blocks via the
 // commit channel
 func (p *Poset) ProcessDecidedRounds() error {
+
+	p.DecidedLocker.Lock()
+	defer p.DecidedLocker.Unlock()
+
+	for p.Store.CheckFrameFinality(p.nextFinalFrame) {
+		if p.commitCh != nil {
+//			p.Store.ProcessOutFrame(p.nextFinalFrame, p.commitCh) // FIXME: to be implemented
+			if err := p.Store.ProcessOutFrame(p.nextFinalFrame, p.Address()); err != nil {
+				return err
+			}
+//			p.commitCh <- block
+		}
+		p.nextFinalFrame++
+	}
 
 	// Defer removing processed Rounds from the PendingRounds Queue
 	processedIndex := 0
@@ -1485,7 +1601,7 @@ func (p *Poset) MakeFrame(roundReceived int64) (Frame, error) {
 	// order roots
 	orderedRoots := make([]*Root, p.Participants.Len())
 	for i, peer := range p.Participants.ToPeerSlice() {
-		root := roots[peer.PubKeyHex]
+		root := roots[peer.Message.PubKeyHex]
 		orderedRoots[i] = new(Root)
 		*orderedRoots[i] = root
 	}
@@ -1612,14 +1728,14 @@ func (p *Poset) ProcessSigPool() error {
 				}).Warning("Saving Block")
 			}
 
-			if len(block.Signatures) > p.trustCount &&
+			if uint64(len(block.Signatures)) > p.GetTrustCount() &&
 				(p.AnchorBlock == nil ||
 					block.Index() > *p.AnchorBlock) {
 				p.setAnchorBlock(block.Index())
 				p.logger.WithFields(logrus.Fields{
 					"block_index": block.Index(),
 					"signatures":  len(block.Signatures),
-					"trustCount":  p.trustCount,
+					"trustCount":  p.GetTrustCount(),
 				}).Debug("Setting AnchorBlock")
 			}
 		}
@@ -1698,7 +1814,7 @@ func (p *Poset) Reset(block Block, frame Frame) error {
 	rootMap := map[string]Root{}
 	for id, root := range frame.Roots {
 		p := participants[id]
-		rootMap[p.PubKeyHex] = *root
+		rootMap[p.Message.PubKeyHex] = *root
 	}
 	if err := p.Store.Reset(rootMap); err != nil {
 		return err
@@ -1777,29 +1893,29 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 	if !ok {
 		return nil, fmt.Errorf("unknown wevent.Body.CreatorID=%v", wevent.Body.CreatorID)
 	}
-	creatorBytes, err := hex.DecodeString(creator.PubKeyHex[2:])
+	creatorBytes, err := hex.DecodeString(creator.Message.PubKeyHex[2:])
 	if err != nil {
 		return nil, fmt.Errorf("hexDecodeString(creator.PubKeyHex[2:]): %v", err)
 	}
 
 	if wevent.Body.SelfParentIndex >= 0 {
-		selfParent, err = p.Store.ParticipantEvent(creator.PubKeyHex, wevent.Body.SelfParentIndex)
+		selfParent, err = p.Store.ParticipantEvent(creator.Message.PubKeyHex, wevent.Body.SelfParentIndex)
 		if err != nil {
 			return nil, fmt.Errorf("p.Store.ParticipantEvent(creator.PubKeyHex %v, wevent.Body.SelfParentIndex %v): %v",
-				creator.PubKeyHex, wevent.Body.SelfParentIndex, err)
+				creator.Message.PubKeyHex, wevent.Body.SelfParentIndex, err)
 		}
 	}
 	if wevent.Body.OtherParentIndex >= 0 {
 		otherParentCreator, ok := p.Participants.ReadByID(wevent.Body.OtherParentCreatorID)
 		if ok {
-			otherParent, err = p.Store.ParticipantEvent(otherParentCreator.PubKeyHex, wevent.Body.OtherParentIndex)
+			otherParent, err = p.Store.ParticipantEvent(otherParentCreator.Message.PubKeyHex, wevent.Body.OtherParentIndex)
 			if err != nil {
 				// PROBLEM Check if other parent can be found in the root
 				// problem, we do not known the WireEvent's EventHash, and
 				// we do not know the creators of the roots RootEvents
-				root, err := p.Store.GetRoot(creator.PubKeyHex)
+				root, err := p.Store.GetRoot(creator.Message.PubKeyHex)
 				if err != nil {
-					return nil, fmt.Errorf("p.Store.GetRoot(creator.PubKeyHex %v): %v", creator.PubKeyHex, err)
+					return nil, fmt.Errorf("p.Store.GetRoot(creator.PubKeyHex %v): %v", creator.Message.PubKeyHex, err)
 				}
 				// loop through others
 				found := false
@@ -1823,9 +1939,9 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 		}
 	}
 
-	if len(wevent.FlagTable) == 0 {
-		return nil, fmt.Errorf("flag table is null")
-	}
+//	if len(wevent.FlagTable) == 0 {
+//		return nil, fmt.Errorf("flag table is null")
+//	}
 
 	signatureValues := wevent.BlockSignatures(creatorBytes)
 	blockSignatures := make([]*BlockSignature, len(signatureValues))
@@ -1842,20 +1958,25 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 		BlockSignatures:      blockSignatures,
 	}
 
+	ft := NewFlagTable()
+
 	event := &Event{
 		Message: &EventMessage{
 			Body:                 &body,
 			Signature:            wevent.Signature,
-			FlagTable:            wevent.FlagTable,
-			ClothoProof:          wevent.ClothoProof,
+//			FlagTable:            wevent.FlagTable,
+//			ClothoProof:          wevent.ClothoProof,
 			SelfParentIndex:      wevent.Body.SelfParentIndex,
 			OtherParentCreatorID: wevent.Body.OtherParentCreatorID,
 			OtherParentIndex:     wevent.Body.OtherParentIndex,
 			CreatorID:            wevent.Body.CreatorID,
 		},
-		roundReceived:    RoundNIL,
-		round:            RoundNIL,
-		lamportTimestamp: LamportTimestampNIL,
+//		roundReceived:    RoundNIL,
+//		round:            RoundNIL,
+		LamportTimestamp: LamportTimestampNIL,
+		Frame:            FrameNIL,
+		FlagTableBytes:   ft.Marshal(),
+		RootTableBytes:   ft.Marshal(),
 	}
 
 	p.logger.WithFields(logrus.Fields{
@@ -1869,20 +1990,322 @@ func (p *Poset) ReadWireInfo(wevent WireEvent) (*Event, error) {
 // CheckBlock returns an error if the Block does not contain valid signatures
 // from MORE than 1/3 of participants
 func (p *Poset) CheckBlock(block Block) error {
-	validSignatures := 0
+	validSignatures := uint64(0)
 	for _, s := range block.GetBlockSignatures() {
 		ok, _ := block.Verify(s)
 		if ok {
 			validSignatures++
 		}
 	}
-	if validSignatures <= p.trustCount {
-		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.trustCount+1)
+	if validSignatures <= p.GetTrustCount() {
+		return fmt.Errorf("not enough valid signatures: got %d, need %d", validSignatures, p.GetTrustCount()+1)
 	}
 
 	p.logger.WithField("valid_signatures", validSignatures).Debug("CheckBlock")
 	return nil
 }
+
+
+func incCcTemp(ccTemp map[int64]map[EventHash]int64, frame int64, hash EventHash) {
+	if _, ok := ccTemp[frame]; !ok {
+		ccTemp[frame] = make(map[EventHash]int64)
+	}
+	if v, ok := ccTemp[frame][hash]; ok {
+		ccTemp[frame][hash] = v + 1
+	} else {
+		ccTemp[frame][hash] = 1
+	}
+}
+
+func updateCcList(ccList map[int64]map[EventHash]int64, frame int64, hash EventHash, val int64) {
+	if _, ok := ccList[frame]; !ok {
+		ccList[frame] = make(map[EventHash]int64)
+	}
+	if cval, ok := ccList[frame][hash]; ok {
+		if cval < val {
+			ccList[frame][hash] = val
+		}
+	} else {
+		ccList[frame][hash] = val
+	}
+}
+
+func (p *Poset) ClothoChecking(e *Event) error {
+//	p.logger.WithFields(logrus.Fields{
+//		"Event": e,
+//	}). Warnf("ClothoChecking Start")
+//	defer p.logger.WithFields(logrus.Fields{
+//		"Event": e,
+//	}). Warnf("ClothoChecking End")
+	ccList := make(map[int64]map[EventHash]int64)
+	rootTable, err := e.GetRootTable()
+	if err != nil {
+		return fmt.Errorf("ClothoChecking() e.GetRootTable(): %v", err)
+	}
+	for key, val := range rootTable {
+		prevRoot, err := p.Store.GetClothoCheck(val, key)
+		if isDBKeyNotFound(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("ClothoChecking(): GetClothoCheck(): %v", err)
+		}
+		prevRootEvent, err := p.Store.GetEventBlock(prevRoot)
+		if err != nil {
+			return fmt.Errorf("GetEventBlock(prevRoot): %v", err)
+		}
+		ccTemp := make(map[int64]map[EventHash]int64)
+
+		prevRootTable, err := prevRootEvent.GetRootTable()
+		if err != nil {
+			return fmt.Errorf("ClothoChecking() prevRootEvent.GetRootTable(): %v", err)
+		}
+
+		for rkey, rval := range prevRootTable {
+			prevPrevRoot, err := p.Store.GetClothoCheck(rval, rkey)
+			if isDBKeyNotFound(err) {
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("ClothoChecking(): GetClothoCheck(rval, rkey): %v", err)
+			}
+			prevPrevRootEvent, err := p.Store.GetEventBlock(prevPrevRoot)
+			if err != nil {
+				return fmt.Errorf("GetEventBlock(prevPrevRoot): %v", err)
+			}
+
+			prevPrevRootTable, err := prevPrevRootEvent.GetRootTable()
+			if err != nil {
+				return fmt.Errorf("ClothoChecking() prevPrevRootEvent.GetRootTable(): %v", err)
+			}
+
+			for rrkey, rrval := range prevPrevRootTable {
+				_, err := p.Store.GetClothoCheck(rrval, rrkey)
+				if isDBKeyNotFound(err) {
+					continue
+				}
+				if err != nil {
+					return fmt.Errorf("ClothoChecking(): GetClothoCheck(rrval, rrkey): %v", err)
+				}
+				incCcTemp(ccTemp, rrval, rrkey)
+			}
+		}
+		for frame, eventHashMap := range ccTemp {
+			for hash, val := range eventHashMap {
+				updateCcList(ccList, frame, hash, val)
+			}
+		}
+	}
+	for frame, eventHashMap := range ccList {
+		for key, val := range eventHashMap {
+//			p.logger.WithFields(logrus.Fields{
+//				"Frame": frame,
+//				"EventHash": key,
+//				"is_new": (frame == e.Frame && key == e.CreatorID()),
+//				"val": val,
+//			}). Warnf("ClothoChecking")
+			if uint64(val) >= p.GetSuperMajority() {
+				rootKey, err := p.Store.GetClothoCheck(frame, key)
+				if err != nil {
+					return fmt.Errorf("ClothoChecking(): GetClothoCheck(frame, key): %v", err)
+				}
+
+				root, err := p.Store.GetEventBlock(rootKey)
+				if err != nil {
+					return fmt.Errorf("ClothoChecking() GetEventBlock(key): %v", err)
+				}
+				if !root.Clotho {
+					root.Clotho = true
+					if err := p.Store.SetEvent(root); err != nil {
+						return fmt.Errorf("ClothoChecking() SetEvent(): %v", err)
+					}
+					peer, ok := p.Participants.ReadByPubKey(root.GetCreator())
+					hash := root.Hash()
+					p.logger.WithFields(logrus.Fields{
+						"Frame": frame,
+						"EventCreator": peer.Message.NetAddr,
+						"Hash": hash.String(),
+						"lamport": root.GetLamportTimestamp(),
+						"ok": ok,
+					}).Debugf("Clotho")
+				}
+				p.Store.AddTimeTable(e.Hash(), root.Hash(), e.LamportTimestamp)
+			}
+		}
+	}
+	return nil
+}
+
+func (p *Poset) AtroposTimeSelection(e *Event) error {
+	countMap := NewCountMap()
+	c := int64(4)
+
+	rootTable, err := e.GetRootTable()
+	if err != nil {
+		return err
+	}
+	for prevKey, _ := range rootTable {
+		timeTable, err := p.Store.GetTimeTable(prevKey)
+		if err != nil {
+			return err
+		}
+		for key, val := range timeTable {
+			countMap.Inc(key, val)
+		}
+	}
+	for key, val := range countMap {
+		maxVal := uint64(0)
+		var maxInd int64
+
+		clotho,err := p.Store.GetEventBlock(key)
+		if err != nil {
+			p.logger.WithFields(logrus.Fields{
+				"Hash": key.String(),
+				"err": err,
+			}). Warnf("Clotho not found in atropos time selection")
+			continue
+		}
+		if clotho.Atropos { // Clotho is already confirmed as Atropos
+			continue
+		}
+
+//		p.logger.WithFields(logrus.Fields{
+//			"e.Frame": e.Frame,
+//			"clotho.Frame": clotho.Frame,
+//			"(e.Frame - clotho.Frame) % c": (e.Frame - clotho.Frame) % c,
+//		}). Warnf("Atropos Selection: Frames")
+		if (e.Frame - clotho.Frame) % c == 0 {
+			for time, count := range val {
+				if maxVal == uint64(0) {
+					maxVal = count
+					maxInd = time
+				} else if time < maxInd {
+					maxInd = time
+				}
+			}
+			p.Store.AddTimeTable(e.Hash(), key, maxInd)
+		} else {
+			for time, count := range val {
+				if maxVal == uint64(0) || count > maxVal {
+					maxVal = count
+					maxInd = time
+				} else if count == maxVal && time < maxInd {
+					maxInd = time
+				}
+			}
+
+//			p.logger.WithFields(logrus.Fields{
+//				"maxVal": maxVal,
+//				"p.GetSuperMajority()": p.GetSuperMajority(),
+//			}). Warnf("Atropos Selection")
+			if maxVal >= p.GetSuperMajority() {
+				clotho.Atropos = true
+				if maxInd < clotho.AtroposTimestamp || 0 == clotho.AtroposTimestamp {
+					if 0 == clotho.AtroposTimestamp {
+						p.accountEvent(&clotho)
+					}
+					clotho.AtroposTimestamp = maxInd
+					clotho.AtTimes = append(clotho.AtTimes, maxInd)
+				}
+				if err := p.Store.SetEvent(clotho); err != nil {
+					p.logger.Fatal(err)
+				}
+				peer, ok := p.Participants.ReadByPubKey(clotho.GetCreator())
+				hash := clotho.Hash()
+				p.logger.WithFields(logrus.Fields{
+					"Frame": clotho.Frame,
+					"EventCreator": peer.Message.NetAddr,
+					"Hash": hash.String(),
+					"AtroposTimestamp": clotho.AtroposTimestamp,
+					"ok": ok,
+				}). Debugf("Atropos")
+				p.AssignAtroposTime(&clotho, clotho.AtroposTimestamp, clotho.Frame)
+			} else {
+				p.Store.AddTimeTable(e.Hash(), key, maxInd)
+			}
+
+		}
+	}
+
+	return nil
+}
+
+// AssignAtroposTime sorts events according Atropos selection rule
+func (p *Poset) AssignAtroposTime(e *Event, atroposTimestamp int64, frame int64) {
+	followSelf, followOther := false, false
+	selfParent, selfErr := p.Store.GetEventBlock(e.SelfParent())
+	otherParent, otherErr := p.Store.GetEventBlock(e.OtherParent())
+	if nil == selfErr {
+		if 0 == selfParent.FrameReceived || selfParent.FrameReceived < frame {
+			selfParent.FrameReceived = frame
+		}
+		selfParent.RecFrames = append(selfParent.RecFrames, frame)
+		if 0 == selfParent.AtroposTimestamp || selfParent.AtroposTimestamp > atroposTimestamp {
+			followSelf = true
+			if 0 == selfParent.AtroposTimestamp {
+				p.accountEvent(&selfParent)
+			}
+			selfParent.AtroposTimestamp = atroposTimestamp
+			selfParent.AtTimes = append(selfParent.AtTimes, atroposTimestamp)
+			selfParent.AtVisited++
+			if err := p.Store.SetEvent(selfParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		} else {
+			selfParent.AtVisited++
+			if err := p.Store.SetEvent(selfParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		}
+	}
+	if nil == otherErr {
+		if 0 == otherParent.FrameReceived || otherParent.FrameReceived < frame {
+			otherParent.FrameReceived = frame
+		}
+		otherParent.RecFrames = append(otherParent.RecFrames, frame)
+		if 0 == otherParent.AtroposTimestamp || otherParent.AtroposTimestamp > atroposTimestamp {
+			followOther = true
+			if 0 == otherParent.AtroposTimestamp {
+				p.accountEvent(&otherParent)
+			}
+			otherParent.AtroposTimestamp = atroposTimestamp
+			otherParent.AtTimes = append(otherParent.AtTimes, atroposTimestamp)
+			otherParent.AtVisited++
+			if err := p.Store.SetEvent(otherParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		} else {
+			otherParent.AtVisited++
+			if err := p.Store.SetEvent(otherParent); err != nil {
+				p.logger.Fatal(err)
+			}
+		}
+	}
+	if followSelf {
+		p.AssignAtroposTime(&selfParent, atroposTimestamp, frame)
+	}
+	if followOther {
+		p.AssignAtroposTime(&otherParent, atroposTimestamp, frame)
+	}
+}
+
+func (p *Poset) accountEvent(ev *Event) {
+	p.setLastConsensusRound(ev.Frame)
+	if ev.IsLoaded() {
+		p.pendingLoadedEventsLocker.Lock()
+		p.pendingLoadedEvents--
+		p.pendingLoadedEventsLocker.Unlock()
+	}
+	err := p.Store.AddConsensusEvent(*ev)
+	if err != nil {
+		panic(err)
+	}
+	p.consensusTransactionsLocker.Lock()
+	p.ConsensusTransactions += uint64(len(ev.Transactions()))
+	p.consensusTransactionsLocker.Unlock()
+}
+
+
 
 /*******************************************************************************
 Setters
@@ -1974,6 +2397,32 @@ func (p *Poset) GetConsensusTransactionsCount() uint64 {
 	p.consensusTransactionsLocker.RLock()
 	defer p.consensusTransactionsLocker.RUnlock()
 	return p.ConsensusTransactions
+}
+
+// GetSuperMajority returns value of SuperMajority
+func (p *Poset) GetSuperMajority() uint64 {
+	return p.Participants.GetSuperMajority()
+}
+
+// GetTrustCount() returns value of TrustCount
+func (p *Poset) GetTrustCount() uint64 {
+	return p.Participants.GetTrustCount()
+}
+
+func (p *Poset) NextTopologicalIndex() int64 {
+	p.topologicalIndexLocker.Lock()
+	defer p.topologicalIndexLocker.Unlock()
+	result := p.topologicalIndex
+	p.topologicalIndex++
+	return result
+}
+
+func (p *Poset) Address() string {
+	peer, ok := p.Participants.ReadByPubKey(p.core.HexID())
+	if ok {
+		return peer.Message.NetAddr
+	}
+	return "unknown"
 }
 
 /*******************************************************************************

@@ -1,6 +1,12 @@
-hash: a2ada84d6a6d32fc8c06d00450f3aa05a8bcdf8cf6810155d1a6621561b2a59c
-updated: 2019-05-13T12:36:41.61854+10:00
+hash: e14e3cf807117639db430e1e4ac08e3097fd9d1f82f38354dd693e80397ce0bd
+updated: 2019-05-22T17:43:56.618976623+10:00
 imports:
+- name: github.com/1lann/cete
+  version: bd50eab7e711165f85191961cca9ef5c1e9a2390
+- name: github.com/1lann/msgpack
+  version: fdd7618e197cf7a11481cda1810608f349fbb88c
+  subpackages:
+  - codes
 - name: github.com/allegro/bigcache
   version: 84a0ff3f153cbd7e280a19029a864bb04b504e62
   subpackages:
@@ -75,7 +81,7 @@ imports:
 - name: github.com/rs/xid
   version: 15d26544def341f036c5f8dca987a4cbe575032c
 - name: github.com/sirupsen/logrus
-  version: 8bdbc7bcc01dcbb8ec23dc8a28e332258d25251f
+  version: 839c75faf7f98a33d445d181f3018b5c3409a45e
 - name: github.com/spf13/afero
   version: 588a75ec4f32903aa5e39a2619ba6a4631e28424
   subpackages:
@@ -83,7 +89,7 @@ imports:
 - name: github.com/spf13/cast
   version: 8c9545af88b134710ab1cd196795e7f2388358d7
 - name: github.com/spf13/cobra
-  version: ef82de70bb3f60c65fb8eebacbb2d122ef517385
+  version: 67fc4837d267bc9bfd6e47f77783fcc3dffc68de
 - name: github.com/spf13/jwalterweatherman
   version: 94f6ae3ed3bceceafa716478c5fbf8d29ca601a1
 - name: github.com/spf13/pflag
@@ -118,6 +124,17 @@ imports:
   - transform
   - unicode/bidi
   - unicode/norm
+- name: google.golang.org/appengine
+  version: 54a98f90d1c46b7731eb8fb305d2a321c30ef610
+  subpackages:
+  - datastore
+  - internal
+  - internal/app_identity
+  - internal/base
+  - internal/datastore
+  - internal/log
+  - internal/modules
+  - internal/remote_api
 - name: google.golang.org/genproto
   version: b515fa19cec88c32f305a962f34ae60068947aea
   subpackages:
