@@ -26,8 +26,10 @@ func fakePeers(n int) *peers.Peers {
 	for i := 0; i < n; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		peer := peers.Peer{
-			NetAddr:   fakeAddr(i),
-			PubKeyHex: fmt.Sprintf("0x%X", common.FromECDSAPub(&key.PublicKey)),
+			Message: &peers.PeerMessage{
+				NetAddr:   fakeAddr(i),
+				PubKeyHex: fmt.Sprintf("0x%X", common.FromECDSAPub(&key.PublicKey)),
+			},
 		}
 		participants.AddPeer(&peer)
 	}

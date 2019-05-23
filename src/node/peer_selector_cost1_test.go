@@ -30,7 +30,7 @@ func TestFairSelectorLocalAddrOnly(t *testing.T) {
 	fs := NewFairPeerSelector(
 		fp,
 		FairPeerSelectorCreationFnArgs{
-			LocalAddr: fps[0].NetAddr,
+			LocalAddr: fps[0].Message.NetAddr,
 		},
 	)
 
@@ -46,20 +46,20 @@ func TestFairSelectorGeneral(t *testing.T) {
 	ss := NewFairPeerSelector(
 		fp,
 		FairPeerSelectorCreationFnArgs{
-			LocalAddr: fps[3].NetAddr,
+			LocalAddr: fps[3].Message.NetAddr,
 		},
 	)
 
 	addresses := []string{
-		fps[0].NetAddr,
-		fps[1].NetAddr,
-		fps[2].NetAddr,
-		fps[3].NetAddr,
+		fps[0].Message.NetAddr,
+		fps[1].Message.NetAddr,
+		fps[2].Message.NetAddr,
+		fps[3].Message.NetAddr,
 	}
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
-	assertO.Contains(addresses, ss.Next().NetAddr)
+	assertO.Contains(addresses, ss.Next().Message.NetAddr)
+	assertO.Contains(addresses, ss.Next().Message.NetAddr)
+	assertO.Contains(addresses, ss.Next().Message.NetAddr)
+	assertO.Contains(addresses, ss.Next().Message.NetAddr)
 }
 
 /*
@@ -93,7 +93,7 @@ func BenchmarkFairSelectorNext(b *testing.B) {
 			if p == nil {
 				b.Fatal("No next peer")
 			}
-			fs1.UpdateLast(p.PubKeyHex)
+			fs1.UpdateLast(p.Message.PubKeyHex)
 		}
 	})
 
@@ -103,7 +103,7 @@ func BenchmarkFairSelectorNext(b *testing.B) {
 			if p == nil {
 				b.Fatal("No next peer")
 			}
-			rnd.UpdateLast(p.PubKeyHex)
+			rnd.UpdateLast(p.Message.PubKeyHex)
 		}
 	})
 

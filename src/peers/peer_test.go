@@ -43,8 +43,10 @@ func TestJSONPeers(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		key, _ := crypto.GenerateECDSAKey()
 		peer := Peer{
-			NetAddr:   fmt.Sprintf("addr%d", i),
-			PubKeyHex: fmt.Sprintf("0x%X", common.FromECDSAPub(&key.PublicKey)),
+			Message : &PeerMessage{
+				NetAddr:   fmt.Sprintf("addr%d", i),
+				PubKeyHex: fmt.Sprintf("0x%X", common.FromECDSAPub(&key.PublicKey)),
+			},
 			weight: 1,
 		}
 		newPeers.AddPeer(&peer)
@@ -82,7 +84,7 @@ func TestJSONPeers(t *testing.T) {
 			t.Fatal(err)
 		}
 		pubKey := common.ToECDSAPub(pubKeyBytes)
-		if !reflect.DeepEqual(*pubKey, keys[peersSlice[i].NetAddr].PublicKey) {
+		if !reflect.DeepEqual(*pubKey, keys[peersSlice[i].Message.NetAddr].PublicKey) {
 			t.Fatalf("peers[%d] PublicKey not parsed correctly", i)
 		}
 	}

@@ -256,19 +256,19 @@ func recycleNode(oldNode *Node, logger *logrus.Logger, t *testing.T) *Node {
 	p := ps.ToPeerSlice()
 
 	// Create transport
-	trans := createTransport(t, logger, backConfig, p[0].NetAddr,
+	trans := createTransport(t, logger, backConfig, p[0].Message.NetAddr,
 		2, createFu, network.CreateListener)
 	defer transportClose(t, trans)
 
 	prox := dummy.NewInmemDummyApp(logger)
 
 	selectorArgs := SmartPeerSelectorCreationFnArgs{
-		LocalAddr:    p[0].NetAddr,
+		LocalAddr:    p[0].Message.NetAddr,
 		GetFlagTable: nil,
 	}
 
 	// Create & Init node
-	newNode := NewNode(conf, id, key, ps, store, trans, prox, NewSmartPeerSelectorWrapper, selectorArgs, p[0].NetAddr)
+	newNode := NewNode(conf, id, key, ps, store, trans, prox, NewSmartPeerSelectorWrapper, selectorArgs, p[0].Message.NetAddr)
 	if err := newNode.Init(); err != nil {
 		t.Fatal(err)
 	}

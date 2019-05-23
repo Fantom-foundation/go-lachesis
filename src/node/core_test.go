@@ -46,7 +46,7 @@ func initCores(n int, t *testing.T) ([]*Core,
 		flagTable[selfParent] = 1
 
 		// Create and save the first Event
-		initialEvent := poset.NewEvent([][]byte(nil),
+		initialEvent := poset.NewEvent0([][]byte(nil),
 			[]*wire.InternalTransaction{},
 			nil,
 			poset.EventHashes{selfParent, poset.EventHash{}}, core.PubKey(), 0, flagTable)
@@ -105,9 +105,9 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint64]*ecdsa.PrivateKey,
 	}
 
 	event1ft, _ := event1.GetFlagTable()
-	event01ft, _ := event0.MergeFlagTable(event1ft)
+	event01ft, _ := event0.MergeFlagTable(event1ft, event0.Frame)
 
-	event01 := poset.NewEvent([][]byte{},
+	event01 := poset.NewEvent0([][]byte{},
 		[]*wire.InternalTransaction{},
 		nil,
 		poset.EventHashes{index["e0"], index["e1"]}, // e0 and e1
@@ -123,9 +123,9 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint64]*ecdsa.PrivateKey,
 		t.Fatalf("failed to get parent: %s", err)
 	}
 
-	event20ft, _ := event2.MergeFlagTable(event01ft)
+	event20ft, _ := event2.MergeFlagTable(event01ft, event2.Frame)
 
-	event20 := poset.NewEvent([][]byte{},
+	event20 := poset.NewEvent0([][]byte{},
 		[]*wire.InternalTransaction{},
 		nil,
 		poset.EventHashes{index["e2"], index["e01"]}, // e2 and e01
@@ -135,9 +135,9 @@ func initPoset(t *testing.T, cores []*Core, keys map[uint64]*ecdsa.PrivateKey,
 		fmt.Printf("error inserting e20: %s\n", err)
 	}
 
-	event12ft, _ := event1.MergeFlagTable(event20ft)
+	event12ft, _ := event1.MergeFlagTable(event20ft, event1.Frame)
 
-	event12 := poset.NewEvent([][]byte{},
+	event12 := poset.NewEvent0([][]byte{},
 		[]*wire.InternalTransaction{},
 		nil,
 		poset.EventHashes{index["e1"], index["e20"]}, // e1 and e20
@@ -297,7 +297,7 @@ func TestSync(t *testing.T) {
 	if core0Head.OtherParent() != index["e1"] {
 		t.Fatalf("core 0 head other-parent should be e1")
 	}
-	if len(core0Head.Message.FlagTable) == 0 {
+	if len(core0Head.FlagTableBytes) == 0 {
 		t.Fatal("flag table is null")
 	}
 	index["e01"] = core0Head.Hash()

@@ -27,7 +27,7 @@ func initInmemStore(cacheSize int) (*InmemStore, []pub) {
 		pubKey := common.FromECDSAPub(&key.PublicKey)
 		peer := peers.NewPeer(fmt.Sprintf("0x%X", pubKey), "")
 		participantPubs = append(participantPubs,
-			pub{i, key, pubKey, peer.PubKeyHex})
+			pub{i, key, pubKey, peer.Message.PubKeyHex})
 		participants.AddPeer(peer)
 		participantPubs[len(participantPubs)-1].id = peer.ID
 	}
@@ -47,7 +47,7 @@ func TestInmemEvents(t *testing.T) {
 		for _, p := range participants {
 			var items []Event
 			for k := int64(0); k < testSize; k++ {
-				event := NewEvent([][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
+				event := NewEvent0([][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
 					nil,
 					[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
 					make(EventHashes, 2),
@@ -116,7 +116,7 @@ func TestInmemRounds(t *testing.T) {
 	round := NewRoundCreated()
 	events := make(map[string]Event)
 	for _, p := range participants {
-		event := NewEvent([][]byte{},
+		event := NewEvent0([][]byte{},
 			nil,
 			[]BlockSignature{},
 			make(EventHashes, 2),

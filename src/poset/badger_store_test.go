@@ -23,7 +23,7 @@ func initBadgerStore(cacheSize int, t *testing.T) (*BadgerStore, []pub) {
 		peer := peers.NewPeer(fmt.Sprintf("0x%X", pubKey), "")
 		participants.AddPeer(peer)
 		participantPubs = append(participantPubs,
-			pub{peer.ID, key, pubKey, peer.PubKeyHex})
+			pub{peer.ID, key, pubKey, peer.Message.PubKeyHex})
 	}
 
 	if err := os.RemoveAll("test_data"); err != nil {
@@ -186,7 +186,7 @@ func TestDBEventMethods(t *testing.T) {
 	for _, p := range participants {
 		var items []Event
 		for k := int64(0); k < testSize; k++ {
-			event := NewEvent(
+			event := NewEvent0(
 				[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
 				[]*wire.InternalTransaction{},
 				[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
@@ -290,7 +290,7 @@ func TestDBRoundMethods(t *testing.T) {
 	round := NewRoundCreated()
 	events := make(map[string]Event)
 	for _, p := range participants {
-		event := NewEvent([][]byte{},
+		event := NewEvent0([][]byte{},
 			[]*wire.InternalTransaction{},
 			[]BlockSignature{},
 			make(EventHashes, 2),
@@ -434,7 +434,7 @@ func TestDBFrameMethods(t *testing.T) {
 	events := make([]*EventMessage, len(participants))
 	roots := make([]*Root, len(participants))
 	for id, p := range participants {
-		event := NewEvent(
+		event := NewEvent0(
 			[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], 0))},
 			[]*wire.InternalTransaction{},
 			[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
@@ -487,7 +487,7 @@ func TestBadgerEvents(t *testing.T) {
 	for _, p := range participants {
 		var items []Event
 		for k := int64(0); k < testSize; k++ {
-			event := NewEvent(
+			event := NewEvent0(
 				[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], k))},
 				[]*wire.InternalTransaction{},
 				[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},
@@ -572,7 +572,7 @@ func TestBadgerRounds(t *testing.T) {
 	round := NewRoundCreated()
 	events := make(map[string]Event)
 	for _, p := range participants {
-		event := NewEvent([][]byte{},
+		event := NewEvent0([][]byte{},
 			[]*wire.InternalTransaction{},
 			[]BlockSignature{},
 			make(EventHashes, 2),
@@ -692,7 +692,7 @@ func TestBadgerFrames(t *testing.T) {
 	events := make([]*EventMessage, len(participants))
 	roots := make([]*Root, len(participants))
 	for id, p := range participants {
-		event := NewEvent(
+		event := NewEvent0(
 			[][]byte{[]byte(fmt.Sprintf("%s_%d", p.hex[:5], 0))},
 			[]*wire.InternalTransaction{},
 			[]BlockSignature{{Validator: []byte("validator"), Index: 0, Signature: "r|s"}},

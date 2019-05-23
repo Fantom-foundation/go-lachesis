@@ -143,7 +143,7 @@ func TestWireEvent(t *testing.T) {
 func TestIsLoaded(t *testing.T) {
 	//nil payload
 
-	event := NewEvent(nil, nil, nil, make(EventHashes, 2), []byte("creator"), 1, nil)
+	event := NewEvent0(nil, nil, nil, make(EventHashes, 2), []byte("creator"), 1, nil)
 	if event.IsLoaded() {
 		t.Fatalf("IsLoaded() should return false for nil Body.Transactions and Body.BlockSignatures")
 	}
@@ -188,12 +188,12 @@ func TestEventFlagTable(t *testing.T) {
 		fakeEventHash("z"): 2,
 	}
 
-	event := NewEvent(nil, nil, nil, make(EventHashes, 2), []byte("creator"), 1, exp)
+	event := NewEvent0(nil, nil, nil, make(EventHashes, 2), []byte("creator"), 1, exp)
 	if event.IsLoaded() {
 		t.Fatalf("IsLoaded() should return false for nil Body.Transactions and Body.BlockSignatures")
 	}
 
-	if len(event.Message.FlagTable) == 0 {
+	if len(event.FlagTableBytes) == 0 {
 		t.Fatal("FlagTable is nil")
 	}
 
@@ -234,18 +234,18 @@ func TestMergeFlagTable(t *testing.T) {
 	}
 
 	ft := start.Marshal()
-	event := Event{Message: &EventMessage{FlagTable: ft}}
+	event := Event{FlagTableBytes : ft}
 
 	for _, v := range syncData {
-		flagTable, err := event.MergeFlagTable(v)
+		flagTable, err := event.MergeFlagTable(v, event.Frame)
 		if err != nil {
 			t.Fatal(err)
 		}
-		event.Message.FlagTable = flagTable.Marshal()
+		event.FlagTableBytes = flagTable.Marshal()
 	}
 
 	res := FlagTable{}
-	err := res.Unmarshal(event.Message.FlagTable)
+	err := res.Unmarshal(event.FlagTableBytes)
 	if err != nil {
 		t.Error(err)
 	}

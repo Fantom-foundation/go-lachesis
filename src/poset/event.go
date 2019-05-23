@@ -139,6 +139,20 @@ func (m *EventMessage) Equals(that *EventMessage) bool {
 }
 
 // NewEvent creates new block event.
+func NewEvent0(
+	transactions [][]byte,
+	internalTransactions []*wire.InternalTransaction,
+	blockSignatures []BlockSignature,
+	parents EventHashes, creator []byte, index int64,
+	ft FlagTable) Event {
+
+	return NewEvent(
+		transactions, internalTransactions, blockSignatures, parents, creator, index,
+		ft,
+		FlagTable(make(map[EventHash]int64))/*rootTable*/, FrameNIL, false /*Root*/)
+}
+
+// NewEvent creates new block event.
 func NewEvent(
 	transactions [][]byte,
 	internalTransactions []*wire.InternalTransaction,

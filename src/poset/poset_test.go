@@ -184,7 +184,7 @@ func initPosetNodes(n int) ([]TestNode, map[string]EventHash, *[]Event, *peers.P
 	}
 
 	for _, peer := range participants.ToPeerSlice() {
-		nodes = append(nodes, NewTestNode(keys[peer.PubKeyHex]))
+		nodes = append(nodes, NewTestNode(keys[peer.Message.PubKeyHex]))
 	}
 
 	return nodes, index, orderedEvents, participants
@@ -198,7 +198,7 @@ func playEvents(plays []play, nodes []TestNode,
 			ft[index[p.knownRoots[k]]] = 1
 		}
 
-		e := NewEvent(p.txPayload, nil,
+		e := NewEvent0(p.txPayload, nil,
 			p.sigPayload,
 			EventHashes{index[p.selfParent], index[p.otherParent]},
 			nodes[p.to].Pub, p.index, ft)
@@ -241,7 +241,7 @@ func initPosetFull(t testing.TB, plays []play, db bool, n int,
 	// Needed to have sorted nodes based on participants hash32
 	for i, peer := range participants.ToPeerSlice() {
 		selfParent := GenRootSelfParent(peer.ID)
-		event := NewEvent(nil, nil, nil,
+		event := NewEvent0(nil, nil, nil,
 			EventHashes{selfParent, EventHash{}},
 			nodes[i].Pub,
 			0,
@@ -260,7 +260,7 @@ func initPosetFull(t testing.TB, plays []play, db bool, n int,
 
 	// Add reference to each participants' root event
 	for i, peer := range participants.ToPeerSlice() {
-		root, err := poset.Store.GetRoot(peer.PubKeyHex)
+		root, err := poset.Store.GetRoot(peer.Message.PubKeyHex)
 		if err != nil {
 			panic(err)
 		}
@@ -498,7 +498,7 @@ func TestFork(t *testing.T) {
 			t.Fatal(err)
 		}
 		parents[0] = selfParent
-		event := NewEvent(nil, nil, nil, parents, node.Pub, 0, nil)
+		event := NewEvent0(nil, nil, nil, parents, node.Pub, 0, nil)
 		if err := event.Sign(node.Key); err != nil {
 			t.Fatal(err)
 		}
@@ -509,7 +509,7 @@ func TestFork(t *testing.T) {
 	}
 
 	// a and e2 need to have different hashes
-	eventA := NewEvent([][]byte{[]byte("yo")}, nil, nil, make(EventHashes, 2), nodes[2].Pub, 0, nil)
+	eventA := NewEvent0([][]byte{[]byte("yo")}, nil, nil, make(EventHashes, 2), nodes[2].Pub, 0, nil)
 	if err := eventA.Sign(nodes[2].Key); err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +518,7 @@ func TestFork(t *testing.T) {
 		t.Fatal("InsertEvent should return error for 'a'")
 	}
 
-	event01 := NewEvent(nil, nil, nil,
+	event01 := NewEvent0(nil, nil, nil,
 		EventHashes{index[e0], index[a]}, // e0 and a
 		nodes[0].Pub, 1, nil)
 	if err := event01.Sign(nodes[0].Key); err != nil {
@@ -529,7 +529,7 @@ func TestFork(t *testing.T) {
 		t.Fatalf("InsertEvent should return error for %s", e01)
 	}
 
-	event20 := NewEvent(nil, nil, nil,
+	event20 := NewEvent0(nil, nil, nil,
 		EventHashes{index[e2], index[e01]}, // e2 and e01
 		nodes[2].Pub, 1, nil)
 	if err := event20.Sign(nodes[2].Key); err != nil {
@@ -1044,7 +1044,7 @@ func TestDivideRounds(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r := ev.GetRound(); r == RoundNIL || r != et.r {
+		if r := ev.GetRound(); r == FrameNIL || r != et.r {
 			disp := "nil"
 			if r >= 0 {
 				disp = strconv.FormatInt(r, 10)
@@ -1226,7 +1226,7 @@ func initBlockPoset(t *testing.T) (*Poset, []TestNode, map[string]EventHash) {
 	nodes, index, orderedEvents, participants := initPosetNodes(n)
 
 	for i, peer := range participants.ToPeerSlice() {
-		event := NewEvent(nil, nil, nil,
+		event := NewEvent0(nil, nil, nil,
 			EventHashes{GenRootSelfParent(peer.ID), EventHash{}},
 			nodes[i].Pub,
 			0,
@@ -1291,7 +1291,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 		}
 
 		for _, pl := range plays {
-			e := NewEvent(pl.txPayload,
+			e := NewEvent0(pl.txPayload,
 				nil,
 				pl.sigPayload,
 				EventHashes{index[pl.selfParent], index[pl.otherParent]},
@@ -1347,7 +1347,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 			pl := play{2, 2, s20, e10, e21, nil, []BlockSignature{unknownBlockSig},
 				[]string{}}
 
-			e := NewEvent(nil,
+			e := NewEvent0(nil,
 				nil,
 				pl.sigPayload,
 				EventHashes{index[pl.selfParent], index[pl.otherParent]},
@@ -1383,7 +1383,7 @@ func TestInsertEventsWithBlockSignatures(t *testing.T) {
 			pl := play{0, 2, s00, e21, e02, nil, []BlockSignature{badNodeSig},
 				[]string{}}
 
-			e := NewEvent(nil,
+			e := NewEvent0(nil,
 				nil,
 				pl.sigPayload,
 				EventHashes{index[pl.selfParent], index[pl.otherParent]},
@@ -1552,7 +1552,7 @@ func TestDivideRoundsBis(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if r := ev.GetRound(); r == RoundNIL || r != et.r {
+		if r := ev.GetRound(); r == FrameNIL || r != et.r {
 			disp := "nil"
 			if r >= 0 {
 				disp = strconv.FormatInt(r, 10)
@@ -1702,11 +1702,11 @@ func TestDecideRoundReceived(t *testing.T) {
 
 		switch rune(name[0]) {
 		case rune('e'):
-			if r := e.roundReceived; r != 1 {
+			if r := e.FrameReceived; r != 1 {
 				t.Fatalf("%s round received should be 1 not %d", name, r)
 			}
 		case rune('f'):
-			if r := e.roundReceived; r != 2 {
+			if r := e.FrameReceived; r != 2 {
 				t.Fatalf("%s round received should be 2 not %d", name, r)
 			}
 		}
@@ -2470,7 +2470,7 @@ func initFunkyPoset(t *testing.T, logger *logrus.Logger, full bool) (*Poset, map
 	for i, peer := range participants.ToPeerSlice() {
 		name := fmt.Sprintf("w0%d", i)
 		selfParent := GenRootSelfParent(peer.ID)
-		event := NewEvent(
+		event := NewEvent0(
 			[][]byte{[]byte(name)},
 			nil,
 			nil,
@@ -3134,7 +3134,7 @@ func initSparsePoset(
 	for i, peer := range participants.ToPeerSlice() {
 		name := fmt.Sprintf("w0%d", i)
 		selfParent := GenRootSelfParent(peer.ID)
-		event := NewEvent(
+		event := NewEvent0(
 			[][]byte{[]byte(name)},
 			nil,
 			nil,
@@ -3673,7 +3673,7 @@ func getDiff(p *Poset, known map[uint64]int64, t *testing.T) []Event {
 		if !ok {
 			t.Fatal(fmt.Errorf("participant with ID %v not found", id))
 		}
-		pk := peer.PubKeyHex
+		pk := peer.Message.PubKeyHex
 		// get participant Events with index > ct
 		participantEvents, err := p.Store.ParticipantEvents(pk, ct)
 		if err != nil {
@@ -3744,8 +3744,10 @@ func compareRoots(t *testing.T, x, exp *Root, index map[string]EventHash) {
 }
 
 func compareEventMessages(t *testing.T, x, exp *EventMessage, index map[string]EventHash) {
-	if !reflect.DeepEqual(x.ClothoProof, exp.ClothoProof) ||
-		!bytes.Equal(x.FlagTable, exp.FlagTable) ||
+	if !reflect.DeepEqual(x.Hash, exp.Hash) ||
+		x.SelfParentIndex != exp.SelfParentIndex ||
+		x.OtherParentIndex != exp.OtherParentIndex ||
+		x.OtherParentCreatorID != exp.OtherParentCreatorID ||
 		x.Signature != exp.Signature {
 		hash, _ := exp.Body.Hash()
 		t.Fatalf("expcted message to event %s: %v, got: %v",
