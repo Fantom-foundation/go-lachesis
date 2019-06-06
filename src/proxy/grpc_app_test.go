@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/network"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/proxy/proto"
+	"github.com/fortytw2/leaktest"
 )
 
 func TestGrpcAppCalls(t *testing.T) {
@@ -36,6 +38,9 @@ func TestGrpcAppReconnect(t *testing.T) {
 }
 
 func testGrpcAppCalls(t *testing.T, listen network.ListenFunc, opts ...grpc.DialOption) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	const (
 		timeout    = 1 * time.Second
 		errTimeout = "time is over"

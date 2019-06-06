@@ -1,6 +1,7 @@
 package posnode
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,9 +9,13 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/fortytw2/leaktest"
 )
 
 func TestDiscoveryPeer(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	// node 1
 	store1 := NewMemStore()
 	node1 := NewForTests("node1", store1, nil)
@@ -72,6 +77,9 @@ func TestDiscoveryPeer(t *testing.T) {
 }
 
 func TestDiscoveryHost(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	assertar := assert.New(t)
 
 	// node 1

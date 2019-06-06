@@ -16,6 +16,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
 	"github.com/Fantom-foundation/go-lachesis/src/peer/fakenet"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/fortytw2/leaktest"
 )
 
 var (
@@ -98,6 +99,9 @@ func newClient(t *testing.T, m *mockRpcClient) *peer.Client {
 }
 
 func TestClientSync(t *testing.T) {
+    ctx0, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx0, t)()
+
 	ctx := context.Background()
 	m := newRPCClient(t, testError, expSyncResponse)
 	cli := newClient(t, m)
@@ -127,6 +131,9 @@ func TestClientSync(t *testing.T) {
 }
 
 func TestClientForceSync(t *testing.T) {
+    ctx0, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx0, t)()
+
 	ctx := context.Background()
 	m := newRPCClient(t, testError, expEagerSyncResponse)
 	cli := newClient(t, m)
@@ -156,6 +163,9 @@ func TestClientForceSync(t *testing.T) {
 }
 
 func TestClientFastForward(t *testing.T) {
+    ctx0, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx0, t)()
+
 	expResponse := newFastForwardResponse(t)
 	ctx := context.Background()
 	m := newRPCClient(t, testError, expResponse)
@@ -183,6 +193,9 @@ func TestClientFastForward(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	timeout := time.Second
 	conf := &peer.BackendConfig{
 		ReceiveTimeout: timeout,
@@ -225,6 +238,9 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestFakeNet(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	timeout := time.Second
 	conf := &peer.BackendConfig{
 		ReceiveTimeout: timeout,

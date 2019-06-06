@@ -22,6 +22,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/peers"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/utils"
+	"github.com/fortytw2/leaktest"
 	"github.com/sirupsen/logrus"
 )
 
@@ -100,6 +101,9 @@ func runNode(t testing.TB, logger *logrus.Logger, config *node.Config,
 func TestGossip(t *testing.T) {
 	t.Skip("Skip TestGossip until block production is fixed")
 
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	poolSize := 2
 	logger := common.NewTestLogger(t)
 	config := node.TestConfig(t)
@@ -163,6 +167,9 @@ func TestGossip(t *testing.T) {
 func TestMissingNodeGossip(t *testing.T) {
 	t.Skip("Skip TestMissingNodeGossip until block production is fixed")
 
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	logger := common.NewTestLogger(t)
 	config := node.TestConfig(t)
 
@@ -209,6 +216,9 @@ func TestMissingNodeGossip(t *testing.T) {
 
 func TestSyncLimit(t *testing.T) {
 	t.Skip("Skip TestSyncLimit until block production is fixed")
+
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
 
 	logger := common.NewTestLogger(t)
 	config := node.TestConfig(t)
@@ -288,6 +298,9 @@ func TestSyncLimit(t *testing.T) {
 // TODO: Failed
 func TestCatchUp(t *testing.T) {
 	t.Skip("Skip TestCatchUp until block production is fixed")
+
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
 
 	var let sync.Mutex
 	//caught := false
@@ -595,6 +608,9 @@ func submitTransaction(n *node.Node, tx []byte) error {
 }
 
 func BenchmarkGossip(b *testing.B) {
+	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	defer leaktest.CheckContext(ctx, b)()
+
 	logger := common.NewTestLogger(b)
 	config := node.TestConfig(b)
 	poolSize := 2

@@ -1,6 +1,7 @@
 package peer_test
 
 import (
+	"context"
 	"reflect"
 	"sync"
 	"testing"
@@ -9,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
+	"github.com/fortytw2/leaktest"
 )
 
 type env struct {
@@ -79,6 +81,9 @@ func (e *env) close(t *testing.T) {
 }
 
 func TestLachesisSync(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	receiver := make(chan *peer.RPC)
 	env := newEnv(expSyncRequest, expSyncResponse,
 		testError, 0, time.Second, receiver)
@@ -107,6 +112,9 @@ func TestLachesisSync(t *testing.T) {
 }
 
 func TestLachesisForceSync(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	receiver := make(chan *peer.RPC)
 	env := newEnv(expEagerSyncRequest, expEagerSyncResponse,
 		testError, 0, time.Second, receiver)
@@ -135,6 +143,9 @@ func TestLachesisForceSync(t *testing.T) {
 }
 
 func TestLachesisFastForward(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	request := &peer.FastForwardRequest{
 		FromID: 0,
 	}
@@ -167,6 +178,9 @@ func TestLachesisFastForward(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	delay := time.Second
 
 	t.Run("ReceiverIsBusy", func(t *testing.T) {

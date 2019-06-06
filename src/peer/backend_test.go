@@ -11,6 +11,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
 	"github.com/Fantom-foundation/go-lachesis/src/utils"
+	"github.com/fortytw2/leaktest"
 )
 
 func newAddress() string {
@@ -48,6 +49,11 @@ func newBackend(t *testing.T, conf *peer.BackendConfig,
 }
 
 func TestBackendClose(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
+	t.Logf("%v: communication error reports are expected", t.Name())
+
 	srvTimeout := time.Second * 30
 	conf := &peer.BackendConfig{
 		ReceiveTimeout: srvTimeout,
@@ -101,4 +107,7 @@ func TestBackendClose(t *testing.T) {
 			t.Fatal("error must be not nil, got: nil")
 		}
 	}
+
+	// wait upto srvTimeout expired to allow backend terminate properly
+	time.Sleep(srvTimeout)
 }

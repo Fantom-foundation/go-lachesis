@@ -1,13 +1,18 @@
 package fakenet_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/src/peer/fakenet"
+	"github.com/fortytw2/leaktest"
 )
 
 func TestNetworkConnRefused(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	address := "localhost:1234"
 
 	network := fakenet.NewNetwork()

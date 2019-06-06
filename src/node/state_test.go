@@ -1,12 +1,18 @@
 package node
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/fortytw2/leaktest"
 )
 
 func TestChangeNodeState(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	limit := 10
 
 	wg := sync.WaitGroup{}
@@ -45,6 +51,9 @@ func TestChangeNodeState(t *testing.T) {
 }
 
 func TestConcurrentGoFuncs(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	ns := newNodeState2()
 
 	f := func() {

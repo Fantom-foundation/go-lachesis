@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/peer"
+	"github.com/fortytw2/leaktest"
 )
 
 var logger logrus.FieldLogger
@@ -21,6 +22,9 @@ type node struct {
 }
 
 func TestPeerClient(t *testing.T) {
+    ctx0, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx0, t)()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -110,6 +114,9 @@ func TestPeerClient(t *testing.T) {
 }
 
 func TestPeerClose(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	connectLimit := 2
 	netSize := 2
 	timeout := time.Second

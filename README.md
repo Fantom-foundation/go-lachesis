@@ -176,6 +176,30 @@ ok  	github.com/Fantom-foundation/go-lachesis/src/proxy	1.019s
 ?   	github.com/Fantom-foundation/go-lachesis/src/version	[no test files]
 ```
 
+#### New test creation
+
+Lachesis is a multi-thread application and therefore it is important to check for leaking goroutines when creating new modules. To facilitate such testing we use [github.com/fortytw2/leaktest](https://github.com/fortytw2/leaktest) package. Please see the following example how to integrate `leaktest` into your tests:
+
+```
+package newone
+import (
+     "context"
+     "testing"
+     "time"
+     ...
+	 "github.com/fortytw2/leaktest"
+)
+
+func TestNewOne(t *testing.T) {
+    // you may adjust 30 seconds timeout below to a reasonable value
+    // according to operations of your test. Usually timeout of 1 second is enough
+    ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
+    // put your testing code here
+}
+```
+
 ## Cross-build from source
 
 The easiest way to build binaries is to do so in a hermetic Docker container.

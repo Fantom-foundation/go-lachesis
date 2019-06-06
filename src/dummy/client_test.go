@@ -1,6 +1,7 @@
 package dummy
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -14,9 +15,13 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/network"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
 	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/fortytw2/leaktest"
 )
 
 func TestSocketProxyServer(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	const (
 		timeout    = 2 * time.Second
 		errTimeout = "time is over"
@@ -65,6 +70,9 @@ func TestSocketProxyServer(t *testing.T) {
 }
 
 func TestDummySocketClient(t *testing.T) {
+    ctx, _ := context.WithTimeout(context.Background(), time.Second)
+    defer leaktest.CheckContext(ctx, t)()
+
 	const (
 		timeout = 2 * time.Second
 	)
