@@ -157,6 +157,23 @@ func (n *Node) PeerReadyForReq(host string) bool {
 			attr.LastSuccess.Before(timeout))
 }
 
+// HostUnknown returns true if peer should be discovered.
+func (n *Node) HostUnknown(address *string) bool {
+	if nil == address {
+		return true
+	}
+
+	n.peers.RLock()
+	defer n.peers.RUnlock()
+
+	attr := n.peers.attrByHost(*address)
+
+	timeout := time.Now().Add(-n.conf.DiscoveryTimeout)
+
+	return attr == nil ||
+		(attr.LastSuccess.Before(timeout) && attr.LastFail.Before(timeout))
+}
+
 // PeerUnknown returns true if peer should be discovered.
 func (n *Node) PeerUnknown(id *hash.Peer) bool {
 	if id.IsEmpty() {

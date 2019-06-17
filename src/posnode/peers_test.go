@@ -36,7 +36,7 @@ func TestPeerReadyForReq(t *testing.T) {
 		assertar.False(node.PeerReadyForReq(host.Name))
 	})
 
-	t.Run("last fail timeouted", func(t *testing.T) {
+	t.Run("last fail timed out", func(t *testing.T) {
 		assertar := assert.New(t)
 
 		host := &hostAttr{
@@ -97,6 +97,52 @@ func TestPeerUnknown(t *testing.T) {
 		assertar := assert.New(t)
 
 		assertar.True(node.PeerUnknown(nil))
+	})
+}
+
+func TestHostUnknown(t *testing.T) {
+	logger.SetTestMode(t)
+
+	store := NewMemStore()
+	node := NewForTests("node03", store, nil)
+	node.initPeers()
+	defer node.Stop()
+
+	t.Run("last success", func(t *testing.T) {
+		is := assert.New(t)
+
+		host := &hostAttr{
+			Name:        "last-success",
+			LastSuccess: time.Now().Truncate(node.conf.DiscoveryTimeout),
+		}
+		node.peers.hosts[host.Name] = host
+
+		is.False(node.HostUnknown(&host.Name))
+	})
+
+	t.Run("host known", func(t *testing.T) {
+		is := assert.New(t)
+
+		host := &hostAttr{
+			Name:        "known",
+			LastSuccess: time.Now(),
+		}
+		node.peers.hosts[host.Name] = host
+
+		is.False(node.HostUnknown(&host.Name))
+	})
+
+	t.Run("host unknown", func(t *testing.T) {
+		is := assert.New(t)
+
+		unknown := "unknown"
+		is.True(node.HostUnknown(&unknown))
+	})
+
+	t.Run("nil host", func(t *testing.T) {
+		is := assert.New(t)
+
+		is.True(node.HostUnknown(nil))
 	})
 }
 

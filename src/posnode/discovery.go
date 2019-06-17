@@ -98,6 +98,9 @@ func (n *Node) AskPeerInfo(host string, id *hash.Peer) {
 	if !n.PeerReadyForReq(host) {
 		return
 	}
+	if !n.HostUnknown(&host) {
+		return
+	}
 	if !n.PeerUnknown(id) {
 		return
 	}
@@ -144,7 +147,11 @@ func (n *Node) AskPeerInfo(host string, id *hash.Peer) {
 	info.Host = host
 	peer = WireToPeer(info)
 	n.store.SetWirePeer(peer.ID, info)
-	n.Debugf("discovered new peer %s with host %s", info.ID, info.Host)
+	if n.PeerUnknown(&peer.ID) {
+		n.Infof("discovered new peer %s with host %s", info.ID, info.Host)
+	} else {
+		n.Debugf("discovered peer %s with host %s", info.ID, info.Host)
+	}
 	n.ConnectOK(peer)
 }
 
