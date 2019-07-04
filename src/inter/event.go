@@ -19,6 +19,7 @@ type Event struct {
 	InternalTransactions []*InternalTransaction
 	ExternalTransactions ExtTxns
 	Sign                 string
+	IsConfirmed          bool
 
 	hash hash.Event // cache for .Hash()
 }
@@ -95,6 +96,7 @@ func (e *Event) ToWire() (*wire.Event, *wire.Event_ExtTxnsValue) {
 		InternalTransactions: InternalTransactionsToWire(e.InternalTransactions),
 		ExternalTransactions: extTxnsHash,
 		Sign:                 e.Sign,
+		IsConfirmed:          e.IsConfirmed,
 	}, extTxns
 }
 
@@ -111,6 +113,7 @@ func WireToEvent(w *wire.Event) *Event {
 		InternalTransactions: WireToInternalTransactions(w.InternalTransactions),
 		ExternalTransactions: WireToExtTxns(w),
 		Sign:                 w.Sign,
+		IsConfirmed:          w.IsConfirmed,
 	}
 }
 

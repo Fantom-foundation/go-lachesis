@@ -12,7 +12,7 @@ message InternalTransaction {
 }
 
 message ExtTxns {
-    repeated bytes List = 2;
+  repeated bytes List = 2;
 }
 
 message Event {
@@ -26,6 +26,7 @@ message Event {
     bytes ExtTxnsHash = 7;
   }
   string Sign = 8;
+  bool IsConfirmed = 9;
 }
 
 message Block {

@@ -291,3 +291,51 @@ func (p *Poset) reconsensusFromFrame(start uint64, newBalance hash.Hash) {
 		frame.Save()
 	}
 }
+
+func (p *Poset) getSfEventSubtree(sfEventHash hash.Event) (inter.Events, error) {
+	if p.input.HasEvent(sfEventHash) {
+		subtree := make(inter.Events, 0)
+		sfWitness := p.input.GetEvent(sfEventHash)
+
+		for parentHash := range sfWitness.Parents {
+			if p.input.HasEvent(parentHash) {
+				parent := p.input.GetEvent(parentHash)
+				if !parent.IsConfirmed {
+					if sub, err := p.getEventSubtree(parentHash); err == nil {
+						return append(append(subtree, parent), sub...), nil
+					}
+				}
+			}
+		}
+		return nil, errors.New("no confirmed parent found")
+	}
+	return nil, errors.New("no event found")
+}
+
+func (p *Poset) getEventSubtree(eventHash hash.Event) (subtree inter.Events, err error) {
+	subtree = make(inter.Events, 0)
+
+	if p.input.HasEvent(eventHash) {
+		event := p.input.GetEvent(eventHash)
+		for parentHash := range event.Parents {
+			if p.input.HasEvent(parentHash) {
+				parent := p.input.GetEvent(parentHash)
+
+				if parent.IsConfirmed {
+					subtree = append(subtree, parent)
+					return
+				} else {
+					if sub, err := p.getEventSubtree(parentHash); err == nil {
+						subtree = append(append(subtree, parent), sub...)
+						return
+					}
+				}
+			}
+		}
+		subtree = nil
+		err = errors.New("no confirmed parent found")
+	}
+	subtree = nil
+	err = errors.New("no event found")
+	return
+}
