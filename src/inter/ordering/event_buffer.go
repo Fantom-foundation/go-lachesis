@@ -11,8 +11,8 @@ import (
 const expiration = 1 * time.Hour
 
 type (
-	// event is a inter.Event and data for ordering purpose.
-	event struct {
+	// Event is a inter.Event and data for ordering purpose.
+	Event struct {
 		*inter.Event
 
 		parents map[hash.Event]*inter.Event
@@ -29,15 +29,15 @@ type (
 
 // EventBuffer validates, bufferizes and drops() or processes() pushed() event
 // if all their parents exists().
-func EventBuffer(callback Callback) (push func(*inter.Event)) {
+func EventBuffer(callback Callback) (push func(*inter.Event), get func() map[string]*Event) {
 
 	var (
-		incompletes = make(map[hash.Event]*event)
+		incompletes = make(map[string]*Event)
 		lastGC      = time.Now()
-		onNewEvent  func(e *event)
+		onNewEvent  func(e *Event)
 	)
 
-	onNewEvent = func(e *event) {
+	onNewEvent = func(e *Event) {
 		reffs := newRefsValidator(e.Event)
 		ltime := newLamportTimeValidator(e.Event)
 
@@ -63,8 +63,8 @@ func EventBuffer(callback Callback) (push func(*inter.Event)) {
 			if parent == nil {
 				parent = callback.Exists(pHash)
 				if parent == nil {
-					h := e.Hash()
-					incompletes[h] = e
+					key := e.Creator.Hex() + string(e.Seq)
+					incompletes[key] = e
 					return
 				}
 				e.parents[pHash] = parent
@@ -95,14 +95,18 @@ func EventBuffer(callback Callback) (push func(*inter.Event)) {
 		callback.Process(e.Event)
 
 		// now child events may become complete, check it again
-		for hash_, child := range incompletes {
+		for key, child := range incompletes {
 			if parent, ok := child.parents[e.Hash()]; ok && parent == nil {
 				child.parents[e.Hash()] = e.Event
-				delete(incompletes, hash_)
+				delete(incompletes, key)
 				onNewEvent(child)
 			}
 		}
 
+	}
+
+	get = func() map[string]*Event {
+		return incompletes
 	}
 
 	push = func(e *inter.Event) {
@@ -111,7 +115,7 @@ func EventBuffer(callback Callback) (push func(*inter.Event)) {
 			return
 		}
 
-		w := &event{
+		w := &Event{
 			Event:   e,
 			parents: make(map[hash.Event]*inter.Event, len(e.Parents)),
 			expired: time.Now().Add(expiration),
@@ -127,9 +131,9 @@ func EventBuffer(callback Callback) (push func(*inter.Event)) {
 		}
 		lastGC = time.Now()
 		limit := time.Now().Add(-expiration)
-		for h, e := range incompletes {
+		for k, e := range incompletes {
 			if e.expired.Before(limit) {
-				delete(incompletes, h)
+				delete(incompletes, k)
 			}
 		}
 	}

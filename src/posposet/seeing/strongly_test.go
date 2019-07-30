@@ -75,7 +75,7 @@ func testStronglySeen(t *testing.T, dag string) {
 	ss := New(members.NewCounter)
 
 	processed := make(map[hash.Event]*inter.Event)
-	orderThenProcess := ordering.EventBuffer(ordering.Callback{
+	orderThenProcess, _ := ordering.EventBuffer(ordering.Callback{
 
 		Process: func(e *inter.Event) {
 			processed[e.Hash()] = e
@@ -395,7 +395,7 @@ func TestStronglySeenRandom(t *testing.T) {
 	ss := New(members.NewCounter)
 
 	processed := make(map[hash.Event]*inter.Event)
-	orderThenProcess := ordering.EventBuffer(ordering.Callback{
+	orderThenProcess, _ := ordering.EventBuffer(ordering.Callback{
 
 		Process: func(e *inter.Event) {
 			processed[e.Hash()] = e
@@ -444,7 +444,7 @@ func codegen4StronglySeenStability() {
 	ss := New(members.NewCounter)
 
 	processed := make(map[hash.Event]*inter.Event)
-	orderThenProcess := ordering.EventBuffer(ordering.Callback{
+	orderThenProcess, _ := ordering.EventBuffer(ordering.Callback{
 
 		Process: func(e *inter.Event) {
 			processed[e.Hash()] = e

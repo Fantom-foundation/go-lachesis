@@ -192,7 +192,7 @@ func TestMissingParents(t *testing.T) {
 				PeerID: creator.Hex(),
 			}
 			// skipping the first event.
-			for i := height.from + 1; i <= height.to; i++ {
+			for i := height.from + 2; i <= height.to; i++ {
 				req.Seq = uint64(i)
 
 				event, err := node2.downloadEvent(client, peer, req)
@@ -207,8 +207,32 @@ func TestMissingParents(t *testing.T) {
 			}
 		}
 
+		incompletes := node2.getIncompletes()
+
+		// try re-download already known events.
+		for creator, height := range unknowns {
+			for i := height.from + 2; i <= height.to; i++ {
+				// check if event was downloaded before (copy condition from common gossip)
+				if _, ok := incompletes[creator.Hex() + string(i)]; ok {
+					continue
+				}
+
+				assertar.Fail("Unexpected! All events should be downloaded early.")
+			}
+		}
+
+		assertar.Equal(
+			len(incompletes),
+			2,
+			"node2 should have 2 incompletes events")
+
 		// download missings
 		node2.checkParents(client, peer, parents)
+
+		assertar.Equal(
+			len(node2.getIncompletes()),
+			0,
+			"node2 should have 0 incompletes events")
 
 		events1 := node1.knownEvents(0)
 		assertar.Equal(

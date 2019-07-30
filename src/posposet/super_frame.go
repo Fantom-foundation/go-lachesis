@@ -64,7 +64,7 @@ func (p *Poset) loadSuperFrame() {
 
 	// events reprocessing
 	toReprocess := hash.Events{}
-	orderThenReprocess := ordering.EventBuffer(ordering.Callback{
+	orderThenReprocess, _ := ordering.EventBuffer(ordering.Callback{
 		Process: func(e *inter.Event) {
 			p.consensus(e)
 			delete(toReprocess, e.Hash())

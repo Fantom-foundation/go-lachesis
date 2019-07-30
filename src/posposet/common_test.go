@@ -35,7 +35,7 @@ func FakePoset(nodes []hash.Peer) (*Poset, *Store, *EventStore) {
 func MakeOrderedInput(p *Poset) {
 	processed := make(hash.Events) // NOTE: mem leak, so for tests only.
 
-	orderThenConsensus := ordering.EventBuffer(ordering.Callback{
+	orderThenConsensus, _ := ordering.EventBuffer(ordering.Callback{
 
 		Process: func(event *inter.Event) {
 			p.consensus(event)

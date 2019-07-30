@@ -262,7 +262,7 @@ func testProcessRoot(
 		processed      = make(map[hash.Event]*inter.Event)
 		alreadyDecided = false
 	)
-	orderThenProcess := ordering.EventBuffer(ordering.Callback{
+	orderThenProcess, _ := ordering.EventBuffer(ordering.Callback{
 
 		Process: func(root *inter.Event) {
 			rootHash := root.Hash()

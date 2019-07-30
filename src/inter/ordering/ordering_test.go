@@ -11,7 +11,7 @@ func TestEventBuffer(t *testing.T) {
 	_, events := inter.GenEventsByNode(5, 10, 3)
 	processed := make(map[hash.Event]*inter.Event)
 
-	push := EventBuffer(Callback{
+	push, _ := EventBuffer(Callback{
 
 		Process: func(e *inter.Event) {
 			if _, ok := processed[e.Hash()]; ok {

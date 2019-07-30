@@ -142,6 +142,8 @@ func (n *Node) syncWithPeer(peer *Peer) {
 	toDownload := n.lockFreeHeights(sf, unknowns)
 	defer n.unlockFreeHeights(sf, toDownload)
 
+	incompletes := n.getIncompletes()
+
 	for creator, interval := range toDownload {
 		req := &api.EventRequest{
 			PeerID: creator.Hex(),
@@ -150,6 +152,11 @@ func (n *Node) syncWithPeer(peer *Peer) {
 		peers2discovery[creator] = struct{}{}
 
 		for i := interval.from; i <= interval.to; i++ {
+			// check if event was downloaded before
+			if _, ok := incompletes[creator.Hex() + string(i)]; ok {
+				continue
+			}
+			
 			req.Seq = uint64(i)
 
 			event, err := n.downloadEvent(client, peer, req)
@@ -170,11 +177,26 @@ func (n *Node) syncWithPeer(peer *Peer) {
 }
 
 func (n *Node) checkParents(client api.NodeClient, peer *Peer, parents hash.Events) {
-	toDownload := n.lockNotDownloaded(parents)
-	defer n.unlockDownloaded(toDownload)
+	locked := n.lockNotDownloaded(parents)
+	defer n.unlockDownloaded(locked)
 
 	n.Info("check parents")
 
+	// make a copy for unlock
+	toDownload := hash.Events{}
+	for k, v := range locked{        
+		toDownload[k] = v
+   	}
+
+	// delete from queue already known events
+	for _, e := range n.getIncompletes() {
+		h := e.Hash()
+		if _, ok := locked[h]; ok {
+			delete(toDownload, h)
+		}
+	}
+
+	// download unknown events
 	for e := range toDownload {
 		if e == hash.ZeroEvent {
 			continue

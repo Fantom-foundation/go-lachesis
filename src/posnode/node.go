@@ -25,6 +25,7 @@ type Node struct {
 	conf      Config
 
 	onNewEvent func(*inter.Event)
+	getIncompletes func() map[string]*ordering.Event
 
 	service
 	connPool
@@ -69,7 +70,7 @@ func New(host string, key *crypto.PrivateKey, s *Store, c Consensus, conf *Confi
 		Instance: logger.MakeInstance(),
 	}
 
-	orderThenSave := ordering.EventBuffer(ordering.Callback{
+	orderThenSave, getIncompletes := ordering.EventBuffer(ordering.Callback{
 
 		Process: n.saveNewEvent,
 
@@ -89,6 +90,8 @@ func New(host string, key *crypto.PrivateKey, s *Store, c Consensus, conf *Confi
 		defer save.Unlock()
 		orderThenSave(e)
 	}
+
+	n.getIncompletes = getIncompletes
 
 	return &n
 }
