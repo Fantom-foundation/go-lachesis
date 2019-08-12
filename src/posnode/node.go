@@ -98,6 +98,12 @@ func New(host string, key *crypto.PrivateKey, s *Store, c Consensus, conf *Confi
 func (n *Node) saveNewEvent(e *inter.Event) {
 	n.Debugf("save new event")
 
+	hh := make(heights, 1)
+	hh[e.Creator] = interval{
+		to: e.Seq,
+	}
+	n.unlockFreeHeights(n.currentSuperFrame(), hh)
+
 	n.store.SetEvent(e)
 	n.store.SetEventHash(e.Creator, e.SfNum, e.Seq, e.Hash())
 	// NOTE: doubled txns from evil event could override existing index!

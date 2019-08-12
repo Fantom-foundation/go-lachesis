@@ -140,7 +140,7 @@ func (n *Node) syncWithPeer(peer *Peer) {
 	parents := hash.Events{}
 
 	toDownload := n.lockFreeHeights(sf, unknowns)
-	defer n.unlockFreeHeights(sf, toDownload)
+	// Note: will be unlocked during saveNewEvent() process.
 
 	for creator, interval := range toDownload {
 		req := &api.EventRequest{
