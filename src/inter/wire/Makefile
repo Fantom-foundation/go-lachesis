@@ -9,13 +9,9 @@ PBGOS:=$(PROTOS:.proto=.pb.go)
 clean:
 	$(RM) -rf *.pb.go
 
-proto: $(PBGOS)
+proto: $(PROTOS)
+	$(PROTOC) --proto_path=".:$(GOPATH)/src" --go_out=plugins=grpc,paths=source_relative:. $(PROTOS)
 
 build:
 
 buildtests:
-
-%.pb.go: %.proto
-	$(PROTOC) --proto_path=. --proto_path="$(GOPATH)/src" --go_out=plugins=grpc:. $<
-
-wire.pb.go: wire.proto

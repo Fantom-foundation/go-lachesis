@@ -4,7 +4,7 @@ export RM?=rm
 
 PROTOS:=$(wildcard *proto)
 PBGOS:=$(PROTOS:.proto=.pb.go)
-INTERWIRE:=../inter/wire
+INTERWIRE:=..
 
 .PHONY: build clean proto test buildtests
 

@@ -16,7 +16,7 @@ message ExtTxns {
 }
 
 message Event {
-  uint64 SfNum = 1;	
+  uint64 SfNum = 1;
   uint64 Seq = 2;
   string Creator = 3;
   repeated bytes Parents = 4;

@@ -41,6 +41,12 @@ endif
 vendor:
 	$(GLIDE) install
 
+# reprequisite
+req:
+	go get -u github.com/golang/protobuf/protoc-gen-go
+	go get -u github.com/golang/mock/gomock
+	go get -u github.com/golang/mock/mockgen
+
 # install compiles and places the binary in GOPATH/bin
 install:
 	$(GO) install \

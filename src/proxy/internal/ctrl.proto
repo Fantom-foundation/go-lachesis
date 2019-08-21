@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package internal;
 
-import "google/protobuf/empty.proto";
+//import "google/protobuf/empty.proto";
+import "github.com/golang/protobuf/ptypes/empty/empty.proto";
 import "inter/wire/wire.proto";
 
 service Node {
@@ -39,7 +40,7 @@ message TransactionRequest {
 message TransactionResponse {
   wire.InternalTransaction txn = 1;
   wire.Event event = 2;
-  wire.Block block = 3;   
+  wire.Block block = 3;
 }
 
 message LogLevel {

@@ -12,6 +12,7 @@ require (
 	github.com/dgraph-io/badger v0.0.0-20190308055650-deee8c7ae70b
 	github.com/dgryski/go-farm v0.0.0-20190423205320-6a90982ecee2 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
+	github.com/ethereum/go-ethereum v1.9.2
 	github.com/evalphobia/logrus_sentry v0.8.2
 	github.com/facebookgo/atomicfile v0.0.0-20151019160806-2de1f203e7d5 // indirect
 	github.com/facebookgo/pidfile v0.0.0-20150612191647-f242e2999868
@@ -21,7 +22,7 @@ require (
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/golang/mock v1.3.1
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/golang-lru v0.5.1
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
@@ -41,11 +42,11 @@ require (
 	github.com/tebeka/atexit v0.1.0
 	github.com/urfave/cli v1.20.0
 	go.etcd.io/bbolt v1.3.3
-	golang.org/x/crypto v0.0.0-20190621222207-cc06ce4a13d4
-	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
-	golang.org/x/sys v0.0.0-20190624142023-c5567b49c5d0
+	golang.org/x/crypto v0.0.0-20190820162420-60c769a6c586
+	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7
+	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a
 	golang.org/x/text v0.3.2 // indirect
-	golang.org/x/tools v0.0.0-20190624222133-a101b041ded4 // indirect
+	golang.org/x/tools v0.0.0-20190820205717-547ecf7b1ef1 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20190508193815-b515fa19cec8 // indirect
 	google.golang.org/grpc v1.21.1

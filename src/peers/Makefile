@@ -10,8 +10,9 @@ PBGOS:=$(PROTOS:.proto=.pb.go)
 clean:
 	$(RM) -rf *.pb.go
 
-proto: $(PBGOS)
-
+proto: $(PROTOS)
+	$(PROTOC) --proto_path=".:$(GOPATH)/src" --go_out=paths=source_relative:. $(PROTOS)
+	
 build:
 
 buildtests:
@@ -19,5 +20,3 @@ buildtests:
 test:
 	$(GO) test -race -cover -timeout 45s
 
-%.pb.go: %.proto
-	$(PROTOC) --proto_path=. --proto_path="$(GOPATH)/src" --go_out=paths=source_relative:. $<
