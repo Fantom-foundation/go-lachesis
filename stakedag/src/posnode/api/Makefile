@@ -4,7 +4,7 @@ export RM?=rm
 
 PROTOS:=$(wildcard *proto)
 PBGOS:=$(PROTOS:.proto=.pb.go)
-INTERWIRE:=../../../../src
+INTERWIRE:=../../../../lachesis/src
 
 .PHONY: build clean proto buildtests
 
