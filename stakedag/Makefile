@@ -24,7 +24,7 @@ export CGO_ENABLED=0
 SUBDIRS := src/.
 TARGETS := build proto clean buildtests
 SUBDIR_TARGETS := $(foreach t,$(TARGETS),$(addsuffix $t,$(SUBDIRS)))
-VENDOR_LDFLAG := --ldflags "-X github.com/Fantom-foundation/go-lachesis/src/version.GitCommit=`git rev-parse HEAD`"
+VENDOR_LDFLAG := --ldflags "-X github.com/Fantom-foundation/go-lachesis/stakedag/src/version.GitCommit=`git rev-parse HEAD`"
 
 ifeq ($(OS),Windows_NT)
     # EXTLDFLAGS := ""
@@ -59,11 +59,8 @@ install:
 # build compiles and places the binary in /build
 build:
 	$(GO) build \
-		$(VENDOR_LDFLAG) \
-		-o build/lachesis ./cmd/lachesis/main.go
-	$(GO) build \
-		$(VENDOR_LDFLAG) \
-		-o build/network ./cmd/network/
+	$(VENDOR_LDFLAG) \
+	-o build/pos-lachesis ./src/poslachesis/cli
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
