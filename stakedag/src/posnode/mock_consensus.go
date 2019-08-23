@@ -5,9 +5,9 @@
 package posnode
 
 import (
-	hash "github.com/Fantom-foundation/go-lachesis/src/hash"
-	inter "github.com/Fantom-foundation/go-lachesis/src/inter"
-	idx "github.com/Fantom-foundation/go-lachesis/src/inter/idx"
+	hash "github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	inter "github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	idx "github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

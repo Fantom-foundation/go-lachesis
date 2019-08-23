@@ -1,48 +1,48 @@
-# Lachesis 
+# Lachesis
 
 aBFT Consensus platform for distributed applications.
 
 ## Build Details
 
 [![version](https://img.shields.io/github/tag/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github
-)](https://github.com/Fantom-foundation/go-lachesis/releases/latest)  
-[![Build Status](https://img.shields.io/travis/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=travis)](https://travis-ci.org/Fantom-foundation/go-lachesis)  
-[![appveyor](https://img.shields.io/appveyor/ci/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=appveyor)](https://ci.appveyor.com/project/Fantom-foundation/go-lachesis)  
-[![license](https://img.shields.io/github/license/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](LICENSE.md)  
-[![libraries.io dependencies](https://img.shields.io/librariesio/github/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=librariesio)](https://libraries.io/github/Fantom-foundation/go-lachesis)  
+)](https://github.com/Fantom-foundation/go-lachesis/releases/latest)
+[![Build Status](https://img.shields.io/travis/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=travis)](https://travis-ci.org/Fantom-foundation/go-lachesis)
+[![appveyor](https://img.shields.io/appveyor/ci/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=appveyor)](https://ci.appveyor.com/project/Fantom-foundation/go-lachesis)
+[![license](https://img.shields.io/github/license/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](LICENSE.md)
+[![libraries.io dependencies](https://img.shields.io/librariesio/github/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=librariesio)](https://libraries.io/github/Fantom-foundation/go-lachesis)
 
 ## Code Quality
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/Fantom-foundation/go-lachesis?style=flat-square&logo=goreportcard)](https://goreportcard.com/report/github.com/Fantom-foundation/go-lachesis)  
-[![GolangCI](https://golangci.com/badges/github.com/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=golangci)](https://golangci.com/r/github.com/Fantom-foundation/go-lachesis)   
-[![Code Climate Maintainability Grade](https://img.shields.io/codeclimate/maintainability/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)  
-[![Code Climate Maintainability](https://img.shields.io/codeclimate/maintainability-percentage/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)  
-[![Code Climate Technical Dept](https://img.shields.io/codeclimate/tech-debt/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)  
-[![Codacy code quality](https://img.shields.io/codacy/grade/c8c27910210f4b23bcbbe8c60338b1d5.svg?style=flat-square&logo=codacy)](https://app.codacy.com/project/andrecronje/go-lachesis/dashboard)  
-[![cii best practices](https://img.shields.io/cii/level/2409.svg?style=flat-square&logo=cci)](https://bestpractices.coreinfrastructure.org/en/projects/2409)  
-[![cii percentage](https://img.shields.io/cii/percentage/2409.svg?style=flat-square&logo=cci)](https://bestpractices.coreinfrastructure.org/en/projects/2409)  
-  
-[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg?style=flat-square&logo=godoc)](https://godoc.org/github.com/Fantom-foundation/go-lachesis)   
+[![Go Report Card](https://goreportcard.com/badge/github.com/Fantom-foundation/go-lachesis?style=flat-square&logo=goreportcard)](https://goreportcard.com/report/github.com/Fantom-foundation/go-lachesis)
+[![GolangCI](https://golangci.com/badges/github.com/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=golangci)](https://golangci.com/r/github.com/Fantom-foundation/go-lachesis)
+[![Code Climate Maintainability Grade](https://img.shields.io/codeclimate/maintainability/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)
+[![Code Climate Maintainability](https://img.shields.io/codeclimate/maintainability-percentage/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)
+[![Code Climate Technical Dept](https://img.shields.io/codeclimate/tech-debt/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=codeclimate)](https://codeclimate.com/github/Fantom-foundation/go-lachesis)
+[![Codacy code quality](https://img.shields.io/codacy/grade/c8c27910210f4b23bcbbe8c60338b1d5.svg?style=flat-square&logo=codacy)](https://app.codacy.com/project/andrecronje/go-lachesis/dashboard)
+[![cii best practices](https://img.shields.io/cii/level/2409.svg?style=flat-square&logo=cci)](https://bestpractices.coreinfrastructure.org/en/projects/2409)
+[![cii percentage](https://img.shields.io/cii/percentage/2409.svg?style=flat-square&logo=cci)](https://bestpractices.coreinfrastructure.org/en/projects/2409)
 
-[Documentation](https://github.com/Fantom-foundation/fantom-documentation/wiki).  
+[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg?style=flat-square&logo=godoc)](https://godoc.org/github.com/Fantom-foundation/go-lachesis)
 
-[![Sonarcloud](https://sonarcloud.io/api/project_badges/quality_gate?project=Fantom-foundation_go-lachesis)](https://sonarcloud.io/dashboard?id=Fantom-foundation_go-lachesis)  
-  
+[Documentation](https://github.com/Fantom-foundation/fantom-documentation/wiki).
+
+[![Sonarcloud](https://sonarcloud.io/api/project_badges/quality_gate?project=Fantom-foundation_go-lachesis)](https://sonarcloud.io/dashboard?id=Fantom-foundation_go-lachesis)
+
 ## GitHub
 
 
-[![Commit Activity](https://img.shields.io/github/commit-activity/w/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/commits/master)  
-[![Last Commit](https://img.shields.io/github/last-commit/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/commits/master)  
-[![Contributors](https://img.shields.io/github/contributors/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/graphs/contributors)  
-[![Issues][github-issues-image]][github-issues-url]  
-[![LoC](https://tokei.rs/b1/github/Fantom-foundation/go-lachesis?category=lines)](https://github.com/Fantom-foundation/go-lachesis)  
+[![Commit Activity](https://img.shields.io/github/commit-activity/w/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/commits/master)
+[![Last Commit](https://img.shields.io/github/last-commit/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/commits/master)
+[![Contributors](https://img.shields.io/github/contributors/Fantom-foundation/go-lachesis.svg?style=flat-square&logo=github)](https://github.com/Fantom-foundation/go-lachesis/graphs/contributors)
+[![Issues][github-issues-image]][github-issues-url]
+[![LoC](https://tokei.rs/b1/github/Fantom-foundation/go-lachesis?category=lines)](https://github.com/Fantom-foundation/go-lachesis)
 
-[![Throughput Graph](https://graphs.waffle.io/Fantom-foundation/go-lachesis/throughput.svg)](https://waffle.io/Fantom-foundation/go-lachesis/metrics/throughput)  
+[![Throughput Graph](https://graphs.waffle.io/Fantom-foundation/go-lachesis/throughput.svg)](https://waffle.io/Fantom-foundation/go-lachesis/metrics/throughput)
 
 ## Social
 
-[![](https://img.shields.io/gitter/room/nwjs/nw.js.svg?style=flat-square)](https://gitter.im/fantom-foundation)    
-[![twitter][twitter-image]][twitter-url]  
+[![](https://img.shields.io/gitter/room/nwjs/nw.js.svg?style=flat-square)](https://gitter.im/fantom-foundation)
+[![twitter][twitter-image]][twitter-url]
 
 
 [codecov-image]: https://codecov.io/gh/fantom-foundation/go-lachesis/branch/master/graph/badge.svg
@@ -153,30 +153,30 @@ Lachesis has extensive unit-testing. Use the Go tool to run tests:
 
 If everything goes well, it should output something along these lines:
 ```
-?   	github.com/Fantom-foundation/go-lachesis/cmd/dummy	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/cmd/dummy/commands	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/cmd/dummy_client	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/cmd/lachesis	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/cmd/lachesis/commands	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/tester	[no test files]
-ok  	github.com/Fantom-foundation/go-lachesis/src/common	(cached)
-ok  	github.com/Fantom-foundation/go-lachesis/src/crypto	(cached)
-ok  	github.com/Fantom-foundation/go-lachesis/src/difftool	(cached)
-ok  	github.com/Fantom-foundation/go-lachesis/src/dummy	0.522s
-?   	github.com/Fantom-foundation/go-lachesis/src/lachesis	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/log	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/mobile	[no test files]
-ok  	github.com/Fantom-foundation/go-lachesis/src/net	(cached)
-ok  	github.com/Fantom-foundation/go-lachesis/src/node	9.832s
-?   	github.com/Fantom-foundation/go-lachesis/src/pb	[no test files]
-ok  	github.com/Fantom-foundation/go-lachesis/src/peers	(cached)
-ok  	github.com/Fantom-foundation/go-lachesis/src/poset	9.627s
-ok  	github.com/Fantom-foundation/go-lachesis/src/proxy	1.019s
-?   	github.com/Fantom-foundation/go-lachesis/src/proxy/internal	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/proxy/proto	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/service	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/utils	[no test files]
-?   	github.com/Fantom-foundation/go-lachesis/src/version	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/cmd/dummy	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/cmd/dummy/commands	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/cmd/dummy_client	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/cmd/lachesis	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/cmd/lachesis/commands	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/tester	[no test files]
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/common	(cached)
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto	(cached)
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/difftool	(cached)
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/dummy	0.522s
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/lachesis	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/log	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/mobile	[no test files]
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/net	(cached)
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/node	9.832s
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/pb	[no test files]
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/peers	(cached)
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/poset	9.627s
+ok  	github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy	1.019s
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy/internal	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy/proto	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/service	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/utils	[no test files]
+?   	github.com/Fantom-foundation/go-lachesis/lachesis/src/version	[no test files]
 ```
 
 #### New test creation

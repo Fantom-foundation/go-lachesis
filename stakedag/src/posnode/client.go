@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posnode/api"
 )
 

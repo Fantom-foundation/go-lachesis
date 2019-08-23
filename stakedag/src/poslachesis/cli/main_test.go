@@ -1,4 +1,4 @@
-//go:generate mockgen -package=main -destination=mock_test.go github.com/Fantom-foundation/go-lachesis/src/proxy Node,Consensus
+//go:generate mockgen -package=main -destination=mock_test.go github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy Node,Consensus
 package main
 
 import (
@@ -13,9 +13,9 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy"
 )
 
 func TestApp(t *testing.T) {

@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"github.com/Fantom-foundation/go-lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/common"
 	"unsafe"
 
 	"github.com/golang/protobuf/proto"
@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/cryptoaddr"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 // peerID is a internal key for context.Value().

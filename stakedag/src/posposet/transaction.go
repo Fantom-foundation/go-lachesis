@@ -9,9 +9,9 @@ and the payment of all rewards.
 */
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet/internal"
-	"github.com/Fantom-foundation/go-lachesis/src/state"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/state"
 )
 
 // isEventValid validates event according to frame state.

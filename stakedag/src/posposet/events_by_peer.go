@@ -3,8 +3,8 @@ package posposet
 import (
 	"strings"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet/wire"
 )
 

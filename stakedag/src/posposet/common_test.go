@@ -1,10 +1,10 @@
 package posposet
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/ordering"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/ordering"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 // FakePoset creates empty poset with mem store and equal stakes of nodes in genesis.

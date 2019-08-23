@@ -3,9 +3,9 @@ package command
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
 )
 
 // Transfer makes a transaction for stake transfer.

@@ -1,7 +1,7 @@
 package posposet
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 )
 
 // SetEventConfirmedBy stores confirmed event hash.

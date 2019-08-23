@@ -4,10 +4,10 @@ import (
 	"go.etcd.io/bbolt"
 	"google.golang.org/grpc"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
-	"github.com/Fantom-foundation/go-lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posnode"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet"
 )

@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
-	"github.com/Fantom-foundation/go-lachesis/src/metrics"
-	_ "github.com/Fantom-foundation/go-lachesis/src/metrics/prometheus"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/metrics"
+	_ "github.com/Fantom-foundation/go-lachesis/lachesis/src/metrics/prometheus"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/poslachesis"
 )
 

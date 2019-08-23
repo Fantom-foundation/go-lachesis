@@ -1,8 +1,8 @@
 package seeing
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
 )
 
 // Event is a seeing event for internal purpose.

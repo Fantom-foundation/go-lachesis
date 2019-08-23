@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posnode/api"
 )
 

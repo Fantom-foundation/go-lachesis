@@ -41,7 +41,8 @@ type BadgerStore struct {
 // NewBadgerStore creates a brand new Store with a new database
 func NewBadgerStore(participants *peers.Peers, cacheSize int, path string, posConf *pos.Config) (*BadgerStore, error) {
 	inmemStore := NewInmemStore(participants, cacheSize, posConf)
-	opts := badger.DefaultOptions
+
+	opts := badger.DefaultOptions("")
 	opts.Dir = path
 	opts.ValueDir = path
 	opts.SyncWrites = false
@@ -81,7 +82,7 @@ func LoadBadgerStore(cacheSize int, path string) (*BadgerStore, error) {
 		return nil, err
 	}
 
-	opts := badger.DefaultOptions
+	opts := badger.DefaultOptions("")
 	opts.Dir = path
 	opts.ValueDir = path
 	opts.SyncWrites = false

@@ -1,7 +1,7 @@
 package posposet
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/metrics"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/metrics"
 )
 
 var (

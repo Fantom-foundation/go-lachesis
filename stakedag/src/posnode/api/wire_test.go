@@ -2,7 +2,7 @@ package api
 
 import (
 	"context"
-	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/cryptoaddr"
 	"testing"
 	"time"
 
@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/wire"
-	"github.com/Fantom-foundation/go-lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/wire"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
 )
 
 // gen is an empty genesis hash.

@@ -6,10 +6,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 func TestAddInternalTxn(t *testing.T) {

@@ -3,8 +3,8 @@ package posnode
 import (
 	"github.com/golang/protobuf/proto"
 
-	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 // Store is a node persistent storage working over physical key-value database.

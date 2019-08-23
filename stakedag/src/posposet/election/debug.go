@@ -3,7 +3,7 @@ package election
 import (
 	"golang.org/x/crypto/sha3"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 )
 
 // may be used in tests to match election state

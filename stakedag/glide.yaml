@@ -5,7 +5,7 @@ import:
 - package: github.com/allegro/bigcache
   version: ^1.2.0
 - package: github.com/dgraph-io/badger
-  version: deee8c7ae70b
+  version: ^1.6.0
 - package: github.com/evalphobia/logrus_sentry
   version: ^0.8.2
 - package: github.com/facebookgo/pidfile

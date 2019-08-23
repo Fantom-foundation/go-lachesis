@@ -9,11 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.etcd.io/bbolt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/common"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/common"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 func Test_IntToBytes(t *testing.T) {

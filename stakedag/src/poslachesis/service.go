@@ -1,11 +1,11 @@
 package lachesis
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/src/network"
-	"github.com/Fantom-foundation/go-lachesis/src/poset"
-	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy"
 )
 
 type service struct {

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 	"github.com/stretchr/testify/assert"
 )
 

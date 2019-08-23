@@ -1,8 +1,8 @@
 package posposet
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet/wire"
 )
 

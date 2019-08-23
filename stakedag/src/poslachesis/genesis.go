@@ -1,10 +1,10 @@
 package lachesis
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/cryptoaddr"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
 )
 
 // Net describes lachesis net.

@@ -1,18 +1,18 @@
 package posnode
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/cryptoaddr"
 	"sync"
 
 	"google.golang.org/grpc"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/ordering"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
-	"github.com/Fantom-foundation/go-lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/ordering"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
 )
 
 // Node is a Lachesis node implementation.

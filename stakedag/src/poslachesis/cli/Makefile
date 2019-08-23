@@ -14,4 +14,4 @@ build:
 buildtests: mock_test.go
 
 mock_test.go: main.go
-	$(MOCKGEN) -package=main -destination=mock_test.go github.com/Fantom-foundation/go-lachesis/src/proxy Node,Consensus
+	$(MOCKGEN) -package=main -destination=mock_test.go github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy Node,Consensus

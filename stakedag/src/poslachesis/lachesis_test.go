@@ -6,10 +6,10 @@ import (
 
 	"go.etcd.io/bbolt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
-	"github.com/Fantom-foundation/go-lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posnode"
 )
 

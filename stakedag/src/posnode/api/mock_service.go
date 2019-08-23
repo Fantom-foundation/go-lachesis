@@ -6,7 +6,7 @@ package api
 
 import (
 	context "context"
-	wire "github.com/Fantom-foundation/go-lachesis/src/inter/wire"
+	wire "github.com/Fantom-foundation/go-lachesis/lachesis/src/inter/wire"
 	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
 )

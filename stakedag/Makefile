@@ -1,4 +1,4 @@
-BUILD_TAGS?=lachesis
+BUILD_TAGS?=stakedag
 export DOCKER?=docker
 export GLIDE?=glide
 export GO?=go

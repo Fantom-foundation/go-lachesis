@@ -3,7 +3,7 @@ package election
 import (
 	"fmt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 )
 
 // calculate SfWitness votes only for the new root.

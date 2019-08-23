@@ -3,7 +3,7 @@ package posnode
 import (
 	"time"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posnode/api"
 )
 

@@ -6,12 +6,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/hashicorp/golang-lru"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
-	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet/internal"
-	"github.com/Fantom-foundation/go-lachesis/src/state"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/state"
 )
 
 const cacheSize = 500 // TODO: Move it to config later

@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/proxy"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/proxy"
 	"github.com/spf13/cobra"
 )
 

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/logger"
 )
 
 func TestService(t *testing.T) {

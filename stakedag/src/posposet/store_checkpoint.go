@@ -1,9 +1,9 @@
 package posposet
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/stakedag/src/posposet/wire"
-	"github.com/Fantom-foundation/go-lachesis/src/state"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/state"
 )
 
 // StateDB returns state database.

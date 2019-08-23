@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/hash"
 )
 
 // peers manages node peer list.

@@ -1,7 +1,7 @@
 package posnode
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/network"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/network"
 )
 
 // NewForTests creates node with fake network client.

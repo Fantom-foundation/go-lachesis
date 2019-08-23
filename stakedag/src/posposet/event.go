@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/Fantom-foundation/go-lachesis/src/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/src/inter"
 )
 
 /*
