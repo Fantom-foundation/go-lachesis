@@ -37,15 +37,15 @@ else
     endif
 endif
 
-# vendor uses Glide to install all the Go dependencies in vendor/
-vendor:
-	$(GLIDE) install
-
-# reprequisite
-req:
+# prerequisite
+pre:
 	go get -u github.com/golang/protobuf/protoc-gen-go
 	go get -u github.com/golang/mock/gomock
 	go get -u github.com/golang/mock/mockgen
+	
+# vendor uses Glide to install all the Go dependencies in vendor/
+vendor:
+	$(GLIDE) install
 
 # install compiles and places the binary in GOPATH/bin
 install:
