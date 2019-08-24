@@ -1,9 +1,10 @@
 package signer
 
 import (
-	"io/ioutil"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core"
 	"github.com/ethereum/go-ethereum/signer/fourbyte"
 	"github.com/ethereum/go-ethereum/signer/storage"
@@ -55,8 +56,8 @@ func (ui *UIHandler) ShowInfo(message string) {
 }
 
 // NewSignerAPI return SignerAPI & UIHandler
-func NewSignerAPI() (*core.SignerAPI, *UIHandler) {
-	db, err := fourbyte.New()
+func NewSignerAPI(configDir string) (*core.SignerAPI, *UIHandler) {
+	db, err := fourbyte.NewWithFile("lachesis-signer")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -64,21 +65,15 @@ func NewSignerAPI() (*core.SignerAPI, *UIHandler) {
 	ui := &UIHandler{
 		inputCh: make(chan string, 20),
 	}
-	am := core.StartClefAccountManager(tmpDirName(), true, true, "")
+	am := core.StartClefAccountManager(filepath.Join(configDir, "keystore"), true, true, "")
 
-	api := core.NewSignerAPI(am, 1337, true, ui, db, true, &storage.NoStorage{})
+	vaultLocation := filepath.Join(configDir, common.Bytes2Hex(crypto.Keccak256([]byte("vault"), nil)[:10]))
+	pwkey := crypto.Keccak256([]byte("credentials"), nil)
+
+	pwStorage := storage.NewAESEncryptedStorage(filepath.Join(vaultLocation, "credentials.json"), pwkey)
+
+	// TODO: change chainID to own
+	api := core.NewSignerAPI(am, 1337, true, ui, db, true, pwStorage)
 
 	return api, ui
-}
-
-func tmpDirName() string {
-	d, err := ioutil.TempDir("", "lachesis-keystore")
-	if err != nil {
-		panic(err)
-	}
-	d, err = filepath.EvalSymlinks(d)
-	if err != nil {
-		panic(err)
-	}
-	return d
 }

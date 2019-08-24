@@ -2,7 +2,9 @@ package signer
 
 import (
 	"context"
+	"io/ioutil"
 	"math/big"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -12,10 +14,10 @@ import (
 )
 
 func TestSignerAPI_New(t *testing.T) {
+	// Init new signer api & ui handler
+	signer, ui := NewSignerAPI(tmpDirName())
 
-	signer, ui := NewSignerAPI()
 	ui.inputCh <- "password_with_more_than_10_chars"
-
 	address, err := signer.New(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -25,8 +27,8 @@ func TestSignerAPI_New(t *testing.T) {
 }
 
 func TestSignerAPI_List(t *testing.T) {
-
-	signer, ui := NewSignerAPI()
+	// Init new signer api & ui handler
+	signer, ui := NewSignerAPI(tmpDirName())
 
 	// create new account
 	ui.inputCh <- "password_with_more_than_10_chars"
@@ -48,8 +50,8 @@ func TestSignerAPI_List(t *testing.T) {
 }
 
 func TestSignerAPI_SignTransaction(t *testing.T) {
-
-	signer, ui := NewSignerAPI()
+	// Init new signer api & ui handler
+	signer, ui := NewSignerAPI(tmpDirName())
 
 	// create new account
 	ui.inputCh <- "password_with_more_than_10_chars"
@@ -81,8 +83,8 @@ func TestSignerAPI_SignTransaction(t *testing.T) {
 }
 
 func TestSignerAPI_SignData(t *testing.T) {
-
-	signer, ui := NewSignerAPI()
+	// Init new signer api & ui handler
+	signer, ui := NewSignerAPI(tmpDirName())
 
 	// create new account
 	ui.inputCh <- "password_with_more_than_10_chars"
@@ -117,8 +119,8 @@ func TestSignerAPI_SignData(t *testing.T) {
 }
 
 func TestSignerAPI_SignTypedData(t *testing.T) {
-
-	signer, ui := NewSignerAPI()
+	// Init new signer api & ui handler
+	signer, ui := NewSignerAPI(tmpDirName())
 
 	// create new account
 	ui.inputCh <- "password_with_more_than_10_chars"
@@ -168,4 +170,16 @@ func testTx(from common.MixedcaseAddress) core.SendTxArgs {
 		Data:     &data,
 		Nonce:    nonce}
 	return tx
+}
+
+func tmpDirName() string {
+	d, err := ioutil.TempDir("", "lachesis-config")
+	if err != nil {
+		panic(err)
+	}
+	d, err = filepath.EvalSymlinks(d)
+	if err != nil {
+		panic(err)
+	}
+	return d
 }
