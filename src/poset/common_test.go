@@ -8,7 +8,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/pos"
-	"github.com/Fantom-foundation/go-lachesis/src/lachesis/genesis"
+	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
 )
 
 var (
@@ -41,7 +41,7 @@ func FakePoset(nodes []hash.Peer) (*ExtendedPoset, *Store, *EventStore) {
 	}
 
 	store := NewMemStore()
-	err := store.ApplyGenesis(&genesis.Config{
+	err := store.ApplyGenesis(&lachesis.Genesis{
 		Balances: balances,
 		Time:     genesisTestTime,
 	})
@@ -54,14 +54,12 @@ func FakePoset(nodes []hash.Peer) (*ExtendedPoset, *Store, *EventStore) {
 	poset := New(store, input)
 
 	extended := &ExtendedPoset{
-		Poset: poset,
+		Poset:  poset,
+		blocks: map[idx.Block]*inter.Block{},
 	}
 
 	extended.Bootstrap(func(block *inter.Block, stateHash hash.Hash, members pos.Members) (hash.Hash, pos.Members) {
 		// track block events
-		if extended.blocks == nil {
-			extended.blocks = map[idx.Block]*inter.Block{}
-		}
 		if extended.blocks[block.Index] != nil {
 			extended.Fatal("created block twice")
 		}

@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
@@ -34,10 +33,11 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 		store = NewMemStore()
 	)
 
-	config, nodes, _ := lachesis.FakeNet(nodesNum)
+	network, nodes, _ := lachesis.FakeNetConfig(nodesNum)
+	config := DefaultConfig(network)
 
 	engineStore := poset.NewMemStore()
-	err := engineStore.ApplyGenesis(config.Genesis)
+	err := engineStore.ApplyGenesis(&network.Genesis)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -45,7 +45,14 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 	engine := poset.New(engineStore, store)
 	engine.Bootstrap(nil)
 
-	pm, err := NewProtocolManager(config, downloader.FullSync, config.Genesis.NetworkId, evmux, &dummyTxPool{added: newtx}, new(sync.RWMutex), store, engine)
+	pm, err := NewProtocolManager(
+		&config,
+		evmux,
+		&dummyTxPool{added: newtx},
+		new(sync.RWMutex),
+		store,
+		engine,
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,30 +128,42 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	// Execute any implicitly requested handshakes and return
 	if shake {
 		var (
-			genesis  = pm.engine.GetGenesisHash()
-			progress = PeerProgress{
-				Epoch: pm.engine.CurrentSuperFrameN(),
+			genesis       = pm.engine.GetGenesisHash()
+			blockI, block = pm.engine.LastBlock()
+			epoch         = pm.engine.CurrentSuperFrameN()
+			myProgress    = &PeerProgress{
+				Epoch:        epoch,
+				NumOfBlocks:  blockI,
+				LastBlock:    block,
+				LastPackInfo: pm.store.GetPackInfoOrDefault(epoch, pm.store.GetPacksNumOrDefault(epoch)-1),
 			}
 		)
-		tp.handshake(nil, progress, genesis)
+		tp.handshake(nil, myProgress, genesis)
 	}
 	return tp, errc
 }
 
 // handshake simulates a trivial handshake that expects the same state from the
 // remote side as we are simulating locally.
-func (p *testPeer) handshake(t *testing.T, progress PeerProgress, genesis hash.Hash) {
-	msg := &statusData{
-		ProtocolVersion: uint32(p.version),
-		NetworkId:       lachesis.EmptyFakeNet().Genesis.NetworkId,
-		Progress:        progress,
-		Genesis:         genesis,
+func (p *testPeer) handshake(t *testing.T, progress *PeerProgress, genesis hash.Hash) {
+	msg := &ethStatusData{
+		ProtocolVersion:   uint32(p.version),
+		NetworkId:         lachesis.FakeNetworkId,
+		Genesis:           genesis,
+		DummyTD:           big.NewInt(int64(progress.NumOfBlocks)), // for ETH clients
+		DummyCurrentBlock: hash.Hash(progress.LastBlock),
 	}
-	if err := p2p.ExpectMsg(p.app, StatusMsg, msg); err != nil {
+	if err := p2p.ExpectMsg(p.app, EthStatusMsg, msg); err != nil {
 		t.Fatalf("status recv: %v", err)
 	}
-	if err := p2p.Send(p.app, StatusMsg, msg); err != nil {
+	if err := p2p.Send(p.app, EthStatusMsg, msg); err != nil {
 		t.Fatalf("status send: %v", err)
+	}
+	if err := p2p.ExpectMsg(p.app, ProgressMsg, progress); err != nil {
+		t.Fatalf("progress recv: %v", err)
+	}
+	if err := p2p.Send(p.app, ProgressMsg, progress); err != nil {
+		t.Fatalf("progress send: %v", err)
 	}
 }
 
