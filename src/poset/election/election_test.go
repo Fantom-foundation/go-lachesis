@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
@@ -238,7 +239,7 @@ func testProcessRoot(
 	}
 
 	// strongly see fn:
-	stronglySeeFn := func(a hash.Event, b hash.Peer, f idx.Frame) *hash.Event {
+	stronglySeeFn := func(a hash.Event, b common.Address, f idx.Frame) *hash.Event {
 		edge := fakeEdge{
 			from: a,
 			to: Slot{

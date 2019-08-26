@@ -3,14 +3,15 @@ package poset
 import (
 	"fmt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
 )
 
 // calcFirstGenesisHash calcs hash of genesis balances.
-func calcFirstGenesisHash(g *lachesis.Genesis) hash.Hash {
+func calcFirstGenesisHash(g *lachesis.Genesis) common.Hash {
 	s := NewMemStore()
 	defer s.Close()
 

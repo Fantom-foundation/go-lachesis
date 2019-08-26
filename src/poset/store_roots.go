@@ -3,6 +3,8 @@ package poset
 import (
 	"bytes"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
@@ -19,7 +21,7 @@ func (s *Store) AddRoot(root *inter.Event) {
 	}
 }
 
-func (s *Store) IsRoot(f idx.Frame, from hash.Peer, id hash.Event) bool {
+func (s *Store) IsRoot(f idx.Frame, from common.Address, id hash.Event) bool {
 	key := bytes.Buffer{}
 	key.Write(f.Bytes())
 	key.Write(from.Bytes())
@@ -34,17 +36,17 @@ func (s *Store) IsRoot(f idx.Frame, from hash.Peer, id hash.Event) bool {
 
 const (
 	frameSize   = 4
-	addrSize    = 32
+	addrSize    = 20
 	eventIdSize = 32
 )
 
-func (s *Store) ForEachRoot(f idx.Frame, do func(f idx.Frame, from hash.Peer, id hash.Event) bool) {
+func (s *Store) ForEachRoot(f idx.Frame, do func(f idx.Frame, from common.Address, id hash.Event) bool) {
 	err := s.epochTable.Roots.ForEachFrom(f.Bytes(), func(key, _ []byte) bool {
 		if len(key) != frameSize+addrSize+eventIdSize {
 			s.Fatalf("Roots table: Incorrect key len %d", len(key))
 		}
 		actualF := idx.BytesToFrame(key[:frameSize])
-		actualCreator := hash.BytesToPeer(key[frameSize : frameSize+addrSize])
+		actualCreator := common.BytesToAddress(key[frameSize : frameSize+addrSize])
 		actualId := hash.BytesToEvent(key[frameSize+addrSize:])
 		if actualF < f {
 			s.Fatalf("Roots table: frame %d < %d", actualF, f)
@@ -57,7 +59,7 @@ func (s *Store) ForEachRoot(f idx.Frame, do func(f idx.Frame, from hash.Peer, id
 	}
 }
 
-func (s *Store) ForEachRootFrom(f idx.Frame, from hash.Peer, do func(f idx.Frame, from hash.Peer, id hash.Event) bool) {
+func (s *Store) ForEachRootFrom(f idx.Frame, from common.Address, do func(f idx.Frame, from common.Address, id hash.Event) bool) {
 	prefix := append(f.Bytes(), from.Bytes()...)
 
 	err := s.epochTable.Roots.ForEach(prefix, func(key, _ []byte) bool {
@@ -65,7 +67,7 @@ func (s *Store) ForEachRootFrom(f idx.Frame, from hash.Peer, do func(f idx.Frame
 			s.Fatalf("Roots table: Incorrect key len %d", len(key))
 		}
 		actualF := idx.BytesToFrame(key[:frameSize])
-		actualCreator := hash.BytesToPeer(key[frameSize : frameSize+addrSize])
+		actualCreator := common.BytesToAddress(key[frameSize : frameSize+addrSize])
 		actualId := hash.BytesToEvent(key[frameSize+addrSize:])
 		if actualF < f {
 			s.Fatalf("Roots table: frame %d < %d", actualF, f)

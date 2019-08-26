@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func TestBytesConversion(t *testing.T) {
 	bytes := []byte{5}
 	hash := FromBytes(bytes)
 
-	var exp Hash
+	var exp common.Hash
 	exp[0] = 5
 
 	if hash != exp {
@@ -33,7 +35,7 @@ func TestHashJsonValidation(t *testing.T) {
 	}
 	for _, test := range tests {
 		input := `"` + test.Prefix + strings.Repeat("0", test.Size) + `"`
-		var v Hash
+		var v common.Hash
 		err := json.Unmarshal([]byte(input), &v)
 		if err == nil {
 			if test.Error != "" {
@@ -83,7 +85,7 @@ func TestHash_Scan(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &Hash{}
+			h := &common.Hash{}
 			if err := h.Scan(tt.args.src); (err != nil) != tt.wantErr {
 				t.Errorf("Hash.Scan() error = %v, wantErr %v", err, tt.wantErr)
 			}

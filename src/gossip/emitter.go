@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
@@ -24,7 +25,7 @@ type Emitter struct {
 	dag    *lachesis.DagConfig
 	config *EmitterConfig
 
-	myAddr     hash.Peer
+	myAddr     common.Address
 	privateKey *crypto.PrivateKey
 	prevEpoch  idx.SuperFrame
 
@@ -36,7 +37,7 @@ type Emitter struct {
 
 func NewEmitter(
 	config *Config,
-	me hash.Peer,
+	me common.Address,
 	privateKey *crypto.PrivateKey,
 	engineMu *sync.RWMutex,
 	store *Store,

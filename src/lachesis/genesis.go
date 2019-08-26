@@ -3,9 +3,10 @@ package lachesis
 import (
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/pos"
 )
@@ -15,16 +16,16 @@ var (
 )
 
 type Genesis struct {
-	Balances  map[hash.Peer]pos.Stake
-	StateHash hash.Hash
+	Balances  map[common.Address]pos.Stake
+	StateHash common.Hash
 	Time      inter.Timestamp
 }
 
 // FakeGenesis generates fake genesis with n-nodes.
-func FakeGenesis(n int) (Genesis, []hash.Peer, []*crypto.PrivateKey) {
-	balances := make(map[hash.Peer]pos.Stake, n)
+func FakeGenesis(n int) (Genesis, []common.Address, []*crypto.PrivateKey) {
+	balances := make(map[common.Address]pos.Stake, n)
 	keys := make([]*crypto.PrivateKey, n)
-	ids := make([]hash.Peer, n)
+	ids := make([]common.Address, n)
 	for i := 0; i < n; i++ {
 		keys[i] = crypto.GenerateFakeKey(i)
 		ids[i] = cryptoaddr.AddressOf(keys[i].Public())
@@ -41,7 +42,7 @@ func FakeGenesis(n int) (Genesis, []hash.Peer, []*crypto.PrivateKey) {
 func MainGenesis() Genesis {
 	return Genesis{
 		Time:     genesisTestTime,
-		Balances: map[hash.Peer]pos.Stake{
+		Balances: map[common.Address]pos.Stake{
 			// TODO: fill with official keys and balances.
 		},
 	}
@@ -51,7 +52,7 @@ func MainGenesis() Genesis {
 func TestGenesis() Genesis {
 	return Genesis{
 		Time:     genesisTestTime,
-		Balances: map[hash.Peer]pos.Stake{
+		Balances: map[common.Address]pos.Stake{
 			// TODO: fill with official keys and balances.
 		},
 	}

@@ -3,6 +3,7 @@ package state
 import (
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
@@ -13,7 +14,7 @@ import (
 func TestBalanceState(t *testing.T) {
 	assertar := assert.New(t)
 
-	var aa = []hash.Peer{
+	var aa = []common.Address{
 		hash.FakePeer(),
 		hash.FakePeer(),
 		hash.FakePeer(),
@@ -22,7 +23,7 @@ func TestBalanceState(t *testing.T) {
 	mem := kvdb.NewMemDatabase()
 	store := NewDatabase(mem)
 
-	stateAt := func(point hash.Hash) *DB {
+	stateAt := func(point common.Hash) *DB {
 		db, err := New(point, store)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -30,7 +31,7 @@ func TestBalanceState(t *testing.T) {
 		return db
 	}
 
-	checkBalance := func(point hash.Hash, addr hash.Peer, balance pos.Stake) {
+	checkBalance := func(point common.Hash, addr common.Address, balance pos.Stake) {
 		db := stateAt(point)
 		got := db.FreeBalance(addr)
 		if !assertar.Equalf(balance, got, "unexpected balance") {
@@ -38,7 +39,7 @@ func TestBalanceState(t *testing.T) {
 		}
 	}
 
-	commit := func(db *DB) hash.Hash {
+	commit := func(db *DB) common.Hash {
 		root, err := db.Commit(true)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -48,11 +49,11 @@ func TestBalanceState(t *testing.T) {
 
 	// empty
 	for _, a := range aa {
-		checkBalance(hash.Hash{}, a, 0)
+		checkBalance(common.Hash{}, a, 0)
 	}
 
 	// root
-	db := stateAt(hash.Hash{})
+	db := stateAt(common.Hash{})
 	db.SetBalance(aa[0], 10)
 	db.SetBalance(aa[1], 10)
 	db.SetBalance(aa[2], 10)
@@ -90,7 +91,7 @@ func TestDelegationState(t *testing.T) {
 
 	const __ uint64 = 0
 
-	var aa = []hash.Peer{
+	var aa = []common.Address{
 		hash.FakePeer(),
 		hash.FakePeer(),
 		hash.FakePeer(),
@@ -99,7 +100,7 @@ func TestDelegationState(t *testing.T) {
 	mem := kvdb.NewMemDatabase()
 	store := NewDatabase(mem)
 
-	stateAt := func(point hash.Hash) *DB {
+	stateAt := func(point common.Hash) *DB {
 		db, err := New(point, store)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -107,7 +108,7 @@ func TestDelegationState(t *testing.T) {
 		return db
 	}
 
-	check := func(x direction, point hash.Hash, addr hash.Peer, amount ...uint64) {
+	check := func(x direction, point common.Hash, addr common.Address, amount ...uint64) {
 		db := stateAt(point)
 
 		var j int
@@ -136,7 +137,7 @@ func TestDelegationState(t *testing.T) {
 		}
 	}
 
-	commit := func(db *DB) hash.Hash {
+	commit := func(db *DB) common.Hash {
 		root, err := db.Commit(true)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -145,7 +146,7 @@ func TestDelegationState(t *testing.T) {
 	}
 
 	// step 0
-	db := stateAt(hash.Hash{})
+	db := stateAt(common.Hash{})
 	db.SetBalance(aa[0], 100)
 	db.SetBalance(aa[1], 100)
 	db.SetBalance(aa[2], 100)
@@ -201,7 +202,7 @@ func TestIdempotency(t *testing.T) {
 	mem := kvdb.NewMemDatabase()
 	store := NewDatabase(mem)
 
-	stateAt := func(point hash.Hash) *DB {
+	stateAt := func(point common.Hash) *DB {
 		db, err := New(point, store)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -209,7 +210,7 @@ func TestIdempotency(t *testing.T) {
 		return db
 	}
 
-	checkBalance := func(point hash.Hash, addr hash.Peer, balance pos.Stake) {
+	checkBalance := func(point common.Hash, addr common.Address, balance pos.Stake) {
 		db := stateAt(point)
 		got := db.FreeBalance(addr)
 		if !assertar.Equalf(balance, got, "unexpected balance") {
@@ -217,7 +218,7 @@ func TestIdempotency(t *testing.T) {
 		}
 	}
 
-	commit := func(db *DB) hash.Hash {
+	commit := func(db *DB) common.Hash {
 		root, err := db.Commit(true)
 		if !assertar.NoError(err) {
 			t.FailNow()
@@ -227,11 +228,11 @@ func TestIdempotency(t *testing.T) {
 
 	aa := hash.FakePeer()
 
-	db := stateAt(hash.Hash{})
+	db := stateAt(common.Hash{})
 	db.SetBalance(aa, 10)
 	root1 := commit(db)
 
-	db = stateAt(hash.Hash{})
+	db = stateAt(common.Hash{})
 	db.SetBalance(aa, 10)
 	root2 := commit(db)
 

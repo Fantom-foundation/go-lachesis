@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	eth "github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
@@ -13,7 +15,7 @@ import (
 func makeTestTrie(t *testing.T) (*Database, *Trie, map[string][]byte) {
 	// Create an empty trie
 	triedb := NewDatabase(kvdb.NewMemDatabase())
-	trie, err := New(hash.Hash{}, triedb)
+	trie, err := New(eth.Hash{}, triedb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,7 +67,7 @@ func checkTrieContents(t *testing.T, db *Database, root []byte, content map[stri
 }
 
 // checkTrieConsistency checks that all nodes in a trie are indeed present.
-func checkTrieConsistency(db *Database, root hash.Hash) error {
+func checkTrieConsistency(db *Database, root eth.Hash) error {
 	// Create and iterate a trie rooted in a subnode
 	trie, err := New(root, db)
 	if err != nil {
@@ -81,7 +83,7 @@ func checkTrieConsistency(db *Database, root hash.Hash) error {
 func TestEmptySync(t *testing.T) {
 	dbA := NewDatabase(kvdb.NewMemDatabase())
 	dbB := NewDatabase(kvdb.NewMemDatabase())
-	emptyA, _ := New(hash.Hash{}, dbA)
+	emptyA, _ := New(eth.Hash{}, dbA)
 	emptyB, _ := New(emptyRoot, dbB)
 
 	for i, trie := range []*Trie{emptyA, emptyB} {
@@ -105,7 +107,7 @@ func testIterativeSync(t *testing.T, batch int) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	queue := append([]hash.Hash{}, sched.Missing(batch)...)
+	queue := append([]eth.Hash{}, sched.Missing(batch)...)
 	for len(queue) > 0 {
 		results := make([]SyncResult, len(queue))
 		for i, hash_ := range queue {
@@ -138,7 +140,7 @@ func TestIterativeDelayedSync(t *testing.T) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	queue := append([]hash.Hash{}, sched.Missing(10000)...)
+	queue := append([]eth.Hash{}, sched.Missing(10000)...)
 	for len(queue) > 0 {
 		// Sync only half of the scheduled nodes
 		results := make([]SyncResult, len(queue)/2+1)
@@ -176,7 +178,7 @@ func testIterativeRandomSync(t *testing.T, batch int) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	queue := make(map[hash.Hash]struct{})
+	queue := make(map[eth.Hash]struct{})
 	for _, hash_ := range sched.Missing(batch) {
 		queue[hash_] = struct{}{}
 	}
@@ -197,7 +199,7 @@ func testIterativeRandomSync(t *testing.T, batch int) {
 		if index, err := sched.Commit(diskdb); err != nil {
 			t.Fatalf("failed to commit data #%d: %v", index, err)
 		}
-		queue = make(map[hash.Hash]struct{})
+		queue = make(map[eth.Hash]struct{})
 		for _, hash_ := range sched.Missing(batch) {
 			queue[hash_] = struct{}{}
 		}
@@ -217,7 +219,7 @@ func TestIterativeRandomDelayedSync(t *testing.T) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	queue := make(map[hash.Hash]struct{})
+	queue := make(map[eth.Hash]struct{})
 	for _, hash_ := range sched.Missing(10000) {
 		queue[hash_] = struct{}{}
 	}
@@ -264,8 +266,8 @@ func TestDuplicateAvoidanceSync(t *testing.T) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	queue := append([]hash.Hash{}, sched.Missing(0)...)
-	requested := make(map[hash.Hash]struct{})
+	queue := append([]eth.Hash{}, sched.Missing(0)...)
+	requested := make(map[eth.Hash]struct{})
 
 	for len(queue) > 0 {
 		results := make([]SyncResult, len(queue))
@@ -304,8 +306,8 @@ func TestIncompleteSync(t *testing.T) {
 	triedb := NewDatabase(diskdb)
 	sched := NewSync(srcTrie.Hash(), diskdb, nil)
 
-	added := []hash.Hash{}
-	queue := append([]hash.Hash{}, sched.Missing(1)...)
+	added := []eth.Hash{}
+	queue := append([]eth.Hash{}, sched.Missing(1)...)
 	for len(queue) > 0 {
 		// Fetch a batch of trie nodes
 		results := make([]SyncResult, len(queue))

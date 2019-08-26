@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"testing"
 
+	eth "github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/common"
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
@@ -89,9 +91,9 @@ func TestNodeIteratorCoverage(t *testing.T) {
 	db, trie, _ := makeTestTrie(t)
 
 	// Gather all the node hashes found by the iterator
-	hashes := make(map[hash.Hash]struct{})
+	hashes := make(map[eth.Hash]struct{})
 	for it := trie.NodeIterator(nil); it.Next(true); {
-		if it.Hash() != (hash.Hash{}) {
+		if it.Hash() != (eth.Hash{}) {
 			hashes[it.Hash()] = struct{}{}
 		}
 	}
@@ -102,7 +104,7 @@ func TestNodeIteratorCoverage(t *testing.T) {
 		}
 	}
 	for h, obj := range db.dirties {
-		if obj != nil && h != (hash.Hash{}) {
+		if obj != nil && h != (eth.Hash{}) {
 			if _, ok := hashes[h]; !ok {
 				t.Errorf("state entry not reported %x", h)
 			}
@@ -292,7 +294,7 @@ func testIteratorContinueAfterError(t *testing.T, memoryOnly bool) {
 	diskdb := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
-	tr, _ := New(hash.Hash{}, triedb)
+	tr, _ := New(eth.Hash{}, triedb)
 	for _, val := range testdata1 {
 		tr.Update([]byte(val.k), []byte(val.v))
 	}
@@ -310,7 +312,7 @@ func testIteratorContinueAfterError(t *testing.T, memoryOnly bool) {
 
 	var (
 		diskKeys [][]byte
-		memKeys  []hash.Hash
+		memKeys  []eth.Hash
 	)
 	if memoryOnly {
 		memKeys = triedb.Nodes()
@@ -324,7 +326,7 @@ func testIteratorContinueAfterError(t *testing.T, memoryOnly bool) {
 		// Remove a random node from the database. It can't be the root node
 		// because that one is already loaded.
 		var (
-			rkey hash.Hash
+			rkey eth.Hash
 			rval []byte
 			robj *cachedNode
 		)
@@ -391,7 +393,7 @@ func testIteratorContinueAfterSeekError(t *testing.T, memoryOnly bool) {
 	diskdb := kvdb.NewMemDatabase()
 	triedb := NewDatabase(diskdb)
 
-	ctr, _ := New(hash.Hash{}, triedb)
+	ctr, _ := New(eth.Hash{}, triedb)
 	for _, val := range testdata1 {
 		ctr.Update([]byte(val.k), []byte(val.v))
 	}
@@ -406,7 +408,7 @@ func testIteratorContinueAfterSeekError(t *testing.T, memoryOnly bool) {
 		}
 	}
 
-	barNodeHash := hash.HexToHash("890d0afc63c1ceb4f363057c9a406e7acbaa7746bf8c1d87c8b24c10a72136a1")
+	barNodeHash := eth.HexToHash("890d0afc63c1ceb4f363057c9a406e7acbaa7746bf8c1d87c8b24c10a72136a1")
 	var (
 		barNodeBlob []byte
 		barNodeObj  *cachedNode

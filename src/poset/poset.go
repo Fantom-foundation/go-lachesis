@@ -1,6 +1,7 @@
 package poset
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
@@ -139,7 +140,7 @@ func (p *Poset) handleElection(root *inter.Event) {
 		}
 	}
 }
-func (p *Poset) processRoot(f idx.Frame, from hash.Peer, id hash.Event) (decided *election.ElectionRes) {
+func (p *Poset) processRoot(f idx.Frame, from common.Address, id hash.Event) (decided *election.ElectionRes) {
 	decided, err := p.election.ProcessRoot(election.RootAndSlot{
 		Root: id,
 		Slot: election.Slot{
@@ -158,7 +159,7 @@ func (p *Poset) processRoot(f idx.Frame, from hash.Peer, id hash.Event) (decided
 func (p *Poset) processKnownRoots() *election.ElectionRes {
 	// iterate all the roots from LastDecidedFrame+1 to highest, call processRoot for each
 	var roots []election.RootAndSlot
-	p.store.ForEachRoot(p.LastDecidedFrame+1, func(f idx.Frame, from hash.Peer, id hash.Event) bool {
+	p.store.ForEachRoot(p.LastDecidedFrame+1, func(f idx.Frame, from common.Address, id hash.Event) bool {
 		roots = append(roots, election.RootAndSlot{
 			Root: id,
 			Slot: election.Slot{
@@ -243,7 +244,7 @@ func (p *Poset) superFrameSealed(fiWitness hash.Event) bool {
 
 func (p *Poset) getFrameRoots(f idx.Frame) EventsByPeer {
 	frameRoots := EventsByPeer{}
-	p.store.ForEachRoot(f, func(f idx.Frame, from hash.Peer, id hash.Event) bool {
+	p.store.ForEachRoot(f, func(f idx.Frame, from common.Address, id hash.Event) bool {
 		if f > f {
 			return false
 		}

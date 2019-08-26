@@ -2,6 +2,9 @@ package inter
 
 import (
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
@@ -19,9 +22,9 @@ type EventHeaderData struct {
 	Frame  idx.Frame
 	IsRoot bool
 
-	Creator hash.Peer // TODO common.Address
+	Creator common.Address
 
-	PrevEpochHash hash.Hash
+	PrevEpochHash common.Hash
 	Parents       hash.Events
 
 	GasLeft uint64
@@ -31,7 +34,7 @@ type EventHeaderData struct {
 	ClaimedTime Timestamp
 	MedianTime  Timestamp
 
-	TxHash hash.Hash
+	TxHash common.Hash
 
 	Extra []byte
 
@@ -50,7 +53,7 @@ type Event struct {
 	ExternalTransactions ExtTxns
 }
 
-func (e *EventHeaderData) HashToSign() hash.Hash {
+func (e *EventHeaderData) HashToSign() common.Hash {
 	hasher := sha3.New256()
 	err := rlp.Encode(hasher, []interface{}{
 		"Fantom signed event header",
@@ -155,7 +158,7 @@ func (e *Event) String() string {
 
 // FakeFuzzingEvents generates random independent events for test purpose.
 func FakeFuzzingEvents() (res []*Event) {
-	creators := []hash.Peer{
+	creators := []common.Address{
 		{},
 		hash.FakePeer(),
 		hash.FakePeer(),

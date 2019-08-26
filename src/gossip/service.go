@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discv5"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
 	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/logger"
 )
@@ -32,7 +32,7 @@ type Service struct {
 	serverPool *serverPool
 
 	// my identity
-	me         hash.Peer
+	me         common.Address
 	privateKey *crypto.PrivateKey
 
 	// application
@@ -159,7 +159,7 @@ func (s *Service) APIs() []rpc.API {
 // Start method invoked when the node is ready to start the service.
 func (s *Service) Start(srv *p2p.Server) error {
 
-	var genesis hash.Hash
+	var genesis common.Hash
 	genesis = s.engine.GetGenesisHash()
 	s.Topics = []discv5.Topic{
 		discv5.Topic("lachesis@" + genesis.Hex()),

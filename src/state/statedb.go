@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 
@@ -41,8 +42,8 @@ type DB struct {
 	trie Trie
 
 	// This map holds 'live' objects, which will get modified while processing a state transition.
-	stateObjects      map[hash.Peer]*stateObject
-	stateObjectsDirty map[hash.Peer]struct{}
+	stateObjects      map[common.Address]*stateObject
+	stateObjectsDirty map[common.Address]struct{}
 
 	// DB error.
 	// State objects are used by the consensus core which are
@@ -51,10 +52,10 @@ type DB struct {
 	// by StateDB.Commit.
 	dbErr error
 
-	thash, bhash hash.Hash
+	thash, bhash common.Hash
 	txIndex      int
 
-	preimages map[hash.Hash][]byte
+	preimages map[common.Hash][]byte
 
 	// Journal of state modifications. This is the backbone of
 	// Snapshot and RevertToSnapshot.
@@ -64,7 +65,7 @@ type DB struct {
 }
 
 // New creates a new state from a given trie.
-func New(root hash.Hash, db Database) (*DB, error) {
+func New(root common.Hash, db Database) (*DB, error) {
 	tr, err := db.OpenTrie(root)
 	if err != nil {
 		return nil, err
@@ -72,9 +73,9 @@ func New(root hash.Hash, db Database) (*DB, error) {
 	return &DB{
 		db:                db,
 		trie:              tr,
-		stateObjects:      make(map[hash.Peer]*stateObject),
-		stateObjectsDirty: make(map[hash.Peer]struct{}),
-		preimages:         make(map[hash.Hash][]byte),
+		stateObjects:      make(map[common.Address]*stateObject),
+		stateObjectsDirty: make(map[common.Address]struct{}),
+		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
 	}, nil
 }
@@ -93,24 +94,24 @@ func (s *DB) Error() error {
 
 // Reset clears out all ephemeral state objects from the state db, but keeps
 // the underlying state trie to avoid reloading data for the next operations.
-func (s *DB) Reset(root hash.Hash) error {
+func (s *DB) Reset(root common.Hash) error {
 	tr, err := s.db.OpenTrie(root)
 	if err != nil {
 		return err
 	}
 	s.trie = tr
-	s.stateObjects = make(map[hash.Peer]*stateObject)
-	s.stateObjectsDirty = make(map[hash.Peer]struct{})
-	s.thash = hash.Hash{}
-	s.bhash = hash.Hash{}
+	s.stateObjects = make(map[common.Address]*stateObject)
+	s.stateObjectsDirty = make(map[common.Address]struct{})
+	s.thash = common.Hash{}
+	s.bhash = common.Hash{}
 	s.txIndex = 0
-	s.preimages = make(map[hash.Hash][]byte)
+	s.preimages = make(map[common.Hash][]byte)
 	s.clearJournal()
 	return nil
 }
 
 // AddPreimage records a SHA3 preimage seen by the VM.
-func (s *DB) AddPreimage(hash hash.Hash, preimage []byte) {
+func (s *DB) AddPreimage(hash common.Hash, preimage []byte) {
 	if _, ok := s.preimages[hash]; !ok {
 		s.journal.append(addPreimageChange{hash: hash})
 		pi := make([]byte, len(preimage))
@@ -120,25 +121,25 @@ func (s *DB) AddPreimage(hash hash.Hash, preimage []byte) {
 }
 
 // Preimages returns a list of SHA3 preimages that have been submitted.
-func (s *DB) Preimages() map[hash.Hash][]byte {
+func (s *DB) Preimages() map[common.Hash][]byte {
 	return s.preimages
 }
 
 // Exist reports whether the given account address exists in the state.
 // Notably this also returns true for suicided accounts.
-func (s *DB) Exist(addr hash.Peer) bool {
+func (s *DB) Exist(addr common.Address) bool {
 	return s.getStateObject(addr) != nil
 }
 
 // Empty returns whether the state object is either non-existent
 // or empty according to the EIP161 specification (balance = nonce = code = 0).
-func (s *DB) Empty(addr hash.Peer) bool {
+func (s *DB) Empty(addr common.Address) bool {
 	so := s.getStateObject(addr)
 	return so == nil || so.empty()
 }
 
 // FreeBalance returns the free balance from the given address or 0 if object not found.
-func (s *DB) FreeBalance(addr hash.Peer) pos.Stake {
+func (s *DB) FreeBalance(addr common.Address) pos.Stake {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return pos.Stake(stateObject.FreeBalance())
@@ -147,7 +148,7 @@ func (s *DB) FreeBalance(addr hash.Peer) pos.Stake {
 }
 
 // VoteBalance returns the vote balance from the given address or 0 if object not found.
-func (s *DB) VoteBalance(addr hash.Peer) pos.Stake {
+func (s *DB) VoteBalance(addr common.Address) pos.Stake {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return pos.Stake(stateObject.VoteBalance())
@@ -156,23 +157,23 @@ func (s *DB) VoteBalance(addr hash.Peer) pos.Stake {
 }
 
 // GetState retrieves a value from the given account's storage trie.
-func (s *DB) GetState(addr hash.Peer, h hash.Hash) hash.Hash {
+func (s *DB) GetState(addr common.Address, h common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetState(s.db, h)
 	}
-	return hash.Hash{}
+	return common.Hash{}
 }
 
 // GetProof returns the MerkleProof for a given Account.
-func (s *DB) GetProof(a hash.Peer) ([][]byte, error) {
+func (s *DB) GetProof(a common.Address) ([][]byte, error) {
 	var proof proofList
 	err := s.trie.Prove(crypto.Keccak256(a.Bytes()), 0, &proof)
 	return [][]byte(proof), err
 }
 
 // GetStorageProof returns the StorageProof for given key.
-func (s *DB) GetStorageProof(a hash.Peer, key hash.Hash) ([][]byte, error) {
+func (s *DB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
 	var proof proofList
 	storageTrie := s.StorageTrie(a)
 	if storageTrie == nil {
@@ -183,12 +184,12 @@ func (s *DB) GetStorageProof(a hash.Peer, key hash.Hash) ([][]byte, error) {
 }
 
 // GetCommittedState retrieves a value from the given account's committed storage trie.
-func (s *DB) GetCommittedState(addr hash.Peer, h hash.Hash) hash.Hash {
+func (s *DB) GetCommittedState(addr common.Address, h common.Hash) common.Hash {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.GetCommittedState(s.db, h)
 	}
-	return hash.Hash{}
+	return common.Hash{}
 }
 
 // Database retrieves the low level database supporting the lower level trie ops.
@@ -198,7 +199,7 @@ func (s *DB) Database() Database {
 
 // StorageTrie returns the storage trie of an account.
 // The return value is a copy and is nil for non-existent accounts.
-func (s *DB) StorageTrie(addr hash.Peer) Trie {
+func (s *DB) StorageTrie(addr common.Address) Trie {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
 		return nil
@@ -208,7 +209,7 @@ func (s *DB) StorageTrie(addr hash.Peer) Trie {
 }
 
 // HasSuicided checks if stateObject is suicided by address.
-func (s *DB) HasSuicided(addr hash.Peer) bool {
+func (s *DB) HasSuicided(addr common.Address) bool {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
 		return stateObject.suicided
@@ -221,7 +222,7 @@ func (s *DB) HasSuicided(addr hash.Peer) bool {
  */
 
 // SetBalance sets stateObject's balance by address.
-func (s *DB) SetBalance(addr hash.Peer, amount pos.Stake) {
+func (s *DB) SetBalance(addr common.Address, amount pos.Stake) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject == nil {
 		panic("stateObject is nil")
@@ -230,7 +231,7 @@ func (s *DB) SetBalance(addr hash.Peer, amount pos.Stake) {
 }
 
 // Transfer moves amount.
-func (s *DB) Transfer(from, to hash.Peer, amount pos.Stake) {
+func (s *DB) Transfer(from, to common.Address, amount pos.Stake) {
 	f := s.GetOrNewStateObject(from)
 	t := s.GetOrNewStateObject(to)
 
@@ -239,7 +240,7 @@ func (s *DB) Transfer(from, to hash.Peer, amount pos.Stake) {
 }
 
 // Delegate writes delegation records.
-func (s *DB) Delegate(from, to hash.Peer, amount pos.Stake, until idx.Block) {
+func (s *DB) Delegate(from, to common.Address, amount pos.Stake, until idx.Block) {
 	f := s.GetOrNewStateObject(from)
 	t := s.GetOrNewStateObject(to)
 
@@ -248,19 +249,19 @@ func (s *DB) Delegate(from, to hash.Peer, amount pos.Stake, until idx.Block) {
 }
 
 // ExpireDelegations erases data about expired delegations.
-func (s *DB) ExpireDelegations(addr hash.Peer, now uint64) {
+func (s *DB) ExpireDelegations(addr common.Address, now uint64) {
 	stateObject := s.GetOrNewStateObject(addr)
 	stateObject.ExpireDelegations(now)
 }
 
 // GetDelegations returns delegation records.
-func (s *DB) GetDelegations(addr hash.Peer) [2]map[hash.Peer]uint64 {
+func (s *DB) GetDelegations(addr common.Address) [2]map[common.Address]uint64 {
 	stateObject := s.GetOrNewStateObject(addr)
 	return stateObject.GetDelegations()
 }
 
 // SetState sets stateObject's kv-state by address.
-func (s *DB) SetState(addr hash.Peer, key, value hash.Hash) {
+func (s *DB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject == nil {
 		panic("stateObject is nil")
@@ -272,7 +273,7 @@ func (s *DB) SetState(addr hash.Peer, key, value hash.Hash) {
 // This clears the account balance.
 // The account's state object is still available until the state is committed,
 // getStateObject will return a non-nil account after Suicide.
-func (s *DB) Suicide(addr hash.Peer) bool {
+func (s *DB) Suicide(addr common.Address) bool {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil {
 		return false
@@ -312,7 +313,7 @@ func (s *DB) deleteStateObject(stateObject *stateObject) {
 }
 
 // Retrieve a state object given by the address. Returns nil if not found.
-func (s *DB) getStateObject(addr hash.Peer) (stateObject *stateObject) {
+func (s *DB) getStateObject(addr common.Address) (stateObject *stateObject) {
 	// Prefer 'live' objects.
 	if obj := s.stateObjects[addr]; obj != nil {
 		if obj.deleted {
@@ -343,7 +344,7 @@ func (s *DB) setStateObject(object *stateObject) {
 }
 
 // GetOrNewStateObject returns a state object or create a new state object if nil.
-func (s *DB) GetOrNewStateObject(addr hash.Peer) *stateObject {
+func (s *DB) GetOrNewStateObject(addr common.Address) *stateObject {
 	stateObject := s.getStateObject(addr)
 	if stateObject == nil || stateObject.deleted {
 		stateObject, _ = s.createObject(addr)
@@ -353,7 +354,7 @@ func (s *DB) GetOrNewStateObject(addr hash.Peer) *stateObject {
 
 // createObject creates a new state object. If there is an existing account with
 // the given address, it is overwritten and returned as the second return value.
-func (s *DB) createObject(addr hash.Peer) (newobj, prev *stateObject) {
+func (s *DB) createObject(addr common.Address) (newobj, prev *stateObject) {
 	prev = s.getStateObject(addr)
 	newobj = newObject(s, addr, Account{})
 	if prev == nil {
@@ -375,7 +376,7 @@ func (s *DB) createObject(addr hash.Peer) (newobj, prev *stateObject) {
 //   2. tx_create(sha(account ++ nonce)) (note that this gets the address of 1)
 //
 // Carrying over the balance ensures that Ether doesn't disappear.
-func (s *DB) CreateAccount(addr hash.Peer) {
+func (s *DB) CreateAccount(addr common.Address) {
 	_new, prev := s.createObject(addr)
 	if prev != nil {
 		_new.data = prev.data
@@ -383,7 +384,7 @@ func (s *DB) CreateAccount(addr hash.Peer) {
 }
 
 // ForEachStorage calls func for each key-value of node.
-func (s *DB) ForEachStorage(addr hash.Peer, cb func(key, value hash.Hash) bool) {
+func (s *DB) ForEachStorage(addr common.Address, cb func(key, value common.Hash) bool) {
 	so := s.getStateObject(addr)
 	if so == nil {
 		return
@@ -406,9 +407,9 @@ func (s *DB) Copy() *DB {
 	state := &DB{
 		db:                s.db,
 		trie:              s.db.CopyTrie(s.trie),
-		stateObjects:      make(map[hash.Peer]*stateObject, len(s.journal.dirties)),
-		stateObjectsDirty: make(map[hash.Peer]struct{}, len(s.journal.dirties)),
-		preimages:         make(map[hash.Hash][]byte),
+		stateObjects:      make(map[common.Address]*stateObject, len(s.journal.dirties)),
+		stateObjectsDirty: make(map[common.Address]struct{}, len(s.journal.dirties)),
+		preimages:         make(map[common.Hash][]byte),
 		journal:           newJournal(),
 	}
 	// Copy the dirty states, logs, and preimages
@@ -485,14 +486,14 @@ func (s *DB) Finalise(deleteEmptyObjects bool) {
 // IntermediateRoot computes the current root hash of the state trie.
 // It is called in between transactions to get the root hash that
 // goes into transaction receipts.
-func (s *DB) IntermediateRoot(deleteEmptyObjects bool) hash.Hash {
+func (s *DB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	s.Finalise(deleteEmptyObjects)
 	return s.trie.Hash()
 }
 
 // Prepare sets the current transaction hash and index and block hash which is
 // used when the EVM emits new state logs.
-func (s *DB) Prepare(thash, bhash hash.Hash, ti int) {
+func (s *DB) Prepare(thash, bhash common.Hash, ti int) {
 	s.thash = thash
 	s.bhash = bhash
 	s.txIndex = ti
@@ -504,7 +505,7 @@ func (s *DB) clearJournal() {
 }
 
 // Commit writes the state to the underlying in-memory trie database.
-func (s *DB) Commit(deleteEmptyObjects bool) (root hash.Hash, err error) {
+func (s *DB) Commit(deleteEmptyObjects bool) (root common.Hash, err error) {
 	defer s.clearJournal()
 
 	for addr := range s.journal.dirties {
@@ -521,7 +522,7 @@ func (s *DB) Commit(deleteEmptyObjects bool) (root hash.Hash, err error) {
 		case isDirty:
 			// Write any storage changes in the state object to its storage trie.
 			if err := stateObject.CommitTrie(s.db); err != nil {
-				return hash.Hash{}, err
+				return common.Hash{}, err
 			}
 			// Update the object in the main account trie.
 			s.updateStateObject(stateObject)
@@ -529,7 +530,7 @@ func (s *DB) Commit(deleteEmptyObjects bool) (root hash.Hash, err error) {
 		delete(s.stateObjectsDirty, addr)
 	}
 	// Write trie changes.
-	root, err = s.trie.Commit(func(leaf []byte, parent hash.Hash) error {
+	root, err = s.trie.Commit(func(leaf []byte, parent common.Hash) error {
 		var account Account
 		if err := proto.Unmarshal(leaf, &account); err != nil {
 			return nil

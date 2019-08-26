@@ -4,6 +4,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
@@ -34,8 +36,8 @@ func (p *ExtendedPoset) EventsTillBlock(until idx.Block) hash.Events {
 }
 
 // FakePoset creates empty poset with mem store and equal stakes of nodes in genesis.
-func FakePoset(nodes []hash.Peer) (*ExtendedPoset, *Store, *EventStore) {
-	balances := make(map[hash.Peer]pos.Stake, len(nodes))
+func FakePoset(nodes []common.Address) (*ExtendedPoset, *Store, *EventStore) {
+	balances := make(map[common.Address]pos.Stake, len(nodes))
 	for _, addr := range nodes {
 		balances[addr] = pos.Stake(1)
 	}
@@ -58,7 +60,7 @@ func FakePoset(nodes []hash.Peer) (*ExtendedPoset, *Store, *EventStore) {
 		blocks: map[idx.Block]*inter.Block{},
 	}
 
-	extended.Bootstrap(func(block *inter.Block, stateHash hash.Hash, members pos.Members) (hash.Hash, pos.Members) {
+	extended.Bootstrap(func(block *inter.Block, stateHash common.Hash, members pos.Members) (common.Hash, pos.Members) {
 		// track block events
 		if extended.blocks[block.Index] != nil {
 			extended.Fatal("created block twice")

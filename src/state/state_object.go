@@ -3,7 +3,7 @@ package state
 import (
 	"fmt"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // temporary solution for delegation dict
@@ -17,7 +17,7 @@ const (
 )
 
 // Storage of entries.
-type Storage map[hash.Hash]hash.Hash
+type Storage map[common.Hash]common.Hash
 
 func (self Storage) String() (str string) {
 	for key, value := range self {
@@ -44,8 +44,8 @@ func (s Storage) Copy() Storage {
 // Account values can be accessed and modified through the object.
 // Finally, call CommitTrie to write the modified storage trie into a database.
 type stateObject struct {
-	address  hash.Peer
-	addrHash hash.Hash // hash of address of the account
+	address  common.Address
+	addrHash common.Hash // hash of address of the account
 	data     Account
 	db       *DB
 
@@ -75,11 +75,11 @@ func (s *stateObject) empty() bool {
 }
 
 // newObject creates a state object.
-func newObject(db *DB, address hash.Peer, data Account) *stateObject {
+func newObject(db *DB, address common.Address, data Account) *stateObject {
 	return &stateObject{
 		db:            db,
 		address:       address,
-		addrHash:      hash.Hash(address), //hash.Of(address.Bytes()),
+		addrHash:      address.Hash(),
 		data:          data,
 		originStorage: make(Storage),
 		dirtyStorage:  make(Storage),
@@ -104,7 +104,7 @@ func (s *stateObject) getTrie(db Database) Trie {
 		var err error
 		s.trie, err = db.OpenStorageTrie(s.addrHash, s.data.Root())
 		if err != nil {
-			s.trie, _ = db.OpenStorageTrie(s.addrHash, hash.Hash{})
+			s.trie, _ = db.OpenStorageTrie(s.addrHash, common.Hash{})
 			s.setError(fmt.Errorf("can't create storage trie: %v", err))
 		}
 	}
@@ -112,7 +112,7 @@ func (s *stateObject) getTrie(db Database) Trie {
 }
 
 // GetState retrieves a value from the account storage trie.
-func (s *stateObject) GetState(db Database, key hash.Hash) hash.Hash {
+func (s *stateObject) GetState(db Database, key common.Hash) common.Hash {
 	// If we have a dirty value for this state entry, return it
 	value, dirty := s.dirtyStorage[key]
 	if dirty {
@@ -123,7 +123,7 @@ func (s *stateObject) GetState(db Database, key hash.Hash) hash.Hash {
 }
 
 // GetCommittedState retrieves a value from the committed account storage trie.
-func (s *stateObject) GetCommittedState(db Database, key hash.Hash) hash.Hash {
+func (s *stateObject) GetCommittedState(db Database, key common.Hash) common.Hash {
 	// If we have the original value cached, return that
 	value, cached := s.originStorage[key]
 	if cached {
@@ -133,7 +133,7 @@ func (s *stateObject) GetCommittedState(db Database, key hash.Hash) hash.Hash {
 	enc, err := s.getTrie(db).TryGet(key.Bytes())
 	if err != nil {
 		s.setError(err)
-		return hash.Hash{}
+		return common.Hash{}
 	}
 	if len(enc) > 0 {
 		value.SetBytes(enc)
@@ -143,7 +143,7 @@ func (s *stateObject) GetCommittedState(db Database, key hash.Hash) hash.Hash {
 }
 
 // SetState updates a value in account storage.
-func (s *stateObject) SetState(db Database, key, value hash.Hash) {
+func (s *stateObject) SetState(db Database, key, value common.Hash) {
 	// If the new value is the same as old, don't set
 	prev := s.GetState(db, key)
 	if prev == value {
@@ -158,7 +158,7 @@ func (s *stateObject) SetState(db Database, key, value hash.Hash) {
 	s.setState(key, value)
 }
 
-func (s *stateObject) setState(key, value hash.Hash) {
+func (s *stateObject) setState(key, value common.Hash) {
 	s.dirtyStorage[key] = value
 }
 
@@ -174,7 +174,7 @@ func (s *stateObject) updateTrie(db Database) Trie {
 		}
 		s.originStorage[key] = value
 
-		if (value == hash.Hash{}) {
+		if (value == common.Hash{}) {
 			s.setError(tr.TryDelete(key.Bytes()))
 			continue
 		}
@@ -241,7 +241,7 @@ func (s *stateObject) SetBalance(amount uint64) {
 }
 
 // DelegateTo writes data about delegation.
-func (s *stateObject) DelegateTo(addr hash.Peer, amount int64, until uint64) {
+func (s *stateObject) DelegateTo(addr common.Address, amount int64, until uint64) {
 	if addr == s.address || amount == 0 || until < 1 {
 		panic("Impossible delegation!")
 	}
@@ -262,7 +262,7 @@ func (s *stateObject) DelegateTo(addr hash.Peer, amount int64, until uint64) {
 	s.delegateTo(addr, amount, until, false)
 }
 
-func (s *stateObject) delegateTo(addr hash.Peer, amount int64, until uint64, reverse bool) {
+func (s *stateObject) delegateTo(addr common.Address, amount int64, until uint64, reverse bool) {
 	if s.data.DelegatingTo == nil {
 		s.data.DelegatingTo = make(map[string]*Borrow)
 	}
@@ -357,12 +357,12 @@ func (s *stateObject) addDelegations(dd [2]map[string]map[uint64]uint64) {
 	modify(FROM, s.data.DelegatingFrom, &s.data.DelegatedFrom)
 }
 
-func (s *stateObject) GetDelegations() (dd [2]map[hash.Peer]uint64) {
+func (s *stateObject) GetDelegations() (dd [2]map[common.Address]uint64) {
 	get := func(x direction, delegating map[string]*Borrow) {
-		dd[x] = make(map[hash.Peer]uint64)
+		dd[x] = make(map[common.Address]uint64)
 
 		for addr, rec := range delegating {
-			h := hash.HexToPeer(addr)
+			h := common.HexToAddress(addr)
 			for _, amount := range rec.Recs {
 				dd[x][h] += amount
 			}
@@ -391,7 +391,7 @@ func (s *stateObject) deepCopy(db *DB) *stateObject {
  */
 
 // Returns the address of the contract/account.
-func (s *stateObject) Address() hash.Peer {
+func (s *stateObject) Address() common.Address {
 	return s.address
 }
 

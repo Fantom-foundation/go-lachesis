@@ -1,9 +1,9 @@
 package gossip
 
 import (
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
 	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/src/logger"
 	"github.com/Fantom-foundation/go-lachesis/src/state"
@@ -65,7 +65,7 @@ func (s *Store) Close() {
 }
 
 // StateDB returns state database.
-func (s *Store) StateDB(from hash.Hash) *state.DB {
+func (s *Store) StateDB(from common.Hash) *state.DB {
 	db, err := state.New(from, s.table.Balances)
 	if err != nil {
 		s.Fatal(err)

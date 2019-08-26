@@ -1,14 +1,16 @@
 package gossip
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
-	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rlp"
-	"math/big"
+
+	"github.com/Fantom-foundation/go-lachesis/src/hash"
+	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
 )
 
 // Constants to match up protocol versions and messages
@@ -100,8 +102,8 @@ type ethStatusData struct {
 	ProtocolVersion   uint32
 	NetworkId         uint64
 	DummyTD           *big.Int
-	DummyCurrentBlock hash.Hash
-	Genesis           hash.Hash
+	DummyCurrentBlock common.Hash
+	Genesis           common.Hash
 }
 
 type PeerProgress struct {

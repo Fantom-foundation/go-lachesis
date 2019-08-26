@@ -3,6 +3,7 @@ package trie
 import (
 	"fmt"
 
+	eth "github.com/ethereum/go-ethereum/common"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common"
@@ -21,7 +22,7 @@ import (
 // SecureTrie is not safe for concurrent use.
 type SecureTrie struct {
 	trie             Trie
-	hashKeyBuf       [hash.Size]byte
+	hashKeyBuf       [common.HashLength]byte
 	secKeyCache      map[string][]byte
 	secKeyCacheOwner *SecureTrie // Pointer to self, replace the key cache on mismatch
 }
@@ -37,7 +38,7 @@ type SecureTrie struct {
 // Loaded nodes are kept around until their 'cache generation' expires.
 // A new cache generation is created by each call to Commit.
 // cachelimit sets the number of past cache generations to keep.
-func NewSecure(root hash.Hash, db *Database, cachelimit uint16) (*SecureTrie, error) {
+func NewSecure(root eth.Hash, db *Database, cachelimit uint16) (*SecureTrie, error) {
 	if db == nil {
 		panic("trie.NewSecure called without a database")
 	}
@@ -126,7 +127,7 @@ func (t *SecureTrie) GetKey(shaKey []byte) []byte {
 //
 // Committing flushes nodes from memory. Subsequent Get calls will load nodes
 // from the database.
-func (t *SecureTrie) Commit(onleaf LeafCallback) (root hash.Hash, err error) {
+func (t *SecureTrie) Commit(onleaf LeafCallback) (root eth.Hash, err error) {
 	// Write all the pre-images to the actual disk database
 	if len(t.getSecKeyCache()) > 0 {
 		t.trie.db.lock.Lock()
@@ -140,12 +141,12 @@ func (t *SecureTrie) Commit(onleaf LeafCallback) (root hash.Hash, err error) {
 	// Commit the trie to its intermediate node database
 	nodeHash, err := t.trie.Commit(onleaf)
 	if err != nil {
-		return hash.Hash{}, err
+		return eth.Hash{}, err
 	}
 	if t.trie.db.diskdb != nil {
 		err = t.trie.db.Commit(nodeHash, false)
 		if err != nil {
-			return hash.Hash{}, err
+			return eth.Hash{}, err
 		}
 	}
 	return nodeHash, nil
@@ -153,7 +154,7 @@ func (t *SecureTrie) Commit(onleaf LeafCallback) (root hash.Hash, err error) {
 
 // Hash returns the root hash of SecureTrie. It does not write to the
 // database and can be used even if the trie doesn't have one.
-func (t *SecureTrie) Hash() hash.Hash {
+func (t *SecureTrie) Hash() eth.Hash {
 	return t.trie.Hash()
 }
 

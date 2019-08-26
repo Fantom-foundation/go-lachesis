@@ -3,11 +3,11 @@ package lachesis
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/hash"
 )
 
 const (
@@ -71,7 +71,7 @@ func TestNetConfig() Config {
 	}
 }
 
-func FakeNetConfig(n int) (Config, []hash.Peer, []*crypto.PrivateKey) {
+func FakeNetConfig(n int) (Config, []common.Address, []*crypto.PrivateKey) {
 	g, nodes, keys := FakeGenesis(n)
 
 	return Config{

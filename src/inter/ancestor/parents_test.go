@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/src/hash"
@@ -108,7 +109,7 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 	}
 
 	heads := hash.EventsSet{}
-	tips := map[hash.Peer]*hash.Event{}
+	tips := map[common.Address]*hash.Event{}
 	// check
 	for stage, ee := range stages {
 		t.Logf("Stage %d:", stage)

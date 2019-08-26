@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
@@ -731,8 +732,8 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 // NodeInfo represents a short summary of the sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
-	Network     uint64    `json:"network"` // network ID
-	Genesis     hash.Hash `json:"genesis"` // SHA3 hash of the host's genesis object
+	Network     uint64      `json:"network"` // network ID
+	Genesis     common.Hash `json:"genesis"` // SHA3 hash of the host's genesis object
 	Epoch       idx.SuperFrame
 	NumOfEvents idx.Event
 	//Config  *params.ChainConfig `json:"config"`  // Chain configuration for the fork rules
