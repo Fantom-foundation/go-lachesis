@@ -14,6 +14,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/src/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/src/utils"
 	"github.com/Fantom-foundation/go-lachesis/src/vector"
 )
 
@@ -141,9 +142,9 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 			}
 			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
 			if !assertar.Equal(
-				exp[stage][node.String()],
+				exp[stage][utils.NameOf(node)],
 				parentsToString(parents),
-				"stage %d, %s", stage, node.String(),
+				"stage %d, %s", stage, utils.NameOf(node),
 			) {
 				return
 			}
