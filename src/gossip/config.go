@@ -11,6 +11,8 @@ type Config struct {
 
 	Emitter EmitterConfig
 
+	Signer SignerConfig
+
 	// Protocol options
 	SyncMode downloader.SyncMode
 
@@ -24,5 +26,6 @@ func DefaultConfig(network lachesis.Config) Config {
 		Net:             network,
 		ForcedBroadcast: true,
 		Emitter:         DefaultEmitterConfig(),
+		Signer:          DefaultSignerConfig(),
 	}
 }

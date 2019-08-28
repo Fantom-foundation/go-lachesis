@@ -13,12 +13,13 @@ import (
 	"github.com/ethereum/go-ethereum/signer/core"
 )
 
+const pass = "password_with_more_than_10_chars"
+
 func TestSignerAPI_New(t *testing.T) {
 	// Init new signer api & ui handler
-	signer, ui := NewSignerAPI(tmpDirName())
+	manager := NewSignerManager(tmpDirName())
 
-	ui.inputCh <- "password_with_more_than_10_chars"
-	address, err := signer.New(context.Background())
+	address, err := manager.NewAccount(pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,11 +29,10 @@ func TestSignerAPI_New(t *testing.T) {
 
 func TestSignerAPI_List(t *testing.T) {
 	// Init new signer api & ui handler
-	signer, ui := NewSignerAPI(tmpDirName())
+	manager := NewSignerManager(tmpDirName())
 
 	// create new account
-	ui.inputCh <- "password_with_more_than_10_chars"
-	_, err := signer.New(context.Background())
+	_, err := manager.NewAccount(pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestSignerAPI_List(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// get list account
-	addresses, err := signer.List(context.Background())
+	addresses, err := manager.ListAccounts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,11 +51,10 @@ func TestSignerAPI_List(t *testing.T) {
 
 func TestSignerAPI_SignTransaction(t *testing.T) {
 	// Init new signer api & ui handler
-	signer, ui := NewSignerAPI(tmpDirName())
+	manager := NewSignerManager(tmpDirName())
 
 	// create new account
-	ui.inputCh <- "password_with_more_than_10_chars"
-	_, err := signer.New(context.Background())
+	_, err := manager.NewAccount(pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +63,7 @@ func TestSignerAPI_SignTransaction(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// get list account
-	addresses, err := signer.List(context.Background())
+	addresses, err := manager.ListAccounts()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,22 +72,18 @@ func TestSignerAPI_SignTransaction(t *testing.T) {
 	tx := testTx(common.NewMixedcaseAddress(addresses[0]))
 
 	// sign transaction
-	ui.inputCh <- "password_with_more_than_10_chars"
-	result, err := signer.SignTransaction(context.Background(), tx, nil)
+	err = manager.SignTransaction(tx, pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Log(result.Tx.GasPrice())
 }
 
 func TestSignerAPI_SignData(t *testing.T) {
 	// Init new signer api & ui handler
-	signer, ui := NewSignerAPI(tmpDirName())
+	manager := NewSignerManager(tmpDirName())
 
 	// create new account
-	ui.inputCh <- "password_with_more_than_10_chars"
-	_, err := signer.New(context.Background())
+	_, err := manager.NewAccount(pass)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,34 +92,26 @@ func TestSignerAPI_SignData(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// get list account
-	addresses, err := signer.List(context.Background())
+	addresses, err := manager.ListAccounts()
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// make mixed address creator
-	mixedAddress := common.NewMixedcaseAddress(addresses[0])
 
 	// sign hash
-	ui.inputCh <- "password_with_more_than_10_chars"
-	signature, err := signer.SignData(context.Background(), core.TextPlain.Mime, mixedAddress, hexutil.Encode([]byte("test hash")))
+	_, err = manager.SignData(addresses[0], []byte("test hash"), pass)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if signature == nil || len(signature) != 65 {
-		t.Errorf("Expected 65 byte signature (got %d bytes)", len(signature))
-	}
-
-	t.Log(signature.String())
 }
 
+// TODO: Do we really need it?
 func TestSignerAPI_SignTypedData(t *testing.T) {
 	// Init new signer api & ui handler
-	signer, ui := NewSignerAPI(tmpDirName())
+	manager := NewSignerManager(tmpDirName())
 
 	// create new account
-	ui.inputCh <- "password_with_more_than_10_chars"
-	_, err := signer.New(context.Background())
+	manager.ui.inputCh <- "password_with_more_than_10_chars"
+	_, err := manager.signer.New(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +120,7 @@ func TestSignerAPI_SignTypedData(t *testing.T) {
 	time.Sleep(250 * time.Millisecond)
 
 	// get list account
-	addresses, err := signer.List(context.Background())
+	addresses, err := manager.signer.List(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,8 +129,8 @@ func TestSignerAPI_SignTypedData(t *testing.T) {
 	mixedAddress := common.NewMixedcaseAddress(addresses[0])
 
 	// sign typed data
-	ui.inputCh <- "password_with_more_than_10_chars"
-	signature, err := signer.SignTypedData(context.Background(), mixedAddress, typedData)
+	manager.ui.inputCh <- "password_with_more_than_10_chars"
+	signature, err := manager.signer.SignTypedData(context.Background(), mixedAddress, typedData)
 	if err != nil {
 		t.Fatal(err)
 	}

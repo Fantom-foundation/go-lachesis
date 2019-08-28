@@ -1,8 +1,11 @@
 package signer
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
 
+	"github.com/Fantom-foundation/go-lachesis/src/common/hexutil"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/signer/core"
@@ -55,8 +58,14 @@ func (ui *UIHandler) ShowInfo(message string) {
 	return
 }
 
-// NewSignerAPI return SignerAPI & UIHandler
-func NewSignerAPI(configDir string) (*core.SignerAPI, *UIHandler) {
+// SignerManager wrapper for core.SignerAPI & UIHandler
+type SignerManager struct {
+	signer *core.SignerAPI
+	ui     *UIHandler
+}
+
+// NewSignerManager return SignerAPI & UIHandler wrapped by SignerManager
+func NewSignerManager(configDir string) *SignerManager {
 	db, err := fourbyte.NewWithFile("lachesis-signer")
 	if err != nil {
 		panic(err.Error())
@@ -75,5 +84,49 @@ func NewSignerAPI(configDir string) (*core.SignerAPI, *UIHandler) {
 	// TODO: change chainID to own
 	api := core.NewSignerAPI(am, 1337, true, ui, db, true, pwStorage)
 
-	return api, ui
+	return &SignerManager{
+		signer: api,
+		ui:     ui,
+	}
+}
+
+// NewAccount return new account
+func (m *SignerManager) NewAccount(password string) (common.Address, error) {
+	m.ui.inputCh <- password
+	return m.signer.New(context.Background())
+}
+
+// ListAccounts return list of addresses
+func (m *SignerManager) ListAccounts() ([]common.Address, error) {
+	return m.signer.List(context.Background())
+}
+
+// SignTransaction sign tx
+func (m *SignerManager) SignTransaction(tx core.SendTxArgs, password string) error {
+	m.ui.inputCh <- password
+
+	_, err := m.signer.SignTransaction(context.Background(), tx, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SignData sign any data in bytes.
+func (m *SignerManager) SignData(owner common.Address, data []byte, password string) ([]byte, error) {
+	m.ui.inputCh <- password
+
+	mixedAddress := common.NewMixedcaseAddress(owner)
+
+	signature, err := m.signer.SignData(context.Background(), core.TextPlain.Mime, mixedAddress, hexutil.Encode(data))
+	if err != nil {
+		return []byte{}, err
+	}
+
+	if signature == nil || len(signature) != 65 {
+		return []byte{}, fmt.Errorf("Expected 65 byte signature (got %d bytes)", len(signature))
+	}
+
+	return signature, nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/inter/ancestor"
 	"github.com/Fantom-foundation/go-lachesis/src/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
+	"github.com/Fantom-foundation/go-lachesis/src/signer"
 )
 
 type Emitter struct {
@@ -31,6 +32,8 @@ type Emitter struct {
 
 	onEmitted func(e *inter.Event)
 
+	signer *signer.SignerManager
+
 	done chan struct{}
 	wg   sync.WaitGroup
 }
@@ -38,6 +41,7 @@ type Emitter struct {
 func NewEmitter(
 	config *Config,
 	me common.Address,
+	signer *signer.SignerManager,
 	privateKey *crypto.PrivateKey,
 	engineMu *sync.RWMutex,
 	store *Store,
@@ -53,6 +57,7 @@ func NewEmitter(
 		privateKey: privateKey,
 		engine:     engine,
 		engineMu:   engineMu,
+		signer:     signer,
 	}
 }
 
@@ -142,10 +147,14 @@ func (em *Emitter) createEvent() *inter.Event {
 	}
 	// calc hash after event is fully built
 	event.RecacheHash()
+
 	// sign
-	if err := event.SignBy(em.privateKey); err != nil {
-		log.Error("Failed to sign event", "err", err)
+	sign, err := em.signer.SignData(em.myAddr, event.Hash().Bytes(), "pass")
+	if err != nil {
+		log.Error(err.Error())
 	}
+	event.EventHeader.Sig = sign
+
 	// sanity check
 	if !event.VerifySignature() {
 		log.Error("Produced wrong event signature")

@@ -7,15 +7,16 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discv5"
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/Fantom-foundation/go-lachesis/src/crypto"
-	"github.com/Fantom-foundation/go-lachesis/src/cryptoaddr"
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/logger"
+	"github.com/Fantom-foundation/go-lachesis/src/signer"
 )
 
 // Service implements go-ethereum/node.Service interface.
@@ -40,6 +41,7 @@ type Service struct {
 	engine   Consensus
 	engineMu *sync.RWMutex
 	emitter  *Emitter
+	signer   *signer.SignerManager
 
 	mux *event.TypeMux
 
@@ -62,6 +64,8 @@ func NewService(config Config, mux *event.TypeMux, store *Store, engine Consensu
 		engineMu: new(sync.RWMutex),
 
 		mux: mux,
+
+		signer: signer.NewSignerManager(config.Signer.KeystoreLocation),
 
 		Instance: logger.MakeInstance(),
 	}
@@ -125,7 +129,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 }
 
 func (s *Service) makeEmitter() *Emitter {
-	return NewEmitter(&s.config, s.me, s.privateKey, s.engineMu, s.store, s.engine, func(emitted *inter.Event) {
+	return NewEmitter(&s.config, s.me, s.signer, s.privateKey, s.engineMu, s.store, s.engine, func(emitted *inter.Event) {
 		// s.engineMu is locked here
 
 		err := s.engine.ProcessEvent(emitted)
@@ -177,7 +181,24 @@ func (s *Service) Start(srv *p2p.Server) error {
 		}
 	}
 	s.privateKey = (*crypto.PrivateKey)(srv.PrivateKey)
-	s.me = cryptoaddr.AddressOf(s.privateKey.Public())
+	// s.me = cryptoaddr.AddressOf(s.privateKey.Public())
+
+	addresses, err := s.signer.ListAccounts()
+	if err != nil {
+		log.Error(err.Error())
+	}
+
+	if len(addresses) == 0 {
+		// TODO: replace pass
+		addr, err := s.signer.NewAccount("pass")
+		if err != nil {
+			log.Error(err.Error())
+		}
+
+		s.me = addr
+	}
+
+	s.me = addresses[0]
 
 	s.pm.Start(srv.MaxPeers)
 
