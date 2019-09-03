@@ -51,7 +51,7 @@ type Service struct {
 	logger.Instance
 }
 
-func NewService(config Config, mux *event.TypeMux, store *Store, engine Consensus) (*Service, error) {
+func NewService(config Config, mux *event.TypeMux, store *Store, engine Consensus, signer *signer.SignerManager) (*Service, error) {
 	svc := &Service{
 		config: config,
 
@@ -65,7 +65,7 @@ func NewService(config Config, mux *event.TypeMux, store *Store, engine Consensu
 
 		mux: mux,
 
-		signer: signer.NewSignerManager(config.Signer.KeystoreLocation),
+		signer: signer,
 
 		Instance: logger.MakeInstance(),
 	}

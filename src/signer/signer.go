@@ -6,11 +6,38 @@ import (
 	"path/filepath"
 
 	"github.com/Fantom-foundation/go-lachesis/src/common/hexutil"
+	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/signer/core"
 	"github.com/ethereum/go-ethereum/signer/fourbyte"
 	"github.com/ethereum/go-ethereum/signer/storage"
+	cli "gopkg.in/urfave/cli.v1"
+
+	lachesis_utils "github.com/Fantom-foundation/go-lachesis/src/utils"
+)
+
+var (
+	CustomDBFlag = cli.StringFlag{
+		Name:  "4bytedb-custom",
+		Usage: "File used for writing new 4byte-identifiers submitted via API",
+		Value: "./4byte-custom.json",
+	}
+	ChainIdFlag = cli.Int64Flag{
+		Name:  "chainid",
+		Value: params.MainnetChainConfig.ChainID.Int64(),
+		Usage: "Chain id to use for signing (1=mainnet, 3=Ropsten, 4=Rinkeby, 5=Goerli)",
+	}
+	KeystoreFlag = cli.StringFlag{
+		Name:  "keystore",
+		Value: filepath.Join(lachesis_utils.DefaultDataDir(), "keystore"),
+		Usage: "Directory for the keystore",
+	}
+	AdvancedMode = cli.BoolFlag{
+		Name:  "advanced",
+		Usage: "If enabled, issues warnings instead of rejections for suspicious requests. Default off",
+	}
 )
 
 // UIHandler wrapper for go-ethereum/signer/core.UIClientAPI
@@ -65,8 +92,17 @@ type SignerManager struct {
 }
 
 // NewSignerManager return SignerAPI & UIHandler wrapped by SignerManager
-func NewSignerManager(configDir string) *SignerManager {
-	db, err := fourbyte.NewWithFile("lachesis-signer")
+func NewSignerManager(ctx *cli.Context, configDir string) *SignerManager {
+	var (
+		chainId       = ctx.GlobalInt64(ChainIdFlag.Name)
+		ksLoc         = ctx.GlobalString(KeystoreFlag.Name)
+		lightKdf      = ctx.GlobalBool(utils.LightKDFFlag.Name)
+		advanced      = ctx.GlobalBool(AdvancedMode.Name)
+		nousb         = ctx.GlobalBool(utils.NoUSBFlag.Name)
+		scpath        = ctx.GlobalString(utils.SmartCardDaemonPathFlag.Name)
+		fourByteLocal = ctx.GlobalString(CustomDBFlag.Name)
+	)
+	db, err := fourbyte.NewWithFile(fourByteLocal)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -74,15 +110,14 @@ func NewSignerManager(configDir string) *SignerManager {
 	ui := &UIHandler{
 		inputCh: make(chan string, 20),
 	}
-	am := core.StartClefAccountManager(filepath.Join(configDir, "keystore"), true, true, "")
+	am := core.StartClefAccountManager(ksLoc, nousb, lightKdf, scpath)
 
 	vaultLocation := filepath.Join(configDir, common.Bytes2Hex(crypto.Keccak256([]byte("vault"), nil)[:10]))
 	pwkey := crypto.Keccak256([]byte("credentials"), nil)
 
 	pwStorage := storage.NewAESEncryptedStorage(filepath.Join(vaultLocation, "credentials.json"), pwkey)
 
-	// TODO: change chainID to own
-	api := core.NewSignerAPI(am, 1337, true, ui, db, true, pwStorage)
+	api := core.NewSignerAPI(am, chainId, nousb, ui, db, advanced, pwStorage)
 
 	return &SignerManager{
 		signer: api,
@@ -129,4 +164,30 @@ func (m *SignerManager) SignData(owner common.Address, data []byte, password str
 	}
 
 	return signature, nil
+}
+
+// NewSignerTestManager return SignerAPI & UIHandler wrapped by SignerManager
+// Note: used only for tests.
+func NewSignerTestManager(configDir string) *SignerManager {
+	db, err := fourbyte.NewWithFile("lachesis-signer")
+	if err != nil {
+		panic(err.Error())
+	}
+
+	ui := &UIHandler{
+		inputCh: make(chan string, 20),
+	}
+	am := core.StartClefAccountManager(filepath.Join(configDir, "keystore"), true, true, "")
+
+	vaultLocation := filepath.Join(configDir, common.Bytes2Hex(crypto.Keccak256([]byte("vault"), nil)[:10]))
+	pwkey := crypto.Keccak256([]byte("credentials"), nil)
+
+	pwStorage := storage.NewAESEncryptedStorage(filepath.Join(vaultLocation, "credentials.json"), pwkey)
+
+	api := core.NewSignerAPI(am, 1337, true, ui, db, true, pwStorage)
+
+	return &SignerManager{
+		signer: api,
+		ui:     ui,
+	}
 }

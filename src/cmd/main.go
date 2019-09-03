@@ -13,6 +13,8 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/src/gossip"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/signer"
+	lachesis_utils "github.com/Fantom-foundation/go-lachesis/src/utils"
 )
 
 const (
@@ -104,6 +106,10 @@ var (
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
+		signer.CustomDBFlag,
+		signer.ChainIdFlag,
+		signer.KeystoreFlag,
+		signer.AdvancedMode,
 	}
 )
 
@@ -160,6 +166,9 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	makeDb := dbProducer(nodeCfg.DataDir)
 	gdb, cdb := makeStorages(makeDb)
 
+	// Create signer
+	newSigner := signer.NewSignerManager(ctx, lachesis_utils.DefaultDataDir())
+
 	// Create consensus.
 	engine := poset.New(cdb, gdb)
 
@@ -168,7 +177,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	// the factory method approach is to support service restarts without relying on the
 	// individual implementations' support for such operations.
 	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-		return gossip.NewService(gossipCfg, new(event.TypeMux), gdb, engine)
+		return gossip.NewService(gossipCfg, new(event.TypeMux), gdb, engine, newSigner)
 	}
 
 	// Create node.

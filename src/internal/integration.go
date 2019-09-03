@@ -7,6 +7,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/gossip"
 	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/signer"
+	"github.com/Fantom-foundation/go-lachesis/src/utils"
 )
 
 func NewIntegration(cfg *adapters.NodeConfig, network lachesis.Config) *gossip.Service {
@@ -22,7 +24,9 @@ func NewIntegration(cfg *adapters.NodeConfig, network lachesis.Config) *gossip.S
 
 	config := gossip.DefaultConfig(network)
 
-	svc, err := gossip.NewService(config, new(event.TypeMux), gdb, c)
+	testSigner := signer.NewSignerTestManager(utils.NewTempDir("lachesis-config"))
+
+	svc, err := gossip.NewService(config, new(event.TypeMux), gdb, c, testSigner)
 	if err != nil {
 		panic(err)
 	}

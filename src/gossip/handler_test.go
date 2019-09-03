@@ -14,6 +14,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/src/inter"
 	"github.com/Fantom-foundation/go-lachesis/src/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/src/poset"
+	"github.com/Fantom-foundation/go-lachesis/src/signer"
+	"github.com/Fantom-foundation/go-lachesis/src/utils"
 )
 
 // Tests that events can be retrieved from a remote graph based on user queries.
@@ -138,7 +140,7 @@ func testBroadcastEvent(t *testing.T, totalPeers, broadcastExpected int, allowAg
 	engine := poset.New(engineStore, store)
 	engine.Bootstrap(nil)
 
-	svc, err := NewService(config, evmux, store, engine)
+	svc, err := NewService(config, evmux, store, engine, signer.NewSignerTestManager(utils.NewTempDir("lachesis-config")))
 	assertar.NoError(err)
 
 	// start PM

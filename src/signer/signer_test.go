@@ -2,22 +2,24 @@ package signer
 
 import (
 	"context"
-	"io/ioutil"
 	"math/big"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/signer/core"
+
+	"github.com/Fantom-foundation/go-lachesis/src/utils"
 )
 
 const pass = "password_with_more_than_10_chars"
 
+var tmpDir = utils.NewTempDir("lachesis-config")
+
 func TestSignerAPI_New(t *testing.T) {
 	// Init new signer api & ui handler
-	manager := NewSignerManager(tmpDirName())
+	manager := NewSignerTestManager(tmpDir)
 
 	address, err := manager.NewAccount(pass)
 	if err != nil {
@@ -29,7 +31,7 @@ func TestSignerAPI_New(t *testing.T) {
 
 func TestSignerAPI_List(t *testing.T) {
 	// Init new signer api & ui handler
-	manager := NewSignerManager(tmpDirName())
+	manager := NewSignerTestManager(tmpDir)
 
 	// create new account
 	_, err := manager.NewAccount(pass)
@@ -51,7 +53,7 @@ func TestSignerAPI_List(t *testing.T) {
 
 func TestSignerAPI_SignTransaction(t *testing.T) {
 	// Init new signer api & ui handler
-	manager := NewSignerManager(tmpDirName())
+	manager := NewSignerTestManager(tmpDir)
 
 	// create new account
 	_, err := manager.NewAccount(pass)
@@ -80,7 +82,7 @@ func TestSignerAPI_SignTransaction(t *testing.T) {
 
 func TestSignerAPI_SignData(t *testing.T) {
 	// Init new signer api & ui handler
-	manager := NewSignerManager(tmpDirName())
+	manager := NewSignerTestManager(tmpDir)
 
 	// create new account
 	_, err := manager.NewAccount(pass)
@@ -107,7 +109,7 @@ func TestSignerAPI_SignData(t *testing.T) {
 // TODO: Do we really need it?
 func TestSignerAPI_SignTypedData(t *testing.T) {
 	// Init new signer api & ui handler
-	manager := NewSignerManager(tmpDirName())
+	manager := NewSignerTestManager(tmpDir)
 
 	// create new account
 	manager.ui.inputCh <- "password_with_more_than_10_chars"
@@ -157,16 +159,4 @@ func testTx(from common.MixedcaseAddress) core.SendTxArgs {
 		Data:     &data,
 		Nonce:    nonce}
 	return tx
-}
-
-func tmpDirName() string {
-	d, err := ioutil.TempDir("", "lachesis-config")
-	if err != nil {
-		panic(err)
-	}
-	d, err = filepath.EvalSymlinks(d)
-	if err != nil {
-		panic(err)
-	}
-	return d
 }
