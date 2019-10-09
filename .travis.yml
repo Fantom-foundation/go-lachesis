@@ -8,21 +8,17 @@ matrix:
       env:
         - GO111MODULE=on
       go_import_path: github.com/Fantom-foundation/go-lachesis
+      env:
+        - GO111MODULE=on
       cache:
         directories:
-          - "$TRAVIS_BUILD_DIR/vendor"
+          - $GOPATH/pkg
+          - $GOPATH/src
       before_install:
-        - go get -v github.com/ethereum/go-ethereum@v1.9.1
-        - go get -v github.com/SamuelMarks/batch-ethkey
         - go get -v github.com/golang/mock/mockgen
         - go install github.com/golang/mock/mockgen
-        - make vendor
-      addons:
-        apt:
-          packages:
-            - jq
       script:
-        - go test -coverprofile c.out ./...
+        - go test -coverprofile=coverage.txt -covermode=atomic ./...
       after_success:
         - bash <(curl -s https://codecov.io/bash)
     - name: testnet
@@ -32,58 +28,9 @@ matrix:
       go_import_path: github.com/Fantom-foundation/go-lachesis
       cache:
         directories:
-          - "$TRAVIS_BUILD_DIR/vendor"
-      before_install:
-        - make vendor
-      addons:
-        apt:
-          packages:
-            - jq
+          - $GOPATH/pkg
+          - $GOPATH/src
       script:
         - go test ./integration/
       env:
-        - n=3
-        - logshold='-1,-1,-1,5,0,0'
-        - l_entry='main'
-        - BUILD_DIR="$TRAVIS_BUILD_DIR"
         - GO111MODULE=on
-#    - name: SonarQube automatic code reviewer
-#      language: java
-#      dist: trusty
-#      addons:
-#        sonarcloud:
-#          organization: fantom-foundation
-#      script:
-#        - sonar-scanner
-    - name: Documentation generator
-      language: python
-      sudo: required
-      dist: xenial
-      python:
-        - '3.7'
-      env:
-        - COMMENT_EXTRACTION=comment-extraction-master
-        - EXTRACTED_DIR=docs/extracted-comments
-        - INPUT_DIR=src
-        - LANGUAGE=golang
-        - ROOT_URL=https://github.com/Fantom-Foundation/go-lachesis
-        - GO111MODULE=off
-      before_install:
-        - curl -L https://github.com/dev10/comment-extraction/archive/master.tar.gz -o
-          comment-extraction.tgz
-        - tar xf comment-extraction.tgz
-      install:
-        - pip install -r $COMMENT_EXTRACTION/requirements.txt
-      script:
-        - >
-          python $COMMENT_EXTRACTION/antlr.py
-          -l $LANGUAGE
-          -o $EXTRACTED_DIR
-          -ct $TRAVIS_COMMIT
-          -ru $ROOT_URL
-          -d $INPUT_DIR
-      after_success:
-        - cd docs/
-        - pip install -r requirements.txt
-        - make html
-        - "./deploy.sh"
