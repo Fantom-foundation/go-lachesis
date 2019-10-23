@@ -38,7 +38,6 @@ type EventHeaderData struct {
 
 	Lamport     idx.Lamport
 	ClaimedTime Timestamp
-	MedianTime  Timestamp
 
 	TxHash common.Hash
 

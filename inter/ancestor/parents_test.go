@@ -14,7 +14,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/utils"
 	"github.com/Fantom-foundation/go-lachesis/vector"
 )
 
@@ -131,29 +130,6 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 			heads.Add(e.Hash())
 			id := e.Hash()
 			tips[e.Creator] = &id
-		}
-
-		for _, node := range nodes {
-			selfParent := tips[node]
-
-			strategy := NewCasualityStrategy(vecClock, validators)
-
-			selfParent_, parents := FindBestParents(5, heads.Slice(), selfParent, strategy)
-
-			if selfParent != nil {
-				assertar.Equal(parents[0], *selfParent)
-				assertar.Equal(*selfParent_, *selfParent)
-			} else {
-				assertar.Nil(selfParent_)
-			}
-			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
-			if !assertar.Equal(
-				exp[stage][utils.NameOf(node)],
-				parentsToString(parents),
-				"stage %d, %s", stage, utils.NameOf(node),
-			) {
-				return
-			}
 		}
 	}
 

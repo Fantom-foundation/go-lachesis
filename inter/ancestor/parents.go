@@ -2,13 +2,10 @@ package ancestor
 
 import (
 	"math/rand"
-	"sort"
 	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/pos"
-	"github.com/Fantom-foundation/go-lachesis/vector"
 )
 
 // SearchStrategy defines a criteria used to estimate the "best" subset of parents to emit event with.
@@ -41,76 +38,9 @@ func FindBestParents(max int, options hash.Events, selfParent *hash.Event, strat
 	return selfParent, parents
 }
 
-/*
- * CasualityStrategy
- */
-
-// CasualityStrategy uses vector clock to check which parents observe "more" than others
-// The strategy uses "observing more" as a search criteria
-type CasualityStrategy struct {
-	vecClock   *vector.Index
-	template   vector.HighestBeforeSeq
-	validators pos.Validators
-}
-
-// NewCasualityStrategy creates new CasualityStrategy with provided vector clock
-func NewCasualityStrategy(vecClock *vector.Index, validators pos.Validators) *CasualityStrategy {
-	return &CasualityStrategy{
-		vecClock:   vecClock,
-		validators: validators,
-	}
-}
-
 type eventScore struct {
 	event hash.Event
 	score idx.Event
-	vec   vector.HighestBeforeSeq
-}
-
-// Init must be called before using the strategy
-func (st *CasualityStrategy) Init(selfParent *hash.Event) {
-	if selfParent != nil {
-		// we start searching by comparing with self-parent
-		st.template = st.vecClock.GetHighestBeforeAllBranches(*selfParent)
-	}
-}
-
-// Find chooses the hash from the specified options
-func (st *CasualityStrategy) Find(options hash.Events) hash.Event {
-	scores := make([]eventScore, 0, 100)
-
-	// estimate score of each option as number of validators it observes higher than provided template
-	for _, id := range options {
-		score := eventScore{}
-		score.event = id
-		score.vec = st.vecClock.GetHighestBeforeAllBranches(id)
-		if st.template == nil {
-			st.template = vector.NewHighestBeforeSeq(len(st.validators)) // nothing observes
-		}
-		for creatorIdx := idx.Validator(0); creatorIdx < idx.Validator(len(st.validators)); creatorIdx++ {
-			my := st.template.Get(creatorIdx)
-			his := score.vec.Get(creatorIdx)
-
-			// observes higher
-			if his.Seq > my.Seq && !my.IsForkDetected() {
-				score.score++
-			}
-			// observes a fork
-			if his.IsForkDetected() && !my.IsForkDetected() {
-				score.score++
-			}
-		}
-		scores = append(scores, score)
-	}
-
-	// take the option with best score
-	sort.Slice(scores, func(i, j int) bool {
-		a, b := scores[i], scores[j]
-		return a.score < b.score
-	})
-	// memorize its template for next calls
-	st.template = scores[0].vec
-	return scores[0].event
 }
 
 /*

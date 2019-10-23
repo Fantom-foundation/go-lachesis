@@ -954,7 +954,6 @@ func RPCMarshalEventHeader(header *inter.EventHeaderData) map[string]interface{}
 		"gasPowerUsed":     header.GasPowerUsed,
 		"lamport":          header.Lamport,
 		"claimedTime":      header.ClaimedTime,
-		"medianTime":       header.MedianTime,
 		"extraData":        hexutil.Bytes(header.Extra),
 		"transactionsRoot": hexutil.Bytes(header.TxHash.Bytes()),
 	}

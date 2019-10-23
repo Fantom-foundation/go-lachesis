@@ -251,20 +251,9 @@ func (em *Emitter) findBestParents(epoch idx.Epoch, coinbase common.Address) (*h
 	heads := em.world.Store.GetHeads(epoch) // events with no descendants
 
 	var strategy ancestor.SearchStrategy
-	vecClock := em.world.Engine.GetVectorIndex()
-	if vecClock != nil {
-		strategy = ancestor.NewCasualityStrategy(vecClock, em.world.Engine.GetValidators())
 
-		// don't link to known cheaters
-		heads = vecClock.NoCheaters(selfParent, heads)
-		if selfParent != nil && len(vecClock.NoCheaters(selfParent, hash.Events{*selfParent})) == 0 {
-			em.Periodic.Error(5*time.Second, "I've created a fork, events emitting isn't allowed", "address", coinbase.String())
-			return nil, nil, false
-		}
-	} else {
-		// use dummy strategy in engine-less tests
-		strategy = ancestor.NewRandomStrategy(nil)
-	}
+	// use dummy strategy in engine-less tests
+	strategy = ancestor.NewRandomStrategy(nil)
 
 	_, parents := ancestor.FindBestParents(em.dag.MaxParents, heads, selfParent, strategy)
 	return selfParent, parents, true

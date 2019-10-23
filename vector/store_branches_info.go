@@ -32,20 +32,3 @@ func (vi *Index) getRlp(table kvdb.KeyValueStore, key []byte, to interface{}) in
 	}
 	return to
 }
-
-func (vi *Index) setBranchesInfo(info *branchesInfo) {
-	key := []byte("current")
-
-	vi.setRlp(vi.table.BranchesInfo, key, info)
-}
-
-func (vi *Index) getBranchesInfo() *branchesInfo {
-	key := []byte("current")
-
-	w, exists := vi.getRlp(vi.table.BranchesInfo, key, &branchesInfo{}).(*branchesInfo)
-	if !exists {
-		return nil
-	}
-
-	return w
-}

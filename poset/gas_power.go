@@ -55,29 +55,21 @@ func (p *Poset) CalcGasPower(e *inter.EventHeaderData) uint64 {
 	gasPowerPerH, maxGasPower, startup := p.calcValidatorGasPowerPerH(e.Creator)
 
 	var prevGasPowerLeft uint64
-	var prevMedianTime inter.Timestamp
 
 	if e.SelfParent() != nil {
 		selfParent := p.GetEventHeader(e.Epoch, *e.SelfParent())
 		prevGasPowerLeft = selfParent.GasPowerLeft
-		prevMedianTime = selfParent.MedianTime
 	} else if prevConfirmedHeader := p.PrevEpoch.LastHeaders[e.Creator]; prevConfirmedHeader != nil {
 		prevGasPowerLeft = prevConfirmedHeader.GasPowerLeft
 		if prevGasPowerLeft < startup {
 			prevGasPowerLeft = startup
 		}
-		prevMedianTime = prevConfirmedHeader.MedianTime
 	} else {
 		prevGasPowerLeft = startup
-		prevMedianTime = p.PrevEpoch.Time
 	}
 
-	if prevMedianTime > e.MedianTime {
-		prevMedianTime = e.MedianTime // do not change e.MedianTime
-	}
-
-	gasPowerAllocated_bn := new(big.Int).SetUint64(uint64(e.MedianTime))
-	sub(gasPowerAllocated_bn, uint64(prevMedianTime))
+	// TODO
+	gasPowerAllocated_bn := new(big.Int).SetUint64(uint64(1))
 	mul(gasPowerAllocated_bn, gasPowerPerH)
 	div(gasPowerAllocated_bn, uint64(time.Hour))
 
