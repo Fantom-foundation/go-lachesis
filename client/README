@@ -1,0 +1,14 @@
+# clients
+There are different types of clients:
+- users (small stake)
+- validators (large stake)
+- moderator / observer (no stake)
+
+# client functionality
+- User and validator: generate, gossip, and validate event blocks
+- Moderator and observer: gossip (download) and post-validate event blocks
+
+# documentation
+See Technical report at
+StairDag: Cross-DAG Validation For Scalable BFT Consensus
+https://arxiv.org/pdf/1908.11810.pdf
