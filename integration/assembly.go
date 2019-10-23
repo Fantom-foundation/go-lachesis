@@ -3,11 +3,11 @@ package integration
 import (
 	"crypto/ecdsa"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/accounts"
+	"github.com/Fantom-foundation/go-ethereum/accounts/keystore"
+	"github.com/Fantom-foundation/go-ethereum/cmd/utils"
+	"github.com/Fantom-foundation/go-ethereum/crypto"
+	"github.com/Fantom-foundation/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"

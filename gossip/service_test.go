@@ -3,9 +3,9 @@ package gossip
 import (
 	"crypto/rand"
 
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/Fantom-foundation/go-ethereum/node"
+	"github.com/Fantom-foundation/go-ethereum/p2p"
+	"github.com/Fantom-foundation/go-ethereum/p2p/enode"
 )
 
 func getProtocol(svc node.Service, name string, version uint) *p2p.Protocol {

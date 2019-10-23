@@ -46,12 +46,10 @@ func (p *Poset) fareOrdering(
 	lowestLamport := ordered[0].Lamport
 	frameLamportPeriod := idx.MaxLamport(highestLamport-lowestLamport+1, 1)
 
-	// calculate difference between Atropos's median time and previous Atropos's consensus time (almost the same as previous median time)
-	nowMedianTime := p.GetEventHeader(p.EpochN, atropos).MedianTime
-	frameTimePeriod := inter.MaxTimestamp(nowMedianTime-lastConsensusTime, 1)
-	if lastConsensusTime > nowMedianTime {
-		frameTimePeriod = 1
-	}
+	// calculate difference between atropos's median time and previous atropos's consensus time (almost the same as previous median time)
+//	frameTimePeriod := inter.MaxTimestamp(nowMedianTime-lastConsensusTime, 1)
+	frameTimePeriod := inter.MaxTimestamp(1,1)
+	// TODO
 
 	// Calculate time ratio & time offset
 	timeRatio := inter.MaxTimestamp(frameTimePeriod/inter.Timestamp(frameLamportPeriod), 1)

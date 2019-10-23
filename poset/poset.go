@@ -2,7 +2,7 @@ package poset
 
 import (
 	"github.com/Fantom-foundation/go-lachesis/utils"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/pkg/errors"
 
 	"github.com/Fantom-foundation/go-lachesis/event_check/epoch_check"
@@ -64,12 +64,11 @@ func (p *Poset) Prepare(e *inter.Event) *inter.Event {
 		p.Log.Error("Event prepare error", "err", err, "event", e.String())
 		return nil
 	}
-	id := e.Hash() // remember, because we change event here
+	// TODO
+	//	id := e.Hash() // remember, because we change event here
 	p.vecClock.Add(&e.EventHeaderData)
-	defer p.vecClock.DropNotFlushed()
 
 	e.Frame, e.IsRoot = p.calcFrameIdx(e, false)
-	e.MedianTime = p.vecClock.MedianTime(id, p.PrevEpoch.Time)
 	e.PrevEpochHash = p.PrevEpoch.Hash()
 
 	gasPower := p.CalcGasPower(&e.EventHeaderData)
@@ -93,7 +92,6 @@ func (p *Poset) checkAndSaveEvent(e *inter.Event) error {
 	}
 
 	p.vecClock.Add(&e.EventHeaderData)
-	defer p.vecClock.DropNotFlushed()
 
 	// check frame & isRoot
 	frameIdx, isRoot := p.calcFrameIdx(e, true)
@@ -103,19 +101,14 @@ func (p *Poset) checkAndSaveEvent(e *inter.Event) error {
 	if e.Frame != frameIdx {
 		return errors.Errorf("Claimed frame mismatched with calculated (%d!=%d)", e.Frame, frameIdx)
 	}
-	// check median timestamp
-	medianTime := p.vecClock.MedianTime(e.Hash(), p.PrevEpoch.Time)
-	if e.MedianTime != medianTime {
-		return errors.Errorf("Claimed medianTime mismatched with calculated (%d!=%d)", e.MedianTime, medianTime)
-	}
+
 	// check GasPowerLeft
 	gasPower := p.CalcGasPower(&e.EventHeaderData)
 	if e.GasPowerLeft+e.GasPowerUsed != gasPower { // GasPowerUsed is checked in basic_check
 		return errors.Errorf("Claimed GasPower mismatched with calculated (%d!=%d)", e.GasPowerLeft+e.GasPowerUsed, gasPower)
 	}
 
-	// save in DB the {vectorindex, e, heads}
-	p.vecClock.Flush()
+	// save in DB the {e, heads}
 	if e.IsRoot {
 		p.store.AddRoot(e)
 	}

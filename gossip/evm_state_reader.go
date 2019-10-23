@@ -3,10 +3,10 @@ package gossip
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/core/state"
+	"github.com/Fantom-foundation/go-ethereum/core/types"
+	"github.com/Fantom-foundation/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/hash"

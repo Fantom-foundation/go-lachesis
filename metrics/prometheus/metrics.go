@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/Fantom-foundation/go-ethereum/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

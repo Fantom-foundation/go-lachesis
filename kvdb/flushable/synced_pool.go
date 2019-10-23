@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"

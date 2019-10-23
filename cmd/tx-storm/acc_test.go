@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/common"
 )
 
 func TestMakeAcc(t *testing.T) {

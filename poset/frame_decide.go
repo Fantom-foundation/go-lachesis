@@ -10,8 +10,8 @@ func (p *Poset) confirmBlockEvents(frame idx.Frame, atropos hash.Event) ([]*inte
 	lastHeaders := make(headersByCreator, p.Validators.Len())
 	blockEvents := make([]*inter.EventHeaderData, 0, int(p.dag.MaxValidatorEventsInBlock)*p.Validators.Len())
 
-	atroposHighestBefore := p.vecClock.GetHighestBeforeAllBranches(atropos)
-	validatorIdxs := p.Validators.Idxs()
+	// TODO
+	// validatorIdxs := p.Validators.Idxs()
 	err := p.dfsSubgraph(atropos, func(header *inter.EventHeaderData) bool {
 		decidedFrame := p.store.GetEventConfirmedOn(header.Hash())
 		if decidedFrame != 0 {
@@ -19,21 +19,11 @@ func (p *Poset) confirmBlockEvents(frame idx.Frame, atropos hash.Event) ([]*inte
 		}
 		// mark all the walked events
 		p.store.SetEventConfirmedOn(header.Hash(), frame)
-		// but not all the events are included into a block
-		creatorHighest := atroposHighestBefore.Get(validatorIdxs[header.Creator])
-		fromCheater := creatorHighest.IsForkDetected()
-		freshEvent := (creatorHighest.Seq - header.Seq) < p.dag.MaxValidatorEventsInBlock // will overflow on forks, it's fine
-		if !fromCheater && freshEvent {
-			blockEvents = append(blockEvents, header)
 
-			if creatorHighest.Seq == header.Seq {
-				lastHeaders[header.Creator] = header
-			}
-		}
+		// TODO
 		// sanity check
-		if !fromCheater && header.Seq > creatorHighest.Seq {
-			p.Log.Crit("DAG is inconsistent with vector clock", "event", header.String(), "seq", header.Seq, "highest", creatorHighest.Seq)
-		}
+		p.Log.Crit("confirmBlockEvents NOT_IMPLEMENTED yet", "event", header.String(), "seq", header.Seq)
+
 		return true
 	})
 	if err != nil {

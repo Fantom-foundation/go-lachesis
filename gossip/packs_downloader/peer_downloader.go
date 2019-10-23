@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tree "github.com/emirpasic/gods/maps/treemap"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip/fetcher"
 	"github.com/Fantom-foundation/go-lachesis/hash"

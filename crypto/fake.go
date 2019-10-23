@@ -4,7 +4,7 @@ import (
 	"crypto/ecdsa"
 	"math/rand"
 
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/Fantom-foundation/go-ethereum/crypto"
 )
 
 // FakeKey gets n-th fake private key.

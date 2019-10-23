@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/Fantom-foundation/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/metrics"
 	cli "gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/metrics/prometheus"

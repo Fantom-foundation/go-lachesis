@@ -1,7 +1,7 @@
 package election
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"

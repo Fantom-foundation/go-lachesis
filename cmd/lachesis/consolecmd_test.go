@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/Fantom-foundation/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 )
@@ -38,7 +38,7 @@ func TestConsoleWelcome(t *testing.T) {
 	cli.SetTemplateFunc("apis", func() string { return ipcAPIs })
 
 	// Verify the actual welcome message to the required template
-	// TODO: clone (or PR) "github.com/ethereum/go-ethereum/console" to customize welcome message
+	// TODO: clone (or PR) "github.com/Fantom-foundation/go-ethereum/console" to customize welcome message
 	cli.Expect(`
 Welcome to the Geth JavaScript console!
 

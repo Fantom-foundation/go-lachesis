@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/nat"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/Fantom-foundation/go-ethereum/cmd/utils"
+	"github.com/Fantom-foundation/go-ethereum/node"
+	"github.com/Fantom-foundation/go-ethereum/p2p"
+	"github.com/Fantom-foundation/go-ethereum/p2p/nat"
+	"github.com/Fantom-foundation/go-ethereum/rpc"
 )
 
 const (

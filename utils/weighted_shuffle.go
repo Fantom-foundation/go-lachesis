@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
 )

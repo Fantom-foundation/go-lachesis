@@ -3,7 +3,7 @@ package integration
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/Fantom-foundation/go-ethereum/p2p/simulations/adapters"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"

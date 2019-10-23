@@ -4,9 +4,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/core/types"
+	"github.com/Fantom-foundation/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	//	"github.com/Fantom-foundation/go-lachesis/utils"
@@ -112,7 +112,6 @@ func (e *EventHeaderData) MarshalBinary() ([]byte, error) {
 		e.GasPowerLeft,
 		e.GasPowerUsed,
 		uint64(e.ClaimedTime),
-		uint64(e.MedianTime),
 	}
 	fields32 := []uint32{
 		e.Version,
@@ -209,7 +208,6 @@ func (e *EventHeaderData) UnmarshalBinary(raw []byte) (err error) {
 		&e.GasPowerLeft,
 		&e.GasPowerUsed,
 		(*uint64)(&e.ClaimedTime),
-		(*uint64)(&e.MedianTime),
 	}
 	fields32 := []*uint32{
 		&e.Version,

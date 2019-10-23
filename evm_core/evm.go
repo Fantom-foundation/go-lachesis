@@ -3,8 +3,8 @@ package evm_core
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/core/vm"
 )
 
 // DummyChain supports retrieving headers and consensus parameters from the

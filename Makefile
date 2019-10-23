@@ -2,7 +2,7 @@
 # build
 .PHONY : build
 build :
-	go build -o build/lachesis ./cmd
+	go build -o build/lachesis ./cmd/lachesis
 
 #test
 .PHONY : test

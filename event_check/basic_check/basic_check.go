@@ -4,8 +4,8 @@ import (
 	"errors"
 	"math"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/Fantom-foundation/go-ethereum/core/types"
+	"github.com/Fantom-foundation/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -16,13 +16,16 @@ const (
 	MaxGasPowerUsed = params.GenesisGasLimit * 3
 	// MaxEventSize ensures that in all the "real" cases, the event will be limited by gas, not size.
 	// Yet it's technically possible to construct an event which is limited by size.
-	MaxEventSize = MaxGasPowerUsed / params.TxDataNonZeroGas
+	MaxEventSize = MaxGasPowerUsed / params.TxDataNonZeroGasFrontier
 	MaxExtraData = 256 // it has fair gas cost, so it's fine to have a high limit
 
 	EventGas  = params.TxGas // TODO estimate the cost more accurately
 	ParentGas = EventGas / 5
 	// ExtraDataGas is cost per byte of extra event data. It's higher than regular data price, because it's a part of the header
-	ExtraDataGas = params.TxDataNonZeroGas * 2
+	ExtraDataGas = params.TxDataNonZeroGasFrontier * 2
+
+	HugeSeq = math.MaxInt32/2
+	HugeGas = math.MaxInt64/2
 )
 
 var (
@@ -116,8 +119,8 @@ func (v *Validator) checkLimits(e *inter.Event) error {
 	if len(e.Parents) > v.config.MaxParents {
 		return ErrTooManyParents
 	}
-	if e.Seq >= math.MaxInt32/2 || e.Epoch >= math.MaxInt32/2 || e.Frame >= math.MaxInt32/2 ||
-		e.Lamport >= math.MaxInt32/2 || e.GasPowerUsed >= math.MaxInt64/2 || e.GasPowerLeft >= math.MaxInt64/2 {
+	if e.Seq >= HugeSeq || e.Epoch >= HugeSeq || e.Frame >= HugeSeq ||
+		e.Lamport >= HugeSeq || e.GasPowerUsed >= HugeGas || e.GasPowerLeft >= HugeGas {
 		return ErrHugeValue
 	}
 
@@ -128,7 +131,6 @@ func (v *Validator) checkInited(e *inter.Event) error {
 	if e.Seq <= 0 || e.Epoch <= 0 || e.Frame <= 0 || e.Lamport <= 0 {
 		return ErrNotInited // it's unsigned, but check for negative in a case if type will change
 	}
-
 	if e.ClaimedTime <= 0 {
 		return ErrZeroTime
 	}

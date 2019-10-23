@@ -1,7 +1,7 @@
 package devnulldb
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/Fantom-foundation/go-ethereum/ethdb"
 )
 
 // Database is an always empty database.

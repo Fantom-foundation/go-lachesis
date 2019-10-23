@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/Fantom-foundation/go-ethereum/rlp"
 )
 
 type Info struct {

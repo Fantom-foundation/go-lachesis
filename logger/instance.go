@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/log"
 )
 
 type Instance struct {
