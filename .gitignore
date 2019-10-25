@@ -56,4 +56,7 @@ lachesis_*
 
 **/coverage.txt
 /tmp/
+<<<<<<< HEAD
 .metadata
+=======
+>>>>>>> 591912aa... update ignore file
