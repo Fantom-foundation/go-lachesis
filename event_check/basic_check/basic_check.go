@@ -34,7 +34,7 @@ var (
 	ErrTooLarge       = errors.New("event size exceeds the limit")
 	ErrExtraTooLarge  = errors.New("event extra is too big")
 	ErrNoParents      = errors.New("event has no parents")
-	ErrTooManyParents = errors.New("event has too many parents")
+	ErrNumParentsMismatched = errors.New("event has mismatched number of parents")
 	ErrTooBigGasUsed  = errors.New("event uses too much gas power")
 	ErrWrongGasUsed   = errors.New("event has incorrect gas power")
 	ErrIntrinsicGas   = errors.New("intrinsic gas too low")
@@ -116,8 +116,8 @@ func (v *Validator) checkLimits(e *inter.Event) error {
 	if len(e.Extra) > MaxExtraData {
 		return ErrExtraTooLarge
 	}
-	if len(e.Parents) > v.config.MaxParents {
-		return ErrTooManyParents
+	if len(e.Parents) != v.config.NumParents {
+		return ErrNumParentsMismatched
 	}
 	if e.Seq >= HugeSeq || e.Epoch >= HugeSeq || e.Frame >= HugeSeq ||
 		e.Lamport >= HugeSeq || e.GasPowerUsed >= HugeGas || e.GasPowerLeft >= HugeGas {

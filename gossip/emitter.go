@@ -255,7 +255,7 @@ func (em *Emitter) findBestParents(epoch idx.Epoch, coinbase common.Address) (*h
 	// use dummy strategy in engine-less tests
 	strategy = ancestor.NewRandomStrategy(nil)
 
-	_, parents := ancestor.FindBestParents(em.dag.MaxParents, heads, selfParent, strategy)
+	_, parents := ancestor.FindBestParents(em.dag.NumParents, heads, selfParent, strategy)
 	return selfParent, parents, true
 }
 

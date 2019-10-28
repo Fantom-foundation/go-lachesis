@@ -27,7 +27,7 @@ type GasPowerConfig struct {
 
 // DagConfig of Lachesis DAG (directed acyclic graph).
 type DagConfig struct {
-	MaxParents                int       `json:"maxParents"`
+	NumParents                int       `json:"numParents"`
 	MaxFreeParents            int       `json:"maxFreeParents"` // maximum number of parents with no gas cost
 	EpochLen                  idx.Frame `json:"epochLen"`
 	MaxValidatorEventsInBlock idx.Event `json:"maxValidatorEventsInBlock"`
@@ -79,7 +79,7 @@ func FakeNetConfig(validators, others int) Config {
 
 func DefaultDagConfig() DagConfig {
 	return DagConfig{
-		MaxParents:                5,
+		NumParents:                4,
 		MaxFreeParents:            3,
 		EpochLen:                  500,
 		MaxValidatorEventsInBlock: 50,
@@ -90,7 +90,7 @@ func DefaultDagConfig() DagConfig {
 
 func FakeNetDagConfig() DagConfig {
 	return DagConfig{
-		MaxParents:                5,
+		NumParents:                4,
 		MaxFreeParents:            3,
 		EpochLen:                  50,
 		MaxValidatorEventsInBlock: 50,

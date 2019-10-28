@@ -34,7 +34,7 @@ func TestConfirmBlockEvents(t *testing.T) {
 		return applyBlock(block, stateHash, validators)
 	}
 
-	_ = inter.ForEachRandEvent(nodes, int(poset.dag.EpochLen), poset.dag.MaxParents, nil, inter.ForEachEvent{
+	_ = inter.ForEachRandEvent(nodes, int(poset.dag.EpochLen), poset.dag.NumParents, nil, inter.ForEachEvent{
 		Process: func(e *inter.Event, name string) {
 			input.SetEvent(e)
 			assertar.NoError(
