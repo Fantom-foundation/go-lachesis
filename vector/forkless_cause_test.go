@@ -463,7 +463,7 @@ func TestRandomForksSanity(t *testing.T) {
 	validators.Set(nodes[3], pos.Stake(2))
 	validators.Set(nodes[4], pos.Stake(3))
 
-	processed := make(map[hash.Event]*inter.EventHeaderData)
+//	processed := make(map[hash.Event]*inter.EventHeaderData)
 //	getEvent := func(id hash.Event) *inter.EventHeaderData {
 //		return processed[id]
 //	}

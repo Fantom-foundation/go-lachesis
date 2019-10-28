@@ -1,6 +1,8 @@
 package client
 
 import (
+	"math/big"
+
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 )
 
