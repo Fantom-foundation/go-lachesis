@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"fmt"
+	//"fmt"
 	"math/rand"
 	"time"
 )
@@ -46,7 +46,7 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 			if _, ok := selected[curSelection]; !ok {
 				selection[i] = curSelection
 				selected[curSelection] = true
-				fmt.Printf("selection[%d]=%d\n", i, selection[i]);
+				//fmt.Printf("selection[%d]=%d\n", i, selection[i]);
 				break
 			}
 		}
@@ -95,8 +95,8 @@ func (rw *RouletteSA) Counter(n_select int, f_max float64) []uint {
   		index := rw.Selection(f_max)
   		counter[index]++;
   	}
-  	for i := 0; i < n; i++ {
-  		fmt.Printf("counter[%d]=%d\n", i, counter[i]);
-  	}
+  	//for i := 0; i < n; i++ {
+  	//	fmt.Printf("counter[%d]=%d\n", i, counter[i]);
+  	//}
   	return counter
 }
