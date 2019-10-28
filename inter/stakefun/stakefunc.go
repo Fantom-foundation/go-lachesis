@@ -1,12 +1,6 @@
 package pos
 
-import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-	"math/big"
-)
-
-// this class provides several implementations
+// This file provides several implementations
 // to compute a stake value from an account's balance
 
 // account balance. Can be positive, zero or negative (err)
@@ -17,8 +11,8 @@ type Stake float64
 
 // main interface
 type BalanceToStake interface {
-	func GetStake(balance Balance) Stake
-	func GetFuncName() string
+	GetStake(balance Balance) Stake
+	GetFuncName() string
 }
 
 // a 1:1 calculation of balance to stake
@@ -27,7 +21,7 @@ type BalanceToStakeSame struct {
 }
 
 func (b2s *BalanceToStakeSame) GetStake(balance Balance) Stake {
-	return balance
+	return Stake(balance)
 }
 
 func (b2s *BalanceToStakeSame) GetFuncName() string {
@@ -45,14 +39,14 @@ type BalanceToStake_Saga struct {
 	BalanceToStake
 }
 
-func NewBalanceToStake_Saga(s Saga) {
+func NewBalanceToStake_Saga(s Saga) *BalanceToStake_Saga{
 	return &BalanceToStake_Saga {
-		Sp : s
+		Sp : s,
 	}
 }
 
 func (b2s *BalanceToStake_Saga) GetStake(balance Balance) Stake {
-	return balance * Sp
+	return Stake(balance) * Stake(b2s.Sp)
 }
 
 func (b2s *BalanceToStake_Saga) GetFuncName() string {
