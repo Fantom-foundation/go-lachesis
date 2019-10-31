@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/quan8/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )

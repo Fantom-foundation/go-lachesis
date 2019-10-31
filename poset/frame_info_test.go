@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/quan8/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/core/types"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"

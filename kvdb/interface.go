@@ -1,7 +1,7 @@
 package kvdb
 
 import (
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/quan8/go-ethereum/ethdb"
 )
 
 // Droper is able to delete the DB.

@@ -1,9 +1,9 @@
 package evm_core
 
 import (
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/quan8/go-ethereum/core/state"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/core/vm"
 )
 
 // Validator is an interface which defines the standard for block validation. It

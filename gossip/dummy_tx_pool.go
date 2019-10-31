@@ -5,9 +5,9 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	notify "github.com/ethereum/go-ethereum/event"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/types"
+	notify "github.com/quan8/go-ethereum/event"
 )
 
 // dummyTxPool is a fake, helper transaction pool for testing purposes

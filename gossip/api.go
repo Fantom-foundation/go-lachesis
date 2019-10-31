@@ -1,13 +1,13 @@
 package gossip
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/common/hexutil"
+	"github.com/quan8/go-ethereum/params"
 )
 
 // PublicEthereumAPI provides an API to access Ethereum-like information.
-// It is a github.com/ethereum/go-ethereum/eth simulation for console.
+// It is a github.com/quan8/go-ethereum/eth simulation for console.
 type PublicEthereumAPI struct {
 	s *Service
 }

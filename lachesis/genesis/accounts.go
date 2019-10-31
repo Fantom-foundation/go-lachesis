@@ -4,12 +4,12 @@ import (
 	"errors"
 	"math/big"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	notify "github.com/ethereum/go-ethereum/event"
+	ethereum "github.com/quan8/go-ethereum"
+	"github.com/quan8/go-ethereum/accounts"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/crypto"
+	notify "github.com/quan8/go-ethereum/event"
 )
 
 var (

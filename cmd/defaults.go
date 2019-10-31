@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/nat"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/quan8/go-ethereum/cmd/utils"
+	"github.com/quan8/go-ethereum/node"
+	"github.com/quan8/go-ethereum/p2p"
+	"github.com/quan8/go-ethereum/p2p/nat"
+	"github.com/quan8/go-ethereum/rpc"
 )
 
 const (

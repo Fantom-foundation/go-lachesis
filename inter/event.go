@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/crypto"
+	"github.com/quan8/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"

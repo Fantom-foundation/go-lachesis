@@ -7,7 +7,7 @@ package gossip
 import (
 	"bytes"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/quan8/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"

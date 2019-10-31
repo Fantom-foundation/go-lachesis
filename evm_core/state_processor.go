@@ -3,12 +3,12 @@ package evm_core
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/state"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/core/vm"
+	"github.com/quan8/go-ethereum/crypto"
+	"github.com/quan8/go-ethereum/params"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning

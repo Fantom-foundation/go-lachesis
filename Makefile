@@ -13,3 +13,8 @@ test :
 .PHONY : clean
 clean :
 	rm ./build/lachesis
+	
+#cleanall
+.PHONY : cleanall
+cleanall :
+	rm ./build/*

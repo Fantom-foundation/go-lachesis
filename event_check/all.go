@@ -7,7 +7,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/event_check/parents_check"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/core/types"
 )
 
 // ValidateAll runs all the checks except Poset-related. intended only for tests

@@ -1,8 +1,8 @@
 package evm_core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/types"
 )
 
 // NewTxsNotify is posted when a batch of transactions enter the transaction pool.

@@ -3,11 +3,11 @@ package evm_core
 import (
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/state"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/core/vm"
+	"github.com/quan8/go-ethereum/params"
 )
 
 // statePrefetcher is a basic Prefetcher, which blindly executes a block on top

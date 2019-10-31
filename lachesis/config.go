@@ -3,7 +3,7 @@ package lachesis
 import (
 	"time"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/quan8/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"

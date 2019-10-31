@@ -1,8 +1,8 @@
 package topicsdb
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/ethdb"
 )
 
 func (tt *TopicsDb) fetchAsync(cc ...Condition) (res []*Logrec, err error) {

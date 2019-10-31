@@ -3,8 +3,8 @@ package evm_core
 import (
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/state"
 )
 
 // txNoncer is a tiny virtual state database to manage the executable nonces of

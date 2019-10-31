@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/console"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/quan8/go-ethereum/accounts"
+	"github.com/quan8/go-ethereum/accounts/keystore"
+	"github.com/quan8/go-ethereum/cmd/utils"
+	"github.com/quan8/go-ethereum/console"
+	"github.com/quan8/go-ethereum/crypto"
+	"github.com/quan8/go-ethereum/log"
 	"gopkg.in/urfave/cli.v1"
 )
 

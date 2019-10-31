@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/simulations"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/quan8/go-ethereum/log"
+	"github.com/quan8/go-ethereum/node"
+	"github.com/quan8/go-ethereum/p2p/enode"
+	"github.com/quan8/go-ethereum/p2p/simulations"
+	"github.com/quan8/go-ethereum/p2p/simulations/adapters"
 
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )

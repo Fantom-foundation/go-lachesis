@@ -7,11 +7,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/core/types"
+	"github.com/quan8/go-ethereum/crypto"
+	"github.com/quan8/go-ethereum/p2p"
+	"github.com/quan8/go-ethereum/p2p/enode"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"

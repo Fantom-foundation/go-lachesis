@@ -4,8 +4,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/quan8/go-ethereum/common"
+	"github.com/quan8/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )

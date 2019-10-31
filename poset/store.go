@@ -3,7 +3,7 @@ package poset
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/quan8/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"

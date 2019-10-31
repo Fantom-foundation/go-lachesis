@@ -2,7 +2,7 @@ package no_key_is_err
 
 import (
 	"errors"
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/quan8/go-ethereum/ethdb"
 )
 
 var (

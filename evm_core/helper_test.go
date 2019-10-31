@@ -3,9 +3,9 @@ package evm_core
 import (
 	"container/list"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb"
-	notify "github.com/ethereum/go-ethereum/event"
+	"github.com/quan8/go-ethereum/core/rawdb"
+	"github.com/quan8/go-ethereum/ethdb"
+	notify "github.com/quan8/go-ethereum/event"
 )
 
 // Implement our EthTest Manager

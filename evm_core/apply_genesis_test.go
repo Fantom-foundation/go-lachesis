@@ -3,7 +3,7 @@ package evm_core
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/quan8/go-ethereum/core/rawdb"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
