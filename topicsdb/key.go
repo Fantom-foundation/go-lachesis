@@ -51,7 +51,7 @@ func bytesToBlock(b []byte) uint64 {
 	return bigendian.BytesToInt64(b)
 }
 
-func extractLogrecId(key []byte) common.Hash {
+func extractLogrecID(key []byte) common.Hash {
 	switch len(key) {
 	case topicKeySize:
 		return common.BytesToHash(

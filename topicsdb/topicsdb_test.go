@@ -56,8 +56,8 @@ func TestTopicsDb(t *testing.T) {
 				expect = append(expect, rec)
 			}
 
-			sortById(got)
-			sortById(expect)
+			sortByID(got)
+			sortByID(expect)
 
 			if !assertar.EqualValuesf(expect, got, "step %d", i) {
 				return
@@ -115,7 +115,7 @@ func genTestData() (
 	return
 }
 
-func sortById(recs []*Logrec) {
+func sortByID(recs []*Logrec) {
 	sort.Slice(recs, func(i, j int) bool {
 		return bytes.Compare(
 			recs[i].Id.Bytes(),
