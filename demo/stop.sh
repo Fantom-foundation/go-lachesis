@@ -6,4 +6,4 @@ PROG=lachesis
 pkill "${PROG}"
 
 # remove demo data
-#rm -rf /tmp/lachesis-demo/datadir/
+rm -rf /tmp/lachesis-demo/datadir/
