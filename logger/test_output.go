@@ -3,7 +3,7 @@ package logger
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/Fantom-foundation/go-ethereum/log"
 )
 
 // SetTestMode sets test mode.

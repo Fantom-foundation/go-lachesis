@@ -1,7 +1,7 @@
 package vector
 
 import (
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/Fantom-foundation/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 )

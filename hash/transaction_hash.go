@@ -3,7 +3,7 @@ package hash
 import (
 	"math/rand"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-ethereum/common"
 )
 
 type (

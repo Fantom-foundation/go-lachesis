@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/Fantom-foundation/go-ethereum/ethdb"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 )

@@ -177,7 +177,7 @@ Fatal: Failed to unlock account f466859ead1932d743d622cb74fc058882e8648a (could 
 	cli.ExpectExit()
 }
 
-// https://github.com/ethereum/go-ethereum/issues/1785
+// https://github.com/Fantom-foundation/go-ethereum/issues/1785
 func TestUnlockFlagMultiIndex(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
