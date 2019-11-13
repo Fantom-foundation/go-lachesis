@@ -2,6 +2,7 @@ package inter
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -25,13 +26,27 @@ type Block struct {
 	Creator common.Address
 }
 
-// Hash returns Atropos's ID
+// Hash returns hash of the Block calculated as hash of all event hashes included in the block.
+// So the same Hash is guaranteed for the same order of events (until there is no has collision)
 func (b *Block) Hash() hash.Event {
+	if len(b.Events) == 0 {
+		return hash.ZeroEvent
+	}
+	hasher := sha3.NewLegacyKeccak256()
+	for i := 0; i < len(b.Events); i++ {
+		_, _ = hasher.Write([]byte(b.Events[i].String()))
+	}
+	return hash.BytesToEvent(hasher.Sum(nil))
+}
+
+// Atropos returns Atropos's ID
+func (b *Block) Atropos() hash.Event {
 	if len(b.Events) == 0 {
 		return hash.ZeroEvent
 	}
 	return b.Events[len(b.Events)-1] // Atropos is always a last event
 }
+
 
 // NewBlock makes block from topological ordered events.
 func NewBlock(index idx.Block, time Timestamp, events hash.Events, prevHash hash.Event) *Block {
