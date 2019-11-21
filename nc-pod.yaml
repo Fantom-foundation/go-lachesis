@@ -1,0 +1,25 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: nc-pod 
+  labels:
+    name: nc-pod
+    app: nc-pod
+    version: 0.1.0
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: nc-pod
+        version: 0.1.0
+    spec:
+      containers:
+        - name: nc-pod
+          image: quay.io/samsung_cnct/nc-pod:latest 
+          env:
+            - name: NC_CMD_ARGS
+              value: "-n -k -v -l 26500"
+          ports:
+          - containerPort: 26500 
+
