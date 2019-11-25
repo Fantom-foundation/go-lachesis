@@ -52,7 +52,7 @@ func benchForklessCauseProcess(b *testing.B, dag string, idx *int) {
 		return events[id]
 	}
 
-	vi := NewIndex(DefaultIndexConfig(), *validators, memorydb.New(), getEvent)
+	vi := NewIndex(*validators, memorydb.New(), getEvent)
 
 	_, _, named := inter.ASCIIschemeForEach(dag, inter.ForEachEvent{
 		Process: func(e *inter.Event, name string) {
@@ -139,7 +139,7 @@ func testForklessCaused(t *testing.T, dag string) {
 		return events[id]
 	}
 
-	vi := NewIndex(DefaultIndexConfig(), *validators, memorydb.New(), getEvent)
+	vi := NewIndex(*validators, memorydb.New(), getEvent)
 
 	_, _, named := inter.ASCIIschemeForEach(dag, inter.ForEachEvent{
 		Process: func(e *inter.Event, name string) {
@@ -455,7 +455,7 @@ func TestForklessCausedRandom(t *testing.T) {
 		return events[id]
 	}
 
-	vi := NewIndex(DefaultIndexConfig(), *validators, memorydb.New(), getEvent)
+	vi := NewIndex(*validators, memorydb.New(), getEvent)
 
 	// push
 	for _, e := range ordered {
@@ -655,7 +655,7 @@ func TestRandomForks(t *testing.T) {
 				return processed[id]
 			}
 
-			vi := NewIndex(DefaultIndexConfig(), *validators, memorydb.New(), getEvent)
+			vi := NewIndex(*validators, memorydb.New(), getEvent)
 
 			_ = inter.ForEachRandFork(nodes, cheaters, test.eventsNum, test.parentsNum, test.forksNum, r, inter.ForEachEvent{
 				Process: func(e *inter.Event, name string) {
@@ -727,7 +727,7 @@ func TestRandomForks(t *testing.T) {
 					vi.Add(&a.EventHeaderData)
 				}
 
-				vi.forklessCauseCache.Purge() // disable cache
+				//vi.forklessCauseCache.Purge() // disable cache
 				for _, a := range processedArr {
 //					res := vi.MedianTime(a.Hash(), inter.Timestamp(testTime/2))
 //					assertar.Equal(medianTimeMap[a.Hash()], res, "%s %d", a.Hash().String(), reorderTry)

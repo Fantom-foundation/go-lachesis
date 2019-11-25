@@ -19,10 +19,13 @@ func (vi *Index) dfsSubgraph(head *inter.EventHeaderData, walk func(*inter.Event
 		if visitedCache[curr] {
 			continue
 		}
+		
 		visitedCache[curr] = true
-		if len(visitedCache) > vi.cfg.Caches.DfsSubgraphVisited {
-			visitedCache = make(map[hash.Event]bool)
-		}
+		
+		// TODO
+//		if len(visitedCache) > vi.cfg.Caches.DfsSubgraphVisited {
+//			visitedCache = make(map[hash.Event]bool)
+//		}
 
 		var event *inter.EventHeaderData
 		if curr == headHash {

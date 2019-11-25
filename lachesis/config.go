@@ -8,7 +8,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
-	"github.com/Fantom-foundation/go-lachesis/vector"
 )
 
 const (
@@ -33,8 +32,6 @@ type DagConfig struct {
 	MaxValidatorEventsInBlock idx.Event `json:"maxValidatorEventsInBlock"`
 
 	GasPower GasPowerConfig `json:"gasPower"`
-
-	IndexConfig vector.IndexConfig `json:"indexConfig"`
 }
 
 // Config describes lachesis net.
@@ -84,7 +81,6 @@ func DefaultDagConfig() DagConfig {
 		EpochLen:                  500,
 		MaxValidatorEventsInBlock: 50,
 		GasPower:                  DefaultGasPowerConfig(),
-		IndexConfig:               vector.DefaultIndexConfig(),
 	}
 }
 
@@ -95,7 +91,6 @@ func FakeNetDagConfig() DagConfig {
 		EpochLen:                  50,
 		MaxValidatorEventsInBlock: 50,
 		GasPower:                  FakeNetGasPowerConfig(),
-		IndexConfig:               vector.DefaultIndexConfig(),
 	}
 }
 

@@ -95,7 +95,7 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 		return events[id]
 	}
 
-	vecClock := vector.NewIndex(vector.DefaultIndexConfig(), *validators, memorydb.New(), getEvent)
+	vecClock := vector.NewIndex( *validators, memorydb.New(), getEvent)
 
 	// build vector index
 	for _, e := range ordered {
@@ -131,30 +131,6 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 			id := e.Hash()
 			tips[e.Creator] = &id
 		}
-
-		// TODO
-//		for _, node := range nodes {
-//			selfParent := tips[node]
-//
-//			strategy := NewCasualityStrategy(vecClock, *validators)
-//
-//			selfParent_, parents := FindBestParents(5, heads.Slice(), selfParent, strategy)
-//
-//			if selfParent != nil {
-//				assertar.Equal(parents[0], *selfParent)
-//				assertar.Equal(*selfParent_, *selfParent)
-//			} else {
-//				assertar.Nil(selfParent_)
-//			}
-//			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
-//			if !assertar.Equal(
-//				exp[stage][utils.NameOf(node)],
-//				parentsToString(parents),
-//				"stage %d, %s", stage, utils.NameOf(node),
-//			) {
-//				return
-//			}
-//		}
 	}
 
 	assertar.NoError(nil)
