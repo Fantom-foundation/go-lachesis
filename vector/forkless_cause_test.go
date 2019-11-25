@@ -523,10 +523,7 @@ func TestRandomForksSanity(t *testing.T) {
 	validators.Set(nodes[3], pos.Stake(2))
 	validators.Set(nodes[4], pos.Stake(3))
 
-<<<<<<< HEAD
 	// TODO
-=======
->>>>>>> 0afc5d64... hide roulette's debug output
 //	processed := make(map[hash.Event]*inter.EventHeaderData)
 //	getEvent := func(id hash.Event) *inter.EventHeaderData {
 //		return processed[id]

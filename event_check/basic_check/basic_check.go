@@ -117,7 +117,10 @@ func (v *Validator) checkLimits(e *inter.Event) error {
 		return ErrExtraTooLarge
 	}
 	if len(e.Parents) != v.config.NumParents {
-		return ErrNumParentsMismatched
+		// the first event block does not have parents
+		if e.Seq != 1 {
+			return ErrNumParentsMismatched
+		}
 	}
 	if e.Seq >= HugeSeq || e.Epoch >= HugeSeq || e.Frame >= HugeSeq ||
 		e.Lamport >= HugeSeq || e.GasPowerUsed >= HugeGas || e.GasPowerLeft >= HugeGas {

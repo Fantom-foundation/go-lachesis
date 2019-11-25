@@ -79,7 +79,7 @@ func FakeNetConfig(validators, others int) Config {
 
 func DefaultDagConfig() DagConfig {
 	return DagConfig{
-		NumParents:                4,
+		NumParents:                2,
 		MaxFreeParents:            3,
 		EpochLen:                  500,
 		MaxValidatorEventsInBlock: 50,
@@ -90,7 +90,7 @@ func DefaultDagConfig() DagConfig {
 
 func FakeNetDagConfig() DagConfig {
 	return DagConfig{
-		NumParents:                4,
+		NumParents:                2,
 		MaxFreeParents:            3,
 		EpochLen:                  50,
 		MaxValidatorEventsInBlock: 50,
