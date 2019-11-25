@@ -2,10 +2,7 @@ package client
 
 import (
 	"math/big"
-<<<<<<< HEAD
-=======
-
->>>>>>> 0afc5d64... hide roulette's debug output
+	
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 )
 

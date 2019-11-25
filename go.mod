@@ -2,6 +2,8 @@ module github.com/Fantom-foundation/go-lachesis
 
 go 1.13
 
+replace gopkg.in/urfave/cli.v1 => github.com/urfave/cli v1.21.0
+
 require (
 	github.com/Fantom-foundation/go-ethereum v1.9.7-0.20191031044858-21506be82b68
 	github.com/allegro/bigcache v1.2.1 // indirect
@@ -21,11 +23,12 @@ require (
 	github.com/facebookgo/pidfile v0.0.0-20150612191647-f242e2999868
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
+	github.com/fsnotify/fsnotify v1.4.7
 	github.com/gballet/go-libpcsclite v0.0.0-20191108122812-4678299bea08 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
-	github.com/golang/mock v1.3.1 // indirect
+	github.com/golang/mock v1.3.1
 	github.com/gorilla/websocket v1.4.1 // indirect
-	github.com/graph-gophers/graphql-go v0.0.0-20191115155744-f33e81362277 // indirect
+	github.com/graph-gophers/graphql-go v0.0.0-20191031232829-adde0d0f76a3 // indirect
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/howeyc/fsnotify v0.9.0 // indirect
 	github.com/huin/goupnp v1.0.0 // indirect
