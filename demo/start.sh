@@ -22,26 +22,8 @@ PORT=18540
 
 declare -r LACHESIS_BASE_DIR=/tmp/lachesis-demo
 
-declare -a pids
 
-# Function to be called when user press ctrl-c.
-ctrl_c() {
-    echo "Shell terminating ..."
-    for pid in "${pids[@]}"
-    do
-	echo "Killing ${pid}..."
-	kill -9 ${pid}
-	# Suppresses "[pid] Terminated ..." message.
-	wait ${pid} &>/dev/null
-    done
-    exit;
-}
-
-
-trap ctrl_c SIGHUP SIGINT
-echo "You may press ctrl-c to kill all started processes..."
-
-echo -e "\nStart $N nodes:\n"
+echo -e "\nStart $N nodes:"
 for i in $(seq $N)
 do
     port=$((PORT + i))
@@ -51,9 +33,7 @@ do
 	--fakenet $i/$N \
 	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3" --rpcport ${port} --nousb --verbosity 3 \
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
-	pids+=($!)
-    echo -e "Started lachesis client at ${IP}:${port}, pid: $!"
-    echo -e "\n"
+    echo -e "Started lachesis client at ${IP}:${port}"
 done
 
 
