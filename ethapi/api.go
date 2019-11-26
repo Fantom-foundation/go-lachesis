@@ -1719,6 +1719,17 @@ func (api *PublicDebugAPI) GetHeads(ctx context.Context) ([]hexutil.Bytes, error
 	return eventIDsToHex(api.b.GetHeads(ctx)), nil
 }
 
+// GetHeads returns IDs of all the events with no descendants in the specified epoch
+func (api *PublicDebugAPI) GetHeadsAt(ctx context.Context, n int) ([]hexutil.Bytes, error) {
+	res, err := api.b.GetHeadsAt(ctx, n)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return eventIDsToHex(res), nil
+}
+
 // PrivateDebugAPI is the collection of Ethereum APIs exposed over the private
 // debugging endpoint.
 type PrivateDebugAPI struct {

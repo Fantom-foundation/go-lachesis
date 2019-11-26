@@ -174,6 +174,41 @@ func (b *EthAPIBackend) GetHeads(ctx context.Context) hash.Events {
 	return heads
 }
 
+// GetHeads returns IDs of all the events with no descendants in the specified epoch.
+func (b *EthAPIBackend) GetHeadsAt(ctx context.Context, n int) (hash.Events, error) {
+	var ep, ne idx.Epoch
+	var heads hash.Events
+	ep = b.svc.engine.GetEpoch()
+
+	if n < (-1) || ((n > 0) && n > int(ep)) {
+		return nil, errors.New("epoch is not in range")
+	} else if n == (-1) {
+		ne = idx.Epoch(ep)
+	} else {
+		ne = idx.Epoch(n)
+	}
+
+	if (ne == ep) {
+		heads = b.svc.store.GetHeads(ne)
+	} else {
+		num, ok := b.svc.store.GetPacksNum(ne)
+		if !ok {
+			return nil, errors.New("epoch is not found")
+		}
+		packInfo := b.svc.store.GetPackInfo(ne, num - 1)
+		if packInfo == nil {
+			return nil, errors.New("epoch is not found")
+		}
+		heads = packInfo.Heads
+	}
+
+	if heads == nil {
+		heads = hash.Events{}
+	}
+
+	return heads, nil
+}
+
 func (b *EthAPIBackend) GetHeader(ctx context.Context, h common.Hash) *evm_core.EvmHeader {
 	header, err := b.HeaderByHash(ctx, h)
 	if err != nil {

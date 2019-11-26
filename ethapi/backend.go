@@ -77,6 +77,7 @@ type Backend interface {
 	GetEventHeader(ctx context.Context, shortEventID string) (*inter.EventHeaderData, error)
 	GetConsensusTime(ctx context.Context, shortEventID string) (inter.Timestamp, error)
 	GetHeads(ctx context.Context) hash.Events
+	GetHeadsAt(ctx context.Context, n int) (hash.Events, error)
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {
