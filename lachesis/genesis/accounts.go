@@ -6,10 +6,11 @@ import (
 
 	ethereum "github.com/Fantom-foundation/go-ethereum"
 	"github.com/Fantom-foundation/go-ethereum/accounts"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/crypto"
 	notify "github.com/Fantom-foundation/go-ethereum/event"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 var (

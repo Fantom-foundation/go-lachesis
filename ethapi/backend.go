@@ -22,7 +22,6 @@ import (
 	"math/big"
 
 	"github.com/Fantom-foundation/go-ethereum/accounts"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/core/vm"
@@ -31,6 +30,7 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/params"
 	"github.com/Fantom-foundation/go-ethereum/rpc"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"

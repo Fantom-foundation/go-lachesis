@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/core/vm"
 	"github.com/Fantom-foundation/go-ethereum/ethdb"
 	"github.com/Fantom-foundation/go-ethereum/params"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 

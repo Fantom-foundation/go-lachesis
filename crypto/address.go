@@ -3,8 +3,9 @@ package crypto
 import (
 	"crypto/ecdsa"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/crypto"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // PubkeyToAddress is a double of go-ethereum/crypto.PubkeyToAddress

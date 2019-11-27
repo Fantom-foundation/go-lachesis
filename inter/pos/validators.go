@@ -4,9 +4,9 @@ import (
 	"io"
 	"sort"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/rlp"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 

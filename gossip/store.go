@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"time"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/rawdb"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
 	"github.com/Fantom-foundation/go-ethereum/ethdb"
 	"github.com/Fantom-foundation/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"

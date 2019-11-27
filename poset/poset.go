@@ -2,9 +2,9 @@ package poset
 
 import (
 	"github.com/Fantom-foundation/go-lachesis/utils"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/pkg/errors"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/event_check/epoch_check"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"

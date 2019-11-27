@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 func TestMakeAcc(t *testing.T) {

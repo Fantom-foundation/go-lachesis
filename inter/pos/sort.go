@@ -3,7 +3,7 @@ package pos
 import (
 	"bytes"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 type (

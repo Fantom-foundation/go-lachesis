@@ -1,10 +1,12 @@
 package pos
 
 import (
-	"github.com/Fantom-foundation/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"unsafe"
+
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewValidators(t *testing.T) {

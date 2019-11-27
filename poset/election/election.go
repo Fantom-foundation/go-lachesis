@@ -1,12 +1,12 @@
 package election
 
 import (
-	"github.com/Fantom-foundation/go-ethereum/common"
-
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // TODO implement&test coinRound

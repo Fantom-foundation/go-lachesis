@@ -10,7 +10,6 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/accounts"
 	"github.com/Fantom-foundation/go-ethereum/accounts/keystore"
 	"github.com/Fantom-foundation/go-ethereum/cmd/utils"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/console"
 	"github.com/Fantom-foundation/go-ethereum/eth/downloader"
 	"github.com/Fantom-foundation/go-ethereum/ethclient"
@@ -18,6 +17,7 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/node"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/cmd/lachesis/metrics"
 	"github.com/Fantom-foundation/go-lachesis/debug"
 	"github.com/Fantom-foundation/go-lachesis/gossip"

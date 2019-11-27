@@ -3,8 +3,9 @@ package table
 import (
 	"bytes"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/ethdb"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // Table wraps the underling DB, so all the table's data is stored with a prefix in underling DB

@@ -1,8 +1,10 @@
 package occured_txs
 
 import (
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
+
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
+	
 	"github.com/hashicorp/golang-lru"
 )
 

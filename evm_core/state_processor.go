@@ -3,13 +3,13 @@ package evm_core
 import (
 	"math/big"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/core/vm"
 	"github.com/Fantom-foundation/go-ethereum/crypto"
 	"github.com/Fantom-foundation/go-ethereum/params"
-)
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common")
 
 // StateProcessor is a basic Processor, which takes care of transitioning
 // state from one point to another.

@@ -1,13 +1,14 @@
 package gossip
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"sort"
 	"sync"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	notify "github.com/Fantom-foundation/go-ethereum/event"
+
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
+	"github.com/Fantom-foundation/go-lachesis/evm_core"
 )
 
 // dummyTxPool is a fake, helper transaction pool for testing purposes

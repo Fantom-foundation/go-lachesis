@@ -29,7 +29,6 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/accounts"
 	"github.com/Fantom-foundation/go-ethereum/accounts/keystore"
 	"github.com/Fantom-foundation/go-ethereum/accounts/scwallet"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/common/hexutil"
 	"github.com/Fantom-foundation/go-ethereum/common/math"
 	"github.com/Fantom-foundation/go-ethereum/consensus/ethash"
@@ -44,6 +43,7 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/rpc"
 	"github.com/tyler-smith/go-bip39"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/event_check/basic_check"
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/hash"

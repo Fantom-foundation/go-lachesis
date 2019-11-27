@@ -8,8 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/ethdb"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 var (

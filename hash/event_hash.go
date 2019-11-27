@@ -7,9 +7,9 @@ import (
 	"math/rand"
 	"strings"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"golang.org/x/crypto/sha3"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )

@@ -1,8 +1,9 @@
 package evm_core
 
 import (
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // NewTxsNotify is posted when a batch of transactions enter the transaction pool.

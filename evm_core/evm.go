@@ -3,7 +3,7 @@ package evm_core
 import (
 	"math/big"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-ethereum/core/vm"
 )
 

@@ -6,9 +6,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"

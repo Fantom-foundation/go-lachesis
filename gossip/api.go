@@ -1,9 +1,10 @@
 package gossip
 
 import (
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/common/hexutil"
 	"github.com/Fantom-foundation/go-ethereum/params"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // PublicEthereumAPI provides an API to access Ethereum-like information.

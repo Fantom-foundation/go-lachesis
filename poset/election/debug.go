@@ -3,8 +3,7 @@ package election
 import (
 	"golang.org/x/crypto/sha3"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
-
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 )
 

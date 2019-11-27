@@ -8,11 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Fantom-foundation/go-lachesis/hash"
-	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-ethereum/accounts"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/common/math"
 	"github.com/Fantom-foundation/go-ethereum/core/bloombits"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
@@ -24,8 +20,12 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/rpc"
 	errors2 "github.com/pkg/errors"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
+	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
 var ErrNotImplemented = func(name string) error { return errors.New(name + " method is not implemented yet") }

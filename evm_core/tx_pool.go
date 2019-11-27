@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/common/prque"
 	"github.com/Fantom-foundation/go-ethereum/core/state"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
@@ -17,6 +16,8 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/log"
 	"github.com/Fantom-foundation/go-ethereum/metrics"
 	"github.com/Fantom-foundation/go-ethereum/params"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 const (

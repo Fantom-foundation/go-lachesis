@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	notify "github.com/Fantom-foundation/go-ethereum/event"
 	"github.com/Fantom-foundation/go-ethereum/log"
@@ -16,6 +15,7 @@ import (
 	"github.com/Fantom-foundation/go-ethereum/params"
 	"github.com/Fantom-foundation/go-ethereum/rlp"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/event_check"
 	"github.com/Fantom-foundation/go-lachesis/event_check/basic_check"
 	"github.com/Fantom-foundation/go-lachesis/event_check/epoch_check"

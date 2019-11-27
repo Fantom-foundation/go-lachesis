@@ -6,9 +6,10 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/log"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for

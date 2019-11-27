@@ -3,9 +3,10 @@ package pos
 import (
 	"math/big"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/log"
 	"github.com/Fantom-foundation/go-ethereum/params"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 type (

@@ -5,10 +5,11 @@ import (
 	"io"
 	"os"
 
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/log"
 	"github.com/Fantom-foundation/go-ethereum/rlp"
+	
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 )
 
 // errNoActiveJournal is returned if a transaction is attempted to be inserted

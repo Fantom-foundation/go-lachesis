@@ -12,13 +12,13 @@ import (
 	"unicode"
 
 	"github.com/Fantom-foundation/go-ethereum/cmd/utils"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/log"
 	"github.com/Fantom-foundation/go-ethereum/node"
 	"github.com/Fantom-foundation/go-ethereum/params"
 	"github.com/naoina/toml"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"

@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/Fantom-foundation/go-ethereum/accounts"
-	"github.com/Fantom-foundation/go-ethereum/common"
 	"github.com/Fantom-foundation/go-ethereum/core/types"
 	"github.com/Fantom-foundation/go-ethereum/metrics"
 	"github.com/Fantom-foundation/go-ethereum/params"
 	"github.com/hashicorp/golang-lru"
 
+	"github.com/Fantom-foundation/go-lachesis/ethapi/common"
 	"github.com/Fantom-foundation/go-lachesis/event_check"
 	"github.com/Fantom-foundation/go-lachesis/event_check/basic_check"
 	"github.com/Fantom-foundation/go-lachesis/evm_core"
