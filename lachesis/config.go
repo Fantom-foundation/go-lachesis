@@ -45,32 +45,16 @@ type Config struct {
 	Dag DagConfig
 }
 
+/***************************************
+* MainNet config
+*/
+
 func MainNetConfig() Config {
 	return Config{
 		Name:      "main",
 		NetworkId: MainNetworkId,
 		Genesis:   genesis.MainGenesis(),
 		Dag:       DefaultDagConfig(),
-	}
-}
-
-func TestNetConfig() Config {
-	return Config{
-		Name:      "test",
-		NetworkId: TestNetworkId,
-		Genesis:   genesis.TestGenesis(),
-		Dag:       DefaultDagConfig(),
-	}
-}
-
-func FakeNetConfig(validators, others int) Config {
-	g := genesis.FakeGenesis(validators, others)
-
-	return Config{
-		Name:      "fake",
-		NetworkId: FakeNetworkId,
-		Genesis:   g,
-		Dag:       FakeNetDagConfig(),
 	}
 }
 
@@ -84,6 +68,44 @@ func DefaultDagConfig() DagConfig {
 	}
 }
 
+func DefaultGasPowerConfig() GasPowerConfig {
+	return GasPowerConfig{
+		TotalPerH:          50 * params.TxGas * 60 * 60,
+		MaxGasPowerPeriod:  inter.Timestamp(10 * time.Minute),
+		StartupPeriod:      inter.Timestamp(5 * time.Second),
+		MinStartupGasPower: params.TxGas * 20,
+	}
+}
+
+/***************************************
+* TestNet config
+*/
+
+func TestNetConfig() Config {
+	return Config{
+		Name:      "test",
+		NetworkId: TestNetworkId,
+		Genesis:   genesis.TestGenesis(),
+		Dag:       DefaultDagConfig(),
+	}
+}
+
+
+/***************************************
+* FakeNet config
+*/
+
+func FakeNetConfig(validators, others int) Config {
+	g := genesis.FakeGenesis(validators, others)
+
+	return Config{
+		Name:      "fake",
+		NetworkId: FakeNetworkId,
+		Genesis:   g,
+		Dag:       FakeNetDagConfig(),
+	}
+}
+
 func FakeNetDagConfig() DagConfig {
 	return DagConfig{
 		NumParents:                2,
@@ -91,15 +113,6 @@ func FakeNetDagConfig() DagConfig {
 		EpochLen:                  50,
 		MaxValidatorEventsInBlock: 50,
 		GasPower:                  FakeNetGasPowerConfig(),
-	}
-}
-
-func DefaultGasPowerConfig() GasPowerConfig {
-	return GasPowerConfig{
-		TotalPerH:          50 * params.TxGas * 60 * 60,
-		MaxGasPowerPeriod:  inter.Timestamp(10 * time.Minute),
-		StartupPeriod:      inter.Timestamp(5 * time.Second),
-		MinStartupGasPower: params.TxGas * 20,
 	}
 }
 
