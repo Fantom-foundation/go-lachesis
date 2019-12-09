@@ -19,6 +19,11 @@ var (
 	txCountSentMeter = metrics.NewRegisteredCounter("tx_count_sent", reg)
 	txCountGotMeter  = metrics.NewRegisteredCounter("tx_count_got", reg)
 	txLatencyMeter   = metrics.NewRegisteredHistogram("tx_ttf", reg, metrics.NewUniformSample(500))
+
+	txBenchTimeMeter = metrics.NewRegisteredTimer("tx_bench_time", reg)
+	txInputTpsMeter = metrics.NewRegisteredGaugeFloat64("tx_input_tps", reg)
+	txTpsMeter = metrics.NewRegisteredGaugeFloat64("tx_avg_tps", reg)
+	txTtfMeter = metrics.NewRegisteredGaugeFloat64("tx_avg_ttf", reg)
 )
 
 func SetupPrometheus(ctx *cli.Context) {
