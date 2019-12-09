@@ -28,6 +28,8 @@ type threads struct {
 	logger.Instance
 }
 
+var txStartTime time.Time
+
 func newThreads(
 	nodeUrl string,
 	num, ofTotal uint,
@@ -88,6 +90,11 @@ func (tt *threads) Start() {
 		destinations[i] = destination
 		s.Start(destination)
 	}
+	
+	// start recording the timer
+	txStartTime = time.Now()
+	txBenchTimeMeter.Update(1)
+	
 	source := make(chan *Transaction, len(tt.generators)*2)
 	tt.done = make(chan struct{})
 	tt.work.Add(1)
@@ -137,6 +144,9 @@ func (tt *threads) Stop() {
 	close(tt.done)
 	tt.work.Wait()
 	tt.done = nil
+	
+	// stop txBenchTimeMeter 
+	txBenchTimeMeter.Stop()
 
 	tt.Log.Info("Stopped")
 }
@@ -208,17 +218,53 @@ func (tt *threads) txTransfer(
 
 func (tt *threads) onSendTx(tx *Transaction) {
 	txCountSentMeter.Inc(1)
+	
+	// Update time meter
+	duration := time.Since(txStartTime)
+	txBenchTimeMeter.Update(duration)
+	
+	// update txInputTpsMeter meter
+	txInputTpsMeter.Update(float64(txCountSentMeter.Count())/duration.Seconds())
+	tt.Log.Debug(" LACHESIS_BENCH SENDTX", "txInputTpsMeter", txInputTpsMeter.Value(), 
+		"duration", duration, 
+		"txCountSentMeter", txCountSentMeter.Count())
+	
 	tt.txs.Start(tx.Raw.Hash())
 }
 
 func (tt *threads) onGetTx(txs types.Transactions) {
-	txCountGotMeter.Inc(int64(txs.Len()))
-
+	
+	// calculate the total latency and total number of new confirmed transactions
+	sumLatency := float64(0)
+	totalTxns := 0
 	for _, tx := range txs {
 		latency, err := tt.txs.Finish(tx.Hash())
 		if err != nil {
 			continue
 		}
+		sumLatency += float64(latency.Milliseconds())
+		totalTxns += 1
+		
 		txLatencyMeter.Update(latency.Milliseconds())
+	}
+	
+	// compute the avg ttf
+	if totalTxns > 0 {
+		
+		newTtf := sumLatency/float64(totalTxns)
+		txTtfMeter.Update(newTtf)
+		
+		// update the total confirmed txn meter
+		txCountGotMeter.Inc(int64(totalTxns))
+
+		// Update time meter
+		duration := time.Since(txStartTime)
+		txBenchTimeMeter.Update(duration)
+		// update tps meter
+		txTpsMeter.Update(float64(txCountGotMeter.Count())/duration.Seconds())
+		
+		tt.Log.Debug(" LACHESIS_BENCH GETTX", "txTpsMeter", txTpsMeter.Value(),
+			"newTtf", newTtf,
+			"duration", duration, "txCountGotMeter", txCountGotMeter.Count())
 	}
 }
