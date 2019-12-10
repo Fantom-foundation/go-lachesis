@@ -3,12 +3,8 @@
 # This script will launch a cluster of Lachesis nodes
 # The parameter N = number of nodes to run
 
-set -e
-
 # number of nodes N
 N=5
-LIMIT_CPU=$(echo "scale=2; 1/$N" | bc)
-LIMIT_IO=$(echo "500/$N" | bc)
 
 #
 PROG=lachesis
@@ -21,7 +17,7 @@ IP=127.0.0.1
 #PORT=18540
 PORT=4000
 
-declare -r LACHESIS_BASE_DIR=/tmp/lachesis-demo
+LACHESIS_BASE_DIR=/tmp/lachesis-demo
 
 
 echo -e "\nStart $N nodes:"

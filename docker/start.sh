@@ -12,7 +12,7 @@ docker network create ${NETWORK}
 . ./_sentry.sh
 
 echo -e "\nStart $N nodes:\n"
-for ((i=0;i<$N;i+=1))
+for i in $(seq $N)
 do
     NAME=node$i
     RPCP=$(($RPCP_BASE+$i))
@@ -58,9 +58,9 @@ attach_and_exec() {
 }
 
 echo -e "\nConnect nodes to ring:\n"
-for ((i=0;i<$N;i+=1))
+for i in $(seq $N)
 do
-    j=$(((i+1) % N))
+    j=$((i % N + 1))
 
     echo " getting node$j address:"
     ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' node$j)
