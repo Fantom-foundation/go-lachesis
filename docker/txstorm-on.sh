@@ -5,12 +5,11 @@ cd $(dirname $0)
 
 echo -e "\nStart $N tx generators:\n"
 
-for ((i=0;i<$N;i+=1))
+for i in $(seq $N)
 do
     NODE=node$i
     NAME=txgen$i
 
-    i=$((i+1))
     docker run -d --rm \
 	--net=${NETWORK} --name=${NAME} \
 	--cpus=${LIMIT_CPU} --blkio-weight=${LIMIT_IO} \

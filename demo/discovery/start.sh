@@ -7,7 +7,7 @@
 set -e
 
 # number of nodes N
-N=7
+N=5
 LIMIT_CPU=$(echo "scale=2; 1/$N" | bc)
 LIMIT_IO=$(echo "500/$N" | bc)
 
