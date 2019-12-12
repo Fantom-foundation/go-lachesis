@@ -14,7 +14,9 @@
 
 # Build output
 build
-dist
+dist/bootnode*
+dist/lachesis*
+dist/tx-storm*
 
 # Dependencies
 vendor
@@ -55,3 +57,5 @@ lachesis_*
 .#*
 
 **/coverage.txt
+/tmp/
+.metadata
