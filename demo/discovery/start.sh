@@ -7,20 +7,22 @@
 set -e
 
 # number of nodes N
-N=5
+N=7
 LIMIT_CPU=$(echo "scale=2; 1/$N" | bc)
 LIMIT_IO=$(echo "500/$N" | bc)
 
 
-FVM=${GOPATH}/src/github.com/Fantom-foundation/go-ethereum
-BOOTNODE=${FVM}/build/bin/bootnode
+BOOTNODE=../../build/bootnode
 
 echo "Generate bootnode.key"
 ${BOOTNODE} -genkey bootnode.key
 
+
+bport=3001
+
 echo "Start bootnode with bootnode.key"
-bootnode=$( "${BOOTNODE}" -nodekey bootnode.key 2>/dev/null | head -1 & )
-#bootnode=$( cat bootenode.txt )
+bootnode=$( "${BOOTNODE}" -nodekey bootnode.key --addr ":${bport}"  2>/dev/null | head -1 & )
+bootnode=${bootnode/":"0"?"/":"${bport}"?"}
 
 echo -e "Bootnode=${bootnode}"
 
