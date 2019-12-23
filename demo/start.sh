@@ -28,7 +28,7 @@ do
 
     ${EXEC} \
 	--fakenet $i/$N \
-	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool" --rpcport ${port} --nousb --verbosity 3 \
+	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${port} --nousb --verbosity 3 \
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
     echo -e "Started lachesis client at ${IP}:${port}"
 done
