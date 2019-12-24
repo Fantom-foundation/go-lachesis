@@ -13,28 +13,30 @@ EXEC=../dist/lachesis
 
 # default ip using localhost
 IP=127.0.0.1
-# default port PORT
-# the actual ports are PORT+1, PORT+2, etc (18541, 18542, 18543, ... )
-PORT=18540
+# the actual ports are RPCPORT+1, RPCPORT+2, etc (4001, 4002, 4003, ... )
+RPCPORT=4000
+LOCALPORT=3000
+WSPORT=3500
 
 # demo directory 
-LACHESIS_BASE_DIR=./lachesis-demo-dir
+LACHESIS_BASE_DIR=/tmp/lachesis-dem
 
 echo -e "\nStart $N nodes:"
 for i in $(seq $N)
 do
-    port=$((PORT + i))
-    localport=$((5050 + i))
+    rpcport=$((RPCPORT + i))
+    localport=$((LOCALPORT + i))
+    wsport=$((WSPORT + i))
 
     ${EXEC} \
 	--bootnodes "${bootnode}" \
 	--fakenet $i/$N \
-	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3" --rpcport ${port} --nousb --verbosity 3 \
+	-port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${rpcport} \
+	--ws --wsaddr="0.0.0.0" --wsport=${wsport} --wsorigins="*" --wsapi="eth,debug,admin,web3,personal,net,txpool,ftm,sfc" \
+	--nousb --verbosity 3 \
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
-    echo -e "Started lachesis client at ${IP}:${port}, pid: $!"
+    echo -e "Started lachesis client at ${IP}:${rpcport}, pid: $!"
 done
-
-
 
 echo
 echo "Sleep for 10000 seconds..."

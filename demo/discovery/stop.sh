@@ -5,4 +5,4 @@ pkill "bootnode"
 pkill "lachesis"
 
 # remove demo data
-#rm -rf /tmp/lachesis-demo/datadir/
+rm -rf /tmp/lachesis-demo/datadir/

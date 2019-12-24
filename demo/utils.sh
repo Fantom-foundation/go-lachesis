@@ -9,10 +9,6 @@ M=3
 # total
 T=$((N+M))
 
-set -e
-LIMIT_CPU=$(echo "scale=2; 1/$N" | bc)
-LIMIT_IO=$(echo "500/$N" | bc)
-
 # base dir for running demo
 LACHESIS_BASE_DIR=/tmp/lachesis-demo
 
@@ -22,13 +18,11 @@ EXEC=../build/lachesis
 
 # default ip using localhost
 IP=127.0.0.1
-# default port PORT
-# the actual ports are PORT+1, PORT+2, etc (18641, 18642, 18643, ... )
-PORT=18800
-# default base local port
+# the actual ports are RPCPORT+1, RPCPORT+2, etc (4001, 4002, 4003, ... )
+RPCPORT=4000
 # actual local ports are LOCALPORT+1, LOCALPORT+2, ...
-LOCALPORT=5800
-
+LOCALPORT=3000
+WSPORT=3500
 
 # Function to be called when user press ctrl-c.
 ctrl_c() {
@@ -48,17 +42,20 @@ start_node() {
 	local N=$2
 	echo -e "start_node node $i:"
 
-    port=$((PORT + i))
+    rpcport=$((RPCPORT + i))
 	localport=$((LOCALPORT + i))
+	wsport=$((WSPORT + i))
 
-	echo -e "port=${port}, localport=${localport} "
+	echo -e "port=${rpcport}, localport=${localport} "
 
     ${EXEC} \
 	--fakenet $i/$N \
-	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3" --rpcport ${port} --nousb --verbosity 3 \
+	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${rpcport} \
+	--ws --wsaddr="0.0.0.0" --wsport=${wsport} --wsorigins="*" --wsapi="eth,debug,admin,web3,personal,net,txpool,ftm,sfc" \
+	--nousb --verbosity 3 --metrics \
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
 	pids+=($!)
-    echo -e "Started lachesis client at ${IP}:${port}, pid: $!"
+    echo -e "Started lachesis client at ${IP}:${rpcport}, pid: $!"
     echo -e "\n"
 }
 
@@ -104,14 +101,14 @@ connect_pair() {
     local to=$2
 
 	echo " getting node-${to} address:"
-	url=${IP}:$((PORT + to))
+	url=${IP}:$((RPCPORT + to))
 	echo "    at url: ${url}"
 
     enode=$(attach_and_exec ${url} 'admin.nodeInfo.enode')
     echo "    p2p address = ${enode}"
 
     echo " connecting node-${from} to node-${to}:"
-    url=${IP}:$((PORT + from))
+    url=${IP}:$((RPCPORT + from))
     echo "    at url: ${url}"
 
     res=$(attach_and_exec ${url} "admin.addPeer(${enode})")

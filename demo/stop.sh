@@ -1,9 +1,7 @@
 #!/bin/bash
 
-PROG=lachesis
-
 # kill all lachesis processes
-pkill "${PROG}"
+pkill "lachesis"
 
 # remove demo data
 rm -rf /tmp/lachesis-demo/datadir/

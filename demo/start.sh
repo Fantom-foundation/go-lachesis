@@ -12,10 +12,10 @@ EXEC=../build/lachesis
 
 # default ip using localhost
 IP=127.0.0.1
-# default port PORT
-# the actual ports are PORT+1, PORT+2, etc (18541, 18542, 18543, ... )
-#PORT=18540
-PORT=4000
+# the actual ports are RPCPORT+1, RPCPORT+2, etc (4001, 4002, 4003, ... )
+RPCPORT=4000
+LOCALPORT=3000
+WSPORT=3500
 
 LACHESIS_BASE_DIR=/tmp/lachesis-demo
 
@@ -23,14 +23,17 @@ LACHESIS_BASE_DIR=/tmp/lachesis-demo
 echo -e "\nStart $N nodes:"
 for i in $(seq $N)
 do
-    port=$((PORT + i))
-    localport=$((5050 + i))
+    rpcport=$((RPCPORT + i))
+    localport=$((LOCALPORT + i))
+    wsport=$((WSPORT + i))
 
     ${EXEC} \
 	--fakenet $i/$N \
-	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${port} --nousb --verbosity 3 \
+	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${rpcport} \
+	--ws --wsaddr="0.0.0.0" --wsport=${wsport} --wsorigins="*" --wsapi="eth,debug,admin,web3,personal,net,txpool,ftm,sfc" \
+    --nousb --verbosity=3 --metrics \
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
-    echo -e "Started lachesis client at ${IP}:${port}"
+    echo -e "Started lachesis client at ${IP}:${rpcport}"
 done
 
 
@@ -68,14 +71,14 @@ do
     j=$((i % N + 1))
 
     echo " getting node-$j address:"
-	url=${IP}:$((PORT + j))
+	url=${IP}:$((RPCPORT + j))
 	echo "    at url: ${url}"
 
     enode=$(attach_and_exec ${url} 'admin.nodeInfo.enode')
     echo "    p2p address = ${enode}"
 
     echo " connecting node-$i to node-$j:"
-    url=${IP}:$((PORT + i))
+    url=${IP}:$((RPCPORT + i))
     echo "    at url: ${url}"
 
     res=$(attach_and_exec ${url} "admin.addPeer(${enode})")

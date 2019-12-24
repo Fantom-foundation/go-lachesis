@@ -16,17 +16,15 @@ LACHESIS_BASE_DIR=/tmp/lachesis-demo
 PROG=lachesis
 EXEC=../build/lachesis
 
-FVM=${GOPATH}/src/github.com/Fantom-foundation/go-ethereum
-BOOTNODE=${FVM}/build/bin/bootnode
+# Bootnode
+BOOTNODE=../../build/bootnode
 
 ######
 EXEC=../../build/lachesis
 
 # default ip using localhost
 IP=127.0.0.1
-# default port PORT
-# the actual ports are PORT+1, PORT+2, etc (18541, 18542, 18543, ... )
-PORT=18540
-
-# demo directory 
-LACHESIS_BASE_DIR=/tmp/lachesis-demo
+# the actual ports are RPCPORT+1, RPCPORT+2, etc (4001, 4002, 4003, ... )
+RPCPORT=4000
+LOCALPORT=3000
+WSPORT=3500
