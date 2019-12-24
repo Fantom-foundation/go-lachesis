@@ -10,8 +10,8 @@ bootnode :
 	go build -o build/bootnode ./cmd/bootnode
 
 # dist
+.PHONY : dist
 dist :
-	mkdir -p dist
 	env GOOS=linux GOARCH=amd64 go build -o dist/lachesis ./cmd/lachesis	
 	env GOOS=linux GOARCH=amd64 go build -o dist/tx-storm ./cmd/tx-storm
 	env GOOS=linux GOARCH=amd64 go build -o dist/bootnode ./cmd/bootnode	
