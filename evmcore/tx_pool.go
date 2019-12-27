@@ -43,6 +43,8 @@ const (
 	chainHeadChanSize = 10
 )
 
+var BENCHMARK_FLAG = true
+
 var (
 	// ErrInvalidSender is returned if the transaction contains an invalid signature.
 	ErrInvalidSender = errors.New("invalid sender")
@@ -285,7 +287,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain state
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
-		log.Info("Setting new local account", "address", addr)
+		log.Debug("Setting new local account", "address", addr)
 		pool.locals.add(addr)
 	}
 	pool.priced = newTxPricedList(pool.all)
@@ -587,10 +589,12 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 	}
 
 	// If the transaction fails basic validation, discard it
-	if err := pool.validateTx(tx, local); err != nil {
-		log.Trace("Discarding invalid transaction", "hash", hash, "err", err)
-		invalidTxMeter.Mark(1)
-		return false, err
+	if !BENCHMARK_FLAG {
+		if err := pool.validateTx(tx, local); err != nil {
+			log.Trace("Discarding invalid transaction", "hash", hash, "err", err)
+			invalidTxMeter.Mark(1)
+			return false, err
+		}
 	}
 
 	// If the transaction pool is full, discard underpriced transactions
@@ -642,7 +646,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 	// Mark local addresses and journal local transactions
 	if local {
 		if !pool.locals.contains(from) {
-			log.Info("Setting new local account", "address", from)
+			log.Debug("Setting new local account", "address", from)
 			pool.locals.add(from)
 		}
 	}

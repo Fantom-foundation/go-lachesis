@@ -303,8 +303,17 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	// s.engineMu is locked here
 
 	confirmBlocksMeter.Inc(1)
-	sealEpoch = decidedFrame == s.config.Net.Dag.EpochLen
 
+	// Update time meter
+	duration := time.Since(nodeStartTime)
+	nodeBenchTimeMeter.Update(duration)
+	nodeBlockTpsMeter.Update(float64(confirmBlocksMeter.Count())/duration.Seconds())
+	log.Info("LACHESIS_BM Block", "confirmBlocksMeter", confirmBlocksMeter.Count(), 
+		"duration(microS)", duration.Microseconds(), 
+		"nodeBlockTpsMeter", nodeBlockTpsMeter.Value())
+	
+	sealEpoch = decidedFrame == s.config.Net.Dag.EpochLen
+	
 	block, evmBlock, receipts, txPositions, newAppHash := s.applyNewState(block, sealEpoch, cheaters)
 
 	s.store.SetBlock(block)
@@ -341,12 +350,35 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	s.feed.newLogs.Send(logs)
 
 	// trace confirmed transactions
-	confirmTxnsMeter.Inc(int64(evmBlock.Transactions.Len()))
+//	confirmTxnsMeter.Inc(int64(evmBlock.Transactions.Len()))
+	confirmTxnsMeter.Inc(int64(len(block.Events)))
+	// calculate the latency and total number of new confirmed transactions
+	totalTxns := len(block.Events)
+	blockTime := block.Time.Time()
+	blockLatency := time.Since(blockTime).Seconds()
+	
+	log.Info(" LACHESIS_BM BLOCKS", "block.Events", len(block.Events),
+		"blockTime", blockTime, "blockLatency(s)", blockLatency)
+	
+
 	for _, tx := range evmBlock.Transactions {
 		tracing.FinishTx(tx.Hash(), "Service.onNewBlock()")
 		if latency, err := txLatency.Finish(tx.Hash()); err == nil {
 			txTtfMeter.Update(latency.Milliseconds())
 		}
+	}
+
+	// compute the avg ttf
+	if totalTxns > 0 {
+		nodeTtfMeter.Update(blockLatency)
+		
+		// update tps meter
+		nodeTpsMeter.Update(float64(confirmTxnsMeter.Count())/duration.Seconds())
+		
+		log.Info(" LACHESIS_BM Ttf", "confirmTxnsMeter", confirmTxnsMeter.Count(),
+			"duration", duration, "txTtfMeter(s)", float64(txTtfMeter.Mean())/1000)
+		log.Info(" LACHESIS_BM Tps",  "nodeTtfMeter(s)", nodeTtfMeter.Value(),
+			"nodeTpsMeter", nodeTpsMeter.Value())
 	}
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators

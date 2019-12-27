@@ -165,6 +165,9 @@ func (pm *ProtocolManager) makeFetcher(checkers *eventcheck.Checkers) (*fetcher.
 		}
 		return nil
 	}
+	
+	nodeStartTime = time.Now()
+	log.Info("makeFetcher start benchmark time: ", nodeStartTime) 
 
 	// DAG callbacks
 	buffer := ordering.New(eventsBuffSize, ordering.Callback{

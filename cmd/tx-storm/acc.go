@@ -13,7 +13,7 @@ import (
 
 var (
 	gasLimit = uint64(21000)
-	gasPrice = big.NewInt(1e9) // minimal
+	gasPrice = big.NewInt(0) // minimal
 )
 
 type Acc struct {
@@ -35,7 +35,7 @@ func (a *Acc) TransactionTo(b *Acc, nonce uint, amount *big.Int) *types.Transact
 	tx := types.NewTransaction(
 		uint64(nonce),
 		*b.Addr,
-		amount,
+		big.NewInt(0),
 		gasLimit,
 		gasPrice,
 		[]byte{},

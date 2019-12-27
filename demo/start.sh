@@ -26,12 +26,14 @@ do
     rpcport=$((RPCPORT + i))
     localport=$((LOCALPORT + i))
     wsport=$((WSPORT + i))
-
+    proport=$((9000 + i))
+    
     ${EXEC} \
 	--fakenet $i/$N \
 	--port ${localport} --rpc --rpcapi "eth,debug,admin,web3,personal,net,txpool,ftm,sfc" --rpcport ${rpcport} \
 	--ws --wsaddr="0.0.0.0" --wsport=${wsport} --wsorigins="*" --wsapi="eth,debug,admin,web3,personal,net,txpool,ftm,sfc" \
-    --nousb --verbosity=3 --metrics \
+	--nousb --verbosity=3 --metrics \
+	--metrics.prometheus.endpoint ":${proport}"\
 	--datadir "${LACHESIS_BASE_DIR}/datadir/lach$i" &
     echo -e "Started lachesis client at ${IP}:${rpcport}"
 done
