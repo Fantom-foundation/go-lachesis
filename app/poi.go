@@ -1,4 +1,4 @@
-package gossip
+package app
 
 import (
 	"math/big"
@@ -18,7 +18,7 @@ func PoiPeriod(t inter.Timestamp, config *lachesis.EconomyConfig) uint64 {
 }
 
 // UpdateAddressPOI calculate and save POI for user
-func (s *Service) UpdateAddressPOI(address common.Address, senderTotalFee *big.Int, poiPeriod uint64) {
+func (a *Application) UpdateAddressPOI(address common.Address, senderTotalFee *big.Int, poiPeriod uint64) {
 	/*if senderTotalFee.Sign() == 0 {
 		s.store.SetAddressPOI(address, common.Big0)
 		return // avoid division by 0
@@ -29,56 +29,56 @@ func (s *Service) UpdateAddressPOI(address common.Address, senderTotalFee *big.I
 }
 
 // updateUsersPOI calculates the Proof Of Importance weights for users
-func (s *Service) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, totalFee *big.Int, sealEpoch bool) {
+func (a *Application) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, totalFee *big.Int, sealEpoch bool) {
 	// User POI calculations
-	poiPeriod := PoiPeriod(block.Time, &s.config.Net.Economy)
-	s.store.AddPoiFee(poiPeriod, totalFee)
+	poiPeriod := PoiPeriod(block.Time, &a.config.Economy)
+	a.store.AddPoiFee(poiPeriod, totalFee)
 
 	for i, tx := range evmBlock.Transactions {
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
 
-		signer := types.NewEIP155Signer(s.config.Net.EvmChainConfig().ChainID)
+		signer := types.NewEIP155Signer(a.config.EvmChainConfig().ChainID)
 		sender, err := signer.Sender(tx)
 		if err != nil {
-			s.Log.Crit("Failed to get sender from transaction", "err", err)
+			a.Log.Crit("Failed to get sender from transaction", "err", err)
 		}
 
-		senderLastTxTime := s.store.GetAddressLastTxTime(sender)
-		prevUserPoiPeriod := PoiPeriod(senderLastTxTime, &s.config.Net.Economy)
-		senderTotalFee := s.store.GetAddressFee(sender, prevUserPoiPeriod)
+		senderLastTxTime := a.store.GetAddressLastTxTime(sender)
+		prevUserPoiPeriod := PoiPeriod(senderLastTxTime, &a.config.Economy)
+		senderTotalFee := a.store.GetAddressFee(sender, prevUserPoiPeriod)
 
-		delegator := s.store.GetSfcDelegator(sender)
+		delegator := a.store.GetSfcDelegator(sender)
 		if delegator != nil {
-			staker := s.store.GetSfcStaker(delegator.ToStakerID)
-			prevWeightedTxFee := s.store.GetWeightedDelegatorsFee(delegator.ToStakerID)
+			staker := a.store.GetSfcStaker(delegator.ToStakerID)
+			prevWeightedTxFee := a.store.GetWeightedDelegatorsFee(delegator.ToStakerID)
 
 			weightedTxFee := new(big.Int).Mul(txFee, delegator.Amount)
 			weightedTxFee.Div(weightedTxFee, staker.CalcTotalStake())
 
 			weightedTxFee.Add(weightedTxFee, prevWeightedTxFee)
-			s.store.SetWeightedDelegatorsFee(delegator.ToStakerID, weightedTxFee)
+			a.store.SetWeightedDelegatorsFee(delegator.ToStakerID, weightedTxFee)
 		}
 
 		if prevUserPoiPeriod != poiPeriod {
-			s.UpdateAddressPOI(sender, senderTotalFee, prevUserPoiPeriod)
+			a.UpdateAddressPOI(sender, senderTotalFee, prevUserPoiPeriod)
 			senderTotalFee = big.NewInt(0)
 		}
 
-		s.store.SetAddressLastTxTime(sender, block.Time)
+		a.store.SetAddressLastTxTime(sender, block.Time)
 		senderTotalFee.Add(senderTotalFee, txFee)
-		s.store.SetAddressFee(sender, poiPeriod, senderTotalFee)
+		a.store.SetAddressFee(sender, poiPeriod, senderTotalFee)
 	}
 
 }
 
 // UpdateStakerPOI calculate and save POI for staker
-func (s *Service) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Address, poiPeriod uint64) {
-	staker := s.store.GetSfcStaker(stakerID)
+func (a *Application) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Address, poiPeriod uint64) {
+	staker := a.store.GetSfcStaker(stakerID)
 
-	vFee := s.store.GetAddressFee(stakerAddress, poiPeriod)
-	weightedDFee := s.store.GetWeightedDelegatorsFee(stakerID)
+	vFee := a.store.GetAddressFee(stakerAddress, poiPeriod)
+	weightedDFee := a.store.GetWeightedDelegatorsFee(stakerID)
 	if vFee.Sign() == 0 && weightedDFee.Sign() == 0 {
-		s.store.SetStakerPOI(stakerID, common.Big0)
+		a.store.SetStakerPOI(stakerID, common.Big0)
 		return // optimization
 	}
 
@@ -88,26 +88,26 @@ func (s *Service) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Ad
 	weightedFee := new(big.Int).Add(weightedDFee, weightedVFee)
 
 	if weightedFee.Sign() == 0 {
-		s.store.SetStakerPOI(stakerID, common.Big0)
+		a.store.SetStakerPOI(stakerID, common.Big0)
 		return // avoid division by 0
 	}
 	poi := weightedFee // no need to rebase validator's PoI as <= 1.0 ratio
 	/*poi := new(big.Int).Mul(weightedFee, lachesis.PercentUnit)
 	poi.Div(poi, s.store.GetPoiFee(poiPeriod))*/
-	s.store.SetStakerPOI(stakerID, poi)
+	a.store.SetStakerPOI(stakerID, poi)
 }
 
 // updateStakersPOI calculates the Proof Of Importance weights for stakers
-func (s *Service) updateStakersPOI(block *inter.Block, sealEpoch bool) {
+func (a *Application) updateStakersPOI(prev, block *inter.Block, sealEpoch bool) {
 	// Stakers POI calculations
-	poiPeriod := PoiPeriod(block.Time, &s.config.Net.Economy)
-	prevBlockPoiPeriod := PoiPeriod(s.store.GetBlock(block.Index-1).Time, &s.config.Net.Economy)
+	poiPeriod := PoiPeriod(block.Time, &a.config.Economy)
+	prevBlockPoiPeriod := PoiPeriod(prev.Time, &a.config.Economy)
 
 	if poiPeriod != prevBlockPoiPeriod {
-		for _, it := range s.GetActiveSfcStakers() {
-			s.UpdateStakerPOI(it.StakerID, it.Staker.Address, prevBlockPoiPeriod)
+		for _, it := range a.GetActiveSfcStakers() {
+			a.UpdateStakerPOI(it.StakerID, it.Staker.Address, prevBlockPoiPeriod)
 		}
 		// clear StakersDelegatorsFee counters
-		s.store.DelAllWeightedDelegatorsFee()
+		a.store.DelAllWeightedDelegatorsFee()
 	}
 }

@@ -1,4 +1,4 @@
-package gossip
+package app
 
 import (
 	"math/big"
@@ -25,9 +25,9 @@ type SfcConstants struct {
 }
 
 // GetActiveSfcStakers returns stakers which will become validators in next epoch
-func (s *Service) GetActiveSfcStakers() []sfctype.SfcStakerAndID {
+func (a *Application) GetActiveSfcStakers() []sfctype.SfcStakerAndID {
 	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
-	s.store.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+	a.store.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
 		if it.Staker.Ok() {
 			stakers = append(stakers, it)
 		}
@@ -35,29 +35,29 @@ func (s *Service) GetActiveSfcStakers() []sfctype.SfcStakerAndID {
 	return stakers
 }
 
-func (s *Service) delAllStakerData(stakerID idx.StakerID) {
-	s.store.DelSfcStaker(stakerID)
-	s.store.ResetBlocksMissed(stakerID)
-	s.store.DelActiveValidationScore(stakerID)
-	s.store.DelDirtyValidationScore(stakerID)
-	s.store.DelActiveOriginationScore(stakerID)
-	s.store.DelDirtyOriginationScore(stakerID)
-	s.store.DelWeightedDelegatorsFee(stakerID)
-	s.store.DelStakerPOI(stakerID)
-	s.store.DelStakerClaimedRewards(stakerID)
-	s.store.DelStakerDelegatorsClaimedRewards(stakerID)
+func (a *Application) delAllStakerData(stakerID idx.StakerID) {
+	a.store.DelSfcStaker(stakerID)
+	a.store.ResetBlocksMissed(stakerID)
+	a.store.DelActiveValidationScore(stakerID)
+	a.store.DelDirtyValidationScore(stakerID)
+	a.store.DelActiveOriginationScore(stakerID)
+	a.store.DelDirtyOriginationScore(stakerID)
+	a.store.DelWeightedDelegatorsFee(stakerID)
+	a.store.DelStakerPOI(stakerID)
+	a.store.DelStakerClaimedRewards(stakerID)
+	a.store.DelStakerDelegatorsClaimedRewards(stakerID)
 }
 
-func (s *Service) delAllDelegatorData(address common.Address) {
-	s.store.DelSfcDelegator(address)
-	s.store.DelDelegatorClaimedRewards(address)
+func (a *Application) delAllDelegatorData(address common.Address) {
+	a.store.DelSfcDelegator(address)
+	a.store.DelDelegatorClaimedRewards(address)
 }
 
 var (
 	max128 = new(big.Int).Sub(math.BigPow(2, 128), common.Big1)
 )
 
-func (s *Service) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDuration inter.Timestamp) (baseRewardWeights []*big.Int, txRewardWeights []*big.Int) {
+func (a *Application) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDuration inter.Timestamp) (baseRewardWeights []*big.Int, txRewardWeights []*big.Int) {
 	validationScores := make([]*big.Int, 0, len(stakers))
 	originationScores := make([]*big.Int, 0, len(stakers))
 	pois := make([]*big.Int, 0, len(stakers))
@@ -70,9 +70,9 @@ func (s *Service) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDura
 
 	for _, it := range stakers {
 		stake := it.Staker.CalcTotalStake()
-		poi := s.store.GetStakerPOI(it.StakerID)
-		validationScore := s.store.GetActiveValidationScore(it.StakerID)
-		originationScore := s.store.GetActiveOriginationScore(it.StakerID)
+		poi := a.store.GetStakerPOI(it.StakerID)
+		validationScore := a.store.GetActiveValidationScore(it.StakerID)
+		originationScore := a.store.GetActiveOriginationScore(it.StakerID)
 
 		stakes = append(stakes, stake)
 		validationScores = append(validationScores, validationScore)
@@ -85,7 +85,7 @@ func (s *Service) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDura
 		// txRewardWeight = ({origination score} + {CONST} * {PoI}) * {validation score}
 		// origination score is roughly proportional to {validation score} * {stake}, so the whole formula is roughly
 		// {stake} * {validation score} ^ 2
-		poiWithRatio := new(big.Int).Mul(pois[i], s.config.Net.Economy.TxRewardPoiImpact)
+		poiWithRatio := new(big.Int).Mul(pois[i], a.config.Economy.TxRewardPoiImpact)
 		poiWithRatio.Div(poiWithRatio, lachesis.PercentUnit)
 
 		txRewardWeight := new(big.Int).Add(originationScores[i], poiWithRatio)
@@ -117,23 +117,22 @@ func (s *Service) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDura
 }
 
 // getRewardPerSec returns current rewardPerSec, depending on config and value provided by SFC
-func (s *Service) getRewardPerSec() *big.Int {
-	rewardPerSecond := s.store.GetSfcConstants(s.engine.GetEpoch() - 1).BaseRewardPerSec
+func (a *Application) getRewardPerSec(epoch idx.Epoch) *big.Int {
+	rewardPerSecond := a.store.GetSfcConstants(epoch - 1).BaseRewardPerSec
 	if rewardPerSecond == nil || rewardPerSecond.Sign() == 0 {
-		rewardPerSecond = s.config.Net.Economy.InitialRewardPerSecond
+		rewardPerSecond = a.config.Economy.InitialRewardPerSecond
 	}
-	if rewardPerSecond.Cmp(s.config.Net.Economy.MaxRewardPerSecond) > 0 {
-		rewardPerSecond = s.config.Net.Economy.MaxRewardPerSecond
+	if rewardPerSecond.Cmp(a.config.Economy.MaxRewardPerSecond) > 0 {
+		rewardPerSecond = a.config.Economy.MaxRewardPerSecond
 	}
 	return new(big.Int).Set(rewardPerSecond)
 }
 
 // processSfc applies the new SFC state
-func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockFee *big.Int, sealEpoch bool, cheaters inter.Cheaters, statedb *state.StateDB) {
-	// s.engineMu is locked here
+func (a *Application) processSfc(block *inter.Block, receipts types.Receipts, blockFee *big.Int, epoch idx.Epoch, sealEpoch bool, cheaters inter.Cheaters, statedb *state.StateDB) {
+	// a.engineMu is locked here
 
 	// process SFC contract logs
-	epoch := s.engine.GetEpoch()
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
 			if l.Address != sfc.ContractAddress {
@@ -145,7 +144,7 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				address := common.BytesToAddress(l.Topics[2][12:])
 				amount := new(big.Int).SetBytes(l.Data[0:32])
 
-				s.store.SetSfcStaker(stakerID, &sfctype.SfcStaker{
+				a.store.SetSfcStaker(stakerID, &sfctype.SfcStaker{
 					Address:      address,
 					CreatedEpoch: epoch,
 					CreatedTime:  block.Time,
@@ -159,13 +158,13 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
 				newAmount := new(big.Int).SetBytes(l.Data[0:32])
 
-				staker := s.store.GetSfcStaker(stakerID)
+				staker := a.store.GetSfcStaker(stakerID)
 				if staker == nil {
-					s.Log.Error("Internal SFC index isn't synced with SFC contract")
+					a.Log.Error("Internal SFC index isn't synced with SFC contract")
 					continue
 				}
 				staker.StakeAmount = newAmount
-				s.store.SetSfcStaker(stakerID, staker)
+				a.store.SetSfcStaker(stakerID, staker)
 			}
 
 			// Add new delegators
@@ -174,73 +173,73 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				toStakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[2][12:]).Uint64())
 				amount := new(big.Int).SetBytes(l.Data[0:32])
 
-				staker := s.store.GetSfcStaker(toStakerID)
+				staker := a.store.GetSfcStaker(toStakerID)
 				if staker == nil {
-					s.Log.Error("Internal SFC index isn't synced with SFC contract")
+					a.Log.Error("Internal SFC index isn't synced with SFC contract")
 					continue
 				}
 				staker.DelegatedMe.Add(staker.DelegatedMe, amount)
 
-				s.store.SetSfcDelegator(address, &sfctype.SfcDelegator{
+				a.store.SetSfcDelegator(address, &sfctype.SfcDelegator{
 					ToStakerID:   toStakerID,
 					CreatedEpoch: epoch,
 					CreatedTime:  block.Time,
 					Amount:       amount,
 				})
-				s.store.SetSfcStaker(toStakerID, staker)
+				a.store.SetSfcStaker(toStakerID, staker)
 			}
 
 			// Deactivate stakes
 			if l.Topics[0] == sfcpos.Topics.PreparedToWithdrawStake && len(l.Topics) > 1 {
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
 
-				staker := s.store.GetSfcStaker(stakerID)
+				staker := a.store.GetSfcStaker(stakerID)
 				staker.DeactivatedEpoch = epoch
 				staker.DeactivatedTime = block.Time
-				s.store.SetSfcStaker(stakerID, staker)
+				a.store.SetSfcStaker(stakerID, staker)
 			}
 
 			// Deactivate delegators
 			if l.Topics[0] == sfcpos.Topics.PreparedToWithdrawDelegation && len(l.Topics) > 1 {
 				address := common.BytesToAddress(l.Topics[1][12:])
 
-				delegator := s.store.GetSfcDelegator(address)
-				staker := s.store.GetSfcStaker(delegator.ToStakerID)
+				delegator := a.store.GetSfcDelegator(address)
+				staker := a.store.GetSfcStaker(delegator.ToStakerID)
 				if staker != nil {
 					staker.DelegatedMe.Sub(staker.DelegatedMe, delegator.Amount)
-					s.store.SetSfcStaker(delegator.ToStakerID, staker)
+					a.store.SetSfcStaker(delegator.ToStakerID, staker)
 				}
 				delegator.DeactivatedEpoch = epoch
 				delegator.DeactivatedTime = block.Time
-				s.store.SetSfcDelegator(address, delegator)
+				a.store.SetSfcDelegator(address, delegator)
 			}
 
 			// Delete stakes
 			if l.Topics[0] == sfcpos.Topics.WithdrawnStake && len(l.Topics) > 1 {
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
-				s.delAllStakerData(stakerID)
+				a.delAllStakerData(stakerID)
 			}
 
 			// Delete delegators
 			if l.Topics[0] == sfcpos.Topics.WithdrawnDelegation && len(l.Topics) > 1 {
 				address := common.BytesToAddress(l.Topics[1][12:])
-				s.delAllDelegatorData(address)
+				a.delAllDelegatorData(address)
 			}
 
 			// Track changes of constants by SFC
 			if l.Topics[0] == sfcpos.Topics.UpdatedBaseRewardPerSec && len(l.Data) >= 32 {
 				baseRewardPerSec := new(big.Int).SetBytes(l.Data[0:32])
-				constants := s.store.GetSfcConstants(epoch)
+				constants := a.store.GetSfcConstants(epoch)
 				constants.BaseRewardPerSec = baseRewardPerSec
-				s.store.SetSfcConstants(epoch, constants)
+				a.store.SetSfcConstants(epoch, constants)
 			}
 			if l.Topics[0] == sfcpos.Topics.UpdatedGasPowerAllocationRate && len(l.Data) >= 64 {
 				shortAllocationRate := new(big.Int).SetBytes(l.Data[0:32])
 				longAllocationRate := new(big.Int).SetBytes(l.Data[32:64])
-				constants := s.store.GetSfcConstants(epoch)
+				constants := a.store.GetSfcConstants(epoch)
 				constants.ShortGasPowerAllocPerSec = shortAllocationRate.Uint64()
 				constants.LongGasPowerAllocPerSec = longAllocationRate.Uint64()
-				s.store.SetSfcConstants(epoch, constants)
+				a.store.SetSfcConstants(epoch, constants)
 			}
 
 			// Track rewards (API-only)
@@ -248,67 +247,67 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
 				reward := new(big.Int).SetBytes(l.Data[0:32])
 
-				s.store.IncStakerClaimedRewards(stakerID, reward)
+				a.store.IncStakerClaimedRewards(stakerID, reward)
 			}
 			if l.Topics[0] == sfcpos.Topics.ClaimedDelegationReward && len(l.Topics) > 2 && len(l.Data) >= 32 {
 				address := common.BytesToAddress(l.Topics[1][12:])
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[2][:]).Uint64())
 				reward := new(big.Int).SetBytes(l.Data[0:32])
 
-				s.store.IncDelegatorClaimedRewards(address, reward)
-				s.store.IncStakerDelegatorsClaimedRewards(stakerID, reward)
+				a.store.IncDelegatorClaimedRewards(address, reward)
+				a.store.IncStakerDelegatorsClaimedRewards(stakerID, reward)
 			}
 		}
 	}
 
 	// Update EpochStats
-	stats := s.store.GetDirtyEpochStats()
+	stats := a.Gossip.GetDirtyEpochStats()
 	stats.TotalFee = new(big.Int).Add(stats.TotalFee, blockFee)
 	if sealEpoch {
 		// dirty EpochStats becomes active
 		stats.End = block.Time
-		s.store.SetEpochStats(epoch, stats)
+		a.Gossip.SetEpochStats(epoch, stats)
 
 		// new dirty EpochStats
-		s.store.SetDirtyEpochStats(&sfctype.EpochStats{
+		a.Gossip.SetDirtyEpochStats(&sfctype.EpochStats{
 			Start:    block.Time,
 			TotalFee: new(big.Int),
 		})
 	} else {
-		s.store.SetDirtyEpochStats(stats)
+		a.Gossip.SetDirtyEpochStats(stats)
 	}
 
 	// Write cheaters
 	for _, stakerID := range cheaters {
-		staker := s.store.GetSfcStaker(stakerID)
+		staker := a.store.GetSfcStaker(stakerID)
 		if staker.HasFork() {
 			continue
 		}
 		// write into DB
 		staker.Status |= sfctype.ForkBit
-		s.store.SetSfcStaker(stakerID, staker)
+		a.store.SetSfcStaker(stakerID, staker)
 		// write into SFC contract
 		position := sfcpos.Staker(stakerID)
 		statedb.SetState(sfc.ContractAddress, position.Status(), utils.U64to256(staker.Status))
 	}
 
 	if sealEpoch {
-		if s.store.HasSfcConstants(epoch) {
-			s.store.SetSfcConstants(epoch+1, s.store.GetSfcConstants(epoch))
+		if a.store.HasSfcConstants(epoch) {
+			a.store.SetSfcConstants(epoch+1, a.store.GetSfcConstants(epoch))
 		}
 
 		// Write offline validators
-		for _, it := range s.store.GetSfcStakers() {
+		for _, it := range a.store.GetSfcStakers() {
 			if it.Staker.Offline() {
 				continue
 			}
 
-			gotMissed := s.store.GetBlocksMissed(it.StakerID)
-			badMissed := s.config.Net.Economy.OfflinePenaltyThreshold
+			gotMissed := a.store.GetBlocksMissed(it.StakerID)
+			badMissed := a.config.Economy.OfflinePenaltyThreshold
 			if gotMissed.Num >= badMissed.BlocksNum && gotMissed.Period >= inter.Timestamp(badMissed.Period) {
 				// write into DB
 				it.Staker.Status |= sfctype.OfflineBit
-				s.store.SetSfcStaker(it.StakerID, it.Staker)
+				a.store.SetSfcStaker(it.StakerID, it.Staker)
 				// write into SFC contract
 				position := sfcpos.Staker(it.StakerID)
 				statedb.SetState(sfc.ContractAddress, position.Status(), utils.U64to256(it.Staker.Status))
@@ -318,8 +317,8 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 		// Write epoch snapshot (for reward)
 		cheatersSet := cheaters.Set()
 		epochPos := sfcpos.EpochSnapshot(epoch)
-		epochValidators := s.store.GetEpochValidators(epoch)
-		baseRewardWeights, txRewardWeights := s.calcRewardWeights(epochValidators, stats.Duration())
+		epochValidators := a.store.GetEpochValidators(epoch)
+		baseRewardWeights, txRewardWeights := a.calcRewardWeights(epochValidators, stats.Duration())
 
 		totalBaseRewardWeight := new(big.Int)
 		totalTxRewardWeight := new(big.Int)
@@ -348,14 +347,14 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 			totalBaseRewardWeight.Add(totalBaseRewardWeight, baseRewardWeight)
 			totalTxRewardWeight.Add(totalTxRewardWeight, txRewardWeight)
 		}
-		baseRewardPerSec := s.getRewardPerSec()
+		baseRewardPerSec := a.getRewardPerSec(epoch)
 
 		// set total supply
 		baseRewards := new(big.Int).Mul(big.NewInt(stats.Duration().Unix()), baseRewardPerSec)
 		rewards := new(big.Int).Add(baseRewards, stats.TotalFee)
-		totalSupply := new(big.Int).Add(s.store.GetTotalSupply(), rewards)
+		totalSupply := new(big.Int).Add(a.store.GetTotalSupply(), rewards)
 		statedb.SetState(sfc.ContractAddress, sfcpos.CurrentSealedEpoch(), utils.U64to256(uint64(epoch)))
-		s.store.SetTotalSupply(totalSupply)
+		a.store.SetTotalSupply(totalSupply)
 
 		statedb.SetState(sfc.ContractAddress, epochPos.TotalBaseRewardWeight(), utils.BigTo256(totalBaseRewardWeight))
 		statedb.SetState(sfc.ContractAddress, epochPos.TotalTxRewardWeight(), utils.BigTo256(totalTxRewardWeight))
@@ -372,12 +371,12 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 		statedb.AddBalance(sfc.ContractAddress, rewards)
 
 		// Select new validators
-		for _, it := range s.GetActiveSfcStakers() {
+		for _, it := range a.GetActiveSfcStakers() {
 			// Note: cheaters are not active
 			if _, ok := cheatersSet[it.StakerID]; ok {
-				s.Log.Crit("Cheaters must be deactivated")
+				a.Log.Crit("Cheaters must be deactivated")
 			}
-			s.store.SetEpochValidator(epoch+1, it.StakerID, it.Staker)
+			a.store.SetEpochValidator(epoch+1, it.StakerID, it.Staker)
 		}
 	}
 }
