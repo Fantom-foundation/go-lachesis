@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -58,11 +57,6 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, g
 }
 
 func (s *Store) applyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, genesisState common.Hash, err error) {
-	evmBlock, err := evmcore.ApplyGenesis(s.table.Evm, net)
-	if err != nil {
-		return genesisAtropos, genesisState, err
-	}
-
 	prettyHash := func(net *lachesis.Config) hash.Event {
 		e := inter.NewEvent()
 		// for nice-looking ID
@@ -85,9 +79,16 @@ func (s *Store) applyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, g
 		hash.Events{genesisAtropos},
 	)
 
-	block.Root = evmBlock.Root
+	var stateRoot common.Hash
+	stateRoot, err = s.app.ApplyGenesis(net)
+	if err != nil {
+		return
+	}
+
+	block.Root = stateRoot
 	s.SetBlock(block)
 	s.SetBlockIndex(genesisAtropos, block.Index)
+
 	s.SetEpochStats(0, &sfctype.EpochStats{
 		Start:    net.Genesis.Time,
 		End:      net.Genesis.Time,
@@ -97,25 +98,6 @@ func (s *Store) applyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, g
 		Start:    net.Genesis.Time,
 		TotalFee: new(big.Int),
 	})
-
-	// calc total pre-minted supply
-	totalSupply := big.NewInt(0)
-	for _, account := range net.Genesis.Alloc.Accounts {
-		totalSupply.Add(totalSupply, account.Balance)
-	}
-	s.SetTotalSupply(totalSupply)
-
-	for _, validator := range net.Genesis.Alloc.Validators {
-		staker := &sfctype.SfcStaker{
-			Address:      validator.Address,
-			CreatedEpoch: 0,
-			CreatedTime:  net.Genesis.Time,
-			StakeAmount:  validator.Stake,
-			DelegatedMe:  big.NewInt(0),
-		}
-		s.SetSfcStaker(validator.ID, staker)
-		s.SetEpochValidator(1, validator.ID, staker)
-	}
 
 	return genesisAtropos, genesisState, nil
 }
