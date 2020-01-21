@@ -259,6 +259,7 @@ func mockCheckers(epoch idx.Epoch, net *lachesis.Config, engine Consensus, store
 	heavyCheckReader := &HeavyCheckReader{}
 	heavyCheckReader.Addrs.Store(ReadEpochPubKeys(store, epoch))
 	gasPowerCheckReader := &GasPowerCheckReader{}
-	gasPowerCheckReader.Ctx.Store(ReadGasPowerContext(store, engine.GetValidators(), engine.GetEpoch(), &net.Economy))
+	gasPowerCheckReader.Ctx.Store(
+		ReadGasPowerContext(store, engine.GetValidators(), engine.GetEpoch(), &net.Economy))
 	return makeCheckers(net, heavyCheckReader, gasPowerCheckReader, engine, store)
 }

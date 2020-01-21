@@ -7,19 +7,11 @@ package gossip
 import (
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/Fantom-foundation/go-lachesis/hash"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/app"
 )
 
-type TxPosition struct {
-	Block       idx.Block
-	Event       hash.Event
-	EventOffset uint32
-	BlockOffset uint32
-}
-
 // SetTxPosition stores transaction block and position.
-func (s *Store) SetTxPosition(txid common.Hash, position *TxPosition) {
+func (s *Store) SetTxPosition(txid common.Hash, position *app.TxPosition) {
 	s.set(s.table.TxPositions, txid.Bytes(), position)
 
 	// Add to LRU cache.
@@ -29,17 +21,17 @@ func (s *Store) SetTxPosition(txid common.Hash, position *TxPosition) {
 }
 
 // GetTxPosition returns stored transaction block and position.
-func (s *Store) GetTxPosition(txid common.Hash) *TxPosition {
+func (s *Store) GetTxPosition(txid common.Hash) *app.TxPosition {
 	// Get data from LRU cache first.
 	if s.cache.TxPositions != nil {
 		if c, ok := s.cache.TxPositions.Get(txid.String()); ok {
-			if b, ok := c.(*TxPosition); ok {
+			if b, ok := c.(*app.TxPosition); ok {
 				return b
 			}
 		}
 	}
 
-	txPosition, _ := s.get(s.table.TxPositions, txid.Bytes(), &TxPosition{}).(*TxPosition)
+	txPosition, _ := s.get(s.table.TxPositions, txid.Bytes(), &app.TxPosition{}).(*app.TxPosition)
 
 	// Add to LRU cache.
 	if txPosition != nil && s.cache.TxPositions != nil {

@@ -96,6 +96,7 @@ func TestGetBlock(t *testing.T) {
 	store.SetBlock(block)
 
 	reader := EvmStateReader{
+		app:      store.app,
 		store:    store,
 		engineMu: new(sync.RWMutex),
 	}

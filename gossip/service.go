@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enr"
 	"github.com/ethereum/go-ethereum/rpc"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/ethapi"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/basiccheck"
@@ -87,6 +88,7 @@ type Service struct {
 	serverPool *serverPool
 
 	// application
+	app                 *app.Application
 	node                *node.ServiceContext
 	store               *Store
 	engine              Consensus
@@ -117,6 +119,7 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 		Name: fmt.Sprintf("Node-%d", rand.Int()),
 
+		app:   app.NewApplication(&config.Net, store.app), // TODO: custom app
 		node:  ctx,
 		store: store,
 
@@ -126,6 +129,9 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 		Instance: logger.MakeInstance(),
 	}
+
+	// TODO: refactor it
+	svc.app.Gossip = &appdeps{svc}
 
 	// wrap engine
 	svc.engine = &HookedEngine{
@@ -286,6 +292,7 @@ func (s *Service) Stop() error {
 	// flush the state at exit, after all the routines stopped
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
+
 	return s.store.Commit(nil, true)
 }
 
