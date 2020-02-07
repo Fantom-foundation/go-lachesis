@@ -24,7 +24,9 @@ type (
 		TxPool  evmcore.TxPoolConfig
 		StoreConfig
 
-		TxIndex bool // Whether to disable indexing transactions and receipts or not
+		TxIndex             bool // Whether to enable indexing transactions and receipts or not
+		DecisiveEventsIndex bool // Whether to enable indexing events which decide blocks or not
+		EventLocalTimeIndex bool // Whether to enable indexing arrival time of events or not
 
 		// Protocol options
 		Protocol ProtocolConfig
@@ -57,12 +59,14 @@ type (
 		BlockCacheSize int
 		// Cache size for PackInfos.
 		PackInfosCacheSize int
-		// Cache size for Receipts.
-		ReceiptsCacheSize int
 		// Cache size for TxPositions.
 		TxPositionsCacheSize int
 		// Cache size for EpochStats.
 		EpochStatsCacheSize int
+
+		// NOTE: fields for config-file back compatibility
+		// Cache size for Receipts.
+		ReceiptsCacheSize int
 		// Cache size for Stakers.
 		StakersCacheSize int
 		// Cache size for Delegators.
@@ -78,7 +82,8 @@ func DefaultConfig(network lachesis.Config) Config {
 		TxPool:      evmcore.DefaultTxPoolConfig(),
 		StoreConfig: DefaultStoreConfig(),
 
-		TxIndex: true,
+		TxIndex:             true,
+		DecisiveEventsIndex: false,
 
 		Protocol: ProtocolConfig{
 			LatencyImportance:    60,
@@ -114,11 +119,8 @@ func DefaultStoreConfig() StoreConfig {
 		EventsHeadersCacheSize: 10000,
 		BlockCacheSize:         100,
 		PackInfosCacheSize:     100,
-		ReceiptsCacheSize:      100,
 		TxPositionsCacheSize:   1000,
 		EpochStatsCacheSize:    100,
-		DelegatorsCacheSize:    4000,
-		StakersCacheSize:       4000,
 	}
 }
 
@@ -129,10 +131,7 @@ func LiteStoreConfig() StoreConfig {
 		EventsHeadersCacheSize: 1000,
 		BlockCacheSize:         100,
 		PackInfosCacheSize:     100,
-		ReceiptsCacheSize:      100,
 		TxPositionsCacheSize:   100,
 		EpochStatsCacheSize:    100,
-		DelegatorsCacheSize:    400,
-		StakersCacheSize:       400,
 	}
 }

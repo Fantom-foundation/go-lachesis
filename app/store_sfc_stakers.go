@@ -1,4 +1,4 @@
-package gossip
+package app
 
 import (
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -17,6 +17,12 @@ func (s *Store) SetEpochValidators(epoch idx.Epoch, vv []sfctype.SfcStakerAndID)
 
 	// Add to LRU cache.
 	s.cache.Validators.Add(epoch, vv)
+}
+
+// HasEpochValidator returns true if validator exists
+func (s *Store) HasEpochValidator(epoch idx.Epoch, stakerID idx.StakerID) bool {
+	key := append(epoch.Bytes(), stakerID.Bytes()...)
+	return s.has(s.table.Validators, key)
 }
 
 // SetSfcStaker stores SfcStaker

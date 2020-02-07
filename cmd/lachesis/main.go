@@ -23,6 +23,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/debug"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/integration"
+	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
 	_ "github.com/Fantom-foundation/go-lachesis/version"
 )
 
@@ -224,9 +225,13 @@ func lachesisMain(ctx *cli.Context) error {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	cfg := makeAllConfigs(ctx)
 
+	// check errlock file
+	errlock.SetDefaultDatadir(cfg.Node.DataDir)
+	errlock.Check()
+
 	stack := makeConfigNode(ctx, &cfg.Node)
 
-	engine, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
+	engine, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
 	// configure emitter
@@ -241,7 +246,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	// the factory method approach is to support service restarts without relying on the
 	// individual implementations' support for such operations.
 	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine)
+		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine, adb)
 	}
 
 	if err := stack.Register(gossipService); err != nil {
