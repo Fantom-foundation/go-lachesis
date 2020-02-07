@@ -62,10 +62,7 @@ func (m *MockChecker) Overloaded() bool {
 }
 
 func (m *MockChecker) Enqueue(events inter.Events, onValidated heavycheck.OnValidatedFn) error {
-	const (
-		maxQueuedTasks = 128 // the maximum number of events to queue up
-		maxBatch       = 4   // Maximum number of events in an task batch (batch is divided if exceeded)
-	)
+	const maxBatch = 4
 
 	for start := 0; start < len(events); start += maxBatch {
 		end := len(events)

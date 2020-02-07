@@ -76,7 +76,7 @@ func newFetcher(fn FilterInterestedFn) *Fetcher {
 	ledgerID := net.EvmChainConfig().ChainID
 
 	hc := heavycheck.NewDefault(&net.Dag, heavyCheckReader, types.NewEIP155Signer(ledgerID))
-	return New(CallbackHandler{
+	return New(Callback{
 		PushEvent:      pushEventFn,
 		OnlyInterested: fn,
 		DropPeer:       dropPeerFn,

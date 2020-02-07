@@ -43,16 +43,16 @@ var (
 	errTerminated = errors.New("terminated")
 )
 
-// DropPeerFn is a callbackHandler type for dropping a peer detected as malicious.
+// DropPeerFn is a callback type for dropping a peer detected as malicious.
 type DropPeerFn func(peer string)
 
 // FilterInterestedFn returns only event which may be requested.
 type FilterInterestedFn func(ids hash.Events) hash.Events
 
-// EventsRequesterFn is a callbackHandler type for sending a event retrieval request.
+// EventsRequesterFn is a callback type for sending a event retrieval request.
 type EventsRequesterFn func(hash.Events) error
 
-// PushEventFn is a callbackHandler type to connect a received event
+// PushEventFn is a callback type to connect a received event
 type PushEventFn func(e *inter.Event, peer string)
 
 // inject represents a schedules import operation.
@@ -89,7 +89,7 @@ type Fetcher struct {
 	quit   chan struct{}
 
 	// Callbacks
-	callbackHandler CallbackHandler
+	callbackHandler Callback
 
 	// Announce states
 	stateMu   utils.SpinLock                // Protects announces and announced
@@ -102,7 +102,7 @@ type Fetcher struct {
 	logger.Periodic
 }
 
-type CallbackHandler struct {
+type Callback struct {
 	PushEvent      PushEventFn
 	OnlyInterested FilterInterestedFn
 	DropPeer       DropPeerFn
@@ -112,7 +112,7 @@ type CallbackHandler struct {
 }
 
 // New creates a event fetcher to retrieve events based on hash announcements.
-func New(ch CallbackHandler) *Fetcher {
+func New(ch Callback) *Fetcher {
 	loggerInstance := logger.MakeInstance()
 	return &Fetcher{
 		notify:          make(chan *announcesBatch, maxQueuedAnns),

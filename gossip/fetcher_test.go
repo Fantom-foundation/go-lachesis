@@ -22,7 +22,7 @@ type TestValidatorsPubKeys struct {
 var tBuff = new(tBuffer)
 
 func newFetcher(fn fetcher.FilterInterestedFn, hc *fetcher.MockChecker, fc func(*inter.Event) error, t *testing.T) *fetcher.Fetcher {
-	return fetcher.New(fetcher.CallbackHandler{
+	return fetcher.New(fetcher.Callback{
 		PushEvent:      pushEventFn,
 		OnlyInterested: fn,
 		DropPeer:       dropPeerFn,
