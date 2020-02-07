@@ -40,12 +40,12 @@ type Config struct {
 	MinStartupGas      uint64
 }
 
-// Checker which checks gas power
+// HeavyCheck which checks gas power
 type Checker struct {
 	reader DagReader
 }
 
-// New Checker for gas power
+// New HeavyCheck for gas power
 func New(reader DagReader) *Checker {
 	return &Checker{
 		reader: reader,

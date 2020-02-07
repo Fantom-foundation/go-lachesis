@@ -21,7 +21,7 @@ type DagReader interface {
 	GetEpochValidators() (*pos.Validators, idx.Epoch)
 }
 
-// Checker which require only current epoch info
+// HeavyCheck which require only current epoch info
 type Checker struct {
 	config *lachesis.DagConfig
 	reader DagReader

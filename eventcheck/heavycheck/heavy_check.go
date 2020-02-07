@@ -28,7 +28,7 @@ const (
 )
 
 // OnValidatedFn is a callback type for notifying about validation result.
-type OnValidatedFn func(*TaskData)
+type OnValidatedFn func(ArbitraryTaskData)
 
 // DagReader is accessed by the validator to get the current state.
 type DagReader interface {
@@ -46,13 +46,6 @@ type Checker struct {
 	tasksQ chan *TaskData
 	quit   chan struct{}
 	wg     sync.WaitGroup
-}
-
-type TaskData struct {
-	Events inter.Events // events to validate
-	Result []error      // resulting errors of events, nil if ok
-
-	onValidated OnValidatedFn
 }
 
 // NewDefault uses N-1 threads
@@ -124,6 +117,7 @@ func (v *Checker) Validate(e *inter.Event) error {
 	}
 	// stakerID
 	addr, ok := addrs[e.Creator]
+
 	if !ok {
 		return epochcheck.ErrAuth
 	}

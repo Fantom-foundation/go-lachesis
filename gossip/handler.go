@@ -205,7 +205,7 @@ func (pm *ProtocolManager) makeFetcher(checkers *eventcheck.Checkers) (*fetcher.
 		Check: bufferedCheck,
 	})
 
-	newFetcher := fetcher.New(fetcher.Callback{
+	newFetcher := fetcher.New(fetcher.CallbackHandler{
 		PushEvent:      buffer.PushEvent,
 		OnlyInterested: pm.onlyInterestedEvents,
 		DropPeer:       pm.removePeer,

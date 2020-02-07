@@ -16,7 +16,7 @@ var (
 	ErrPastTime        = errors.New("event has lower claimed time than self-parent")
 )
 
-// Checker which require only parents list + current epoch info
+// HeavyCheck which require only parents list + current epoch info
 type Checker struct {
 	config *lachesis.DagConfig
 }
