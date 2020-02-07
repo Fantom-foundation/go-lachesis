@@ -83,7 +83,7 @@ type ValidatorsPubKeys struct {
 	Addresses map[idx.StakerID]common.Address
 }
 
-// HeavyCheckReader is a helper to run heavy power checks
+// Checker is a helper to run heavy power checks
 type HeavyCheckReader struct {
 	Addrs atomic.Value
 }

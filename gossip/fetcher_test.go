@@ -27,7 +27,6 @@ func newFetcher(fn fetcher.FilterInterestedFn, hc *fetcher.MockChecker, fc func(
 		OnlyInterested: fn,
 		DropPeer:       dropPeerFn,
 		FirstCheck:     fc,
-		//HeavyCheck:     heavyCheck,
 		HeavyCheck: hc,
 	})
 }
