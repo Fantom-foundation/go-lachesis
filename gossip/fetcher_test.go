@@ -51,10 +51,6 @@ func filterInterestedFnEmpty(ids hash.Events) hash.Events {
 	return nil
 }
 
-func emptyInterestedFn(ids hash.Events) hash.Events {
-	return nil
-}
-
 func eventsRequesterFn(hash.Events) error {
 	return nil
 }
@@ -144,7 +140,7 @@ func runTestEnqueue(f *fetcher.Fetcher, testData enqueueTestCase, t *testing.T) 
 	f.Start()
 	runtime.Gosched() // we schedule every time after a call to a function with goroutine
 
-	f.Enqueue(testData.peer, testData.inEvents, testData.t, testData.fetchEvents)
+	err := f.Enqueue(testData.peer, testData.inEvents, testData.t, testData.fetchEvents)
 	runtime.Gosched()
 
 	f.Stop()
@@ -152,12 +148,15 @@ func runTestEnqueue(f *fetcher.Fetcher, testData enqueueTestCase, t *testing.T) 
 
 	time.Sleep(time.Millisecond * time.Duration(len(testData.inEvents))) // we cannot watch channel queue thus it is a private var. so we just wait for goroutine to handle the queue
 
-	if reflect.ValueOf(testData.checkFn).Pointer() == reflect.ValueOf(firstCheckWithErr).Pointer() {
+	if funcIsFirstCheckWithErr(testData.checkFn) {
 		require.Equal(t, 0, len(tBuff.events))
+		if len(testData.inEvents) > 0 && !funcIsInterestedFnEmpty(testData.filterInterested) {
+			require.NotNil(t, err)
+		}
 		return
 	}
 
-	if reflect.ValueOf(testData.filterInterested).Pointer() == reflect.ValueOf(filterInterestedFnEmpty).Pointer() {
+	if funcIsInterestedFnEmpty(testData.filterInterested) {
 		require.Equal(t, 0, len(tBuff.events))
 		return
 	}
@@ -168,4 +167,13 @@ func runTestEnqueue(f *fetcher.Fetcher, testData enqueueTestCase, t *testing.T) 
 	}
 
 	require.Equal(t, len(testData.inEvents), len(tBuff.events[testData.peer]))
+	require.Nil(t, err)
+}
+
+func funcIsInterestedFnEmpty(f fetcher.FilterInterestedFn) bool {
+	return reflect.ValueOf(f).Pointer() == reflect.ValueOf(filterInterestedFnEmpty).Pointer()
+}
+
+func funcIsFirstCheckWithErr(f func(*inter.Event) error) bool {
+	return reflect.ValueOf(f).Pointer() == reflect.ValueOf(firstCheckWithErr).Pointer()
 }

@@ -159,7 +159,8 @@ func generateNotificationTestCases() []notifiationTestCase {
 func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 	f.Start()
 	f.announces[testData.peer] = testData.announcesNum
-	f.Notify(testData.peer, testData.events, testData.time, testData.requesterFn)
+	err := f.Notify(testData.peer, testData.events, testData.time, testData.requesterFn)
+	require.Nil(t, err)
 	runtime.Gosched()
 	f.Stop()
 	runtime.Gosched()
@@ -182,10 +183,6 @@ func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 		return
 	}
 
-	if reflect.ValueOf(testData.requesterFn).Pointer() == reflect.ValueOf(testEventsRequesterFnWithErr).Pointer() {
-		//should an error lead to appending event to "fetching?"
-	}
-
 	if time.Since(testData.time) > fetchTimeout {
 		require.Equal(t, 0, len(f.fetching))
 		return
@@ -193,11 +190,10 @@ func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 
 	eventsMaxNum := len(testData.events)
 	eventsActualNum := eventsMaxNum
-	annTotalNum := eventsMaxNum + testData.announcesNum
 	if eventsMaxNum > maxAnnounceBatch {
 		eventsActualNum = maxAnnounceBatch
 	}
-	annTotalNum = eventsActualNum + testData.announcesNum
+	annTotalNum := eventsActualNum + testData.announcesNum
 	if len(testData.events)+testData.announcesNum > hashLimit {
 		if annTotalNum > hashLimit {
 			require.Equal(t, 0, len(f.fetching))
