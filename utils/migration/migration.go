@@ -1,5 +1,12 @@
 package migration
 
+import "github.com/Fantom-foundation/go-lachesis/hash"
+
+const (
+	hashAppName = "lachesis"
+	hashSalt = "Heuhax&Walv9"
+)
+
 // Implementation for DbMigration object
 type Migration struct {
 	id string
@@ -8,6 +15,10 @@ type Migration struct {
 }
 
 func New(id string, prev *Migration, runFunc func() error) *Migration {
+	if id == "" {
+		id = hashAppName+"?"+hash.FromBytes([]byte(prev.id + hashSalt)).Hex()
+	}
+
 	return &Migration{
 		id:   id,
 		prev: prev,
@@ -15,12 +26,12 @@ func New(id string, prev *Migration, runFunc func() error) *Migration {
 	}
 }
 
-func (m *Migration) New(id string, runFunc func() error) *Migration {
-	return &Migration{
-		id:   id,
-		prev: m,
-		run:  runFunc,
-	}
+func (m *Migration) New(runFunc func() error) *Migration {
+	return New("", m.prev, runFunc)
+}
+
+func (m *Migration) NewNamed(id string, runFunc func() error) *Migration {
+	return New(id, m.prev, runFunc)
 }
 
 func (m *Migration) Id() string {

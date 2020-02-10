@@ -8,13 +8,15 @@ func List() *migration.Migration {
 
 		  return migration.New("init", nil, func()error{
 				return nil
-			}).New("20200207120000 <migration description>", func()error{
+			}).NewNamed("20200207120000 <migration description>", func()error{
 				... // Some actions for migrations
 				return err
-			}).New("20200208120000 <migration description>", func()error{
+			}).New(func()error{
+				// If no NewNamed call - id generated automatically
+				// If you use several sequenced migrations with New(), you can not change it in future
 				... // Some actions for migrations
 				return err
-			}).New("20200209120000 <migration description>", func()error{
+			}).NewNamed("20200209120000 <migration description>", func()error{
 				... // Some actions for migrations
 				return err
 			})

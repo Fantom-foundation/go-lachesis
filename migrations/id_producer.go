@@ -1,17 +1,17 @@
 package migrations
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/pkg/errors"
 )
 
 // Flushable id implementation
 type FlushableIdProducer struct {
-	dbKey    *flushable.Flushable
+	dbKey    kvdb.KeyValueStore		`table:"I"`
 	keyBytes []byte
 }
 
-func NewFlushableIdProducer(db *flushable.Flushable, key string) *FlushableIdProducer {
+func NewFlushableIdProducer(db kvdb.KeyValueStore, key string) *FlushableIdProducer {
 	return &FlushableIdProducer{
 		dbKey:    db,
 		keyBytes: []byte(key),
