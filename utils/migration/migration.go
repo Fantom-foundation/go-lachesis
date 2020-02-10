@@ -2,10 +2,15 @@ package migration
 
 import "github.com/Fantom-foundation/go-lachesis/hash"
 
-const (
-	hashAppName = "lachesis"
-	hashSalt = "Heuhax&Walv9"
+var (
+	hashAppName string
+	hashSalt string
 )
+
+func Init(appName, salt string) {
+	hashAppName = appName
+	hashSalt = salt
+}
 
 // Implementation for DbMigration object
 type Migration struct {

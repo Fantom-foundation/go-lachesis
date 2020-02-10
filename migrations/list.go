@@ -3,6 +3,9 @@ package migrations
 import "github.com/Fantom-foundation/go-lachesis/utils/migration"
 
 func List() *migration.Migration {
+	// Init app-specific options for migration
+	migration.Init("lachesis", "Heuhax&Walv9")
+
 	/*
 		Example:
 
