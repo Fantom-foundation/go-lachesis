@@ -7,11 +7,6 @@ var (
 	hashSalt string
 )
 
-func Init(appName, salt string) {
-	hashAppName = appName
-	hashSalt = salt
-}
-
 // Implementation for DbMigration object
 type Migration struct {
 	id string
@@ -19,7 +14,20 @@ type Migration struct {
 	run func() error
 }
 
-func New(id string, prev *Migration, runFunc func() error) *Migration {
+func Init(appName, salt string) *Migration {
+	hashAppName = appName
+	hashSalt = salt
+
+	return newNamed("init", nil, func()error{
+		return nil
+	})
+}
+
+func newAuto(prev *Migration, runFunc func() error) *Migration {
+	return newNamed("", prev, runFunc)
+}
+
+func newNamed(id string, prev *Migration, runFunc func() error) *Migration {
 	if id == "" {
 		id = hashAppName+"?"+hash.FromBytes([]byte(prev.id + hashSalt)).Hex()
 	}
@@ -32,11 +40,11 @@ func New(id string, prev *Migration, runFunc func() error) *Migration {
 }
 
 func (m *Migration) New(runFunc func() error) *Migration {
-	return New("", m.prev, runFunc)
+	return newAuto(m.prev, runFunc)
 }
 
 func (m *Migration) NewNamed(id string, runFunc func() error) *Migration {
-	return New(id, m.prev, runFunc)
+	return newNamed(id, m.prev, runFunc)
 }
 
 func (m *Migration) Id() string {
