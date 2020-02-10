@@ -5,6 +5,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 
+// an interface that represents abstract logic for a checker object
 type Checker interface {
 	Start()
 	Stop()
@@ -12,22 +13,26 @@ type Checker interface {
 	Enqueue(events inter.Events, onValidated heavycheck.OnValidatedFn) error
 }
 
+// a mock Checker for a testing purposes
 type MockTestData struct {
 	events      inter.Events
 	resultError error
 	onValidated heavycheck.OnValidatedFn
 }
 
+// a constructor for a mock test data
 func NewMockTestData(resultError error) *MockTestData {
 	return &MockTestData{
 		resultError: resultError,
 	}
 }
 
+// getter for events
 func (m *MockTestData) GetEvents() inter.Events {
 	return m.events
 }
 
+// getter for result
 func (m *MockTestData) GetResult() []error {
 	var errors []error
 	for range m.events {
@@ -37,30 +42,37 @@ func (m *MockTestData) GetResult() []error {
 	return errors
 }
 
+// getter for onValidated callback
 func (m *MockTestData) GetOnValidatedFn() heavycheck.OnValidatedFn {
 	return m.onValidated
 }
 
+// a mock checker made for tests only
 type MockChecker struct {
 	resultErrors error
 }
 
+// a constructor for a mock checker
 func NewMockChecker(resultError error) *MockChecker {
 	return &MockChecker{resultErrors: resultError}
 }
 
+// empty implementation
 func (m *MockChecker) Start() {
 
 }
 
+// empty implementation
 func (m *MockChecker) Stop() {
 
 }
 
+// empty implementation
 func (m *MockChecker) Overloaded() bool {
 	return false
 }
 
+// enqueue made for tests only
 func (m *MockChecker) Enqueue(events inter.Events, onValidated heavycheck.OnValidatedFn) error {
 	const maxBatch = 4
 
