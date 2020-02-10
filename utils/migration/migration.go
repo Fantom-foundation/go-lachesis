@@ -33,7 +33,11 @@ func newAuto(prev *Migration, runFunc func() error) *Migration {
 func newNamed(id string, prev *Migration, runFunc func() error) *Migration {
 	if id == "" {
 		digest := sha256.New()
-		digest.Write([]byte(prev.id + hashSalt))
+		if prev != nil {
+			digest.Write([]byte(prev.id + hashSalt))
+		} else {
+			digest.Write([]byte(hashSalt))
+		}
 		bytes := digest.Sum(nil)
 		id = fmt.Sprintf("%s?%x", hashAppName, bytes)
 	}
@@ -46,11 +50,11 @@ func newNamed(id string, prev *Migration, runFunc func() error) *Migration {
 }
 
 func (m *Migration) New(runFunc func() error) *Migration {
-	return newAuto(m.prev, runFunc)
+	return newAuto(m, runFunc)
 }
 
 func (m *Migration) NewNamed(id string, runFunc func() error) *Migration {
-	return newNamed(id, m.prev, runFunc)
+	return newNamed(id, m, runFunc)
 }
 
 func (m *Migration) Id() string {

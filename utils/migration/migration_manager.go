@@ -26,11 +26,10 @@ func (mm *Manager) Run() error {
 	}
 
 	// Search last executed transaction
-	startMigration := mm.lastMigration
+
 	list := make([]*Migration, 0)
-	for startMigration != nil && string(curId) != startMigration.Id() {
+	for startMigration := mm.lastMigration; startMigration != nil && string(curId) != startMigration.Id(); startMigration = startMigration.Prev() {
 		list = append(list, startMigration)
-		startMigration = startMigration.Prev()
 	}
 
 	// Execute migrations from list in reverse order (first runed - last in list)
