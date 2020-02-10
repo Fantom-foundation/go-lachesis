@@ -1,6 +1,9 @@
 package migration
 
-import "github.com/Fantom-foundation/go-lachesis/hash"
+import (
+	"crypto/sha256"
+	"fmt"
+)
 
 var (
 	hashAppName string
@@ -29,7 +32,10 @@ func newAuto(prev *Migration, runFunc func() error) *Migration {
 
 func newNamed(id string, prev *Migration, runFunc func() error) *Migration {
 	if id == "" {
-		id = hashAppName+"?"+hash.FromBytes([]byte(prev.id + hashSalt)).Hex()
+		digest := sha256.New()
+		digest.Write([]byte(prev.id + hashSalt))
+		bytes := digest.Sum(nil)
+		id = fmt.Sprintf("%s?%x", hashAppName, bytes)
 	}
 
 	return &Migration{

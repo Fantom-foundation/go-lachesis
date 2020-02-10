@@ -1,8 +1,9 @@
 package migrations
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/pkg/errors"
+
+	"github.com/Fantom-foundation/go-lachesis/kvdb"
 )
 
 // Flushable id implementation
