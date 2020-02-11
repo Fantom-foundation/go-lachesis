@@ -2,16 +2,18 @@ package gossip
 
 import (
 	"errors"
-	"github.com/Fantom-foundation/go-lachesis/gossip/fetcher"
-	"github.com/Fantom-foundation/go-lachesis/hash"
-	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/require"
 	"reflect"
 	"runtime"
 	"testing"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
+
+	"github.com/Fantom-foundation/go-lachesis/gossip/fetcher"
+	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
 type TestValidatorsPubKeys struct {
@@ -27,7 +29,7 @@ func newFetcher(fn fetcher.FilterInterestedFn, hc *fetcher.MockChecker, fc func(
 		OnlyInterested: fn,
 		DropPeer:       dropPeerFn,
 		FirstCheck:     fc,
-		HeavyCheck: hc,
+		HeavyCheck:     hc,
 	})
 }
 
