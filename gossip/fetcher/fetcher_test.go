@@ -3,7 +3,6 @@ package fetcher
 import (
 	"errors"
 	"math/big"
-	"reflect"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -36,81 +35,68 @@ func (r *TestHeavyCheckReader) GetEpochPubKeys() (map[idx.StakerID]common.Addres
 	return auth.Addresses, auth.Epoch
 }
 
-func filterInterestedFn(ids hash.Events) hash.Events {
-	return ids
-}
-
-func emptyInterestedFn(ids hash.Events) hash.Events {
-	return nil
-}
-
 type notifiationTestCase struct {
-	peer               string
-	events             hash.Events
-	time               time.Time
-	requesterFn        func(hash.Events) error
-	announcesNum       int
-	interestedFilterFn FilterInterestedFn
+	peer          string
+	events        hash.Events
+	time          time.Time
+	requester     error
+	announcesNum  int
+	allInterested bool
 }
 
-func testEventsRequesterFn(hash.Events) error {
-	return nil
-}
-
-func testEventsRequesterFnWithErr(hash.Events) error {
-	return errors.New("some error text")
-}
-
-func pushEventFn(e *inter.Event, peer string) {
-
-}
-
-func dropPeerFn(peer string) {}
-
-func firstCheck(*inter.Event) error {
-	return nil
-}
-
-func newFetcher(fn FilterInterestedFn) *Fetcher {
+func newCallback() Callback {
 	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 	heavyCheckReader := &TestHeavyCheckReader{}
 	ledgerID := net.EvmChainConfig().ChainID
-
 	hc := heavycheck.NewDefault(&net.Dag, heavyCheckReader, types.NewEIP155Signer(ledgerID))
-	return New(Callback{
-		PushEvent:      pushEventFn,
-		OnlyInterested: fn,
-		DropPeer:       dropPeerFn,
-		FirstCheck:     firstCheck,
-		HeavyCheck:     &SyncChecker{hc},
-	})
+
+	return Callback{
+		OnlyInterested: func(ids hash.Events) hash.Events {
+			return ids
+		},
+		FirstCheck: func(*inter.Event) error {
+			return nil
+		},
+		HeavyCheck: &SyncChecker{hc},
+		PushEvent:  func(e *inter.Event, peer string) {},
+		DropPeer:   func(peer string) {},
+	}
 }
 
 func TestFetcher_Notification(t *testing.T) {
 	testCases := generateNotificationTestCases()
 
 	for _, v := range testCases {
-		f := newFetcher(v.interestedFilterFn)
+		c := newCallback()
+		if !v.allInterested {
+			c.OnlyInterested = func(ids hash.Events) hash.Events {
+				return nil
+			}
+		}
+		f := New(c)
 		runTestNotification(f, v, t)
 	}
 }
 
 func TestFetcher_NotArrived(t *testing.T) {
 	peer := "peer"
-	f := newFetcher(filterInterestedFn)
+
+	c := newCallback()
+	f := New(c)
+
 	event1 := hash.FakeEvent()
 	event2 := hash.FakeEvent()
 	batchOnTime := announcesBatch{
 		hashes:      []hash.Event{event1},
 		time:        time.Now(),
 		peer:        peer,
-		fetchEvents: testEventsRequesterFn,
+		fetchEvents: func(hash.Events) error { return nil },
 	}
 	batchLate := announcesBatch{
 		hashes:      []hash.Event{event2},
 		time:        time.Unix(0, 0),
 		peer:        peer,
-		fetchEvents: testEventsRequesterFn,
+		fetchEvents: func(hash.Events) error { return nil },
 	}
 
 	announceOnTime := oneAnnounce{batch: &batchOnTime, i: 0}
@@ -132,20 +118,25 @@ func TestFetcher_NotArrived(t *testing.T) {
 
 func generateNotificationTestCases() []notifiationTestCase {
 	var testCases []notifiationTestCase
-	var peerNames = []string{"", "peer"}
+
 	var eventNumbers = []int{0, 12, maxAnnounceBatch + 1}
 	var times = []time.Time{time.Now(), time.Unix(0, 0)}
-	var requeserFns = []EventsRequesterFn{testEventsRequesterFn, testEventsRequesterFnWithErr}
 	var announcesNums = []int{0, 12, hashLimit}
-	var filterFns = []FilterInterestedFn{filterInterestedFn, emptyInterestedFn}
 
-	for _, name := range peerNames {
+	for _, name := range []string{"", "peer"} {
 		for _, eventNum := range eventNumbers {
 			for _, t := range times {
-				for _, requesterFn := range requeserFns {
+				for _, requester := range []error{nil, errors.New("some error text")} {
 					for _, announcesNum := range announcesNums {
-						for _, filterFn := range filterFns {
-							n := notifiationTestCase{name, hash.FakeEvents(eventNum), t, requesterFn, announcesNum, filterFn}
+						for _, allInterested := range []bool{true, false} {
+							n := notifiationTestCase{
+								name,
+								hash.FakeEvents(eventNum),
+								t,
+								requester,
+								announcesNum,
+								allInterested,
+							}
 							testCases = append(testCases, n)
 						}
 					}
@@ -161,7 +152,10 @@ func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T)
 	defer f.callbackHandler.HeavyCheck.Stop()
 
 	f.announces[testData.peer] = testData.announcesNum
-	err := f.Notify(testData.peer, testData.events, testData.time, testData.requesterFn)
+	err := f.Notify(testData.peer, testData.events, testData.time,
+		func(hash.Events) error {
+			return testData.requester
+		})
 	require.Nil(t, err)
 
 	for len(f.notify) > 0 || len(f.inject) > 0 {
@@ -181,7 +175,7 @@ func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 		return
 	}
 
-	if reflect.ValueOf(testData.interestedFilterFn).Pointer() == reflect.ValueOf(emptyInterestedFn).Pointer() {
+	if !testData.allInterested {
 		require.Equal(t, 0, len(f.fetching))
 		return
 	}

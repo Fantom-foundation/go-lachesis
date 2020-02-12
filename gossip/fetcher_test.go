@@ -2,7 +2,6 @@ package gossip
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
@@ -117,29 +116,13 @@ func (w *fetcherWorld) Enqueue(events inter.Events, onValidated heavycheck.OnVal
 	})
 }
 
-func filterInterestedFn(ids hash.Events) hash.Events {
-	return ids
-}
-
-func filterInterestedFnEmpty(ids hash.Events) hash.Events {
-	return nil
-}
-
-func firstCheck(*inter.Event) error {
-	return nil
-}
-
-func firstCheckWithErr(*inter.Event) error {
-	return errors.New("some err")
-}
-
 type enqueueTestCase struct {
 	peer             string
 	mtdError         error
 	inEvents         inter.Events
 	t                time.Time
-	filterInterested fetcher.FilterInterestedFn
-	checkFn          func(*inter.Event) error
+	allInterested    bool
+	firstCheckResult error
 }
 
 func TestFetcher_Enqueue(t *testing.T) {
@@ -147,9 +130,28 @@ func TestFetcher_Enqueue(t *testing.T) {
 
 	for _, v := range testCases {
 		mc := fetcher.NewMockChecker(v.mtdError)
-		fworld := newFetcherWorld(v.filterInterested, v.checkFn, mc)
+
+		fworld := newFetcherWorld(
+			interested(v.allInterested),
+			firstCheck(v.firstCheckResult),
+			mc)
 		f := fetcher.New(fworld.Callback)
 		runTestEnqueue(t, f, v, fworld)
+	}
+}
+
+func interested(all bool) fetcher.FilterInterestedFn {
+	return func(ids hash.Events) hash.Events {
+		if all {
+			return ids
+		}
+		return nil
+	}
+}
+
+func firstCheck(err error) func(*inter.Event) error {
+	return func(*inter.Event) error {
+		return err
 	}
 }
 
@@ -159,22 +161,20 @@ func getEnqueueTestCases() []enqueueTestCase {
 	var mtdErrors = []error{nil, errors.New("ban err")}
 	var interEventsNum = []int{0, 1}
 	var times = []time.Time{time.Now(), time.Unix(0, 0)}
-	var filterFuncs = []fetcher.FilterInterestedFn{filterInterestedFn, filterInterestedFnEmpty}
-	var checkFuncs = []func(*inter.Event) error{firstCheck, firstCheckWithErr}
 
 	for _, peer := range peers {
 		for _, errs := range mtdErrors {
 			for _, iEventsNum := range interEventsNum {
 				for _, t := range times {
-					for _, checFn := range checkFuncs {
-						for _, filterFunc := range filterFuncs {
+					for _, firstCheckRes := range []error{nil, errors.New("some err")} {
+						for _, allInterested := range []bool{true, false} {
 							etc := enqueueTestCase{
 								peer,
 								errs,
 								makeInterEvents(iEventsNum),
 								t,
-								filterFunc,
-								checFn,
+								allInterested,
+								firstCheckRes,
 							}
 							testCases = append(testCases, etc)
 						}
@@ -206,15 +206,15 @@ func runTestEnqueue(t *testing.T, f *fetcher.Fetcher, testData enqueueTestCase, 
 		fworld.WaitFor(len(testData.inEvents)),
 		"not all the events were processed")
 
-	if funcIsFirstCheckWithErr(testData.checkFn) {
+	if testData.firstCheckResult != nil {
 		require.Equal(t, 0, len(fworld.events))
-		if len(testData.inEvents) > 0 && !funcIsInterestedFnEmpty(testData.filterInterested) {
+		if len(testData.inEvents) > 0 && testData.allInterested {
 			require.NotNil(t, err)
 		}
 		return
 	}
 
-	if funcIsInterestedFnEmpty(testData.filterInterested) {
+	if !testData.allInterested {
 		require.Equal(t, 0, len(fworld.events))
 		return
 	}
@@ -226,12 +226,4 @@ func runTestEnqueue(t *testing.T, f *fetcher.Fetcher, testData enqueueTestCase, 
 
 	require.Equal(t, len(testData.inEvents), len(fworld.events[testData.peer]))
 	require.Nil(t, err)
-}
-
-func funcIsInterestedFnEmpty(f fetcher.FilterInterestedFn) bool {
-	return reflect.ValueOf(f).Pointer() == reflect.ValueOf(filterInterestedFnEmpty).Pointer()
-}
-
-func funcIsFirstCheckWithErr(f func(*inter.Event) error) bool {
-	return reflect.ValueOf(f).Pointer() == reflect.ValueOf(firstCheckWithErr).Pointer()
 }
