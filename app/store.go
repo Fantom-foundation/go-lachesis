@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
 	"log"
 	"sync"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/Fantom-foundation/go-lachesis/migrations"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
@@ -138,7 +138,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for app store: "+err.Error())
+		log.Panic("Error when run migrations for app store: " + err.Error())
 	}
 
 	return s

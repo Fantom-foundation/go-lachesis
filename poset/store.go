@@ -2,8 +2,6 @@ package poset
 
 import (
 	"fmt"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 	"log"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +14,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/Fantom-foundation/go-lachesis/migrations"
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // Store is a poset persistent storage working over parent key-value database.
@@ -85,7 +85,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for poset store: "+err.Error())
+		log.Panic("Error when run migrations for poset store: " + err.Error())
 	}
 
 	return s

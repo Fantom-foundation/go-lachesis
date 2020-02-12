@@ -3,8 +3,6 @@ package gossip
 import (
 	"bytes"
 	"fmt"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 	"log"
 	"sync"
 	"time"
@@ -20,6 +18,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/Fantom-foundation/go-lachesis/migrations"
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // Store is a node persistent storage working over physical key-value database.
@@ -131,7 +131,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for gossip store: "+err.Error())
+		log.Panic("Error when run migrations for gossip store: " + err.Error())
 	}
 
 	return s
