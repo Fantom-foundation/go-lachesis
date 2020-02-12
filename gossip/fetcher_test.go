@@ -5,20 +5,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/heavycheck"
 	"github.com/Fantom-foundation/go-lachesis/gossip/fetcher"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
-
-type TestValidatorsPubKeys struct {
-	Epoch     idx.Epoch
-	Addresses map[idx.StakerID]common.Address
-}
 
 // fetcherWorld controls fetcher's environment for tests
 type fetcherWorld struct {
