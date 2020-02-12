@@ -23,7 +23,7 @@ type TestValidatorsPubKeys struct {
 
 var tBuff = new(tBuffer)
 
-func newFetcher(fn fetcher.FilterInterestedFn, hc *fetcher.MockChecker, fc func(*inter.Event) error, t *testing.T) *fetcher.Fetcher {
+func newFetcher(fn fetcher.FilterInterestedFn, hc *fetcher.MockChecker, fc func(*inter.Event) error) *fetcher.Fetcher {
 	return fetcher.New(fetcher.Callback{
 		PushEvent:      pushEventFn,
 		OnlyInterested: fn,
@@ -85,7 +85,7 @@ func TestFetcher_Enqueue(t *testing.T) {
 
 	for _, v := range testCases {
 		mc := fetcher.NewMockChecker(v.mtdError)
-		f := newFetcher(v.filterInterested, mc, v.checkFn, t)
+		f := newFetcher(v.filterInterested, mc, v.checkFn)
 		runTestEnqueue(f, v, t)
 		tBuff.Flush()
 	}
