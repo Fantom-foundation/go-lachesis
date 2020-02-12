@@ -1,5 +1,15 @@
 package migrations
 
+/*
+	This is example how you can create migrations chain for run over MigrationManager
+	Migration chain from this file NOWHERE RUNING!
+
+	Real migration chains placed in store files:
+		app/store.go
+		poset/store.go
+		gossip/store.go
+*/
+
 import "github.com/Fantom-foundation/go-lachesis/utils/migration"
 
 func List() *migration.Migration {

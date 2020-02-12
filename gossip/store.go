@@ -3,6 +3,9 @@ package gossip
 import (
 	"bytes"
 	"fmt"
+	"github.com/Fantom-foundation/go-lachesis/migrations"
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
+	"log"
 	"sync"
 	"time"
 
@@ -70,6 +73,29 @@ type Store struct {
 	logger.Instance
 }
 
+func ManualMigrations(s *Store) *migration.Migration {
+	return migration.Init("lachesis-gossip-store", "Heuhax&Walv9")
+
+	/*
+		Example:
+
+		  return migration.Init("lachesis", "Heuhax&Walv9"
+			).NewNamed("20200207120000 <migration description>", func()error{
+				... // Some actions for migrations
+				return err
+			}).New(func()error{
+				// If no NewNamed call - id generated automatically (recommend)
+				// If you use several sequenced migrations with new(), you can not change it in future
+				... // Some actions for migrations
+				return err
+			}).NewNamed("20200209120000 <migration description>", func()error{
+				... // Some actions for migrations
+				return err
+			})
+			...
+	*/
+}
+
 // NewMemStore creates store over memory map.
 func NewMemStore() *Store {
 	mems := memorydb.NewProducer("")
@@ -100,6 +126,13 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	})
 
 	s.initCache()
+
+	idProducer := migrations.NewFlushableIdProducer(flushable.Wrap(s.mainDb), "gossip_store_migrations")
+	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
+	err := migrationManager.Run()
+	if err != nil {
+		log.Panic("Error when run migrations for gossip store: "+err.Error())
+	}
 
 	return s
 }
