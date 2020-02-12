@@ -4,7 +4,6 @@ import (
 	"errors"
 	"math/big"
 	"reflect"
-	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -83,13 +82,12 @@ func newFetcher(fn FilterInterestedFn) *Fetcher {
 		OnlyInterested: fn,
 		DropPeer:       dropPeerFn,
 		FirstCheck:     firstCheck,
-		HeavyCheck:     hc,
+		HeavyCheck:     &SyncChecker{hc},
 	})
 }
 
 func TestFetcher_Notification(t *testing.T) {
-	runtime.GOMAXPROCS(1)
-	var testCases = generateNotificationTestCases()
+	testCases := generateNotificationTestCases()
 
 	for _, v := range testCases {
 		f := newFetcher(v.interestedFilterFn)
@@ -98,8 +96,6 @@ func TestFetcher_Notification(t *testing.T) {
 }
 
 func TestFetcher_NotArrived(t *testing.T) {
-	runtime.GOMAXPROCS(1)
-	//mc := NewMockChecker(nil)
 	peer := "peer"
 	f := newFetcher(filterInterestedFn)
 	event1 := hash.FakeEvent()
@@ -119,10 +115,12 @@ func TestFetcher_NotArrived(t *testing.T) {
 
 	announceOnTime := oneAnnounce{batch: &batchOnTime, i: 0}
 	announceLate := oneAnnounce{batch: &batchLate, i: 0}
-	f.Start()
+
 	f.announced[event1] = []*oneAnnounce{&announceOnTime}
 	f.announced[event2] = []*oneAnnounce{&announceLate}
-	time.Sleep(time.Millisecond)
+
+	f.processNotifications()
+
 	_, ok := f.fetching[event1]
 	require.True(t, ok)
 
@@ -159,16 +157,19 @@ func generateNotificationTestCases() []notifiationTestCase {
 }
 
 func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T) {
-	f.Start()
+	f.callbackHandler.HeavyCheck.Start()
+	defer f.callbackHandler.HeavyCheck.Stop()
+
 	f.announces[testData.peer] = testData.announcesNum
 	err := f.Notify(testData.peer, testData.events, testData.time, testData.requesterFn)
 	require.Nil(t, err)
-	runtime.Gosched()
-	f.Stop()
-	runtime.Gosched()
+
+	for len(f.notify) > 0 || len(f.inject) > 0 {
+		f.processNotifications()
+	}
+	f.cleanupExpiredEvents()
 
 	checkState(f, testData, t)
-
 }
 
 func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {

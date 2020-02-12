@@ -84,9 +84,10 @@ type oneAnnounce struct {
 // and scheduling them for retrieval.
 type Fetcher struct {
 	// Various event channels
-	notify chan *announcesBatch
-	inject chan *inject
-	quit   chan struct{}
+	notify     chan *announcesBatch
+	inject     chan *inject
+	quit       chan struct{}
+	fetchTimer *time.Timer
 
 	// Callbacks
 	callbackHandler Callback
@@ -118,6 +119,7 @@ func New(ch Callback) *Fetcher {
 		notify:          make(chan *announcesBatch, maxQueuedAnns),
 		inject:          make(chan *inject, maxQueuedInjects),
 		quit:            make(chan struct{}),
+		fetchTimer:      time.NewTimer(0),
 		announces:       make(map[string]int),
 		announced:       make(map[hash.Event][]*oneAnnounce),
 		fetching:        make(map[hash.Event]*oneAnnounce),
@@ -132,7 +134,11 @@ func New(ch Callback) *Fetcher {
 // hash notifications and event fetches until termination requested.
 func (f *Fetcher) Start() {
 	f.callbackHandler.HeavyCheck.Start()
-	go f.loop()
+
+	go func() {
+		for f.processNotifications() {
+		}
+	}()
 }
 
 // Stop terminates the announcement based synchroniser, canceling all pending
@@ -177,7 +183,7 @@ func (f *Fetcher) setAnnounced(id hash.Event, announces []*oneAnnounce) {
 
 // Notify announces the fetcher of the potential availability of a new event in
 // the network.
-func (f *Fetcher) Notify(peer string, hashes hash.Events, time time.Time, fetchEvents EventsRequesterFn) error {
+func (f *Fetcher) Notify(peer string, hashes hash.Events, t time.Time, fetchEvents EventsRequesterFn) error {
 	// divide big batch into smaller ones
 	for start := 0; start < len(hashes); start += maxAnnounceBatch {
 		end := len(hashes)
@@ -186,7 +192,7 @@ func (f *Fetcher) Notify(peer string, hashes hash.Events, time time.Time, fetchE
 		}
 		op := &announcesBatch{
 			hashes:      hashes[start:end],
-			time:        time,
+			time:        t,
 			peer:        peer,
 			fetchEvents: fetchEvents,
 		}
@@ -197,6 +203,7 @@ func (f *Fetcher) Notify(peer string, hashes hash.Events, time time.Time, fetchE
 			return errTerminated
 		}
 	}
+
 	return nil
 }
 
@@ -268,161 +275,164 @@ func (f *Fetcher) enqueue(peer string, events inter.Events, time time.Time, fetc
 	return nil
 }
 
-// Loop is the main fetcher loop, checking and processing various notifications
-func (f *Fetcher) loop() {
-	// Iterate the event fetching until a quit is requested
-	fetchTimer := time.NewTimer(0)
+// processNotifications is the main fetcher loop, checking and processing various notifications
+func (f *Fetcher) processNotifications() (ok bool) {
+	// Clean up any expired event fetches
+	f.cleanupExpiredEvents()
 
-	for {
-		// Clean up any expired event fetches
-		for id, announce := range f.fetching {
-			if time.Since(announce.batch.time) > fetchTimeout {
-				f.forgetHash(id)
-				f.Periodic.Debug(time.Second, fmt.Sprintf("hash with id %v is forgoten", id))
+	// Wait for an outside event to occur
+	select {
+	case <-f.quit:
+		// Fetcher terminating, abort all operations
+		return
+
+	case notification := <-f.notify:
+		// A event was announced, make sure the peer isn't DOSing us
+		propAnnounceInMeter.Update(int64(len(notification.hashes)))
+
+		if len(notification.peer) == 0 {
+			f.Periodic.Debug(time.Second, "peer string cannot be empty")
+			break
+		}
+
+		count := f.announces[notification.peer]
+		if count+len(notification.hashes) > hashLimit {
+			f.Periodic.Debug(time.Second, "Peer exceeded outstanding announces", "peer", notification.peer, "limit", hashLimit, "total announces", count+len(notification.hashes))
+			propAnnounceDOSMeter.Update(1)
+			break
+		}
+
+		first := len(f.fetching) == 0
+
+		// filter only not known
+		notification.hashes = f.callbackHandler.OnlyInterested(notification.hashes)
+		if len(notification.hashes) == 0 {
+			break
+		}
+
+		toFetch := make(hash.Events, 0, len(notification.hashes))
+		for i, id := range notification.hashes {
+			// add new announcement. other peers may already have announced it, so it's an array
+			ann := &oneAnnounce{
+				batch: notification,
+				i:     i,
+			}
+			f.setAnnounced(id, append(f.announced[id], ann))
+			count++ // f.announced and f.announces must be synced!
+			// if it wasn't announced before, then schedule for fetching this time
+			if _, ok := f.fetching[id]; !ok {
+				f.fetching[id] = ann
+				f.fetchingTime[id] = notification.time
+				toFetch.Add(id)
 			}
 		}
-		// Wait for an outside event to occur
-		select {
-		case <-f.quit:
-			// Fetcher terminating, abort all operations
-			return
+		f.setAnnounces(notification.peer, count)
 
-		case notification := <-f.notify:
-			// A event was announced, make sure the peer isn't DOSing us
-			propAnnounceInMeter.Update(int64(len(notification.hashes)))
-
-			if len(notification.peer) == 0 {
-				f.Periodic.Debug(time.Second, "peer string cannot be empty")
-				break
+		if len(toFetch) != 0 {
+			err := notification.fetchEvents(toFetch)
+			if err != nil {
+				f.Periodic.Warn(time.Second, "Events request error", "peer", notification.peer, "err", err)
 			}
+		}
 
-			count := f.announces[notification.peer]
-			if count+len(notification.hashes) > hashLimit {
-				f.Periodic.Debug(time.Second, "Peer exceeded outstanding announces", "peer", notification.peer, "limit", hashLimit, "total announces", count+len(notification.hashes))
-				propAnnounceDOSMeter.Update(1)
-				break
-			}
+		if first && len(f.fetching) != 0 {
+			f.rescheduleFetch()
+		}
 
-			first := len(f.fetching) == 0
-
-			// filter only not known
-			notification.hashes = f.callbackHandler.OnlyInterested(notification.hashes)
-			if len(notification.hashes) == 0 {
-				break
-			}
-
-			toFetch := make(hash.Events, 0, len(notification.hashes))
-			for i, id := range notification.hashes {
-				// add new announcement. other peers may already have announced it, so it's an array
-				ann := &oneAnnounce{
-					batch: notification,
-					i:     i,
+	case op := <-f.inject:
+		// A direct event insertion was requested, try and fill any pending gaps
+		parents := make(hash.Events, 0, len(op.events))
+		propBroadcastInMeter.Update(int64(len(op.events)))
+		for _, e := range op.events {
+			// fetch unknown parents
+			for _, p := range e.Parents {
+				if _, ok := f.fetching[p]; ok {
+					continue
 				}
-				f.setAnnounced(id, append(f.announced[id], ann))
-				count++ // f.announced and f.announces must be synced!
-				// if it wasn't announced before, then schedule for fetching this time
-				if _, ok := f.fetching[id]; !ok {
-					f.fetching[id] = ann
-					f.fetchingTime[id] = notification.time
-					toFetch.Add(id)
-				}
+				parents.Add(p)
 			}
-			f.setAnnounces(notification.peer, count)
 
-			if len(toFetch) != 0 {
-				err := notification.fetchEvents(toFetch)
+			f.callbackHandler.PushEvent(e, op.peer)
+			f.forgetHash(e.Hash())
+		}
+
+		parents = f.callbackHandler.OnlyInterested(parents)
+		if len(parents) != 0 && !f.OverloadedPeer(op.peer) {
+			// f.Notify will filter onlyInterested parents - this way, we won't request the events from op.events
+			_ = f.Notify(op.peer, parents, op.time, op.fetchEvents)
+		}
+
+	case now := <-f.fetchTimer.C:
+		// At least one event's timer ran out, check for needing retrieval
+		request := make(map[string]hash.Events)
+
+		// Find not not arrived events
+		all := make(hash.Events, 0, len(f.announced))
+		for e := range f.announced {
+			all.Add(e)
+		}
+		notArrived := f.callbackHandler.OnlyInterested(all)
+
+		for _, e := range notArrived {
+			// Re-fetch not arrived events
+			announces := f.announced[e]
+
+			oldest := announces[0] // first is the oldest
+			if time.Since(oldest.batch.time) > forgetTimeout {
+				// Forget too old announces
+				f.forgetHash(e)
+			} else if time.Since(f.fetchingTime[e]) > arriveTimeout-gatherSlack {
+				// The event still didn't arrive, queue for fetching from a random peer
+				announce := announces[rand.Intn(len(announces))]
+				request[announce.batch.peer] = append(request[announce.batch.peer], e)
+				f.fetching[e] = announce
+				f.fetchingTime[e] = now
+			}
+		}
+
+		// Forget arrived events.
+		// It's possible to get here only if event arrived out-of-fetcher, via another channel.
+		// Also may be possible after a change of an epoch.
+		notArrivedM := notArrived.Set()
+		for _, e := range all {
+			if !notArrivedM.Contains(e) {
+				f.forgetHash(e)
+			}
+		}
+
+		// Send out all event requests
+		for peer, hashes := range request {
+			f.Log.Trace("Fetching scheduled events", "peer", peer, "count", len(hashes))
+
+			// Create a closure of the fetch and schedule in on a new thread
+			fetchEvents, hashes := f.fetching[hashes[0]].batch.fetchEvents, hashes
+			go func(peer string) {
+				eventFetchMeter.Update(int64(len(hashes)))
+				err := fetchEvents(hashes)
 				if err != nil {
-					f.Periodic.Warn(time.Second, "Events request error", "peer", notification.peer, "err", err)
+					f.Periodic.Warn(time.Second, "Events request error", "peer", peer, "err", err)
 				}
-			}
+			}(peer)
+		}
+		// Schedule the next fetch if events are still pending
+		f.rescheduleFetch()
+	}
 
-			if first && len(f.fetching) != 0 {
-				f.rescheduleFetch(fetchTimer)
-			}
+	ok = true
+	return
+}
 
-		case op := <-f.inject:
-			// A direct event insertion was requested, try and fill any pending gaps
-			parents := make(hash.Events, 0, len(op.events))
-			propBroadcastInMeter.Update(int64(len(op.events)))
-			for _, e := range op.events {
-				// fetch unknown parents
-				for _, p := range e.Parents {
-					if _, ok := f.fetching[p]; ok {
-						continue
-					}
-					parents.Add(p)
-				}
-
-				f.callbackHandler.PushEvent(e, op.peer)
-				f.forgetHash(e.Hash())
-			}
-
-			parents = f.callbackHandler.OnlyInterested(parents)
-			if len(parents) != 0 && !f.OverloadedPeer(op.peer) {
-				// f.Notify will filter onlyInterested parents - this way, we won't request the events from op.events
-				_ = f.Notify(op.peer, parents, op.time, op.fetchEvents)
-			}
-
-		case now := <-fetchTimer.C:
-			// At least one event's timer ran out, check for needing retrieval
-			request := make(map[string]hash.Events)
-
-			// Find not not arrived events
-			all := make(hash.Events, 0, len(f.announced))
-			for e := range f.announced {
-				all.Add(e)
-			}
-			notArrived := f.callbackHandler.OnlyInterested(all)
-
-			for _, e := range notArrived {
-				// Re-fetch not arrived events
-				announces := f.announced[e]
-
-				oldest := announces[0] // first is the oldest
-				if time.Since(oldest.batch.time) > forgetTimeout {
-					// Forget too old announces
-					f.forgetHash(e)
-				} else if time.Since(f.fetchingTime[e]) > arriveTimeout-gatherSlack {
-					// The event still didn't arrive, queue for fetching from a random peer
-					announce := announces[rand.Intn(len(announces))]
-					request[announce.batch.peer] = append(request[announce.batch.peer], e)
-					f.fetching[e] = announce
-					f.fetchingTime[e] = now
-				}
-			}
-
-			// Forget arrived events.
-			// It's possible to get here only if event arrived out-of-fetcher, via another channel.
-			// Also may be possible after a change of an epoch.
-			notArrivedM := notArrived.Set()
-			for _, e := range all {
-				if !notArrivedM.Contains(e) {
-					f.forgetHash(e)
-				}
-			}
-
-			// Send out all event requests
-			for peer, hashes := range request {
-				f.Log.Trace("Fetching scheduled events", "peer", peer, "count", len(hashes))
-
-				// Create a closure of the fetch and schedule in on a new thread
-				fetchEvents, hashes := f.fetching[hashes[0]].batch.fetchEvents, hashes
-				go func(peer string) {
-					eventFetchMeter.Update(int64(len(hashes)))
-					err := fetchEvents(hashes)
-					if err != nil {
-						f.Periodic.Warn(time.Second, "Events request error", "peer", peer, "err", err)
-					}
-				}(peer)
-			}
-			// Schedule the next fetch if events are still pending
-			f.rescheduleFetch(fetchTimer)
+func (f *Fetcher) cleanupExpiredEvents() {
+	for id, announce := range f.fetching {
+		if time.Since(announce.batch.time) > fetchTimeout {
+			f.forgetHash(id)
+			f.Periodic.Debug(time.Second, fmt.Sprintf("hash with id %v is forgoten", id))
 		}
 	}
 }
 
 // rescheduleFetch resets the specified fetch timer to the next announce timeout.
-func (f *Fetcher) rescheduleFetch(fetch *time.Timer) {
+func (f *Fetcher) rescheduleFetch() {
 	// Short circuit if no events are announced
 	if len(f.announced) == 0 {
 		return
@@ -434,7 +444,7 @@ func (f *Fetcher) rescheduleFetch(fetch *time.Timer) {
 			earliest = t
 		}
 	}
-	fetch.Reset(arriveTimeout - time.Since(earliest))
+	f.fetchTimer.Reset(arriveTimeout - time.Since(earliest))
 }
 
 // forgetHash removes all traces of a event announcement from the fetcher's
