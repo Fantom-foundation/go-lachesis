@@ -79,8 +79,9 @@ func TestFetcher_Notification(t *testing.T) {
 }
 
 func TestFetcher_NotArrived(t *testing.T) {
-	peer := "peer"
+	require := require.New(t)
 
+	peer := "peer"
 	c := newCallback()
 	f := New(c)
 
@@ -108,12 +109,12 @@ func TestFetcher_NotArrived(t *testing.T) {
 	f.processNotifications()
 
 	_, ok := f.fetching[event1]
-	require.True(t, ok)
+	require.True(ok)
 
 	_, ok = f.fetching[event2]
-	require.False(t, ok)
+	require.False(ok)
 
-	require.False(t, f.Overloaded())
+	require.False(f.Overloaded())
 }
 
 func generateNotificationTestCases() []notifiationTestCase {
@@ -148,6 +149,8 @@ func generateNotificationTestCases() []notifiationTestCase {
 }
 
 func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T) {
+	require := require.New(t)
+
 	f.callbackHandler.HeavyCheck.Start()
 	defer f.callbackHandler.HeavyCheck.Stop()
 
@@ -156,7 +159,7 @@ func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T)
 		func(hash.Events) error {
 			return testData.requester
 		})
-	require.Nil(t, err)
+	require.Nil(err)
 
 	for len(f.notify) > 0 || len(f.inject) > 0 {
 		f.processNotifications()
@@ -167,21 +170,23 @@ func runTestNotification(f *Fetcher, testData notifiationTestCase, t *testing.T)
 }
 
 func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
-	require.True(t, f.announces[testData.peer] >= 0)
-	require.True(t, f.announces[testData.peer] <= hashLimit)
+	require := require.New(t)
+
+	require.True(f.announces[testData.peer] >= 0)
+	require.True(f.announces[testData.peer] <= hashLimit)
 
 	if testData.peer == "" {
-		require.Equal(t, 0, len(f.fetching))
+		require.Equal(0, len(f.fetching))
 		return
 	}
 
 	if !testData.allInterested {
-		require.Equal(t, 0, len(f.fetching))
+		require.Equal(0, len(f.fetching))
 		return
 	}
 
 	if time.Since(testData.time) > fetchTimeout {
-		require.Equal(t, 0, len(f.fetching))
+		require.Equal(0, len(f.fetching))
 		return
 	}
 
@@ -193,7 +198,7 @@ func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 	annTotalNum := eventsActualNum + testData.announcesNum
 	if len(testData.events)+testData.announcesNum > hashLimit {
 		if annTotalNum > hashLimit {
-			require.Equal(t, 0, len(f.fetching))
+			require.Equal(0, len(f.fetching))
 			return
 		}
 	}
@@ -201,13 +206,13 @@ func checkState(f *Fetcher, testData notifiationTestCase, t *testing.T) {
 	if len(testData.events) != len(f.fetching) {
 		l1 := len(testData.events)
 		l2 := len(f.fetching)
-		require.Equal(t, l1, l2)
+		require.Equal(l1, l2)
 	}
 
 	for _, v := range testData.events {
 		_, ok := f.fetching[v]
-		require.True(t, ok)
+		require.True(ok)
 	}
 
-	require.Equal(t, eventsMaxNum+testData.announcesNum, f.announces[testData.peer])
+	require.Equal(eventsMaxNum+testData.announcesNum, f.announces[testData.peer])
 }

@@ -190,33 +190,35 @@ func makeInterEvents(n int) inter.Events {
 }
 
 func runTestEnqueue(t *testing.T, f *fetcher.Fetcher, testData enqueueTestCase, fworld *fetcherWorld) {
+	require := require.New(t)
+
 	f.Start()
 	defer f.Stop()
 
 	err := f.Enqueue(testData.peer, testData.inEvents, testData.t, fworld.Fetch)
 
-	require.True(t,
+	require.True(
 		fworld.WaitFor(len(testData.inEvents)),
 		"not all the events were processed")
 
 	if testData.firstCheckResult != nil {
-		require.Equal(t, 0, len(fworld.events))
+		require.Equal(0, len(fworld.events))
 		if len(testData.inEvents) > 0 && testData.allInterested {
-			require.NotNil(t, err)
+			require.Error(err)
 		}
 		return
 	}
 
 	if !testData.allInterested {
-		require.Equal(t, 0, len(fworld.events))
+		require.Equal(0, len(fworld.events))
 		return
 	}
 
 	if testData.mtdError != nil {
-		require.Equal(t, 0, len(fworld.events))
+		require.Equal(0, len(fworld.events))
 		return
 	}
 
-	require.Equal(t, len(testData.inEvents), len(fworld.events[testData.peer]))
-	require.Nil(t, err)
+	require.Equal(len(testData.inEvents), len(fworld.events[testData.peer]))
+	require.NoError(err)
 }
