@@ -100,61 +100,11 @@ func parseConfigToTable(fileName string) (*ast.Table, error) {
 	return res, nil
 }
 
-func ConfigMigrations(mapTable *ast.Table) *migration.Migration {
-	return migration.Init("lachesis-config", "ajIr@Quicuj9")
-
-	/*
-		Use here only named migrations. Migration name - version of config.
-		Example ():
-
-		  return migration.Init("lachesis-config", "ajIr@Quicuj9"
-			).NewNamed("v1", func()error{
-				... // Some actions for migrations
-				return err
-			}).NewNamed("v2", func()error{
-				... // Some actions for migrations
-				return err
-			})
-			...
-	*/
-
-}
-
-type idProducer struct {
-	table *ast.Table
-}
-
-func NewIdProducer(t *ast.Table) *idProducer {
-	return &idProducer{
-		table: t,
-	}
-}
-
-func (p *idProducer) GetId() (string, error) {
-	v, ok := p.table.Fields["Version"]
-	if !ok {
-		return "", nil
-	}
-
-	ver, ok := v.(string)
-	if !ok {
-		panic("config version should by string")
-	}
-
-	return ver, nil
-}
-
-func (p *idProducer) SetId(id string) error {
-	p.table.Fields["Version"] = id
-
-	return nil
-}
-
 func loadAllConfigs(file string, cfg *config) error {
 	cfgTable, err := parseConfigToTable(file)
 
 	migrations := ConfigMigrations(cfgTable)
-	idProd := NewIdProducer(cfgTable)
+	idProd := NewConfigIdProducer(cfgTable)
 	migrationManager := migration.NewManager(migrations, idProd)
 	err = migrationManager.Run()
 	if err != nil {
