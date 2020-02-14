@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,12 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
+	"github.com/naoina/toml/ast"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 var (
@@ -74,18 +76,92 @@ var tomlSettings = toml.Config{
 }
 
 type config struct {
+	Version	 string
 	Node     node.Config
 	Lachesis gossip.Config
 }
 
-func loadAllConfigs(file string, cfg *config) error {
-	f, err := os.Open(file)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+type kv struct {
+	Key string
+	Value string
+}
 
-	err = tomlSettings.NewDecoder(bufio.NewReader(f)).Decode(cfg)
+func parseConfigToTable(fileName string) (*ast.Table, error) {
+	content, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		panic("can not read config file '"+fileName+"': "+err.Error())
+	}
+
+	res, err := toml.Parse(content)
+	if err != nil {
+		panic("can not parse config file '"+fileName+"': "+err.Error())
+	}
+
+	return res, nil
+}
+
+func ConfigMigrations(mapTable *ast.Table) *migration.Migration {
+	return migration.Init("lachesis-config", "ajIr@Quicuj9")
+
+	/*
+		Use here only named migrations. Migration name - version of config.
+		Example ():
+
+		  return migration.Init("lachesis-config", "ajIr@Quicuj9"
+			).NewNamed("v1", func()error{
+				... // Some actions for migrations
+				return err
+			}).NewNamed("v2", func()error{
+				... // Some actions for migrations
+				return err
+			})
+			...
+	*/
+
+}
+
+type idProducer struct {
+	table *ast.Table
+}
+
+func NewIdProducer(t *ast.Table) *idProducer {
+	return &idProducer{
+		table: t,
+	}
+}
+
+func (p *idProducer) GetId() (string, error) {
+	v, ok := p.table.Fields["Version"]
+	if !ok {
+		return "", nil
+	}
+
+	ver, ok := v.(string)
+	if !ok {
+		panic("config version should by string")
+	}
+
+	return ver, nil
+}
+
+func (p *idProducer) SetId(id string) error {
+	p.table.Fields["Version"] = id
+
+	return nil
+}
+
+func loadAllConfigs(file string, cfg *config) error {
+	cfgTable, err := parseConfigToTable(file)
+
+	migrations := ConfigMigrations(cfgTable)
+	idProd := NewIdProducer(cfgTable)
+	migrationManager := migration.NewManager(migrations, idProd)
+	err = migrationManager.Run()
+	if err != nil {
+		panic("error when run config migration: "+err.Error())
+	}
+
+	err = tomlSettings.UnmarshalTable(cfgTable, cfg)
 	// Add file name to errors that have a line number.
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
