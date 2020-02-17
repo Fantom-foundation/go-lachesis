@@ -1,38 +1,17 @@
 package main
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
+	"errors"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/naoina/toml/ast"
+
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
-func addTablePart(t *ast.Table, partName string) *ast.Table {
-	newPart := &ast.Table{
-		Name:     partName,
-		Fields:   make(map[string]interface{}),
-		Type:     ast.TableTypeNormal,
-		Data:     nil,
-	}
-
-	t.Fields[partName] = newPart
-
-	return newPart
-}
-
-func addTableKeyString(t *ast.Table, key string) *ast.KeyValue {
-	newKV := &ast.KeyValue{
-		Key:   key,
-		Value: &ast.String{
-			Value:    "",
-		},
-		Line:  0,
-	}
-
-	t.Fields[key] = newKV
-
-	return newKV
-}
-
-func ConfigMigrations(mapTable *ast.Table) *migration.Migration {
+func ConfigMigrations(data *ConfigData) *migration.Migration {
 	return migration.Init("lachesis-config", "ajIr@Quicuj9")
 
 	/*
@@ -52,40 +31,334 @@ func ConfigMigrations(mapTable *ast.Table) *migration.Migration {
 
 }
 
-type configIdProducer struct {
+type ConfigData struct {
 	table *ast.Table
 }
 
-func NewConfigIdProducer(t *ast.Table) *configIdProducer {
-	return &configIdProducer{
+func NewConfigData(t *ast.Table) *ConfigData {
+	return &ConfigData{
 		table: t,
 	}
 }
 
-func (p *configIdProducer) GetId() (string, error) {
-	versionI, ok := p.table.Fields["Version"]
+func (d *ConfigData) GetTable() *ast.Table {
+	return d.table
+}
+
+/*
+	Methods for migrations:
+	- AddSection
+	- DeleteSection
+	- RenameSection
+
+	- AddParam
+	- DeleteParam
+	- RenameParam
+	- SetParam
+	- GetParam[String|Int|Float|Bool|Time]
+*/
+
+func (d *ConfigData) AddSection(name, after string) error {
+	_, err := d.findSection(name)
+	if err == nil {
+		// If exists - return error
+		return errors.New("section already exists: "+name)
+	}
+
+	afterSection, err := d.findSection(after)
+	if err != nil {
+		return err
+	}
+
+	newSection := &ast.Table{
+		Position: ast.Position{
+			Begin: afterSection.End() + 1,
+			End:   0,
+		},
+		Line:     afterSection.Line + afterSection.End() - afterSection.Pos(),
+		Name:     name,
+		Fields:   make(map[string]interface{}),
+		Type:     ast.TableTypeNormal,
+	}
+
+	d.table.Fields[name] = newSection
+
+	return nil
+}
+
+func (d *ConfigData) DeleteSection(name string) error {
+	_, err := d.findSection(name)
+	if err != nil {
+		return err
+	}
+
+	delete(d.table.Fields, name)
+
+	return nil
+}
+
+func (d *ConfigData) RenameSection(name, newName string) error {
+	section, err := d.findSection(name)
+	if err != nil {
+		return err
+	}
+
+	section.Name = newName
+	delete(d.table.Fields, name)
+	d.table.Fields[newName] = section
+
+	return nil
+}
+
+
+func (d *ConfigData) AddParam(name, sectionName string, value interface{}) error {
+	_, sect, err := d.getKVData(name, sectionName)
+	if err == nil {
+		return errors.New("param already exists in section: "+sectionName+" / "+name)
+	}
+	if sect == nil {
+		return err
+	}
+
+	kvData, err := d.setKVData(name, value)
+	if err != nil {
+		return err
+	}
+
+	sect.Fields[name] = kvData
+
+	return nil
+}
+
+func (d *ConfigData) DeleteParam(name, sectionName string) error {
+	_, sect, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return err
+	}
+
+	delete(sect.Fields, name)
+
+	return nil
+}
+
+func (d *ConfigData) RenameParam(name, sectionName, newName string) error {
+	param, sect, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return err
+	}
+
+	delete(sect.Fields, name)
+	param.Key = newName
+	sect.Fields[newName] = param
+
+	return nil
+}
+
+func (d *ConfigData) SetParam(name, sectionName string, value interface{}) error {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.setKVData(name, value, param)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (d *ConfigData) GetParamString(name, sectionName string) (string, error) {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return "", err
+	}
+
+	pString, ok := param.Value.(*ast.String)
 	if !ok {
+		return "", errors.New("wrong type for string in param: "+sectionName+" / "+name)
+	}
+
+	return pString.Value, nil
+}
+
+func (d *ConfigData) GetParamInt(name, sectionName string) (int64, error) {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return -1, err
+	}
+
+	pInt, ok := param.Value.(*ast.Integer)
+	if !ok {
+		return -1, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+	}
+
+	return pInt.Int()
+}
+
+func (d *ConfigData) GetParamFloat(name, sectionName string) (float64, error) {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return -1, err
+	}
+
+	pFloat, ok := param.Value.(*ast.Float)
+	if !ok {
+		return -1, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+	}
+
+	return pFloat.Float()
+}
+
+func (d *ConfigData) GetParamBool(name, sectionName string) (bool, error) {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return false, err
+	}
+
+	pBool, ok := param.Value.(*ast.Boolean)
+	if !ok {
+		return false, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+	}
+
+	return pBool.Boolean()
+}
+
+func (d *ConfigData) GetParamTime(name, sectionName string) (time.Time, error) {
+	param, _, err := d.getKVData(name, sectionName)
+	if err != nil {
+		return time.Now(), err
+	}
+
+	pTime, ok := param.Value.(*ast.Datetime)
+	if !ok {
+		return time.Now(), errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+	}
+
+	return pTime.Time()
+}
+
+
+func (d *ConfigData) findSection(name string) (*ast.Table, error) {
+	path := strings.Split(name, ".")
+	currentSection := d.table
+
+	if name == "" {
+		return currentSection, nil
+	}
+
+	pathStr := ""
+	for _, n := range path {
+		pathStr = pathStr + "/" + n
+		sectionI, ok := currentSection.Fields[n]
+		if !ok {
+			return nil, errors.New("section not found: " + pathStr)
+		}
+
+		currentSection, ok = sectionI.(*ast.Table)
+		if !ok {
+			return nil, errors.New("section has wrong type: " + pathStr)
+		}
+	}
+
+	return currentSection, nil
+}
+
+func (d *ConfigData) getKVData(name, sectionName string) (*ast.KeyValue, *ast.Table, error) {
+	sect, err := d.findSection(sectionName)
+	if err != nil {
+		return nil, nil, err
+	}
+	if sect == nil {
+		return nil, nil, errors.New("section not found: "+sectionName)
+	}
+
+	paramI, ok := sect.Fields[name]
+	if !ok {
+		return nil, sect, errors.New("param not exists in section: "+sectionName+" / "+name)
+	}
+
+	param, ok := paramI.(*ast.KeyValue)
+	if !ok {
+		return nil, sect, errors.New("wrong param type in section: "+sectionName+" / "+name)
+	}
+
+	return param, sect, nil
+}
+
+func (d *ConfigData) setKVData(name string, value interface{}, kvExists ...*ast.KeyValue) (*ast.KeyValue, error) {
+	var kv *ast.KeyValue
+	if len(kvExists) > 0 {
+		kv = kvExists[0]
+	} else {
+		kv = &ast.KeyValue{
+			Key: name,
+		}
+	}
+	switch value.(type) {
+	case string:
+		kv.Value = &ast.String{
+			Position: ast.Position{},
+			Value:    value.(string),
+			Data:     []rune(value.(string)),
+		}
+	case int:
+		s := strconv.FormatInt(int64(value.(int)), 10)
+		kv.Value = &ast.Integer{
+			Position: ast.Position{},
+			Value:    s,
+			Data:     []rune(s),
+		}
+	case float64:
+		s := strconv.FormatFloat(value.(float64), 'f', 16, 64)
+		kv.Value = &ast.Float{
+			Position: ast.Position{},
+			Value:    s,
+			Data:     []rune(s),
+		}
+	case bool:
+		s := strconv.FormatBool(value.(bool))
+		kv.Value = &ast.Boolean{
+			Position: ast.Position{},
+			Value:    s,
+			Data:     []rune(s),
+		}
+	case time.Time:
+		s := value.(time.Time).Format("2006-01-02T15:04:05.999999999Z07:00")
+		kv.Value = &ast.Datetime{
+			Position: ast.Position{},
+			Value:    s,
+			Data:     []rune(s),
+		}
+	}
+
+	return kv, nil
+}
+
+type configIdProducer struct {
+	data *ConfigData
+}
+
+func NewConfigIdProducer(d *ConfigData) *configIdProducer {
+	return &configIdProducer{
+		data: d,
+	}
+}
+
+func (p *configIdProducer) GetId() (string, error) {
+	v, err := p.data.GetParamString("Version", "")
+	if err != nil {
 		return "", nil
 	}
-	versionStr := versionI.(*ast.KeyValue).Value.(*ast.String).Value
 
-	return versionStr, nil
+	return v, nil
 }
 
 func (p *configIdProducer) SetId(id string) error {
-	// fmt.Printf("DBG:\n%+v\n", p.table.Fields["Lachesis"].(*ast.Table).Fields["EVMInterpreter"].(*ast.KeyValue).Value.(*ast.String))
-	configVersionI, ok := p.table.Fields["Version"]
+	// fmt.Printf("DBG:\n%+v\n", p.data.Fields["Lachesis"].(*ast.Table).Fields["EVMInterpreter"].(*ast.KeyValue).Value.(*ast.String))
+	_, ok := p.data.GetTable().Fields["Version"]
 	if !ok {
-		configVersionI = addTableKeyString(p.table, "Version")
+		return p.data.AddParam("Version", "", id)
 	}
-	configVersion := configVersionI.(*ast.KeyValue)
-	configVersionValue, ok := configVersion.Value.(*ast.String)
-	if !ok {
-		panic("Bad type field Version on config. Must by String!")
-	}
-	configVersionValue.Value = id
-
-	// fmt.Printf("DBG:\n%+v\n", p.table)
-
-	return nil
+	return p.data.SetParam("Version", "", id)
 }

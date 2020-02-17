@@ -102,16 +102,17 @@ func parseConfigToTable(fileName string) (*ast.Table, error) {
 
 func loadAllConfigs(file string, cfg *config) error {
 	cfgTable, err := parseConfigToTable(file)
+	cfgData := NewConfigData(cfgTable)
 
-	migrations := ConfigMigrations(cfgTable)
-	idProd := NewConfigIdProducer(cfgTable)
+	migrations := ConfigMigrations(cfgData)
+	idProd := NewConfigIdProducer(cfgData)
 	migrationManager := migration.NewManager(migrations, idProd)
 	err = migrationManager.Run()
 	if err != nil {
 		panic("error when run config migration: "+err.Error())
 	}
 
-	err = tomlSettings.UnmarshalTable(cfgTable, cfg)
+	err = tomlSettings.UnmarshalTable(cfgData.GetTable(), cfg)
 	// Add file name to errors that have a line number.
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
