@@ -7,13 +7,13 @@ import (
 // Implementation of run all required migrations
 type Manager struct {
 	lastMigration *Migration
-	idProd IdProducer
+	idProd        IdProducer
 }
 
 func NewManager(last *Migration, idProducer IdProducer) *Manager {
 	return &Manager{
-		lastMigration: 	last,
-		idProd: idProducer,
+		lastMigration: last,
+		idProd:        idProducer,
 	}
 }
 

@@ -7,21 +7,21 @@ import (
 
 var (
 	hashAppName string
-	hashSalt string
+	hashSalt    string
 )
 
 // Implementation for DbMigration object
 type Migration struct {
-	id string
+	id   string
 	prev *Migration
-	run func() error
+	run  func() error
 }
 
 func Init(appName, salt string) *Migration {
 	hashAppName = appName
 	hashSalt = salt
 
-	return newNamed("init", nil, func()error{
+	return newNamed("init", nil, func() error {
 		return nil
 	})
 }

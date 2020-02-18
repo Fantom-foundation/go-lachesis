@@ -27,7 +27,6 @@ func (p *MemIdProducer) SetId(id string) error {
 	return nil
 }
 
-
 func TestList(t *testing.T) {
 	testData := map[string]int{}
 
@@ -35,19 +34,19 @@ func TestList(t *testing.T) {
 		list := migration.Init("lachesis-test", "123456")
 
 		num := 1
-		list = list.New(func()error{
+		list = list.New(func() error {
 			testData["migration1"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration2"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration3"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration4"] = num
 			num++
 			return nil
@@ -67,11 +66,11 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations after already executed
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			testData["migration5"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration6"] = num
 			num++
 			return nil
@@ -95,7 +94,7 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations with modify data
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			testData["migration1"] = 100
 			testData["migration3"] = 100
 			testData["migration5"] = 100
@@ -117,7 +116,7 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations with delete data
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			delete(testData, "migration1")
 			delete(testData, "migration2")
 			delete(testData, "migration3")
@@ -139,21 +138,21 @@ func TestList(t *testing.T) {
 		list := migration.Init("lachesis-test", "123456")
 
 		num := 1
-		lastGood := list.New(func()error{
+		lastGood := list.New(func() error {
 			testData["migration1"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration2"] = num
 			num++
 			return nil
 		})
 
-		afterBad := lastGood.New(func()error{
+		afterBad := lastGood.New(func() error {
 			testData["migration3"] = num
 			num++
 			return errors.New("test migration error")
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration4"] = num
 			num++
 			return nil
@@ -178,11 +177,11 @@ func TestList(t *testing.T) {
 			Continue with fixed transactions
 		*/
 		num = 3
-		fixed := lastGood.New(func()error{
+		fixed := lastGood.New(func() error {
 			testData["migration3"] = num
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			testData["migration4"] = num
 			num++
 			return nil
@@ -219,7 +218,7 @@ func TestList(t *testing.T) {
 		list := migration.Init("lachesis-test-db", "654321")
 
 		num := int64(1)
-		list = list.New(func()error{
+		list = list.New(func() error {
 			err := flushableDB.Put([]byte("migration1"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -230,7 +229,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			flushableDB.Put([]byte("migration2"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -241,7 +240,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			flushableDB.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -252,7 +251,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			flushableDB.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -283,7 +282,7 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations after already executed
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			flushableDB.Put([]byte("migration5"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -294,7 +293,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			flushableDB.Put([]byte("migration6"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -332,7 +331,7 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations with modify data
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			flushableDB.Put([]byte("migration1"), []byte("100"))
 			if err != nil {
 				return err
@@ -375,7 +374,7 @@ func TestList(t *testing.T) {
 		/*
 			Additional migrations with delete data
 		*/
-		list = list.New(func()error{
+		list = list.New(func() error {
 			err = flushableDB.Delete([]byte("migration1"))
 			if err != nil {
 				return err
@@ -427,7 +426,6 @@ func TestList(t *testing.T) {
 		assert.Empty(t, testData6, "Detect data after clear migration6")
 	})
 
-
 	t.Run("Failed run migrations with DB", func(t *testing.T) {
 		dir, err := ioutil.TempDir("", "test-migrations")
 		if err != nil {
@@ -448,7 +446,7 @@ func TestList(t *testing.T) {
 		list := migration.Init("lachesis-test-db-fail", "654321")
 
 		num := int64(1)
-		lastGood := list.New(func()error{
+		lastGood := list.New(func() error {
 			err := flushableDB.Put([]byte("migration1"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -459,7 +457,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			err := flushableDB.Put([]byte("migration2"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -472,7 +470,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		afterBad := lastGood.New(func()error{
+		afterBad := lastGood.New(func() error {
 			err := flushableDB.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -480,7 +478,7 @@ func TestList(t *testing.T) {
 			flushableDB.DropNotFlushed()
 			num++
 			return errors.New("test migration error")
-		}).New(func()error{
+		}).New(func() error {
 			err := flushableDB.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -516,7 +514,7 @@ func TestList(t *testing.T) {
 			Continue with fixed transactions
 		*/
 		num = 3
-		fixed := lastGood.New(func()error{
+		fixed := lastGood.New(func() error {
 			err := flushableDB.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
@@ -527,7 +525,7 @@ func TestList(t *testing.T) {
 			}
 			num++
 			return nil
-		}).New(func()error{
+		}).New(func() error {
 			err := flushableDB.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
