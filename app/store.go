@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"log"
 	"sync"
 	"time"
 
@@ -21,9 +20,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // Store is a node persistent storage working over physical key-value database.
@@ -32,6 +29,8 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version kvdb.KeyValueStore `table:"_"`
+
 		Genesis kvdb.KeyValueStore `table:"G"`
 
 		// score economy tables
@@ -85,29 +84,6 @@ type Store struct {
 	logger.Instance
 }
 
-func ManualMigrations(s *Store) *migration.Migration {
-	return migration.Init("lachesis-app-store", "Heuhax&Walv9")
-
-	/*
-		Example:
-
-		  return migration.Init("lachesis", "Heuhax&Walv9"
-			).NewNamed("20200207120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			}).New(func()error{
-				// If no NewNamed call - id generated automatically
-				// If you use several sequenced migrations with new(), you can not change it in future
-				... // Some actions for migrations
-				return err
-			}).NewNamed("20200209120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			})
-			...
-	*/
-}
-
 // NewMemStore creates store over memory map.
 func NewMemStore() *Store {
 	mems := memorydb.NewProducer("")
@@ -134,12 +110,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	idProducer := migrations.NewFlushableIdProducer(flushable.Wrap(s.mainDb), "app_store_migrations")
-	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
-	err := migrationManager.Run()
-	if err != nil {
-		log.Panic("Error when run migrations for app store: " + err.Error())
-	}
+	s.migrate()
 
 	return s
 }

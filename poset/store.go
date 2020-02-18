@@ -2,7 +2,6 @@ package poset
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -14,8 +13,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // Store is a poset persistent storage working over parent key-value database.
@@ -25,6 +22,7 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version        kvdb.KeyValueStore `table:"_"`
 		Checkpoint     kvdb.KeyValueStore `table:"c"`
 		Epochs         kvdb.KeyValueStore `table:"e"`
 		ConfirmedEvent kvdb.KeyValueStore `table:"C"`
@@ -45,29 +43,6 @@ type Store struct {
 	logger.Instance
 }
 
-func ManualMigrations(s *Store) *migration.Migration {
-	return migration.Init("lachesis-poset-store", "Heuhax&Walv9")
-
-	/*
-		Example:
-
-		  return migration.Init("lachesis", "Heuhax&Walv9"
-			).NewNamed("20200207120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			}).New(func()error{
-				// If no NewNamed call - id generated automatically
-				// If you use several sequenced migrations with new(), you can not change it in future
-				... // Some actions for migrations
-				return err
-			}).NewNamed("20200209120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			})
-			...
-	*/
-}
-
 // NewStore creates store over key-value db.
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
@@ -81,12 +56,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	idProducer := migrations.NewFlushableIdProducer(flushable.Wrap(s.mainDb), "poset_store_migrations")
-	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
-	err := migrationManager.Run()
-	if err != nil {
-		log.Panic("Error when run migrations for poset store: " + err.Error())
-	}
+	s.migrate()
 
 	return s
 }

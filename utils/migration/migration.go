@@ -3,68 +3,75 @@ package migration
 import (
 	"crypto/sha256"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
-var (
-	hashAppName string
-	hashSalt string
-)
-
-// Implementation for DbMigration object
+// Migration is a migration step.
 type Migration struct {
-	id string
+	name string
+	exec func() error
 	prev *Migration
-	run func() error
 }
 
-func Init(appName, salt string) *Migration {
-	hashAppName = appName
-	hashSalt = salt
-
-	return newNamed("init", nil, func()error{
-		return nil
-	})
+// Begin with empty unique migration step.
+func Begin(appName string) *Migration {
+	return &Migration{
+		name: appName,
+	}
 }
 
-func newAuto(prev *Migration, runFunc func() error) *Migration {
-	return newNamed("", prev, runFunc)
-}
+// Next creates next migration.
+func (m *Migration) Next(name string, exec func() error) *Migration {
+	if name == "" {
+		panic("empty name")
+	}
 
-func newNamed(id string, prev *Migration, runFunc func() error) *Migration {
-	if id == "" {
-		digest := sha256.New()
-		if prev != nil {
-			digest.Write([]byte(prev.id + hashSalt))
-		} else {
-			digest.Write([]byte(hashSalt))
-		}
-		bytes := digest.Sum(nil)
-		id = fmt.Sprintf("%s?%x", hashAppName, bytes)
+	if exec == nil {
+		panic("empty exec")
 	}
 
 	return &Migration{
-		id:   id,
-		prev: prev,
-		run:  runFunc,
+		name: name,
+		exec: exec,
+		prev: m,
 	}
 }
 
-func (m *Migration) New(runFunc func() error) *Migration {
-	return newAuto(m, runFunc)
-}
-
-func (m *Migration) NewNamed(id string, runFunc func() error) *Migration {
-	return newNamed(id, m, runFunc)
-}
-
+// ID is an uniq migration's id.
 func (m *Migration) Id() string {
-	return m.id
+	digest := sha256.New()
+	if m.prev != nil {
+		digest.Write([]byte(m.prev.Id()))
+	}
+	digest.Write([]byte(m.name))
+
+	bytes := digest.Sum(nil)
+	return fmt.Sprintf("%x", bytes)
 }
 
-func (m *Migration) Prev() *Migration {
-	return m.prev
-}
+func (m *Migration) Exec(curr IdProducer) error {
+	if m.exec == nil {
+		return nil
+	}
 
-func (m *Migration) Run() error {
-	return m.run()
+	myId := m.Id()
+
+	if curr.GetId() == myId {
+		return nil
+	}
+
+	err := m.prev.Exec(curr)
+	if err != nil {
+		return err
+	}
+
+	err = m.exec()
+	if err != nil {
+		log.Error(m.name+" migration failed", "err", err)
+		return err
+	}
+
+	curr.SetId(myId)
+	return nil
 }
