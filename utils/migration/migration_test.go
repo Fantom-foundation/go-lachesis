@@ -12,28 +12,36 @@ func TestMigrations(t *testing.T) {
 
 	testData := map[string]int{}
 	idProducer := &inmemIdProducer{}
-	list := Init("lachesis-test", "123456")
+	list := Begin("TestMigrations")
 
 	num := 1
-	lastGood := list.New(func() error {
-		testData["migration1"] = num
-		num++
-		return nil
-	}).New(func() error {
-		testData["migration2"] = num
-		num++
-		return nil
-	})
+	lastGood := list.Next("01",
+		func() error {
+			testData["migration1"] = num
+			num++
+			return nil
+		},
+	).Next("02",
+		func() error {
+			testData["migration2"] = num
+			num++
+			return nil
+		},
+	)
 
-	afterBad := lastGood.New(func() error {
-		testData["migration3"] = num
-		num++
-		return errors.New("test migration error")
-	}).New(func() error {
-		testData["migration4"] = num
-		num++
-		return nil
-	})
+	afterBad := lastGood.Next("03",
+		func() error {
+			testData["migration3"] = num
+			num++
+			return errors.New("test migration error")
+		},
+	).Next("04",
+		func() error {
+			testData["migration4"] = num
+			num++
+			return nil
+		},
+	)
 
 	mgr := NewManager(afterBad, idProducer)
 
@@ -51,15 +59,19 @@ func TestMigrations(t *testing.T) {
 	// Continue with fixed transactions
 
 	num = 3
-	fixed := lastGood.New(func() error {
-		testData["migration3"] = num
-		num++
-		return nil
-	}).New(func() error {
-		testData["migration4"] = num
-		num++
-		return nil
-	})
+	fixed := lastGood.Next("03",
+		func() error {
+			testData["migration3"] = num
+			num++
+			return nil
+		},
+	).Next("04",
+		func() error {
+			testData["migration4"] = num
+			num++
+			return nil
+		},
+	)
 
 	mgr = NewManager(fixed, idProducer)
 
