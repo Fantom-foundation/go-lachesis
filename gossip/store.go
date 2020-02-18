@@ -26,6 +26,8 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version kvdb.KeyValueStore `table:"_"`
+
 		// Network tables
 		Peers kvdb.KeyValueStore `table:"Z"`
 
@@ -100,6 +102,8 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	})
 
 	s.initCache()
+
+	s.migrate()
 
 	return s
 }

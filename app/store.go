@@ -29,6 +29,8 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version kvdb.KeyValueStore `table:"_"`
+
 		Genesis kvdb.KeyValueStore `table:"G"`
 
 		// score economy tables
@@ -107,6 +109,8 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s.table.EvmLogs = topicsdb.New(table.New(s.mainDb, []byte("L")))
 
 	s.initCache()
+
+	s.migrate()
 
 	return s
 }
