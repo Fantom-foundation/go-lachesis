@@ -11,6 +11,19 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
+/*
+	Methods for migrations (*ConfigData):
+	- AddSection
+	- DeleteSection
+	- RenameSection
+
+	- AddParam
+	- DeleteParam
+	- RenameParam
+	- SetParam
+	- GetParam[String|Int|Float|Bool|Time]
+*/
+
 func ConfigMigrations(data *ConfigData) *migration.Migration {
 	return migration.Init("lachesis-config", "ajIr@Quicuj9")
 
@@ -44,19 +57,6 @@ func NewConfigData(t *ast.Table) *ConfigData {
 func (d *ConfigData) GetTable() *ast.Table {
 	return d.table
 }
-
-/*
-	Methods for migrations:
-	- AddSection
-	- DeleteSection
-	- RenameSection
-
-	- AddParam
-	- DeleteParam
-	- RenameParam
-	- SetParam
-	- GetParam[String|Int|Float|Bool|Time]
-*/
 
 func (d *ConfigData) AddSection(name, after string) error {
 	_, err := d.findSection(name)
