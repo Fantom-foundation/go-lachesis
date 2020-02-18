@@ -1,4 +1,4 @@
-package migrations
+package migration
 
 /*
 	This is example how you can create migrations chain for run over MigrationManager
@@ -10,9 +10,7 @@ package migrations
 		gossip/store.go
 */
 
-import "github.com/Fantom-foundation/go-lachesis/utils/migration"
-
-func List() *migration.Migration {
+func List() *Migration {
 	/*
 		Example:
 
@@ -32,5 +30,5 @@ func List() *migration.Migration {
 			...
 	*/
 
-	return migration.Init("lachesis", "Heuhax&Walv9")
+	return Init("lachesis", "Heuhax&Walv9")
 }

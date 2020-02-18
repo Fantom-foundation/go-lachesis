@@ -1,4 +1,4 @@
-package migrations
+package migration
 
 import (
 	"errors"
@@ -13,7 +13,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 type MemIdProducer struct {
@@ -32,7 +31,7 @@ func TestList(t *testing.T) {
 	testData := map[string]int{}
 
 	t.Run("Success run migrations", func(t *testing.T) {
-		list := migration.Init("lachesis-test", "123456")
+		list := Init("lachesis-test", "123456")
 
 		num := 1
 		list = list.New(func() error {
@@ -54,7 +53,7 @@ func TestList(t *testing.T) {
 		})
 
 		idProducer := &MemIdProducer{}
-		mgr := migration.NewManager(list, idProducer)
+		mgr := NewManager(list, idProducer)
 		err := mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -77,7 +76,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -102,7 +101,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -127,7 +126,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -136,7 +135,7 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("Failed run migrations", func(t *testing.T) {
-		list := migration.Init("lachesis-test", "123456")
+		list := Init("lachesis-test", "123456")
 
 		num := 1
 		lastGood := list.New(func() error {
@@ -160,7 +159,7 @@ func TestList(t *testing.T) {
 		})
 
 		idProducer := &MemIdProducer{}
-		mgr := migration.NewManager(afterBad, idProducer)
+		mgr := NewManager(afterBad, idProducer)
 		err := mgr.Run()
 
 		assert.Error(t, err, "Success run migration manager with error migrations")
@@ -188,7 +187,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(fixed, idProducer)
+		mgr = NewManager(fixed, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -215,7 +214,7 @@ func TestList(t *testing.T) {
 		idTable := table.New(flushableDB, []byte("migration_id"))
 		idProducer := kvdb.NewIdProducer(idTable)
 
-		list := migration.Init("lachesis-test-db", "654321")
+		list := Init("lachesis-test-db", "654321")
 
 		num := int64(1)
 		list = list.New(func() error {
@@ -264,7 +263,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr := migration.NewManager(list, idProducer)
+		mgr := NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -306,7 +305,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -352,7 +351,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -406,7 +405,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(list, idProducer)
+		mgr = NewManager(list, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
@@ -442,7 +441,7 @@ func TestList(t *testing.T) {
 		idTable := table.New(db, []byte("id_last_migration"))
 		idProducer := kvdb.NewIdProducer(idTable)
 
-		list := migration.Init("lachesis-test-db-fail", "654321")
+		list := Init("lachesis-test-db-fail", "654321")
 
 		num := int64(1)
 		lastGood := list.New(func() error {
@@ -472,7 +471,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr := migration.NewManager(afterBad, idProducer)
+		mgr := NewManager(afterBad, idProducer)
 		err = mgr.Run()
 
 		assert.Error(t, err, "Success run migration manager with error migrations")
@@ -511,7 +510,7 @@ func TestList(t *testing.T) {
 			return nil
 		})
 
-		mgr = migration.NewManager(fixed, idProducer)
+		mgr = NewManager(fixed, idProducer)
 		err = mgr.Run()
 
 		assert.NoError(t, err, "Error when run migration manager")
