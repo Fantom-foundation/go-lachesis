@@ -59,40 +59,67 @@ func (d *ConfigData) GetTable() *ast.Table {
 }
 
 func (d *ConfigData) AddSection(name, after string) error {
+	if name == "" {
+		return nil
+	}
+
 	_, err := d.findSection(name)
 	if err == nil {
 		// If exists - return error
 		return errors.New("section already exists: "+name)
 	}
 
+	path := strings.Split(name, ".")
+
 	afterSection, err := d.findSection(after)
 	if err != nil {
 		return err
 	}
 
-	newSection := &ast.Table{
-		Position: ast.Position{
-			Begin: afterSection.End() + 1,
-			End:   0,
-		},
-		Line:     afterSection.Line + afterSection.End() - afterSection.Pos(),
-		Name:     name,
-		Fields:   make(map[string]interface{}),
-		Type:     ast.TableTypeNormal,
-	}
+	pathStr := ""
+	currentSection := d.table
+	for _, n := range path {
+		pathStr = pathStr + "/" + n
 
-	d.table.Fields[name] = newSection
+		var section *ast.Table
+		sectionI, ok := currentSection.Fields[n]
+		if ok {
+			section, ok = sectionI.(*ast.Table)
+			if !ok {
+				return errors.New("wrong type of section: " + pathStr)
+			}
+		} else {
+			section = &ast.Table{
+				Position: ast.Position{
+					Begin: afterSection.End() + 1,
+					End:   0,
+				},
+				Line:     afterSection.Line + afterSection.End() - afterSection.Pos(),
+				Name:     n,
+				Fields:   make(map[string]interface{}),
+				Type:     ast.TableTypeNormal,
+			}
+
+		}
+		currentSection.Fields[n] = section
+		currentSection = section
+	}
 
 	return nil
 }
 
 func (d *ConfigData) DeleteSection(name string) error {
-	_, err := d.findSection(name)
+	// Find parent section and name for deletedName section
+	path := strings.Split(name, ".")
+	parentName := strings.Join(path[:len(path)-1], ".")
+	deletedName := path[len(path)-1]
+
+	parent, err := d.findSection(parentName)
 	if err != nil {
 		return err
 	}
 
-	delete(d.table.Fields, name)
+	delete(parent.Fields, deletedName)
 
 	return nil
 }
@@ -250,6 +277,7 @@ func (d *ConfigData) findSection(name string) (*ast.Table, error) {
 	pathStr := ""
 	for _, n := range path {
 		pathStr = pathStr + "/" + n
+
 		sectionI, ok := currentSection.Fields[n]
 		if !ok {
 			return nil, errors.New("section not found: " + pathStr)
