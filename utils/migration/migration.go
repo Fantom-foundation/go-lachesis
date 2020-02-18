@@ -3,6 +3,8 @@ package migration
 import (
 	"crypto/sha256"
 	"fmt"
+
+	"github.com/ethereum/go-ethereum/log"
 )
 
 // Migration is a migration step.
@@ -13,7 +15,6 @@ type Migration struct {
 }
 
 // Begin with empty unique migration step.
-// Use it in optional.
 func Begin(appName string) *Migration {
 	return &Migration{
 		name: appName,
@@ -49,14 +50,28 @@ func (m *Migration) Id() string {
 	return fmt.Sprintf("%x", bytes)
 }
 
-func (m *Migration) Prev() *Migration {
-	return m.prev
-}
-
-func (m *Migration) Run() error {
+func (m *Migration) Exec(curr IdProducer) error {
 	if m.exec == nil {
 		return nil
 	}
 
-	return m.exec()
+	myId := m.Id()
+
+	if curr.GetId() == myId {
+		return nil
+	}
+
+	err := m.prev.Exec(curr)
+	if err != nil {
+		return err
+	}
+
+	err = m.exec()
+	if err != nil {
+		log.Error(m.name+" migration failed", "err", err)
+		return err
+	}
+
+	curr.SetId(myId)
+	return nil
 }

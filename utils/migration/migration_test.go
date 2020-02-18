@@ -11,7 +11,7 @@ func TestMigrations(t *testing.T) {
 	require := require.New(t)
 
 	testData := map[string]int{}
-	idProducer := &inmemIdProducer{}
+	current := &inmemIdProducer{}
 	list := Begin("TestMigrations")
 
 	num := 1
@@ -43,12 +43,10 @@ func TestMigrations(t *testing.T) {
 		},
 	)
 
-	mgr := NewManager(afterBad, idProducer)
-
-	err := mgr.Run()
+	err := afterBad.Exec(current)
 	require.Error(err, "Success run migration manager with error migrations")
 
-	lastId := idProducer.GetId()
+	lastId := current.GetId()
 	require.Equal(lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
 
 	require.Equal(1, testData["migration1"], "Bad value after run migration1")
@@ -73,9 +71,7 @@ func TestMigrations(t *testing.T) {
 		},
 	)
 
-	mgr = NewManager(fixed, idProducer)
-
-	err = mgr.Run()
+	err = fixed.Exec(current)
 	require.NoError(err, "Error when run migration manager")
 
 	require.Equal(1, testData["migration1"], "Bad value after run migration1")
