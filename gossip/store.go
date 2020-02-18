@@ -28,9 +28,6 @@ type Store struct {
 	table  struct {
 		Version kvdb.KeyValueStore `table:"_"`
 
-		// Network tables
-		Peers kvdb.KeyValueStore `table:"Z"`
-
 		// Main DAG tables
 		Events    kvdb.KeyValueStore `table:"e"`
 		Blocks    kvdb.KeyValueStore `table:"b"`
@@ -51,6 +48,12 @@ type Store struct {
 		EventLocalTimes kvdb.KeyValueStore `table:"!"`
 
 		TmpDbs kvdb.KeyValueStore `table:"T"`
+	}
+
+	serviceDb kvdb.KeyValueStore
+	service   struct {
+		// Network tables
+		Peers kvdb.KeyValueStore `table:"Z"`
 	}
 
 	EpochDbs *temporary.Dbs
@@ -84,13 +87,15 @@ func NewMemStore() *Store {
 // NewStore creates store over key-value db.
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
-		dbs:      dbs,
-		cfg:      cfg,
-		mainDb:   dbs.GetDb("gossip-main"),
-		Instance: logger.MakeInstance(),
+		dbs:       dbs,
+		cfg:       cfg,
+		mainDb:    dbs.GetDb("gossip-main"),
+		serviceDb: dbs.GetDb("gossip-serv"),
+		Instance:  logger.MakeInstance(),
 	}
 
 	table.MigrateTables(&s.table, s.mainDb)
+	table.MigrateTables(&s.service, s.serviceDb)
 
 	s.EpochDbs = s.newTmpDbs("epoch", func(ver uint64) (
 		db kvdb.KeyValueStore,
