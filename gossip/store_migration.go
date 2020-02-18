@@ -23,8 +23,17 @@ func (s *Store) migrations() *migration.Migration {
 		Begin("lachesis-gossip-store").
 		Next("service db",
 			func() error {
-				old := table.New(s.mainDb, []byte("Z"))
 				dst := s.service.Peers
-				return s.move(old, dst)
+
+				old1 := s.table.PackInfos
+				err := s.move(old1, dst, []byte("serverPool"))
+				if err != nil {
+					return err
+				}
+
+				old2 := table.New(s.mainDb, []byte("Z"))
+				err = s.move(old2, dst, nil)
+
+				return err
 			})
 }

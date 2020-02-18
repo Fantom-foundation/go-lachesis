@@ -110,9 +110,6 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.migrate()
 
-	// for compability with db before commit 591ede6
-	s.rmPrefix(s.table.PackInfos, "serverPool")
-
 	return s
 }
 
@@ -205,13 +202,6 @@ func (s *Store) has(table kvdb.KeyValueStore, key []byte) bool {
 	return res
 }
 
-func (s *Store) rmPrefix(t kvdb.KeyValueStore, prefix string) {
-	it := t.NewIteratorWithPrefix([]byte(prefix))
-	defer it.Release()
-
-	s.dropTable(it, t)
-}
-
 func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 	keys := make([][]byte, 0, 500) // don't write during iteration
 
@@ -227,10 +217,10 @@ func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 	}
 }
 
-func (s *Store) move(src, dst kvdb.KeyValueStore) error {
+func (s *Store) move(src, dst kvdb.KeyValueStore, prefix []byte) error {
 	keys := make([][]byte, 0, 500) // don't write during iteration
 
-	it := src.NewIterator()
+	it := src.NewIteratorWithPrefix(prefix)
 	defer it.Release()
 
 	for it.Next() {
