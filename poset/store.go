@@ -2,7 +2,6 @@ package poset
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -85,7 +84,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for poset store: " + err.Error())
+		s.Log.Crit("poset store migrations", "err", err)
 	}
 
 	return s

@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"log"
 	"sync"
 	"time"
 
@@ -139,11 +138,11 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for app store: " + err.Error())
+		s.Log.Crit("app store migrations", "err", err)
 	}
 	err = s.Commit(nil, true)
 	if err != nil {
-		log.Panic("Error when commit app store: " + err.Error())
+		s.Log.Crit("app store commit", "err", err)
 	}
 
 	return s

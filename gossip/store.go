@@ -3,7 +3,6 @@ package gossip
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -132,11 +131,11 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
-		log.Panic("Error when run migrations for gossip store: " + err.Error())
+		s.Log.Crit("gossip store migrations", "err", err)
 	}
 	err = s.Commit(nil, true)
 	if err != nil {
-		log.Panic("Error when commit gossip store: " + err.Error())
+		s.Log.Crit("gossip store commit", "err", err)
 	}
 
 	return s
