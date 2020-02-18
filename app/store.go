@@ -21,7 +21,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
@@ -32,6 +31,8 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version kvdb.KeyValueStore `table:"_"`
+
 		Genesis kvdb.KeyValueStore `table:"G"`
 
 		// score economy tables
@@ -134,11 +135,15 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	idProducer := migrations.NewFlushableIdProducer(flushable.Wrap(s.mainDb), "app_store_migrations")
+	idProducer := kvdb.NewIdProducer(s.table.Version)
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {
 		log.Panic("Error when run migrations for app store: " + err.Error())
+	}
+	err = s.Commit(nil, true)
+	if err != nil {
+		log.Panic("Error when commit app store: " + err.Error())
 	}
 
 	return s

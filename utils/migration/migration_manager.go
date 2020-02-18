@@ -20,10 +20,7 @@ func NewManager(last *Migration, idProducer IdProducer) *Manager {
 // Run all required migrations
 func (mm *Manager) Run() error {
 	// Read migration id from dbKey
-	curId, err := mm.idProd.GetId()
-	if err != nil {
-		return err
-	}
+	curId := mm.idProd.GetId()
 
 	// Search last executed transaction
 
@@ -34,14 +31,11 @@ func (mm *Manager) Run() error {
 
 	// Execute migrations from list in reverse order (first runed - last in list)
 	for i := len(list) - 1; i >= 0; i-- {
-		err = list[i].Run()
+		err := list[i].Run()
 		if err != nil {
 			return errors.Wrap(err, "migration: "+list[i].Id())
 		}
-		err = mm.idProd.SetId(list[i].Id())
-		if err != nil {
-			return errors.Wrap(err, "save migration id for migration: "+list[i].Id())
-		}
+		mm.idProd.SetId(list[i].Id())
 	}
 
 	return nil

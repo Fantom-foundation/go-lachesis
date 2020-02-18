@@ -14,7 +14,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/migrations"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
@@ -25,6 +24,7 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version        kvdb.KeyValueStore `table:"_"`
 		Checkpoint     kvdb.KeyValueStore `table:"c"`
 		Epochs         kvdb.KeyValueStore `table:"e"`
 		ConfirmedEvent kvdb.KeyValueStore `table:"C"`
@@ -81,7 +81,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	idProducer := migrations.NewFlushableIdProducer(flushable.Wrap(s.mainDb), "poset_store_migrations")
+	idProducer := kvdb.NewIdProducer(s.table.Version)
 	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
 	err := migrationManager.Run()
 	if err != nil {

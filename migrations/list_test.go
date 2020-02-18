@@ -9,8 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
@@ -18,13 +20,12 @@ type MemIdProducer struct {
 	lastId string
 }
 
-func (p *MemIdProducer) GetId() (string, error) {
-	return string(p.lastId), nil
+func (p *MemIdProducer) GetId() string {
+	return string(p.lastId)
 }
 
-func (p *MemIdProducer) SetId(id string) error {
+func (p *MemIdProducer) SetId(id string) {
 	p.lastId = id
-	return nil
 }
 
 func TestList(t *testing.T) {
@@ -164,7 +165,7 @@ func TestList(t *testing.T) {
 
 		assert.Error(t, err, "Success run migration manager with error migrations")
 
-		lastId, _ := idProducer.GetId()
+		lastId := idProducer.GetId()
 		assert.Equal(t, lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
 
 		assert.Equal(t, 1, testData["migration1"], "Bad value after run migration1")
@@ -211,9 +212,8 @@ func TestList(t *testing.T) {
 		defer leveldb1.Close()
 
 		flushableDB := flushable.Wrap(leveldb1)
-
-		idProducer := NewFlushableIdProducer(flushableDB, "id_last_migration")
-		idProducer.SetId("")
+		idTable := table.New(flushableDB, []byte("migration_id"))
+		idProducer := kvdb.NewIdProducer(idTable)
 
 		list := migration.Init("lachesis-test-db", "654321")
 
@@ -434,35 +434,26 @@ func TestList(t *testing.T) {
 		disk := leveldb.NewProducer(dir)
 
 		// open raw databases
-		leveldb1 := disk.OpenDb("1")
-		defer leveldb1.Drop()
-		defer leveldb1.Close()
+		db := disk.OpenDb("1")
+		defer db.Drop()
+		defer db.Close()
 
-		flushableDB := flushable.Wrap(leveldb1)
-
-		idProducer := NewFlushableIdProducer(flushableDB, "id_last_migration")
-		idProducer.SetId("")
+		dataTable := table.New(db, []byte("test_data"))
+		idTable := table.New(db, []byte("id_last_migration"))
+		idProducer := kvdb.NewIdProducer(idTable)
 
 		list := migration.Init("lachesis-test-db-fail", "654321")
 
 		num := int64(1)
 		lastGood := list.New(func() error {
-			err := flushableDB.Put([]byte("migration1"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			err = flushableDB.Flush()
+			err := dataTable.Put([]byte("migration1"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
 			}
 			num++
 			return nil
 		}).New(func() error {
-			err := flushableDB.Put([]byte("migration2"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			err = flushableDB.Flush()
+			err := dataTable.Put([]byte("migration2"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
 			}
@@ -471,19 +462,9 @@ func TestList(t *testing.T) {
 		})
 
 		afterBad := lastGood.New(func() error {
-			err := flushableDB.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			flushableDB.DropNotFlushed()
-			num++
 			return errors.New("test migration error")
 		}).New(func() error {
-			err := flushableDB.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			err = flushableDB.Flush()
+			err := dataTable.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
 			}
@@ -496,13 +477,13 @@ func TestList(t *testing.T) {
 
 		assert.Error(t, err, "Success run migration manager with error migrations")
 
-		lastId, _ := idProducer.GetId()
+		lastId := idProducer.GetId()
 		assert.Equal(t, lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
 
-		testData1, _ := flushableDB.Get([]byte("migration1"))
-		testData2, _ := flushableDB.Get([]byte("migration2"))
-		testData3, _ := flushableDB.Get([]byte("migration3"))
-		testData4, _ := flushableDB.Get([]byte("migration4"))
+		testData1, _ := dataTable.Get([]byte("migration1"))
+		testData2, _ := dataTable.Get([]byte("migration2"))
+		testData3, _ := dataTable.Get([]byte("migration3"))
+		testData4, _ := dataTable.Get([]byte("migration4"))
 
 		assert.Equal(t, []byte("1"), testData1, "Bad value after run migration1")
 		assert.Equal(t, []byte("2"), testData2, "Bad value after run migration2")
@@ -515,22 +496,14 @@ func TestList(t *testing.T) {
 		*/
 		num = 3
 		fixed := lastGood.New(func() error {
-			err := flushableDB.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			err = flushableDB.Flush()
+			err := dataTable.Put([]byte("migration3"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
 			}
 			num++
 			return nil
 		}).New(func() error {
-			err := flushableDB.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
-			if err != nil {
-				return err
-			}
-			err = flushableDB.Flush()
+			err := dataTable.Put([]byte("migration4"), []byte(strconv.FormatInt(num, 10)))
 			if err != nil {
 				return err
 			}
@@ -543,10 +516,10 @@ func TestList(t *testing.T) {
 
 		assert.NoError(t, err, "Error when run migration manager")
 
-		testData1, _ = flushableDB.Get([]byte("migration1"))
-		testData2, _ = flushableDB.Get([]byte("migration2"))
-		testData3, _ = flushableDB.Get([]byte("migration3"))
-		testData4, _ = flushableDB.Get([]byte("migration4"))
+		testData1, _ = dataTable.Get([]byte("migration1"))
+		testData2, _ = dataTable.Get([]byte("migration2"))
+		testData3, _ = dataTable.Get([]byte("migration3"))
+		testData4, _ = dataTable.Get([]byte("migration4"))
 
 		assert.Equal(t, []byte("1"), testData1, "Bad value after run migration1")
 		assert.Equal(t, []byte("2"), testData2, "Bad value after run migration2")

@@ -1,6 +1,6 @@
 package migration
 
 type IdProducer interface {
-	GetId() (string, error)
-	SetId(string) error
+	GetId() string
+	SetId(string)
 }
