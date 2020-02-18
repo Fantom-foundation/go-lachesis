@@ -13,7 +13,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // Store is a poset persistent storage working over parent key-value database.
@@ -44,29 +43,6 @@ type Store struct {
 	logger.Instance
 }
 
-func ManualMigrations(s *Store) *migration.Migration {
-	return migration.Init("lachesis-poset-store", "Heuhax&Walv9")
-
-	/*
-		Example:
-
-		  return migration.Init("lachesis", "Heuhax&Walv9"
-			).NewNamed("20200207120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			}).New(func()error{
-				// If no NewNamed call - id generated automatically
-				// If you use several sequenced migrations with new(), you can not change it in future
-				... // Some actions for migrations
-				return err
-			}).NewNamed("20200209120000 <migration description>", func()error{
-				... // Some actions for migrations
-				return err
-			})
-			...
-	*/
-}
-
 // NewStore creates store over key-value db.
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
@@ -80,12 +56,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	idProducer := kvdb.NewIdProducer(s.table.Version)
-	migrationManager := migration.NewManager(ManualMigrations(s), idProducer)
-	err := migrationManager.Run()
-	if err != nil {
-		s.Log.Crit("poset store migrations", "err", err)
-	}
+	s.migrate()
 
 	return s
 }
