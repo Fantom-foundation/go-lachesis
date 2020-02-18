@@ -4,10 +4,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMigrations(t *testing.T) {
+	require := require.New(t)
+
 	testData := map[string]int{}
 	idProducer := &inmemIdProducer{}
 	list := Init("lachesis-test", "123456")
@@ -36,15 +38,15 @@ func TestMigrations(t *testing.T) {
 	mgr := NewManager(afterBad, idProducer)
 
 	err := mgr.Run()
-	assert.Error(t, err, "Success run migration manager with error migrations")
+	require.Error(err, "Success run migration manager with error migrations")
 
 	lastId := idProducer.GetId()
-	assert.Equal(t, lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
+	require.Equal(lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
 
-	assert.Equal(t, 1, testData["migration1"], "Bad value after run migration1")
-	assert.Equal(t, 2, testData["migration2"], "Bad value after run migration2")
-	assert.Equal(t, 3, testData["migration3"], "Bad value after run migration3")
-	assert.Empty(t, testData["migration4"], "Bad data for migration4 - should by empty")
+	require.Equal(1, testData["migration1"], "Bad value after run migration1")
+	require.Equal(2, testData["migration2"], "Bad value after run migration2")
+	require.Equal(3, testData["migration3"], "Bad value after run migration3")
+	require.Empty(testData["migration4"], "Bad data for migration4 - should by empty")
 
 	// Continue with fixed transactions
 
@@ -62,10 +64,10 @@ func TestMigrations(t *testing.T) {
 	mgr = NewManager(fixed, idProducer)
 
 	err = mgr.Run()
-	assert.NoError(t, err, "Error when run migration manager")
+	require.NoError(err, "Error when run migration manager")
 
-	assert.Equal(t, 1, testData["migration1"], "Bad value after run migration1")
-	assert.Equal(t, 2, testData["migration2"], "Bad value after run migration2")
-	assert.Equal(t, 3, testData["migration3"], "Bad value after run migration3")
-	assert.Equal(t, 4, testData["migration4"], "Bad value after run migration4")
+	require.Equal(1, testData["migration1"], "Bad value after run migration1")
+	require.Equal(2, testData["migration2"], "Bad value after run migration2")
+	require.Equal(3, testData["migration3"], "Bad value after run migration3")
+	require.Equal(4, testData["migration4"], "Bad value after run migration4")
 }
