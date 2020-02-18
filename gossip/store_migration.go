@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
@@ -15,9 +16,15 @@ func (s *Store) migrate() {
 	if err != nil {
 		s.Log.Crit("gossip store commit", "err", err)
 	}
-
 }
 
 func (s *Store) migrations() *migration.Migration {
-	return migration.Begin("lachesis-gossip-store")
+	return migration.
+		Begin("lachesis-gossip-store").
+		Next("service db",
+			func() error {
+				old := table.New(s.mainDb, []byte("Z"))
+				dst := s.service.Peers
+				return s.move(old, dst)
+			})
 }

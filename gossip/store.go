@@ -217,6 +217,30 @@ func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 	}
 }
 
+func (s *Store) move(src, dst kvdb.KeyValueStore) error {
+	keys := make([][]byte, 0, 500) // don't write during iteration
+
+	it := src.NewIterator()
+	defer it.Release()
+
+	for it.Next() {
+		err := dst.Put(it.Key(), it.Value())
+		if err != nil {
+			return err
+		}
+		keys = append(keys, it.Key())
+	}
+
+	for _, key := range keys {
+		err := src.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (s *Store) makeCache(size int) *lru.Cache {
 	if size <= 0 {
 		return nil
