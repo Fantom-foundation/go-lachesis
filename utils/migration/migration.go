@@ -52,6 +52,7 @@ func (m *Migration) Id() string {
 
 func (m *Migration) Exec(curr IdProducer) error {
 	if m.exec == nil {
+		// only 1st empty migration
 		return nil
 	}
 
@@ -68,9 +69,10 @@ func (m *Migration) Exec(curr IdProducer) error {
 
 	err = m.exec()
 	if err != nil {
-		log.Error(m.name+" migration failed", "err", err)
+		log.Error("'"+m.name+"' migration failed", "err", err)
 		return err
 	}
+	log.Warn("'" + m.name + "' migration has been applied")
 
 	curr.SetId(myId)
 	return nil
