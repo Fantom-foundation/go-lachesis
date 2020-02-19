@@ -18,6 +18,16 @@ func Begin(appName string) *Migration {
 	}
 }
 
+// Name accessor
+func (m *Migration) Name() string {
+	return m.name
+}
+
+// Prev migration accessor
+func (m *Migration) Prev() *Migration {
+	return m.prev
+}
+
 // Next creates next migration.
 func (m *Migration) Next(name string, exec func() error) *Migration {
 	if name == "" {

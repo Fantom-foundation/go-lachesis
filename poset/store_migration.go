@@ -6,7 +6,7 @@ import (
 )
 
 func (s *Store) migrate() {
-	versions := kvdb.NewIdProducer(s.table.Version)
+	versions := kvdb.NewIdProducer(s.table.Version, s.migrations())
 	err := s.migrations().Exec(versions)
 	if err != nil {
 		s.Log.Crit("poset store migrations", "err", err)
