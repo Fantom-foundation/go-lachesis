@@ -1,17 +1,19 @@
 package main
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 func TestConfigParse(t *testing.T) {
-	t.Run("Test parse fixture config with version", func(t *testing.T){
+	t.Run("Test parse fixture config with version", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config.toml")
 		modified := filepath.Join("testdata", "test_config_modified.toml")
 		copy(source, modified)
@@ -21,9 +23,9 @@ func TestConfigParse(t *testing.T) {
 		assert.NoError(t, err, "Parse fixture config without error")
 
 		os.Remove(modified)
-		os.Remove(modified+".init")
+		os.Remove(modified + ".init")
 	})
-	t.Run("Test parse fixture config without version", func(t *testing.T){
+	t.Run("Test parse fixture config without version", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
 		modified := filepath.Join("testdata", "test_config_wo_version_modified.toml")
 		copy(source, modified)
@@ -33,7 +35,7 @@ func TestConfigParse(t *testing.T) {
 		assert.NoError(t, err, "Parse fixture config without error")
 
 		os.Remove(modified)
-		os.Remove(modified+".init")
+		os.Remove(modified + ".init")
 	})
 }
 
@@ -50,7 +52,7 @@ func TestConfigMigrations(t *testing.T) {
 			- modify param value all types (String, Int, Float, Bool, Datetime)
 	*/
 
-	t.Run("Rename section", func(t *testing.T){
+	t.Run("Rename section", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
 		table, err := parseConfigToTable(source)
 		assert.NoError(t, err, "Parse config to Table")
@@ -58,10 +60,10 @@ func TestConfigMigrations(t *testing.T) {
 
 		migrations := func(data *ConfigData) *migration.Migration {
 			return migration.Begin("lachesis-config-test").
-			Next("v1-test", func()error{
-				err := data.RenameSection("Node", "NodeRenamed")
-				return err
-			})
+				Next("v1-test", func() error {
+					err := data.RenameSection("Node", "NodeRenamed")
+					return err
+				})
 		}(data)
 
 		idProd := NewConfigIdProducer(data, migrations)
@@ -354,7 +356,6 @@ func TestConfigMigrations(t *testing.T) {
 		assert.Empty(t, paramStr, "Param data is empty after delete param in config migrations")
 	})
 
-
 	t.Run("Set param value", func(t *testing.T) {
 		t.Run("String", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
@@ -482,7 +483,9 @@ func TestConfigMigrations(t *testing.T) {
 				return migration.Begin("lachesis-config-test").
 					Next("v1-test", func() error {
 						err := data.AddParam("TestTime", "Node", testTime0)
-						if err != nil { return err }
+						if err != nil {
+							return err
+						}
 						err = data.SetParam("TestTime", "Node", testTime)
 						return err
 					})

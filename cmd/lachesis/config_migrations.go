@@ -68,7 +68,7 @@ func (d *ConfigData) AddSection(name, after string) error {
 	_, err := d.findSection(name)
 	if err == nil {
 		// If exists - return error
-		return errors.New("section already exists: "+name)
+		return errors.New("section already exists: " + name)
 	}
 
 	path := strings.Split(name, ".")
@@ -96,10 +96,10 @@ func (d *ConfigData) AddSection(name, after string) error {
 					Begin: afterSection.End() + 1,
 					End:   0,
 				},
-				Line:     afterSection.Line + afterSection.End() - afterSection.Pos(),
-				Name:     n,
-				Fields:   make(map[string]interface{}),
-				Type:     ast.TableTypeNormal,
+				Line:   afterSection.Line + afterSection.End() - afterSection.Pos(),
+				Name:   n,
+				Fields: make(map[string]interface{}),
+				Type:   ast.TableTypeNormal,
 			}
 
 		}
@@ -139,11 +139,10 @@ func (d *ConfigData) RenameSection(name, newName string) error {
 	return nil
 }
 
-
 func (d *ConfigData) AddParam(name, sectionName string, value interface{}) error {
 	_, sect, err := d.getKVData(name, sectionName)
 	if err == nil {
-		return errors.New("param already exists in section: "+sectionName+" / "+name)
+		return errors.New("param already exists in section: " + sectionName + " / " + name)
 	}
 	if sect == nil {
 		return err
@@ -205,7 +204,7 @@ func (d *ConfigData) GetParamString(name, sectionName string) (string, error) {
 
 	pString, ok := param.Value.(*ast.String)
 	if !ok {
-		return "", errors.New("wrong type for string in param: "+sectionName+" / "+name)
+		return "", errors.New("wrong type for string in param: " + sectionName + " / " + name)
 	}
 
 	return pString.Value, nil
@@ -219,7 +218,7 @@ func (d *ConfigData) GetParamInt(name, sectionName string) (int64, error) {
 
 	pInt, ok := param.Value.(*ast.Integer)
 	if !ok {
-		return -1, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+		return -1, errors.New("wrong type for integer in param: " + sectionName + " / " + name)
 	}
 
 	return pInt.Int()
@@ -233,7 +232,7 @@ func (d *ConfigData) GetParamFloat(name, sectionName string) (float64, error) {
 
 	pFloat, ok := param.Value.(*ast.Float)
 	if !ok {
-		return -1, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+		return -1, errors.New("wrong type for integer in param: " + sectionName + " / " + name)
 	}
 
 	return pFloat.Float()
@@ -247,7 +246,7 @@ func (d *ConfigData) GetParamBool(name, sectionName string) (bool, error) {
 
 	pBool, ok := param.Value.(*ast.Boolean)
 	if !ok {
-		return false, errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+		return false, errors.New("wrong type for integer in param: " + sectionName + " / " + name)
 	}
 
 	return pBool.Boolean()
@@ -261,12 +260,11 @@ func (d *ConfigData) GetParamTime(name, sectionName string) (time.Time, error) {
 
 	pTime, ok := param.Value.(*ast.Datetime)
 	if !ok {
-		return time.Now(), errors.New("wrong type for integer in param: "+sectionName+" / "+name)
+		return time.Now(), errors.New("wrong type for integer in param: " + sectionName + " / " + name)
 	}
 
 	return pTime.Time()
 }
-
 
 func (d *ConfigData) findSection(name string) (*ast.Table, error) {
 	path := strings.Split(name, ".")
@@ -300,17 +298,17 @@ func (d *ConfigData) getKVData(name, sectionName string) (*ast.KeyValue, *ast.Ta
 		return nil, nil, err
 	}
 	if sect == nil {
-		return nil, nil, errors.New("section not found: "+sectionName)
+		return nil, nil, errors.New("section not found: " + sectionName)
 	}
 
 	paramI, ok := sect.Fields[name]
 	if !ok {
-		return nil, sect, errors.New("param not exists in section: "+sectionName+" / "+name)
+		return nil, sect, errors.New("param not exists in section: " + sectionName + " / " + name)
 	}
 
 	param, ok := paramI.(*ast.KeyValue)
 	if !ok {
-		return nil, sect, errors.New("wrong param type in section: "+sectionName+" / "+name)
+		return nil, sect, errors.New("wrong param type in section: " + sectionName + " / " + name)
 	}
 
 	return param, sect, nil
@@ -367,13 +365,13 @@ func (d *ConfigData) setKVData(name string, value interface{}, kvExists ...*ast.
 
 type configIdProducer struct {
 	migrationChain *migration.Migration
-	data *ConfigData
+	data           *ConfigData
 }
 
 func NewConfigIdProducer(d *ConfigData, chain *migration.Migration) *configIdProducer {
 	return &configIdProducer{
 		migrationChain: chain,
-		data: d,
+		data:           d,
 	}
 }
 
@@ -385,11 +383,11 @@ func (p *configIdProducer) GetId() string {
 
 	c, err := p.data.GetParamString("VersionCheckSum", "")
 	if err != nil {
-		panic("can not read 'VersionCheckSum' in configIdProducer: "+err.Error())
+		panic("can not read 'VersionCheckSum' in configIdProducer: " + err.Error())
 	}
 
 	if c != p.checksum(v) {
-		panic("bad checksum for current config version: "+err.Error())
+		panic("bad checksum for current config version: " + err.Error())
 	}
 
 	return v
@@ -400,20 +398,20 @@ func (p *configIdProducer) SetId(id string) {
 	if !ok {
 		err := p.data.AddParam("Version", "", id)
 		if err != nil {
-			panic("can not add param 'Version' in configIdProducer: "+err.Error())
+			panic("can not add param 'Version' in configIdProducer: " + err.Error())
 		}
 		err = p.data.AddParam("VersionCheckSum", "", p.checksum(id))
 		if err != nil {
-			panic("can not add param 'VersionCheckSum' in configIdProducer: "+err.Error())
+			panic("can not add param 'VersionCheckSum' in configIdProducer: " + err.Error())
 		}
 	}
 	err := p.data.SetParam("Version", "", id)
 	if err != nil {
-		panic("can not set param 'Version' in configIdProducer: "+err.Error())
+		panic("can not set param 'Version' in configIdProducer: " + err.Error())
 	}
 	err = p.data.SetParam("VersionCheckSum", "", p.checksum(id))
 	if err != nil {
-		panic("can not set param 'VersionCheckSum' in configIdProducer: "+err.Error())
+		panic("can not set param 'VersionCheckSum' in configIdProducer: " + err.Error())
 	}
 }
 

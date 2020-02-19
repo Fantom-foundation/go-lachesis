@@ -3,23 +3,25 @@ package kvdb
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
+
 	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 // IdProducer stores id
 type IdProducer struct {
-	table KeyValueStore
+	table          KeyValueStore
 	migrationChain *migration.Migration
-	key   []byte
+	key            []byte
 }
 
 // NewIdProducer constructor
 func NewIdProducer(table KeyValueStore, chain *migration.Migration) *IdProducer {
 	return &IdProducer{
-		table: table,
+		table:          table,
 		migrationChain: chain,
-		key:   []byte("id"),
+		key:            []byte("id"),
 	}
 }
 
