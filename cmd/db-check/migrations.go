@@ -12,16 +12,23 @@ func checkAfterMigration(p kvdb.DbProducer) {
 	defer mainDb.Close()
 
 	old1 := table.New(mainDb, []byte("p"))
-	printData("old1", old1, []byte("serverPool"))
+	mustPrintData("old1", old1, []byte("serverPool"))
 
 	old2 := table.New(mainDb, []byte("Z"))
-	printData("old2", old2, nil)
+	mustPrintData("old2", old2, nil)
 
 	servDb := p.OpenDb("gossip-serv")
 	defer servDb.Close()
 
 	dst := table.New(servDb, []byte("Z"))
-	printData("dst", dst, nil)
+	mustPrintData("dst", dst, nil)
+}
+
+func mustPrintData(dsc string, src kvdb.KeyValueStore, prefix []byte) {
+	err := printData(dsc, src, prefix)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func printData(dsc string, src kvdb.KeyValueStore, prefix []byte) error {
@@ -34,5 +41,5 @@ func printData(dsc string, src kvdb.KeyValueStore, prefix []byte) error {
 		fmt.Printf("%d) %s - %#v\n", i, string(it.Key()), it.Value())
 	}
 
-	return nil
+	return it.Error()
 }

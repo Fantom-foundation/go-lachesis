@@ -217,24 +217,29 @@ func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 	}
 }
 
-func (s *Store) move(src, dst kvdb.KeyValueStore, prefix []byte) error {
+func (s *Store) move(src, dst kvdb.KeyValueStore, prefix []byte) (err error) {
 	keys := make([][]byte, 0, 500) // don't write during iteration
 
 	it := src.NewIteratorWithPrefix(prefix)
 	defer it.Release()
 
 	for it.Next() {
-		err := dst.Put(it.Key(), it.Value())
+		err = dst.Put(it.Key(), it.Value())
 		if err != nil {
-			return err
+			return
 		}
 		keys = append(keys, it.Key())
 	}
 
+	err = it.Error()
+	if err != nil {
+		return
+	}
+
 	for _, key := range keys {
-		err := src.Delete(key)
+		err = src.Delete(key)
 		if err != nil {
-			return err
+			return
 		}
 	}
 
