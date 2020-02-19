@@ -39,7 +39,11 @@ func (p *IdProducer) GetId() string {
 // SetId is a setter
 func (p *IdProducer) SetId(id string) {
 	// Search prev migration name
-	prevName := p.prevName(id)
+	prevName := ""
+	prev := p.migrationChain.PrevByName(id)
+	if prev != nil {
+		prevName = prev.Name()
+	}
 
 	hashed := p.hashedId(id, prevName)
 	err := p.table.Put(p.key, []byte(hashed))
@@ -51,21 +55,14 @@ func (p *IdProducer) SetId(id string) {
 // IsCurrent return true if saved id equal from param
 func (p *IdProducer) IsCurrent(id string) bool {
 	currentId := p.GetId()
-	prevName := p.prevName(id)
-	return p.hashedId(id, prevName) == currentId
-}
 
-func (p *IdProducer) prevName(id string) string {
 	prevName := ""
-	prev := p.migrationChain
-	for prev != nil && prev.Name() != id {
-		prev = prev.Prev()
-	}
-	if prev != nil && prev.Prev() != nil {
-		prevName = prev.Prev().Name()
+	prev := p.migrationChain.PrevByName(id)
+	if prev != nil {
+		prevName = prev.Name()
 	}
 
-	return prevName
+	return p.hashedId(id, prevName) == currentId
 }
 
 func (p *IdProducer) hashedId(id, prev string) string {

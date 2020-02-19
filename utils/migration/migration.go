@@ -28,6 +28,19 @@ func (m *Migration) Prev() *Migration {
 	return m.prev
 }
 
+// PrevByName search previos migration for migration with name
+func (m *Migration) PrevByName(id string) *Migration {
+	prev := m
+	for prev != nil && prev.Name() != id {
+		prev = prev.Prev()
+	}
+
+	if prev == nil {
+		return nil
+	}
+	return prev.Prev()
+}
+
 // Next creates next migration.
 func (m *Migration) Next(name string, exec func() error) *Migration {
 	if name == "" {

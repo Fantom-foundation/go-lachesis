@@ -383,7 +383,6 @@ func (p *configIdProducer) GetId() string {
 }
 
 func (p *configIdProducer) SetId(id string) {
-	// fmt.Printf("DBG:\n%+v\n", p.data.Fields["Lachesis"].(*ast.Table).Fields["EVMInterpreter"].(*ast.KeyValue).Value.(*ast.String))
 	_, ok := p.data.GetTable().Fields["Version"]
 	if !ok {
 		err := p.data.AddParam("Version", "", id)
