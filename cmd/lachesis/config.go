@@ -108,7 +108,7 @@ func loadAllConfigs(file string, cfg *config) error {
 	}
 
 	migrations := ConfigMigrations(cfgData)
-	idProd := NewConfigIdProducer(cfgData)
+	idProd := NewConfigIdProducer(cfgData, migrations)
 	err = migrations.Exec(idProd)
 	if err != nil {
 		panic("error when run config migration: "+err.Error())

@@ -78,4 +78,10 @@ func TestMigrations(t *testing.T) {
 	require.Equal(2, testData["migration2"], "Bad value after run migration2")
 	require.Equal(3, testData["migration3"], "Bad value after run migration3")
 	require.Equal(4, testData["migration4"], "Bad value after run migration4")
+
+	require.Equal("03", fixed.PrevByName("04").Name(), "Bad search for PrevByName")
+	require.Equal("02", fixed.PrevByName("03").Name(), "Bad search for PrevByName")
+	require.Equal("01", fixed.PrevByName("02").Name(), "Bad search for PrevByName")
+	require.Equal("TestMigrations", fixed.PrevByName("01").Name(), "Bad search for PrevByName")
+	require.Nil(fixed.PrevByName("NotExisted"), "Bad search for PrevByName")
 }

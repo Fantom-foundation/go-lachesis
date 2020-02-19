@@ -64,7 +64,7 @@ func TestConfigMigrations(t *testing.T) {
 			})
 		}(data)
 
-		idProd := NewConfigIdProducer(data)
+		idProd := NewConfigIdProducer(data, migrations)
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -98,7 +98,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -128,7 +128,7 @@ func TestConfigMigrations(t *testing.T) {
 						})
 				}(data)
 
-				idProd := NewConfigIdProducer(data)
+				idProd := NewConfigIdProducer(data, migrations)
 				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
@@ -157,7 +157,7 @@ func TestConfigMigrations(t *testing.T) {
 						})
 				}(data)
 
-				idProd := NewConfigIdProducer(data)
+				idProd := NewConfigIdProducer(data, migrations)
 				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
@@ -189,7 +189,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -217,7 +217,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -252,7 +252,7 @@ func TestConfigMigrations(t *testing.T) {
 				})
 		}(data)
 
-		idProd := NewConfigIdProducer(data)
+		idProd := NewConfigIdProducer(data, migrations)
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -282,7 +282,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -310,7 +310,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -340,7 +340,7 @@ func TestConfigMigrations(t *testing.T) {
 				})
 		}(data)
 
-		idProd := NewConfigIdProducer(data)
+		idProd := NewConfigIdProducer(data, migrations)
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -371,7 +371,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -399,7 +399,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -427,7 +427,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -455,7 +455,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -488,7 +488,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data)
+			idProd := NewConfigIdProducer(data, migrations)
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")

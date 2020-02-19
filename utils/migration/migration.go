@@ -30,15 +30,15 @@ func (m *Migration) Prev() *Migration {
 
 // PrevByName search previos migration for migration with name
 func (m *Migration) PrevByName(id string) *Migration {
-	prev := m
-	for prev != nil && prev.Name() != id {
-		prev = prev.Prev()
+	cur := m
+	for cur != nil && cur.Name() != id {
+		cur = cur.Prev()
 	}
 
-	if prev == nil {
+	if cur == nil {
 		return nil
 	}
-	return prev.Prev()
+	return cur.Prev()
 }
 
 // Next creates next migration.
