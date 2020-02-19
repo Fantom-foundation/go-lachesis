@@ -1,6 +1,8 @@
 package kvdb
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -33,8 +35,24 @@ func (p *IdProducer) GetId() string {
 
 // SetId is a setter
 func (p *IdProducer) SetId(id string) {
-	err := p.table.Put(p.key, []byte(id))
+	hashed := p.hashedId(id)
+	err := p.table.Put(p.key, []byte(hashed))
 	if err != nil {
 		log.Crit("Failed to put key-value", "err", err)
 	}
+}
+
+// IsCurrent return true if saved id equal from param
+func (p *IdProducer) IsCurrent(id string) bool {
+	currentId := p.GetId()
+	return p.hashedId(id) == currentId
+}
+
+func (p *IdProducer) hashedId(id string) string {
+	digest := sha256.New()
+
+	digest.Write([]byte(id))
+
+	bytes := digest.Sum(nil)
+	return fmt.Sprintf("%x", bytes)
 }

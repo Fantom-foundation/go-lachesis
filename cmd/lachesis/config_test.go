@@ -3,6 +3,8 @@ package main
 import (
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 	"github.com/stretchr/testify/assert"
+	"io"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,17 +13,27 @@ import (
 func TestConfigParse(t *testing.T) {
 	t.Run("Test parse fixture config with version", func(t *testing.T){
 		source := filepath.Join("testdata", "test_config.toml")
+		modified := filepath.Join("testdata", "test_config_modified.toml")
+		copy(source, modified)
 
 		cfg := config{}
-		err := loadAllConfigs(source, &cfg)
+		err := loadAllConfigs(modified, &cfg)
 		assert.NoError(t, err, "Parse fixture config without error")
+
+		os.Remove(modified)
+		os.Remove(modified+".init")
 	})
 	t.Run("Test parse fixture config without version", func(t *testing.T){
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
+		modified := filepath.Join("testdata", "test_config_wo_version_modified.toml")
+		copy(source, modified)
 
 		cfg := config{}
-		err := loadAllConfigs(source, &cfg)
+		err := loadAllConfigs(modified, &cfg)
 		assert.NoError(t, err, "Parse fixture config without error")
+
+		os.Remove(modified)
+		os.Remove(modified+".init")
 	})
 }
 
@@ -45,16 +57,15 @@ func TestConfigMigrations(t *testing.T) {
 		data := NewConfigData(table)
 
 		migrations := func(data *ConfigData) *migration.Migration {
-			return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-			NewNamed("v1-test", func()error{
+			return migration.Begin("lachesis-config-test").
+			Next("v1-test", func()error{
 				err := data.RenameSection("Node", "NodeRenamed")
 				return err
 			})
 		}(data)
 
 		idProd := NewConfigIdProducer(data)
-		migrationManager := migration.NewManager(migrations, idProd)
-		err = migrationManager.Run()
+		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
 
@@ -80,16 +91,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.AddSection("NewSection", "")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -111,16 +121,15 @@ func TestConfigMigrations(t *testing.T) {
 
 				// Add root section
 				migrations := func(data *ConfigData) *migration.Migration {
-					return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-						NewNamed("v1-test", func() error {
+					return migration.Begin("lachesis-config-test").
+						Next("v1-test", func() error {
 							err := data.AddSection("NewSection.NewSubsection.NewSubsection2", "")
 							return err
 						})
 				}(data)
 
 				idProd := NewConfigIdProducer(data)
-				migrationManager := migration.NewManager(migrations, idProd)
-				err = migrationManager.Run()
+				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
 
@@ -141,16 +150,15 @@ func TestConfigMigrations(t *testing.T) {
 
 				// Add root section
 				migrations := func(data *ConfigData) *migration.Migration {
-					return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-						NewNamed("v1-test", func() error {
+					return migration.Begin("lachesis-config-test").
+						Next("v1-test", func() error {
 							err := data.AddSection("Node.NewSubSection.NewSubsection2", "")
 							return err
 						})
 				}(data)
 
 				idProd := NewConfigIdProducer(data)
-				migrationManager := migration.NewManager(migrations, idProd)
-				err = migrationManager.Run()
+				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
 
@@ -174,16 +182,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.DeleteSection("Node")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -203,16 +210,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.DeleteSection("Lachesis.Emitter.EmitIntervals")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -239,16 +245,15 @@ func TestConfigMigrations(t *testing.T) {
 
 		// Add root section
 		migrations := func(data *ConfigData) *migration.Migration {
-			return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-				NewNamed("v1-test", func() error {
+			return migration.Begin("lachesis-config-test").
+				Next("v1-test", func() error {
 					err := data.RenameParam("Validator", "Lachesis.Emitter", "ValidatorAddr")
 					return err
 				})
 		}(data)
 
 		idProd := NewConfigIdProducer(data)
-		migrationManager := migration.NewManager(migrations, idProd)
-		err = migrationManager.Run()
+		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
 
@@ -270,16 +275,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.AddParam("NewParamInRoot", "", "string value")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -299,16 +303,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.AddParam("NewParamInSection", "Lachesis.Emitter", "string value")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -330,16 +333,15 @@ func TestConfigMigrations(t *testing.T) {
 
 		// Add root section
 		migrations := func(data *ConfigData) *migration.Migration {
-			return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-				NewNamed("v1-test", func() error {
+			return migration.Begin("lachesis-config-test").
+				Next("v1-test", func() error {
 					err := data.DeleteParam("Validator", "Lachesis.Emitter")
 					return err
 				})
 		}(data)
 
 		idProd := NewConfigIdProducer(data)
-		migrationManager := migration.NewManager(migrations, idProd)
-		err = migrationManager.Run()
+		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
 
@@ -362,16 +364,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.SetParam("Validator", "Lachesis.Emitter", "test value")
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -391,16 +392,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.SetParam("MaxTxsFromSender", "Lachesis.Emitter", 1112233)
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -420,16 +420,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.SetParam("MaxGasRateGrowthFactor", "Lachesis.Emitter", 1.234)
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -449,16 +448,15 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.SetParam("TxIndex", "Lachesis", false)
 						return err
 					})
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -481,8 +479,8 @@ func TestConfigMigrations(t *testing.T) {
 
 			// Add root section
 			migrations := func(data *ConfigData) *migration.Migration {
-				return migration.Init("lachesis-config-test", "ajIr@Quicuj9").
-					NewNamed("v1-test", func() error {
+				return migration.Begin("lachesis-config-test").
+					Next("v1-test", func() error {
 						err := data.AddParam("TestTime", "Node", testTime0)
 						if err != nil { return err }
 						err = data.SetParam("TestTime", "Node", testTime)
@@ -491,8 +489,7 @@ func TestConfigMigrations(t *testing.T) {
 			}(data)
 
 			idProd := NewConfigIdProducer(data)
-			migrationManager := migration.NewManager(migrations, idProd)
-			err = migrationManager.Run()
+			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
 
@@ -505,4 +502,24 @@ func TestConfigMigrations(t *testing.T) {
 			assert.Equal(t, testTime, paramTime, "Param data correct after set datetime param in config migrations")
 		})
 	})
+}
+
+func copy(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	if err != nil {
+		return err
+	}
+	return out.Close()
 }

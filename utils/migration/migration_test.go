@@ -47,7 +47,7 @@ func TestMigrations(t *testing.T) {
 	require.Error(err, "Success run migration manager with error migrations")
 
 	lastId := current.GetId()
-	require.Equal(lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
+	require.Equal(lastGood.name, lastId, "Bad last id in idProducer after migration error")
 
 	require.Equal(1, testData["migration1"], "Bad value after run migration1")
 	require.Equal(2, testData["migration2"], "Bad value after run migration2")

@@ -25,7 +25,7 @@ import (
 */
 
 func ConfigMigrations(data *ConfigData) *migration.Migration {
-	return migration.Init("lachesis-config", "ajIr@Quicuj9")
+	return migration.Begin("lachesis-config")
 
 	/*
 		Use here only named migrations. Migration name - version of config.
@@ -373,20 +373,31 @@ func NewConfigIdProducer(d *ConfigData) *configIdProducer {
 	}
 }
 
-func (p *configIdProducer) GetId() (string, error) {
+func (p *configIdProducer) GetId() string {
 	v, err := p.data.GetParamString("Version", "")
 	if err != nil {
-		return "", nil
+		return ""
 	}
 
-	return v, nil
+	return v
 }
 
-func (p *configIdProducer) SetId(id string) error {
+func (p *configIdProducer) SetId(id string) {
 	// fmt.Printf("DBG:\n%+v\n", p.data.Fields["Lachesis"].(*ast.Table).Fields["EVMInterpreter"].(*ast.KeyValue).Value.(*ast.String))
 	_, ok := p.data.GetTable().Fields["Version"]
 	if !ok {
-		return p.data.AddParam("Version", "", id)
+		err := p.data.AddParam("Version", "", id)
+		if err != nil {
+			panic("can not add param 'Version' in configIdProducer: "+err.Error())
+		}
 	}
-	return p.data.SetParam("Version", "", id)
+	err := p.data.SetParam("Version", "", id)
+	if err != nil {
+		panic("can not set param 'Version' in configIdProducer: "+err.Error())
+	}
+}
+
+func (p *configIdProducer) IsCurrent(id string) bool {
+	currentId := p.GetId()
+	return id == currentId
 }

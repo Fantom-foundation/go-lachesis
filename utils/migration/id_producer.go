@@ -3,6 +3,7 @@ package migration
 type IdProducer interface {
 	GetId() string
 	SetId(string)
+	IsCurrent(string) bool
 }
 
 type inmemIdProducer struct {
@@ -15,4 +16,9 @@ func (p *inmemIdProducer) GetId() string {
 
 func (p *inmemIdProducer) SetId(id string) {
 	p.lastId = id
+}
+
+func (p *inmemIdProducer) IsCurrent(id string) bool {
+	currentId := p.GetId()
+	return id == currentId
 }

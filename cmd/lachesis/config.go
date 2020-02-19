@@ -24,7 +24,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
 var (
@@ -110,18 +109,21 @@ func loadAllConfigs(file string, cfg *config) error {
 
 	migrations := ConfigMigrations(cfgData)
 	idProd := NewConfigIdProducer(cfgData)
-	migrationManager := migration.NewManager(migrations, idProd)
-	err = migrationManager.Run()
+	err = migrations.Exec(idProd)
 	if err != nil {
 		panic("error when run config migration: "+err.Error())
 	}
-	newVersion, _ := cfgData.GetParamString("Version", "")
+	newVersion, err := cfgData.GetParamString("Version", "")
+	if err != nil || newVersion == "" {
+		newVersion = "init"
+	}
 
 	err = tomlSettings.UnmarshalTable(cfgData.GetTable(), cfg)
 	// Add file name to errors that have a line number.
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
 	}
+
 	// If version changed - save new toml config
 	if err == nil && oldVersion != newVersion {
 		// Save new config in temp file

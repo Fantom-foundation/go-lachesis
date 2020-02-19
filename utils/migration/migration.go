@@ -1,9 +1,6 @@
 package migration
 
 import (
-	"crypto/sha256"
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -38,27 +35,15 @@ func (m *Migration) Next(name string, exec func() error) *Migration {
 	}
 }
 
-// ID is an uniq migration's id.
-func (m *Migration) Id() string {
-	digest := sha256.New()
-	if m.prev != nil {
-		digest.Write([]byte(m.prev.Id()))
-	}
-	digest.Write([]byte(m.name))
-
-	bytes := digest.Sum(nil)
-	return fmt.Sprintf("%x", bytes)
-}
-
 func (m *Migration) Exec(curr IdProducer) error {
 	if m.exec == nil {
 		// only 1st empty migration
 		return nil
 	}
 
-	myId := m.Id()
+	myId := m.name
 
-	if curr.GetId() == myId {
+	if curr.IsCurrent(myId) {
 		return nil
 	}
 
