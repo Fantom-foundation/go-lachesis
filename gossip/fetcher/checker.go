@@ -1,6 +1,8 @@
 package fetcher
 
 import (
+	"sync"
+
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/heavycheck"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
@@ -89,4 +91,34 @@ func (m *MockChecker) Enqueue(events inter.Events, onValidated heavycheck.OnVali
 		onValidated(op)
 	}
 	return nil
+}
+
+type SyncChecker struct {
+	checker Checker
+}
+
+func (s *SyncChecker) Start() {
+	s.checker.Start()
+}
+
+func (s *SyncChecker) Stop() {
+	s.checker.Stop()
+}
+
+func (s *SyncChecker) Overloaded() bool {
+	return s.checker.Overloaded()
+}
+
+func (s *SyncChecker) Enqueue(events inter.Events, onValidated heavycheck.OnValidatedFn) error {
+	var wg sync.WaitGroup
+	wg.Add(len(events))
+	err := s.checker.Enqueue(events, func(data heavycheck.ArbitraryTaskData) {
+		for _ = range data.GetResult() {
+			wg.Done()
+		}
+		onValidated(data)
+	})
+
+	wg.Wait()
+	return err
 }
