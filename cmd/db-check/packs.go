@@ -12,7 +12,10 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
 
-func checkPacks(db kvdb.KeyValueStore) {
+func checkPacks(p kvdb.DbProducer) {
+	db := p.OpenDb("gossip-main")
+	defer db.Close()
+
 	t := table.New(db, []byte("p"))
 
 	it := t.NewIterator()
