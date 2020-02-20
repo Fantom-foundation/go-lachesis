@@ -1,6 +1,9 @@
 package migration
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -16,29 +19,6 @@ func Begin(appName string) *Migration {
 	return &Migration{
 		name: appName,
 	}
-}
-
-// Name accessor
-func (m *Migration) Name() string {
-	return m.name
-}
-
-// Prev migration accessor
-func (m *Migration) Prev() *Migration {
-	return m.prev
-}
-
-// PrevByName search previos migration for migration with name
-func (m *Migration) PrevByName(id string) *Migration {
-	cur := m
-	for cur != nil && cur.Name() != id {
-		cur = cur.Prev()
-	}
-
-	if cur == nil {
-		return nil
-	}
-	return cur.Prev()
 }
 
 // Next creates next migration.
@@ -58,15 +38,27 @@ func (m *Migration) Next(name string, exec func() error) *Migration {
 	}
 }
 
+// ID is an uniq migration's id.
+func (m *Migration) Id() string {
+	digest := sha256.New()
+	if m.prev != nil {
+		digest.Write([]byte(m.prev.Id()))
+	}
+	digest.Write([]byte(m.name))
+
+	bytes := digest.Sum(nil)
+	return fmt.Sprintf("%x", bytes)
+}
+
 func (m *Migration) Exec(curr IdProducer) error {
 	if m.exec == nil {
 		// only 1st empty migration
 		return nil
 	}
 
-	myId := m.name
+	myId := m.Id()
 
-	if curr.IsCurrent(myId) {
+	if curr.GetId() == myId {
 		return nil
 	}
 
