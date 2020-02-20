@@ -22,6 +22,7 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version        kvdb.KeyValueStore `table:"_"`
 		Checkpoint     kvdb.KeyValueStore `table:"c"`
 		Epochs         kvdb.KeyValueStore `table:"e"`
 		ConfirmedEvent kvdb.KeyValueStore `table:"C"`
@@ -54,6 +55,8 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	table.MigrateTables(&s.table, s.mainDb)
 
 	s.initCache()
+
+	s.migrate()
 
 	return s
 }

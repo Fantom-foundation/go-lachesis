@@ -26,8 +26,7 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
-		// Network tables
-		Peers kvdb.KeyValueStore `table:"Z"`
+		Version kvdb.KeyValueStore `table:"_"`
 
 		// Main DAG tables
 		Events    kvdb.KeyValueStore `table:"e"`
@@ -49,6 +48,12 @@ type Store struct {
 		EventLocalTimes kvdb.KeyValueStore `table:"!"`
 
 		TmpDbs kvdb.KeyValueStore `table:"T"`
+	}
+
+	serviceDb kvdb.KeyValueStore
+	service   struct {
+		// Network tables
+		Peers kvdb.KeyValueStore `table:"Z"`
 	}
 
 	EpochDbs *temporary.Dbs
@@ -82,13 +87,15 @@ func NewMemStore() *Store {
 // NewStore creates store over key-value db.
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
-		dbs:      dbs,
-		cfg:      cfg,
-		mainDb:   dbs.GetDb("gossip-main"),
-		Instance: logger.MakeInstance(),
+		dbs:       dbs,
+		cfg:       cfg,
+		mainDb:    dbs.GetDb("gossip-main"),
+		serviceDb: dbs.GetDb("gossip-serv"),
+		Instance:  logger.MakeInstance(),
 	}
 
 	table.MigrateTables(&s.table, s.mainDb)
+	table.MigrateTables(&s.service, s.serviceDb)
 
 	s.EpochDbs = s.newTmpDbs("epoch", func(ver uint64) (
 		db kvdb.KeyValueStore,
@@ -100,6 +107,8 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	})
 
 	s.initCache()
+
+	s.migrate()
 
 	return s
 }
@@ -206,6 +215,35 @@ func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 			s.Log.Crit("Failed to erase key-value", "err", err)
 		}
 	}
+}
+
+func (s *Store) move(src, dst kvdb.KeyValueStore, prefix []byte) (err error) {
+	keys := make([][]byte, 0, 500) // don't write during iteration
+
+	it := src.NewIteratorWithPrefix(prefix)
+	defer it.Release()
+
+	for it.Next() {
+		err = dst.Put(it.Key(), it.Value())
+		if err != nil {
+			return
+		}
+		keys = append(keys, it.Key())
+	}
+
+	err = it.Error()
+	if err != nil {
+		return
+	}
+
+	for _, key := range keys {
+		err = src.Delete(key)
+		if err != nil {
+			return
+		}
+	}
+
+	return nil
 }
 
 func (s *Store) makeCache(size int) *lru.Cache {

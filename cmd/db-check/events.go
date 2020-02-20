@@ -11,7 +11,10 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
 
-func checkEvents(db kvdb.KeyValueStore) {
+func checkEvents(p kvdb.DbProducer) {
+	db := p.OpenDb("gossip-main")
+	defer db.Close()
+
 	t := table.New(db, []byte("e"))
 
 	it := t.NewIterator()
