@@ -50,7 +50,7 @@ func (m *Migration) Id() string {
 	return fmt.Sprintf("%x", bytes)
 }
 
-func (m *Migration) Exec(curr IdProducer) error {
+func (m *Migration) Exec(curr IdStore) error {
 	if m.exec == nil {
 		// only 1st empty migration
 		return nil

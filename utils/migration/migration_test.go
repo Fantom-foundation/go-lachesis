@@ -11,7 +11,7 @@ func TestMigrations(t *testing.T) {
 	require := require.New(t)
 
 	testData := map[string]int{}
-	current := &inmemIdProducer{}
+	current := &inmemIdStore{}
 	list := Begin("TestMigrations")
 
 	num := 1
