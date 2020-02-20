@@ -77,3 +77,11 @@ func (m *Migration) Exec(curr IdStore) error {
 	curr.SetId(myId)
 	return nil
 }
+
+func (m *Migration) IdChain() []string {
+	if m.prev == nil {
+		return []string{m.Id()}
+	}
+
+	return append(m.prev.IdChain(), m.Id())
+}

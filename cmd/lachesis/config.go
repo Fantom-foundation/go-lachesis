@@ -75,32 +75,32 @@ var tomlSettings = toml.Config{
 }
 
 type config struct {
-	Version	 string
+	Version  string
 	Node     node.Config
 	Lachesis gossip.Config
 }
 
 type kv struct {
-	Key string
+	Key   string
 	Value string
 }
 
-func parseConfigToTable(fileName string) (*ast.Table, error) {
+func readConfigAST(fileName string) (*ast.Table, error) {
 	content, err := ioutil.ReadFile(fileName)
 	if err != nil {
-		panic("can not read config file '"+fileName+"': "+err.Error())
+		panic("can not read config file '" + fileName + "': " + err.Error())
 	}
 
 	res, err := toml.Parse(content)
 	if err != nil {
-		panic("can not parse config file '"+fileName+"': "+err.Error())
+		panic("can not parse config file '" + fileName + "': " + err.Error())
 	}
 
 	return res, nil
 }
 
 func loadAllConfigs(file string, cfg *config) error {
-	cfgTable, err := parseConfigToTable(file)
+	cfgTable, err := readConfigAST(file)
 	cfgData := NewConfigData(cfgTable)
 	oldVersion, err := cfgData.GetParamString("Version", "")
 	if err != nil || oldVersion == "" {
@@ -108,10 +108,10 @@ func loadAllConfigs(file string, cfg *config) error {
 	}
 
 	migrations := ConfigMigrations(cfgData)
-	idProd := NewConfigIdProducer(cfgData, migrations)
+	idProd := NewTomlIdStore(cfgData, migrations.IdChain())
 	err = migrations.Exec(idProd)
 	if err != nil {
-		panic("error when run config migration: "+err.Error())
+		panic("error when run config migration: " + err.Error())
 	}
 	newVersion, err := cfgData.GetParamString("Version", "")
 	if err != nil || newVersion == "" {
@@ -131,29 +131,29 @@ func loadAllConfigs(file string, cfg *config) error {
 		if err != nil {
 			return err
 		}
-		newFileName := file+".new"
+		newFileName := file + ".new"
 		newFile, err := os.OpenFile(newFileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0640)
 		if err != nil {
-			panic("error when save config after migration: "+err.Error())
+			panic("error when save config after migration: " + err.Error())
 		}
 		_, err = newFile.Write(out)
 		if err != nil {
 			newFile.Close()
 			os.Remove(newFileName)
-			panic("error when save config after migration: "+err.Error())
+			panic("error when save config after migration: " + err.Error())
 		}
 		newFile.Close()
 
 		// Save backup config
 		err = os.Rename(file, file+"."+oldVersion)
 		if err != nil {
-			panic("error when save old config backup after migration: "+err.Error())
+			panic("error when save old config backup after migration: " + err.Error())
 		}
 
 		// Rename new config file to original name
 		err = os.Rename(newFileName, file)
 		if err != nil {
-			panic("error when rename new config after migration: "+err.Error())
+			panic("error when rename new config after migration: " + err.Error())
 		}
 	}
 	return err

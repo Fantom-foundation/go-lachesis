@@ -54,7 +54,7 @@ func TestConfigMigrations(t *testing.T) {
 
 	t.Run("Rename section", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
-		table, err := parseConfigToTable(source)
+		table, err := readConfigAST(source)
 		assert.NoError(t, err, "Parse config to Table")
 		data := NewConfigData(table)
 
@@ -66,7 +66,7 @@ func TestConfigMigrations(t *testing.T) {
 				})
 		}(data)
 
-		idProd := NewConfigIdProducer(data, migrations)
+		idProd := NewTomlIdStore(data, migrations.IdChain())
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -87,7 +87,7 @@ func TestConfigMigrations(t *testing.T) {
 	t.Run("Add section", func(t *testing.T) {
 		t.Run("in root", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -100,7 +100,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -117,7 +117,7 @@ func TestConfigMigrations(t *testing.T) {
 		t.Run("sub section", func(t *testing.T) {
 			t.Run("parent not exists", func(t *testing.T) {
 				source := filepath.Join("testdata", "test_config_wo_version.toml")
-				table, err := parseConfigToTable(source)
+				table, err := readConfigAST(source)
 				assert.NoError(t, err, "Parse config to Table")
 				data := NewConfigData(table)
 
@@ -130,7 +130,7 @@ func TestConfigMigrations(t *testing.T) {
 						})
 				}(data)
 
-				idProd := NewConfigIdProducer(data, migrations)
+				idProd := NewTomlIdStore(data, migrations.IdChain())
 				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
@@ -146,7 +146,7 @@ func TestConfigMigrations(t *testing.T) {
 
 			t.Run("parent exists", func(t *testing.T) {
 				source := filepath.Join("testdata", "test_config_wo_version.toml")
-				table, err := parseConfigToTable(source)
+				table, err := readConfigAST(source)
 				assert.NoError(t, err, "Parse config to Table")
 				data := NewConfigData(table)
 
@@ -159,7 +159,7 @@ func TestConfigMigrations(t *testing.T) {
 						})
 				}(data)
 
-				idProd := NewConfigIdProducer(data, migrations)
+				idProd := NewTomlIdStore(data, migrations.IdChain())
 				err = migrations.Exec(idProd)
 
 				assert.NoError(t, err, "Config migrations success run")
@@ -178,7 +178,7 @@ func TestConfigMigrations(t *testing.T) {
 	t.Run("Delete section", func(t *testing.T) {
 		t.Run("in root", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -191,7 +191,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -206,7 +206,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("in sub section", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -219,7 +219,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -241,7 +241,7 @@ func TestConfigMigrations(t *testing.T) {
 
 	t.Run("Rename param", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
-		table, err := parseConfigToTable(source)
+		table, err := readConfigAST(source)
 		assert.NoError(t, err, "Parse config to Table")
 		data := NewConfigData(table)
 
@@ -254,7 +254,7 @@ func TestConfigMigrations(t *testing.T) {
 				})
 		}(data)
 
-		idProd := NewConfigIdProducer(data, migrations)
+		idProd := NewTomlIdStore(data, migrations.IdChain())
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -271,7 +271,7 @@ func TestConfigMigrations(t *testing.T) {
 	t.Run("Add param", func(t *testing.T) {
 		t.Run("to root", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -284,7 +284,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -299,7 +299,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("to section", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -312,7 +312,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -329,7 +329,7 @@ func TestConfigMigrations(t *testing.T) {
 
 	t.Run("Delete param", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
-		table, err := parseConfigToTable(source)
+		table, err := readConfigAST(source)
 		assert.NoError(t, err, "Parse config to Table")
 		data := NewConfigData(table)
 
@@ -342,7 +342,7 @@ func TestConfigMigrations(t *testing.T) {
 				})
 		}(data)
 
-		idProd := NewConfigIdProducer(data, migrations)
+		idProd := NewTomlIdStore(data, migrations.IdChain())
 		err = migrations.Exec(idProd)
 
 		assert.NoError(t, err, "Config migrations success run")
@@ -359,7 +359,7 @@ func TestConfigMigrations(t *testing.T) {
 	t.Run("Set param value", func(t *testing.T) {
 		t.Run("String", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -372,7 +372,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -387,7 +387,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("Int", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -400,7 +400,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -415,7 +415,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("Float", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -428,7 +428,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -443,7 +443,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("Bool", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -456,7 +456,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")
@@ -471,7 +471,7 @@ func TestConfigMigrations(t *testing.T) {
 		})
 		t.Run("DateTime", func(t *testing.T) {
 			source := filepath.Join("testdata", "test_config_wo_version.toml")
-			table, err := parseConfigToTable(source)
+			table, err := readConfigAST(source)
 			assert.NoError(t, err, "Parse config to Table")
 			data := NewConfigData(table)
 
@@ -491,7 +491,7 @@ func TestConfigMigrations(t *testing.T) {
 					})
 			}(data)
 
-			idProd := NewConfigIdProducer(data, migrations)
+			idProd := NewTomlIdStore(data, migrations.IdChain())
 			err = migrations.Exec(idProd)
 
 			assert.NoError(t, err, "Config migrations success run")

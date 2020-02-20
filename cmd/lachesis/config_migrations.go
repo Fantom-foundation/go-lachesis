@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/sha256"
 	"errors"
 	"fmt"
 	"strconv"
@@ -363,79 +362,58 @@ func (d *ConfigData) setKVData(name string, value interface{}, kvExists ...*ast.
 	return kv, nil
 }
 
-type configIdProducer struct {
-	migrationChain *migration.Migration
-	data           *ConfigData
+type tomlIdStore struct {
+	idChain []string
+	data    *ConfigData
 }
 
-func NewConfigIdProducer(d *ConfigData, chain *migration.Migration) *configIdProducer {
-	return &configIdProducer{
-		migrationChain: chain,
-		data:           d,
+func NewTomlIdStore(d *ConfigData, idChain []string) *tomlIdStore {
+	return &tomlIdStore{
+		idChain: idChain,
+		data:    d,
 	}
 }
 
-func (p *configIdProducer) GetId() string {
+func (p *tomlIdStore) GetId() string {
 	v, err := p.data.GetParamString("Version", "")
 	if err != nil {
 		return ""
 	}
 
-	c, err := p.data.GetParamString("VersionCheckSum", "")
-	if err != nil {
-		panic("can not read 'VersionCheckSum' in configIdProducer: " + err.Error())
-	}
-
-	if c != p.checksum(v) {
-		panic("bad checksum for current config version: " + err.Error())
-	}
-
-	return v
+	return p.human2id(v)
 }
 
-func (p *configIdProducer) SetId(id string) {
+func (p *tomlIdStore) SetId(id string) {
+	v := p.id2human(id)
 	_, ok := p.data.GetTable().Fields["Version"]
 	if !ok {
-		err := p.data.AddParam("Version", "", id)
+		err := p.data.AddParam("Version", "", v)
 		if err != nil {
-			panic("can not add param 'Version' in configIdProducer: " + err.Error())
+			panic(err)
 		}
-		err = p.data.AddParam("VersionCheckSum", "", p.checksum(id))
+	} else {
+		err := p.data.SetParam("Version", "", v)
 		if err != nil {
-			panic("can not add param 'VersionCheckSum' in configIdProducer: " + err.Error())
+			panic(err)
 		}
-	}
-	err := p.data.SetParam("Version", "", id)
-	if err != nil {
-		panic("can not set param 'Version' in configIdProducer: " + err.Error())
-	}
-	err = p.data.SetParam("VersionCheckSum", "", p.checksum(id))
-	if err != nil {
-		panic("can not set param 'VersionCheckSum' in configIdProducer: " + err.Error())
 	}
 }
 
-func (p *configIdProducer) IsCurrent(id string) bool {
-	currentId := p.GetId()
-	return id == currentId
+func (p *tomlIdStore) id2human(id string) string {
+	for i, x := range p.idChain {
+		if x != id {
+			continue
+		}
+		return fmt.Sprintf("v.%d.0", i+1)
+	}
+	panic("id2human() fail")
 }
 
-func (p *configIdProducer) checksum(id string) string {
-	prevName := ""
-	prev := p.migrationChain.PrevByName(id)
-	if prev != nil {
-		prevName = prev.Name()
+func (p *tomlIdStore) human2id(str string) string {
+	var i int
+	_, err := fmt.Sscanf(str, "v.%d.0", &i)
+	if err != nil {
+		panic(err)
 	}
-	prevCheckSum := ""
-	if prevName != "" {
-		prevCheckSum = p.checksum(prevName)
-	}
-
-	digest := sha256.New()
-
-	digest.Write([]byte(prevCheckSum))
-	digest.Write([]byte(id))
-
-	bytes := digest.Sum(nil)
-	return fmt.Sprintf("%x", bytes)
+	return p.idChain[i-1]
 }
