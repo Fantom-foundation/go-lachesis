@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"time"
 
@@ -129,6 +130,21 @@ func (s *Service) applyNewState(
 
 	// Process EVM txs
 	block, evmBlock, totalFee, receipts := s.executeEvmTransactions(block, evmBlock, statedb)
+	for _, receipt := range receipts {
+		for _, log := range receipt.Logs {
+			if len(log.Topics) == 0 {
+				continue
+			}
+
+			// temprorary magic. will be placed to a constant
+			aeSig := []byte("AdvanceEpoch()")
+			asSigHash := crypto.Keccak256Hash(aeSig)
+			if log.Topics[0].Hex() == asSigHash.Hex() {
+				sealEpoch = true
+			}
+
+		}
+	}
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
