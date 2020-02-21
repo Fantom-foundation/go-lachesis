@@ -386,16 +386,14 @@ func (p *tomlIdStore) GetId() string {
 func (p *tomlIdStore) SetId(id string) {
 	v := p.id2human(id)
 	_, ok := p.data.GetTable().Fields["Version"]
+	var err error
 	if !ok {
-		err := p.data.AddParam("Version", "", v)
-		if err != nil {
-			panic(err)
-		}
+		err = p.data.AddParam("Version", "", v)
 	} else {
-		err := p.data.SetParam("Version", "", v)
-		if err != nil {
-			panic(err)
-		}
+		err = p.data.SetParam("Version", "", v)
+	}
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -406,14 +404,15 @@ func (p *tomlIdStore) id2human(id string) string {
 		}
 		return fmt.Sprintf("v.%d.0", i+1)
 	}
-	panic("id2human() fail")
+	panic("id is not from idChain")
 }
 
 func (p *tomlIdStore) human2id(str string) string {
 	var i int
 	_, err := fmt.Sscanf(str, "v.%d.0", &i)
-	if err != nil {
-		panic(err)
+	if err == nil && i > 0 && i <= len(p.idChain) {
+		return p.idChain[i-1]
 	}
-	return p.idChain[i-1]
+
+	return str
 }
