@@ -1,7 +1,7 @@
 package gossip
 
 import (
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/Fantom-foundation/go-lachesis/hash"
 	"math/big"
 	"time"
 
@@ -90,10 +90,27 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
 
+func EpochIsAdvancing(receipts types.Receipts) bool {
+	for _, receipt := range receipts {
+		for _, log := range receipt.Logs {
+			if len(log.Topics) == 0 {
+				continue
+			}
+
+			// temprorary magic. will be placed to a constant
+			asSigHash := hash.Of([]byte("AdvanceEpoch()"))
+			if log.Topics[0] == asSigHash {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
 func (s *Service) applyNewState(
 	block *inter.Block,
-	sealEpoch bool,
+	decidedFrame idx.Frame,
 	cheaters inter.Cheaters,
 ) (
 	*inter.Block,
@@ -130,20 +147,10 @@ func (s *Service) applyNewState(
 
 	// Process EVM txs
 	block, evmBlock, totalFee, receipts := s.executeEvmTransactions(block, evmBlock, statedb)
-	for _, receipt := range receipts {
-		for _, log := range receipt.Logs {
-			if len(log.Topics) == 0 {
-				continue
-			}
-
-			// temprorary magic. will be placed to a constant
-			aeSig := []byte("AdvanceEpoch()")
-			asSigHash := crypto.Keccak256Hash(aeSig)
-			if log.Topics[0].Hex() == asSigHash.Hex() {
-				sealEpoch = true
-			}
-
-		}
+	sealEpoch := s.shouldSealEpoch(block, decidedFrame, cheaters)
+	// we do not need to check logs if sealEpoch is already true
+	if !sealEpoch {
+		sealEpoch = EpochIsAdvancing(receipts)
 	}
 
 	// memorize block position of each tx, for indexing and origination scores
@@ -310,19 +317,22 @@ func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 	s.store.DelLastHeaders(epoch - 1)
 }
 
+func (s *Service) shouldSealEpoch(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool) {
+	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
+	epochStart := s.store.GetEpochStats(pendingEpoch).Start
+	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
+	sealEpoch = sealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
+	sealEpoch = sealEpoch || cheaters.Len() > 0
+	return sealEpoch
+}
+
 // applyBlock execs ordered txns of new block on state, and fills the block DB indexes.
 func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
 	// s.engineMu is locked here
 
 	confirmBlocksMeter.Inc(1)
-	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
 
-	epochStart := s.store.GetEpochStats(pendingEpoch).Start
-	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
-	sealEpoch = sealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
-	sealEpoch = sealEpoch || cheaters.Len() > 0
-
-	block, evmBlock, receipts, txPositions, newAppHash := s.applyNewState(block, sealEpoch, cheaters)
+	block, evmBlock, receipts, txPositions, newAppHash := s.applyNewState(block, decidedFrame, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)
