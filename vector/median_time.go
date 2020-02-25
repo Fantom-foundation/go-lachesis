@@ -19,7 +19,7 @@ type medianTimeIndex struct {
 func (vi *Index) MedianTime(id hash.Event, genesisTime inter.Timestamp) inter.Timestamp {
 	vi.initBranchesInfo()
 	// get event by hash
-	beforeSeq, times := vi.getHighestBeforeAllBranchesTime(id)
+	beforeSeq, times := vi.getHighestBeforeMerged(id)
 	if beforeSeq == nil || times == nil {
 		vi.Log.Error("Event not found", "event", id.String())
 
@@ -27,7 +27,7 @@ func (vi *Index) MedianTime(id hash.Event, genesisTime inter.Timestamp) inter.Ti
 	}
 
 	honestTotalStake := pos.Stake(0) // isn't equal to validators.TotalStake(), because doesn't count cheaters
-	highests := make([]medianTimeIndex, 0, len(vi.validatorIdxs))
+	highests := make([]medianTimeIndex, 0, vi.validators.Len())
 	// convert []HighestBefore -> []medianTimeIndex
 	for creatorIdxI := range vi.validators.IDs() {
 		creatorIdx := idx.Validator(creatorIdxI)
