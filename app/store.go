@@ -48,9 +48,6 @@ type Store struct {
 		AddressLastTxTime   kvdb.KeyValueStore `table:"X"`
 		TotalPoiFee         kvdb.KeyValueStore `table:"U"`
 
-		// gas power economy tables
-		GasPowerRefund kvdb.KeyValueStore `table:"R"`
-
 		// SFC-related economy tables
 		Validators   kvdb.KeyValueStore `table:"1"`
 		Stakers      kvdb.KeyValueStore `table:"2"`

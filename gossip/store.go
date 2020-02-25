@@ -39,6 +39,9 @@ type Store struct {
 		EpochStats kvdb.KeyValueStore `table:"E"`
 
 		// gas power economy tables
+		GasPowerRefund kvdb.KeyValueStore `table:"R"`
+
+		// gas power economy tables
 		LastEpochHeaders kvdb.KeyValueStore `table:"l"`
 
 		// API-only tables
