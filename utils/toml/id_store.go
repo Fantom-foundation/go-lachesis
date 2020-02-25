@@ -16,6 +16,7 @@ func NewIDStore(d *Helper, idChain []string) *IDStore {
 	}
 }
 
+// GetID return current saved migration ID from toml data
 func (p *IDStore) GetID() string {
 	v, err := p.data.GetParamString("Version", "")
 	if err != nil {
@@ -25,6 +26,7 @@ func (p *IDStore) GetID() string {
 	return p.human2id(v)
 }
 
+// SetID save migration ID in toml data
 func (p *IDStore) SetID(id string) {
 	v := p.id2human(id)
 	_, ok := p.data.GetTable().Fields["Version"]

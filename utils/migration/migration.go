@@ -53,17 +53,17 @@ func (m *Migration) Id() string {
 
 // Exec method run migrations chain in right order
 func (m *Migration) Exec(curr IDStore) error {
-	currId := curr.GetID()
-	myId := m.Id()
+	currID := curr.GetID()
+	myID := m.Id()
 
 	if m.veryFirst() {
-		if currId != "" {
-			return errors.New("unknown version: " + currId)
+		if currID != "" {
+			return errors.New("unknown version: " + currID)
 		}
 		return nil
 	}
 
-	if currId == myId {
+	if currID == myID {
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func (m *Migration) Exec(curr IDStore) error {
 	}
 	log.Warn("'" + m.name + "' migration has been applied")
 
-	curr.SetID(myId)
+	curr.SetID(myID)
 	return nil
 }
 
