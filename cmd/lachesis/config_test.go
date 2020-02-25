@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/utils/toml"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
+	"github.com/Fantom-foundation/go-lachesis/utils/toml"
 )
 
 func TestConfigParse(t *testing.T) {
