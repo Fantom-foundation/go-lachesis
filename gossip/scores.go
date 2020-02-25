@@ -61,7 +61,7 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 	blockTimeDiff := block.Time - s.store.GetBlock(block.Index-1).Time
 
 	// Calc validation scores
-	for _, it := range s.GetActiveSfcStakers() {
+	for _, it := range s.app.GetActiveSfcStakers() {
 		// validators only
 		if !s.engine.GetValidators().Exists(it.StakerID) {
 			continue
