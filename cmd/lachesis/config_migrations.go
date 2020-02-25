@@ -1,9 +1,10 @@
 package main
 
 import (
+	"github.com/naoina/toml/ast"
+
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 	"github.com/Fantom-foundation/go-lachesis/utils/toml"
-	"github.com/naoina/toml/ast"
 )
 
 /*
@@ -22,15 +23,18 @@ import (
 func (c *config) migrate(t *ast.Table) (oldVersion string, newVersion string) {
 	cfgData := toml.NewTomlHelper(t)
 	var err error
-	oldVersion, err = cfgData.GetParamString("Version", "")
+	oldVersion, _ = cfgData.GetParamString("Version", "")
 
 	migrations := c.migrations(cfgData)
 	idProd := toml.NewIdStore(cfgData, migrations.IdChain())
 	err = migrations.Exec(idProd)
-	if err != nil {
+	if err != nil && err != toml.ErrorParamNotExists {
 		panic("error when run config migration: " + err.Error())
 	}
 	newVersion, err = cfgData.GetParamString("Version", "")
+	if err != nil && err != toml.ErrorParamNotExists {
+		panic("error when read new version after config migration: " + err.Error())
+	}
 
 	return
 }

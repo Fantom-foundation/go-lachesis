@@ -17,7 +17,8 @@ func TestConfigParse(t *testing.T) {
 	t.Run("Test parse fixture config with version", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config.toml")
 		modified := filepath.Join("testdata", "test_config_modified.toml")
-		_ = copy(source, modified)
+		err := copy(source, modified)
+		assert.NoError(t, err, "Copy error")
 
 		cfg := config{}
 		assert.Panics(t, func(){
@@ -30,10 +31,11 @@ func TestConfigParse(t *testing.T) {
 	t.Run("Test parse fixture config without version", func(t *testing.T) {
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
 		modified := filepath.Join("testdata", "test_config_wo_version_modified.toml")
-		copy(source, modified)
+		err := copy(source, modified)
+		assert.NoError(t, err, "Copy error")
 
 		cfg := config{}
-		err := loadAllConfigs(modified, &cfg)
+		err = loadAllConfigs(modified, &cfg)
 		assert.NoError(t, err, "Parse fixture config without error")
 
 		os.Remove(modified)

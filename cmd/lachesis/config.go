@@ -80,11 +80,6 @@ type config struct {
 	Lachesis gossip.Config
 }
 
-type kv struct {
-	Key   string
-	Value string
-}
-
 func readConfigAST(fileName string) (*ast.Table, error) {
 	content, err := ioutil.ReadFile(fileName)
 	if err != nil {
@@ -101,6 +96,9 @@ func readConfigAST(fileName string) (*ast.Table, error) {
 
 func loadAllConfigs(file string, cfg *config) error {
 	cfgTable, err := readConfigAST(file)
+	if err != nil {
+		return err
+	}
 
 	oldVersion, newVersion := cfg.migrate(cfgTable)
 

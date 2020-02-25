@@ -9,6 +9,13 @@ import (
 	"github.com/naoina/toml/ast"
 )
 
+
+var (
+	ErrorParamNotExists = errors.New("param not exists")
+	ErrorSectionNotExists = errors.New("section not exists")
+)
+
+
 type Helper struct {
 	table *ast.Table
 }
@@ -243,7 +250,7 @@ func (d *Helper) FindSection(name string) (*ast.Table, error) {
 
 		sectionI, ok := currentSection.Fields[n]
 		if !ok {
-			return nil, errors.New("section not found: " + pathStr)
+			return nil, ErrorSectionNotExists
 		}
 
 		currentSection, ok = sectionI.(*ast.Table)
@@ -261,17 +268,17 @@ func (d *Helper) getKVData(name, sectionName string) (*ast.KeyValue, *ast.Table,
 		return nil, nil, err
 	}
 	if sect == nil {
-		return nil, nil, errors.New("section not found: " + sectionName)
+		return nil, nil, ErrorSectionNotExists
 	}
 
 	paramI, ok := sect.Fields[name]
 	if !ok {
-		return nil, sect, errors.New("param not exists in section: " + sectionName + " / " + name)
+		return nil, sect, ErrorParamNotExists
 	}
 
 	param, ok := paramI.(*ast.KeyValue)
 	if !ok {
-		return nil, sect, errors.New("wrong param type in section: " + sectionName + " / " + name)
+		return nil, sect, ErrorParamNotExists
 	}
 
 	return param, sect, nil
@@ -286,36 +293,36 @@ func (d *Helper) setKVData(name string, value interface{}, kvExists ...*ast.KeyV
 			Key: name,
 		}
 	}
-	switch value.(type) {
+	switch v := value.(type) {
 	case string:
 		kv.Value = &ast.String{
 			Position: ast.Position{},
-			Value:    value.(string),
-			Data:     []rune(value.(string)),
+			Value:    v,
+			Data:     []rune(v),
 		}
 	case int:
-		s := strconv.FormatInt(int64(value.(int)), 10)
+		s := strconv.FormatInt(int64(v), 10)
 		kv.Value = &ast.Integer{
 			Position: ast.Position{},
 			Value:    s,
 			Data:     []rune(s),
 		}
 	case float64:
-		s := strconv.FormatFloat(value.(float64), 'f', 16, 64)
+		s := strconv.FormatFloat(v, 'f', 16, 64)
 		kv.Value = &ast.Float{
 			Position: ast.Position{},
 			Value:    s,
 			Data:     []rune(s),
 		}
 	case bool:
-		s := strconv.FormatBool(value.(bool))
+		s := strconv.FormatBool(v)
 		kv.Value = &ast.Boolean{
 			Position: ast.Position{},
 			Value:    s,
 			Data:     []rune(s),
 		}
 	case time.Time:
-		s := value.(time.Time).Format("2006-01-02T15:04:05.999999999Z07:00")
+		s := v.Format("2006-01-02T15:04:05.999999999Z07:00")
 		kv.Value = &ast.Datetime{
 			Position: ast.Position{},
 			Value:    s,
