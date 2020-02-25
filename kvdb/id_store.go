@@ -4,22 +4,22 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-// IdStore stores id
-type IdStore struct {
+// IDStore stores id
+type IDStore struct {
 	table KeyValueStore
 	key   []byte
 }
 
-// NewIdStore constructor
-func NewIdStore(table KeyValueStore) *IdStore {
-	return &IdStore{
+// NewIDStore constructor
+func NewIDStore(table KeyValueStore) *IDStore {
+	return &IDStore{
 		table: table,
 		key:   []byte("id"),
 	}
 }
 
-// GetId is a getter
-func (p *IdStore) GetId() string {
+// GetID is a getter
+func (p *IDStore) GetID() string {
 	id, err := p.table.Get(p.key)
 	if err != nil {
 		log.Crit("Failed to get key-value", "err", err)
@@ -31,8 +31,8 @@ func (p *IdStore) GetId() string {
 	return string(id)
 }
 
-// SetId is a setter
-func (p *IdStore) SetId(id string) {
+// SetID is a setter
+func (p *IDStore) SetID(id string) {
 	err := p.table.Put(p.key, []byte(id))
 	if err != nil {
 		log.Crit("Failed to put key-value", "err", err)

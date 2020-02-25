@@ -1,18 +1,19 @@
 package migration
 
-type IdStore interface {
-	GetId() string
-	SetId(string)
+// IDStore interface for stores id in migrations
+type IDStore interface {
+	GetID() string
+	SetID(string)
 }
 
-type inmemIdStore struct {
-	lastId string
+type inmemIDStore struct {
+	lastID string
 }
 
-func (p *inmemIdStore) GetId() string {
-	return string(p.lastId)
+func (p *inmemIDStore) GetID() string {
+	return string(p.lastID)
 }
 
-func (p *inmemIdStore) SetId(id string) {
-	p.lastId = id
+func (p *inmemIDStore) SetID(id string) {
+	p.lastID = id
 }

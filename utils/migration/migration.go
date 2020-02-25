@@ -51,8 +51,9 @@ func (m *Migration) Id() string {
 	return fmt.Sprintf("%x", bytes)
 }
 
-func (m *Migration) Exec(curr IdStore) error {
-	currId := curr.GetId()
+// Exec method run migrations chain in right order
+func (m *Migration) Exec(curr IDStore) error {
+	currId := curr.GetID()
 	myId := m.Id()
 
 	if m.veryFirst() {
@@ -78,7 +79,7 @@ func (m *Migration) Exec(curr IdStore) error {
 	}
 	log.Warn("'" + m.name + "' migration has been applied")
 
-	curr.SetId(myId)
+	curr.SetID(myId)
 	return nil
 }
 
@@ -86,6 +87,7 @@ func (m *Migration) veryFirst() bool {
 	return m.exec == nil
 }
 
+// IdChain return list of migrations ids in chain
 func (m *Migration) IdChain() []string {
 	if m.prev == nil {
 		return []string{m.Id()}

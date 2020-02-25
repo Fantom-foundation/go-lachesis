@@ -6,7 +6,7 @@ import (
 )
 
 func (s *Store) migrate() {
-	versions := kvdb.NewIdStore(s.table.Version)
+	versions := kvdb.NewIDStore(s.table.Version)
 	err := s.migrations().Exec(versions)
 	if err != nil {
 		s.Log.Crit("app store migrations", "err", err)

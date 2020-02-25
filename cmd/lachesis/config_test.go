@@ -374,7 +374,7 @@ func execMigrations(t *testing.T, file string, migrationsFunc func(helper *toml.
 	helper := toml.NewTomlHelper(table)
 
 	migrations := migrationsFunc(helper)
-	idProd := toml.NewIdStore(helper, migrations.IdChain())
+	idProd := toml.NewIDStore(helper, migrations.IdChain())
 	err = migrations.Exec(idProd)
 	assert.NoError(t, err, "Exec migrations")
 

@@ -9,7 +9,7 @@ import (
 
 func TestMigrations(t *testing.T) {
 	testData := map[string]int{}
-	curVer := &inmemIdStore{}
+	curVer := &inmemIDStore{}
 
 	t.Run("native", func(t *testing.T) {
 		require := require.New(t)
@@ -48,7 +48,7 @@ func TestMigrations(t *testing.T) {
 		err := afterBad.Exec(curVer)
 		require.Error(err, "Success run migration manager with error migrations")
 
-		lastId := curVer.GetId()
+		lastId := curVer.GetID()
 		require.Equal(lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
 
 		require.Equal(1, testData["migration1"], "Bad value after run migration1")

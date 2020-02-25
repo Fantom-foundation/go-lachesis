@@ -11,25 +11,28 @@ import (
 
 
 var (
-	ErrorParamNotExists = errors.New("param not exists")
-	ErrorSectionNotExists = errors.New("section not exists")
+	ErrorParamNotExists = errors.New("param not exists")		// Error for not exists params when read
+	ErrorSectionNotExists = errors.New("section not exists")	// Error for not exists section when search
 )
 
-
+// Helper is helper for simple manipulate with parsed toml data
 type Helper struct {
 	table *ast.Table
 }
 
+// NewTomlHelper return new helper using *ast.Table created in toml library Parse method
 func NewTomlHelper(t *ast.Table) *Helper {
 	return &Helper{
 		table: t,
 	}
 }
 
+// GetTable return *ast.Table data
 func (d *Helper) GetTable() *ast.Table {
 	return d.table
 }
 
+// AddSection add section with name 'name' in toml data after section 'after'
 func (d *Helper) AddSection(name, after string) error {
 	if name == "" {
 		return nil
@@ -80,6 +83,7 @@ func (d *Helper) AddSection(name, after string) error {
 	return nil
 }
 
+// DeleteSection remove section named 'name' with subdata from toml data
 func (d *Helper) DeleteSection(name string) error {
 	// Find parent section and name for deletedName section
 	path := strings.Split(name, ".")
@@ -96,6 +100,7 @@ func (d *Helper) DeleteSection(name string) error {
 	return nil
 }
 
+// RenameSection change name for section
 func (d *Helper) RenameSection(name, newName string) error {
 	section, err := d.FindSection(name)
 	if err != nil {
@@ -109,6 +114,7 @@ func (d *Helper) RenameSection(name, newName string) error {
 	return nil
 }
 
+// AddParam add param in section with set value
 func (d *Helper) AddParam(name, sectionName string, value interface{}) error {
 	_, sect, err := d.getKVData(name, sectionName)
 	if err == nil {
@@ -128,6 +134,7 @@ func (d *Helper) AddParam(name, sectionName string, value interface{}) error {
 	return nil
 }
 
+// DeleteParam remove param from section
 func (d *Helper) DeleteParam(name, sectionName string) error {
 	_, sect, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -139,6 +146,7 @@ func (d *Helper) DeleteParam(name, sectionName string) error {
 	return nil
 }
 
+// RenameParam rename param
 func (d *Helper) RenameParam(name, sectionName, newName string) error {
 	param, sect, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -152,6 +160,7 @@ func (d *Helper) RenameParam(name, sectionName, newName string) error {
 	return nil
 }
 
+// SetParam set value for exists param
 func (d *Helper) SetParam(name, sectionName string, value interface{}) error {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -166,6 +175,7 @@ func (d *Helper) SetParam(name, sectionName string, value interface{}) error {
 	return nil
 }
 
+// GetParamString get value for string param
 func (d *Helper) GetParamString(name, sectionName string) (string, error) {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -180,6 +190,7 @@ func (d *Helper) GetParamString(name, sectionName string) (string, error) {
 	return pString.Value, nil
 }
 
+// GetParamInt get value for int param
 func (d *Helper) GetParamInt(name, sectionName string) (int64, error) {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -194,6 +205,7 @@ func (d *Helper) GetParamInt(name, sectionName string) (int64, error) {
 	return pInt.Int()
 }
 
+// GetParamFloat get value for float param
 func (d *Helper) GetParamFloat(name, sectionName string) (float64, error) {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -208,6 +220,7 @@ func (d *Helper) GetParamFloat(name, sectionName string) (float64, error) {
 	return pFloat.Float()
 }
 
+// GetParamBool get value for bool param
 func (d *Helper) GetParamBool(name, sectionName string) (bool, error) {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -222,6 +235,7 @@ func (d *Helper) GetParamBool(name, sectionName string) (bool, error) {
 	return pBool.Boolean()
 }
 
+// GetParamTime get value for Time param
 func (d *Helper) GetParamTime(name, sectionName string) (time.Time, error) {
 	param, _, err := d.getKVData(name, sectionName)
 	if err != nil {
@@ -236,6 +250,7 @@ func (d *Helper) GetParamTime(name, sectionName string) (time.Time, error) {
 	return pTime.Time()
 }
 
+// FindSection return *ast.Table data for section or (nil, ErrorSectionNotExists) if section not exists
 func (d *Helper) FindSection(name string) (*ast.Table, error) {
 	path := strings.Split(name, ".")
 	currentSection := d.table

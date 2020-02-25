@@ -2,19 +2,21 @@ package toml
 
 import "fmt"
 
-type IdStore struct {
+// IDStore is implementation for migration id storage in toml file value
+type IDStore struct {
 	idChain []string
 	data    *Helper
 }
 
-func NewIdStore(d *Helper, idChain []string) *IdStore {
-	return &IdStore{
+// NewIDStore return new toml.IDStore
+func NewIDStore(d *Helper, idChain []string) *IDStore {
+	return &IDStore{
 		idChain: idChain,
 		data:    d,
 	}
 }
 
-func (p *IdStore) GetId() string {
+func (p *IDStore) GetID() string {
 	v, err := p.data.GetParamString("Version", "")
 	if err != nil {
 		return ""
@@ -23,7 +25,7 @@ func (p *IdStore) GetId() string {
 	return p.human2id(v)
 }
 
-func (p *IdStore) SetId(id string) {
+func (p *IDStore) SetID(id string) {
 	v := p.id2human(id)
 	_, ok := p.data.GetTable().Fields["Version"]
 	var err error
@@ -37,7 +39,7 @@ func (p *IdStore) SetId(id string) {
 	}
 }
 
-func (p *IdStore) id2human(id string) string {
+func (p *IDStore) id2human(id string) string {
 	for i, x := range p.idChain {
 		if x != id {
 			continue
@@ -47,7 +49,7 @@ func (p *IdStore) id2human(id string) string {
 	panic("id is not from idChain")
 }
 
-func (p *IdStore) human2id(str string) string {
+func (p *IDStore) human2id(str string) string {
 	var i int
 	_, err := fmt.Sscanf(str, "v.%d.0", &i)
 	if err == nil && i > 0 && i <= len(p.idChain) {

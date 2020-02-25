@@ -26,7 +26,7 @@ func (c *config) migrate(t *ast.Table) (oldVersion string, newVersion string) {
 	oldVersion, _ = cfgData.GetParamString("Version", "")
 
 	migrations := c.migrations(cfgData)
-	idProd := toml.NewIdStore(cfgData, migrations.IdChain())
+	idProd := toml.NewIDStore(cfgData, migrations.IdChain())
 	err = migrations.Exec(idProd)
 	if err != nil && err != toml.ErrorParamNotExists {
 		panic("error when run config migration: " + err.Error())
