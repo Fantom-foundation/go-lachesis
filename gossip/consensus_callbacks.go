@@ -90,7 +90,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
 
-func EpochIsAdvancing(receipts types.Receipts) bool {
+func EpochIsForceSealed(receipts types.Receipts) bool {
 	for _, receipt := range receipts {
 		for _, log := range receipt.Logs {
 			if len(log.Topics) == 0 {
@@ -118,6 +118,7 @@ func (s *Service) applyNewState(
 	types.Receipts,
 	map[common.Hash]TxPosition,
 	common.Hash,
+	bool,
 ) {
 	// s.engineMu is locked here
 
@@ -147,11 +148,7 @@ func (s *Service) applyNewState(
 
 	// Process EVM txs
 	block, evmBlock, totalFee, receipts := s.executeEvmTransactions(block, evmBlock, statedb)
-	sealEpoch := s.shouldSealEpoch(block, decidedFrame, cheaters)
-	// we do not need to check logs if sealEpoch is already true
-	if !sealEpoch {
-		sealEpoch = EpochIsAdvancing(receipts)
-	}
+	sealEpoch := s.shouldSealEpoch(block, decidedFrame, cheaters) || EpochIsForceSealed(receipts)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -193,7 +190,7 @@ func (s *Service) applyNewState(
 	log.Info("New block", "index", block.Index, "atropos", block.Atropos, "fee", totalFee, "gasUsed",
 		evmBlock.GasUsed, "skipped_txs", len(block.SkippedTxs), "txs", len(evmBlock.Transactions), "t", time.Since(start))
 
-	return block, evmBlock, receipts, txPositions, appHash
+	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
@@ -332,7 +329,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, evmBlock, receipts, txPositions, newAppHash := s.applyNewState(block, decidedFrame, cheaters)
+	block, evmBlock, receipts, txPositions, newAppHash, sealEpoch := s.applyNewState(block, decidedFrame, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)
