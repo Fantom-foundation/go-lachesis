@@ -476,9 +476,9 @@ type eventSlot struct {
 	creator idx.StakerID
 }
 
-// naive implementation of fork detection, O(n)
-func testForksDetected(vi *Index, head *inter.EventHeaderData) (cheaters map[idx.StakerID]bool, err error) {
-	cheaters = map[idx.StakerID]bool{}
+// naiveHighestBefore is naive implementation of highest before vector, O(n)
+func naiveHighestBefore(vi *Index, head *inter.EventHeaderData) (hb HighestBeforeSeq, err error) {
+	hb = NewHighestBeforeSeq(vi.validators.Len())
 	visited := hash.EventsSet{}
 	detected := map[eventSlot]int{}
 	onWalk := func(id hash.Event) (godeeper bool) {
@@ -499,11 +499,84 @@ func testForksDetected(vi *Index, head *inter.EventHeaderData) (cheaters map[idx
 	onWalk(head.Hash())
 	err = vi.dfsSubgraph(head, onWalk)
 	for s, count := range detected {
+		stakerIdx := vi.validators.GetIdx(s.creator)
+		current := hb.Get(stakerIdx)
 		if count > 1 {
-			cheaters[s.creator] = true
+			current = forkDetectedSeq
+		}
+		if current != forkDetectedSeq && current.Seq < s.seq {
+			current.Seq = s.seq
+		}
+		if current != forkDetectedSeq && (current.MinSeq > s.seq || current.MinSeq == 0) {
+			current.MinSeq = s.seq
+		}
+		hb.Set(stakerIdx, current)
+	}
+	return hb, err
+}
+
+// naiveForklessCause is naive implementation of ForklessCause, O(n)
+func naiveForklessCause(vi *Index, a, b *inter.EventHeaderData) bool {
+	bCreatorIdx := vi.validators.GetIdx(b.Creator)
+	hb := vi.GetHighestBeforeMerged(a.Hash())
+
+	if hb.Get(bCreatorIdx).IsForkDetected() {
+		return false
+	}
+
+	// calculate highestVisitedHash
+	visited := hash.EventsSet{}
+	highestVisitedSeq := map[idx.Validator]idx.Event{}
+	highestVisitedHash := map[idx.Validator]hash.Event{}
+	onWalk := func(id hash.Event) (godeeper bool) {
+		// ensure visited once
+		if visited.Contains(id) {
+			return false
+		}
+		visited.Add(id)
+
+		e := vi.getEvent(id)
+		creatorIdx := vi.validators.GetIdx(e.Creator)
+		if highestVisitedSeq[creatorIdx] == e.Seq && !hb.Get(creatorIdx).IsForkDetected() {
+			panic("Visited by a different event with the same seq, but fork still isn't observed")
+		}
+		if highestVisitedSeq[creatorIdx] < e.Seq {
+			highestVisitedSeq[creatorIdx] = e.Seq
+			highestVisitedHash[creatorIdx] = e.Hash()
+		}
+		return true
+	}
+	onWalk(a.Hash())
+	_ = vi.dfsSubgraph(a, onWalk)
+
+	if !visited.Contains(b.Hash()) {
+		return false
+	}
+
+	hbs := make([]HighestBeforeSeq, vi.validators.Len())
+	for creatorIdx := idx.Validator(0); creatorIdx < idx.Validator(vi.validators.Len()); creatorIdx++ {
+		if !hb.Get(creatorIdx).IsForkDetected() {
+			hbs[creatorIdx] = vi.GetHighestBeforeMerged(highestVisitedHash[creatorIdx])
+			if hb.Get(creatorIdx).Seq != highestVisitedSeq[creatorIdx] {
+				panic("highestVisitedSeq and HighestBefore aren't consistent")
+			}
 		}
 	}
-	return cheaters, err
+
+	counter := pos.Stake(0)
+	for creatorIdx := idx.Validator(0); creatorIdx < idx.Validator(vi.validators.Len()); creatorIdx++ {
+		if hbs[creatorIdx] == nil {
+			continue
+		}
+		if hbs[creatorIdx].Get(bCreatorIdx).Seq >= b.Seq {
+			counter += vi.validators.GetStakeByIdx(creatorIdx)
+		}
+	}
+	if counter > vi.validators.TotalStake() {
+		panic("Counted more than once")
+	}
+
+	return counter >= vi.validators.Quorum()
 }
 
 func TestRandomForksSanity(t *testing.T) {
@@ -547,6 +620,7 @@ func TestRandomForksSanity(t *testing.T) {
 	for _, node := range nodes {
 		ee := events[node]
 		highestBefore := vi.GetHighestBeforeSeq(ee[len(ee)-1].Hash())
+
 		for n, cheater := range nodes {
 			branchSeq := highestBefore.Get(idxs[cheater])
 			isCheater := n < len(cheaters)
@@ -619,7 +693,7 @@ func TestRandomForks(t *testing.T) {
 		},
 		{
 			nodesNum:      40,
-			parentsNum:    4,
+			parentsNum:    10,
 			cheatersNum:   10,
 			eventsNum:     3,
 			forksNum:      1,
@@ -633,7 +707,16 @@ func TestRandomForks(t *testing.T) {
 			forksNum:      30,
 			reorderChecks: 2,
 		},
+		{
+			nodesNum:      5,
+			parentsNum:    4,
+			cheatersNum:   0,
+			eventsNum:     30,
+			forksNum:      0,
+			reorderChecks: 2,
+		},
 	} {
+		//i = int(time.Now().UnixNano()) // uncomment for random tests
 		t.Run(fmt.Sprintf("Test #%d", i), func(t *testing.T) {
 			testTime := 100
 
@@ -642,7 +725,11 @@ func TestRandomForks(t *testing.T) {
 			nodes := inter.GenNodes(test.nodesNum)
 			cheaters := nodes[:test.cheatersNum]
 
-			validators := pos.EqualStakeValidators(nodes, 1)
+			validatorsBuilder := pos.NewBuilder()
+			for j, peer := range nodes {
+				validatorsBuilder.Set(peer, pos.Stake(3175000/(j+1)))
+			}
+			validators := validatorsBuilder.Build()
 
 			processedArr := inter.Events{}
 			processed := make(map[hash.Event]*inter.EventHeaderData)
@@ -671,17 +758,14 @@ func TestRandomForks(t *testing.T) {
 			idxs := validators.Idxs()
 			// check that fork observing is identical to naive version
 			for _, e := range processed {
-				highestBefore := vi.GetHighestBeforeSeq(e.Hash())
-				expectedCheaters, err := testForksDetected(vi, e)
+				highestBefore := vi.GetHighestBeforeMerged(e.Hash())
+				expectedHighestBefore, err := naiveHighestBefore(vi, e)
 				assertar.NoError(err)
 
 				for _, cheater := range nodes {
-					expectedCheater := expectedCheaters[cheater]
 					branchSeq := highestBefore.Get(idxs[cheater])
-					assertar.Equal(expectedCheater, branchSeq.IsForkDetected(), e.String())
-					if expectedCheater {
-						assertar.Equal(idx.Event(0), branchSeq.Seq, e.String())
-					}
+					expectedBranchSeq := expectedHighestBefore.Get(idxs[cheater])
+					assertar.Equal(expectedBranchSeq, branchSeq, e.String())
 				}
 			}
 
@@ -696,6 +780,8 @@ func TestRandomForks(t *testing.T) {
 						b: b.Hash(),
 					}
 					forklessCauseMap[pair] = vi.ForklessCause(a.Hash(), b.Hash())
+					// check that ForklessCause is identical to naive version
+					assertar.Equal(naiveForklessCause(vi, &a.EventHeaderData, &b.EventHeaderData), forklessCauseMap[pair], "%s %s", a.Hash().String(), b.Hash().String())
 				}
 			}
 
@@ -742,40 +828,23 @@ func TestRandomForks(t *testing.T) {
 /*
 // codegen4ForklessCausedStability is for test data generation.
 func codegen4ForklessCausedStability() {
-	peers := inter.GenNodes(4)
-	events := inter.GenEventsByNode(peers, 20, 2, nil, nil, nil)
-
-	validators := make(pos.Validators, len(peers))
-	for _, peer := range peers {
-		validators.Set(peer, pos.Stake(1))
-	}
-	vi := NewIndex(validators, memorydb.New())
+	nodes := inter.GenNodes(4)
 
 	processed := make(map[hash.Event]*inter.Event)
-	orderThenProcess := ordering.EventBuffer(ordering.Callback{
 
-		Process: func(e *inter.Event) {
-			processed[e.Hash()] = e
-			vi.Add(e)
-		},
-
-		Drop: func(e *inter.Event, err error) {
-			panic(err)
-		},
-
-		Exists: func(h hash.Event) *inter.Event {
-			return processed[h]
-		},
+	validators := pos.EqualStakeValidators(nodes, 1)
+	vi := NewIndex(DefaultIndexConfig(), validators, memorydb.New(), func(event hash.Event) *inter.EventHeaderData {
+		return &processed[event].EventHeaderData
 	})
 
-	// push
 	dag := inter.Events{}
-	for _, ee := range events {
-		for _, e := range ee {
-			orderThenProcess(e)
-		}
-		dag = append(dag, ee...)
-	}
+	inter.ForEachRandEvent(nodes, 20, 3, nil, inter.ForEachEvent{
+		Process: func(e *inter.Event, name string) {
+			processed[e.Hash()] = e
+			vi.Add(&e.EventHeaderData)
+			dag = append(dag, e)
+		},
+	})
 
 	// generation
 	scheme, err := inter.DAGtoASCIIscheme(dag)
