@@ -1,4 +1,4 @@
-Version = "init"
+Version = "v.1.0"
 
 [Node]
 IPCPath = "lachesis.ipc"

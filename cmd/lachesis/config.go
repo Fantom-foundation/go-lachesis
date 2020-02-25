@@ -101,24 +101,10 @@ func readConfigAST(fileName string) (*ast.Table, error) {
 
 func loadAllConfigs(file string, cfg *config) error {
 	cfgTable, err := readConfigAST(file)
-	cfgData := NewConfigData(cfgTable)
-	oldVersion, err := cfgData.GetParamString("Version", "")
-	if err != nil || oldVersion == "" {
-		oldVersion = "init"
-	}
 
-	migrations := ConfigMigrations(cfgData)
-	idProd := NewTomlIdStore(cfgData, migrations.IdChain())
-	err = migrations.Exec(idProd)
-	if err != nil {
-		panic("error when run config migration: " + err.Error())
-	}
-	newVersion, err := cfgData.GetParamString("Version", "")
-	if err != nil || newVersion == "" {
-		newVersion = "init"
-	}
+	oldVersion, newVersion := cfg.migrate(cfgTable)
 
-	err = tomlSettings.UnmarshalTable(cfgData.GetTable(), cfg)
+	err = tomlSettings.UnmarshalTable(cfgTable, cfg)
 	// Add file name to errors that have a line number.
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
@@ -126,35 +112,7 @@ func loadAllConfigs(file string, cfg *config) error {
 
 	// If version changed - save new toml config
 	if err == nil && oldVersion != newVersion {
-		// Save new config in temp file
-		out, err := tomlSettings.Marshal(&cfg)
-		if err != nil {
-			return err
-		}
-		newFileName := file + ".new"
-		newFile, err := os.OpenFile(newFileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0640)
-		if err != nil {
-			panic("error when save config after migration: " + err.Error())
-		}
-		_, err = newFile.Write(out)
-		if err != nil {
-			newFile.Close()
-			os.Remove(newFileName)
-			panic("error when save config after migration: " + err.Error())
-		}
-		newFile.Close()
-
-		// Save backup config
-		err = os.Rename(file, file+"."+oldVersion)
-		if err != nil {
-			panic("error when save old config backup after migration: " + err.Error())
-		}
-
-		// Rename new config file to original name
-		err = os.Rename(newFileName, file)
-		if err != nil {
-			panic("error when rename new config after migration: " + err.Error())
-		}
+		err = cfg.updateConfig(file)
 	}
 	return err
 }
@@ -350,6 +308,35 @@ func dumpConfig(ctx *cli.Context) error {
 	}
 	dump.WriteString(comment)
 	dump.Write(out)
+
+	return nil
+}
+
+func (cfg *config) updateConfig(file string) error {
+	out, err := tomlSettings.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Save new config in temp file
+	newFileName := file + ".new"
+	newFile, err := os.OpenFile(newFileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0640)
+	if err != nil {
+		panic("error when save config after migration: " + err.Error())
+	}
+	_, err = newFile.Write(out)
+	if err != nil {
+		newFile.Close()
+		os.Remove(newFileName)
+		panic("error when save config after migration: " + err.Error())
+	}
+	newFile.Close()
+
+	// Rename new config file to original name
+	err = os.Rename(newFileName, file)
+	if err != nil {
+		panic("error when rename new config after migration: " + err.Error())
+	}
 
 	return nil
 }
