@@ -9,10 +9,11 @@ import (
 	"github.com/naoina/toml/ast"
 )
 
-
 var (
-	ErrorParamNotExists = errors.New("param not exists")		// Error for not exists params when read
-	ErrorSectionNotExists = errors.New("section not exists")	// Error for not exists section when search
+	// ErrorParamNotExists error for not exists params when read
+	ErrorParamNotExists = errors.New("param not exists")
+	// ErrorSectionNotExists error for not exists section when search
+	ErrorSectionNotExists = errors.New("section not exists")
 )
 
 // Helper is helper for simple manipulate with parsed toml data

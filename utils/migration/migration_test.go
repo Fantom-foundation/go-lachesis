@@ -48,8 +48,8 @@ func TestMigrations(t *testing.T) {
 		err := afterBad.Exec(curVer)
 		require.Error(err, "Success run migration manager with error migrations")
 
-		lastId := curVer.GetID()
-		require.Equal(lastGood.Id(), lastId, "Bad last id in idProducer after migration error")
+		lastID := curVer.GetID()
+		require.Equal(lastGood.Id(), lastID, "Bad last id in idProducer after migration error")
 
 		require.Equal(1, testData["migration1"], "Bad value after run migration1")
 		require.Equal(2, testData["migration2"], "Bad value after run migration2")
