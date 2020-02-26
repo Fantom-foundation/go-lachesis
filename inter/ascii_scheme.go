@@ -119,7 +119,7 @@ func ASCIIschemeForEach(
 		for i, name := range nNames {
 			// make node if don't exist
 			if len(nodes) <= nCreators[i] {
-				validator := idx.BytesToStakerID(hash.Of([]byte(name)).Bytes()[:4])
+				validator := idx.StakerID(len(nodes)*2 + 1) // sparse validator IDs
 				nodes = append(nodes, validator)
 				events[validator] = nil
 			}
@@ -214,9 +214,30 @@ func ASCIIschemeToDAG(
 	return ASCIIschemeForEach(scheme, ForEachEvent{})
 }
 
+func decimalsOf(a int) int {
+	if a == 0 {
+		return 1
+	}
+	n := 0
+	for a != 0 {
+		a /= 10
+		n++
+	}
+	return n
+}
+
 // DAGtoASCIIscheme builds ASCII-scheme of events for debug purpose.
 func DAGtoASCIIscheme(events Events) (string, error) {
 	events = events.ByParents()
+
+	// calculate maximum number of decimals needed to show seq
+	maxSeq := idx.Event(0)
+	for _, e := range events {
+		if maxSeq < e.Seq {
+			maxSeq = e.Seq
+		}
+	}
+	maxDecimalsStr := fmt.Sprintf("%d", decimalsOf(int(maxSeq)))
 
 	var (
 		scheme rows
@@ -262,7 +283,9 @@ func DAGtoASCIIscheme(events Events) (string, error) {
 			if len(r.Name) < 1 {
 				r.Name = string('a' + r.Self)
 			}
-			r.Name = fmt.Sprintf("%s%03d", r.Name, e.Seq)
+
+			// use maxDecimals to align numbers
+			r.Name = fmt.Sprintf("%s%0"+maxDecimalsStr+"d", r.Name, e.Seq)
 		}
 		if w := len([]rune(r.Name)); scheme.ColWidth < w {
 			scheme.ColWidth = w

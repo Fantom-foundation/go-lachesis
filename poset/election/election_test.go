@@ -2,8 +2,6 @@ package election
 
 import (
 	"math/rand"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,11 +29,9 @@ type testExpected struct {
 }
 
 func TestProcessRoot(t *testing.T) {
-
-	t.Skip("Tests are outdated after latest optimizations, need to update them")
-
 	t.Run("4 equalStakes notDecided", func(t *testing.T) {
 		testProcessRoot(t,
+			1,
 			nil,
 			stakes{
 				"nodeA": 1,
@@ -43,27 +39,28 @@ func TestProcessRoot(t *testing.T) {
 				"nodeC": 1,
 				"nodeD": 1,
 			}, `
-a0_0  b0_0  c0_0  d0_0
+a0    b0    c0    d0
 ║     ║     ║     ║
-a1_1══╬═════╣     ║
+a1════╬═════╣     ║
 ║     ║     ║     ║
-║╚════b1_1══╣     ║
+║╚════b1════╣     ║
 ║     ║     ║     ║
-║     ║╚════c1_1══╣
+║     ║╚════c1════╣
 ║     ║     ║     ║
-║     ║╚═══─╫╩════d1_1
+║     ║╚═══─╫╩════d1
 ║     ║     ║     ║
-a2_2══╬═════╬═════╣
+a2════╬═════╬═════╣
 ║     ║     ║     ║
 `)
 	})
 
 	t.Run("4 equalStakes", func(t *testing.T) {
 		testProcessRoot(t,
+			1,
 			&testExpected{
-				DecidedFrame:   0,
-				DecidedAtropos: "b0_0",
-				DecisiveRoots:  map[string]bool{"a2_2": true},
+				DecidedFrame:   1,
+				DecidedAtropos: "b0",
+				DecisiveRoots:  map[string]bool{"a2": true},
 			},
 			stakes{
 				"nodeA": 1,
@@ -71,27 +68,28 @@ a2_2══╬═════╬═════╣
 				"nodeC": 1,
 				"nodeD": 1,
 			}, `
-a0_0  b0_0  c0_0  d0_0
+a0    b0    c0    d0
 ║     ║     ║     ║
-a1_1══╬═════╣     ║
+a1════╬═════╣     ║
 ║     ║     ║     ║
-║     b1_1══╬═════╣
+║     b1════╬═════╣
 ║     ║     ║     ║
-║     ║╚════c1_1══╣
+║     ║╚════c1════╣
 ║     ║     ║     ║
-║     ║╚═══─╫╩════d1_1
+║     ║╚═══─╫╩════d1
 ║     ║     ║     ║
-a2_2══╬═════╬═════╣
+a2════╬═════╬═════╣
 ║     ║     ║     ║
 `)
 	})
 
 	t.Run("4 equalStakes missingRoot", func(t *testing.T) {
 		testProcessRoot(t,
+			1,
 			&testExpected{
-				DecidedFrame:   0,
-				DecidedAtropos: "b0_0",
-				DecisiveRoots:  map[string]bool{"a2_2": true},
+				DecidedFrame:   1,
+				DecidedAtropos: "a0",
+				DecisiveRoots:  map[string]bool{"a2": true},
 			},
 			stakes{
 				"nodeA": 1,
@@ -99,25 +97,26 @@ a2_2══╬═════╬═════╣
 				"nodeC": 1,
 				"nodeD": 1,
 			}, `
-a0_0  b0_0  c0_0  d0_0
+a0    b0    c0    d0
 ║     ║     ║     ║
-a1_1══╬═════╣     ║
+a1════╬═════╣     ║
 ║     ║     ║     ║
-║╚════b1_1══╣     ║
+║╚════b1════╣     ║
 ║     ║     ║     ║
-║╚═══─╫╩════c1_1  ║
+║╚═══─╫╩════c1    ║
 ║     ║     ║     ║
-a2_2══╬═════╣     ║
+a2════╬═════╣     ║
 ║     ║     ║     ║
 `)
 	})
 
 	t.Run("4 differentStakes", func(t *testing.T) {
 		testProcessRoot(t,
+			1,
 			&testExpected{
-				DecidedFrame:   0,
-				DecidedAtropos: "a0_0",
-				DecisiveRoots:  map[string]bool{"b2_2": true},
+				DecidedFrame:   1,
+				DecidedAtropos: "a0",
+				DecisiveRoots:  map[string]bool{"b2": true},
 			},
 			stakes{
 				"nodeA": 1000000000000000000,
@@ -125,62 +124,70 @@ a2_2══╬═════╣     ║
 				"nodeC": 1,
 				"nodeD": 1,
 			}, `
-a0_0  b0_0  c0_0  d0_0
+a0    b0    c0    d0  
 ║     ║     ║     ║
-a1_1══╬═════╣     ║
+a1════╬═════╣     ║
 ║     ║     ║     ║
-║╚════+b1_1 ║     ║
+║╚════b1    ║     ║
 ║     ║     ║     ║
-║╚═══─╫─════+c1_1 ║
+║╚═══─╫─════c1    ║
 ║     ║     ║     ║
-║╚═══─╫╩═══─╫╩════d1_1
+║╚═══─╫╩═══─╫╩════d1
 ║     ║     ║     ║
-╠═════b2_2══╬═════╣
+╠═════b2════╬═════╣
 ║     ║     ║     ║
 `)
 	})
 
-	t.Run("4 differentStakes 4rounds", func(t *testing.T) {
+	t.Run("5 differentStakes 3 rounds", func(t *testing.T) {
 		testProcessRoot(t,
+			1,
 			&testExpected{
-				DecidedFrame:   0,
-				DecidedAtropos: "a0_0",
-				DecisiveRoots:  map[string]bool{"a4_4": true},
+				DecidedFrame:   1,
+				DecidedAtropos: "nodeB001",
+				DecisiveRoots:  map[string]bool{"nodeA004": true},
 			},
 			stakes{
-				"nodeA": 4,
-				"nodeB": 2,
-				"nodeC": 1,
-				"nodeD": 1,
+				"nodeA": 5,
+				"nodeB": 4,
+				"nodeC": 3,
+				"nodeD": 3,
+				"nodeE": 3,
 			}, `
-a0_0  b0_0  c0_0  d0_0
-║     ║     ║     ║
-a1_1══╣     ║     ║
-║     ║     ║     ║
-║     +b1_1═╬═════╣
-║     ║     ║     ║
-║╚═══─╫─════c1_1══╣
-║     ║     ║     ║
-║╚═══─╫─═══─╫╩════d1_1
-║     ║     ║     ║
-a2_2  ╣     ║     ║
-║     ║     ║     ║
-║╚════b2_2══╬═════╣
-║     ║     ║     ║
-║╚═══─╫╩════c2_2══╣
-║     ║     ║     ║
-║╚═══─╫╩═══─╫─════+d2_2
-║     ║     ║     ║
-a3_3══╬═════╬═════╣
-║     ║     ║     ║
-║╚════b3_3══╬═════╣
-║     ║     ║     ║
-║╚═══─╫╩════c3_3══╣
-║     ║     ║     ║
-║╚═══─╫╩═══─╫╩════d3_3
-║     ║     ║     ║
-a4_4══╣     ║     ║
-║     ║     ║     ║
+ ║         
+ nodeA1    
+ ║          ║         
+ ║          nodeB1    
+ ║          ║          ║         
+ ║          ║          nodeC1    
+ ║          ║          ║          ║         
+ ║          ║          ║          nodeD1    
+ ║          ║          ║          ║          ║         
+ ║          ║          ║          ║          nodeE1    
+ ║          ║          ║          ║          ║         
+ nodeA2═════╬══════════╬══════════╣          ║         
+ ║          ║          ║          ║          ║         
+ ║          nodeB2═════╬══════════╬══════════╣         
+ ║║         ║║         ║          ║          ║         
+ ║╚════════─╫╩════════ nodeC2═════╣          ║         
+ ║          ║║         ║║         ║          ║         
+ ║          ║╚════════─╫╩════════ nodeD2═════╣         
+ ║          ║║         ║║         ║║         ║         
+ ║          ║╚════════─╫╩════════─╫╩════════ nodeE2    
+ ║║        ║║         ║║         ║║         ║║         
+ ║╚════════╚ nodeB_2══╩╫─════════╩╫─════════╝║        
+ ║          ║          ║          ║          ║         
+ nodeA3════─╫─═════════╬══════════╬══════════╣         
+ ║          ║║         ║          ║          ║         
+ ║          ║╚════════ nodeC3═════╬══════════╣         
+ ║          ║║         ║║         ║          ║         
+ ║          ║╚════════─╫╩════════ nodeD3═════╣         
+ ║          ║║         ║║         ║║         ║         
+ ║          ║╚════════─╫╩════════─╫╩════════ nodeE3    
+ ║          ║         ║║         ║║         ║║         
+ ║          nodeB3════╩╫─════════╩╫─════════╝║         
+ ║          ║          ║          ║          ║         
+ nodeA4═════╬══════════╬══════════╬══════════╣         
 `)
 	})
 
@@ -188,6 +195,7 @@ a4_4══╣     ║     ║
 
 func testProcessRoot(
 	t *testing.T,
+	frameToDecide idx.Frame,
 	expected *testExpected,
 	stakes stakes,
 	dag string,
@@ -209,26 +217,19 @@ func testProcessRoot(
 			events[root.Hash()] = root
 
 			slot := Slot{
-				Frame:     frameOf(name),
+				Frame:     root.Frame,
 				Validator: root.Creator,
 			}
 			vertices[root.Hash()] = slot
 
-			frameRoots[frameOf(name)] = append(frameRoots[frameOf(name)], RootAndSlot{
+			frameRoots[root.Frame] = append(frameRoots[root.Frame], RootAndSlot{
 				ID:   root.Hash(),
 				Slot: slot,
 			})
 
 			// build edges to be able to fake forkless cause fn
-			noPrev := false
-			if strings.HasPrefix(name, "+") {
-				noPrev = true
-			}
 			from := root.Hash()
 			for _, observed := range root.Parents {
-				if root.IsSelfParent(observed) && noPrev {
-					continue
-				}
 				to := observed
 				edge := fakeEdge{
 					from: from,
@@ -236,6 +237,10 @@ func testProcessRoot(
 				}
 				edges[edge] = true
 			}
+		},
+		Build: func(e *inter.Event, name string) *inter.Event {
+			e.Frame = idx.Frame(e.Seq)
+			return e
 		},
 	})
 
@@ -263,7 +268,7 @@ func testProcessRoot(
 	}
 	ordered = unordered.ByParents()
 
-	election := New(validators, 0, forklessCauseFn, getFrameRootsFn)
+	election := New(validators, frameToDecide, forklessCauseFn, getFrameRootsFn)
 
 	// processing:
 	var alreadyDecided bool
@@ -284,7 +289,9 @@ func testProcessRoot(
 		// checking:
 		decisive := expected != nil && expected.DecisiveRoots[root.Hash().String()]
 		if decisive || alreadyDecided {
-			assertar.NotNil(got)
+			if !assertar.NotNil(got) {
+				t.Fatal(err)
+			}
 			assertar.Equal(expected.DecidedFrame, got.Frame)
 			assertar.Equal(expected.DecidedAtropos, got.Atropos.String())
 			alreadyDecided = true
@@ -292,13 +299,4 @@ func testProcessRoot(
 			assertar.Nil(got)
 		}
 	}
-}
-
-func frameOf(dsc string) idx.Frame {
-	s := strings.Split(dsc, "_")[1]
-	h, err := strconv.ParseUint(s, 10, 32)
-	if err != nil {
-		panic(err)
-	}
-	return idx.Frame(h)
 }
