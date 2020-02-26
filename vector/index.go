@@ -35,7 +35,7 @@ type IndexConfig struct {
 
 // Index is a data to detect forkless-cause condition, calculate median timestamp, detect forks.
 type Index struct {
-	validators    *pos.Validators
+	validators *pos.Validators
 
 	bi *branchesInfo
 
