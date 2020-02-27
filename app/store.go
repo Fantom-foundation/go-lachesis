@@ -62,6 +62,10 @@ type Store struct {
 		StakerOldRewards           kvdb.KeyValueStore `table:"7"`
 		StakerDelegatorsOldRewards kvdb.KeyValueStore `table:"8"`
 
+		// internal tables
+		ForEvmTable     kvdb.KeyValueStore `table:"M"`
+		ForEvmLogsTable kvdb.KeyValueStore `table:"L"`
+
 		Evm      ethdb.Database
 		EvmState state.Database
 		EvmLogs  *topicsdb.Index
@@ -101,10 +105,10 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	table.MigrateTables(&s.table, s.mainDb)
 
-	evmTable := nokeyiserr.Wrap(table.New(s.mainDb, []byte("M"))) // ETH expects that "not found" is an error
+	evmTable := nokeyiserr.Wrap(s.table.ForEvmTable) // ETH expects that "not found" is an error
 	s.table.Evm = rawdb.NewDatabase(evmTable)
 	s.table.EvmState = state.NewDatabaseWithCache(s.table.Evm, 16)
-	s.table.EvmLogs = topicsdb.New(table.New(s.mainDb, []byte("L")))
+	s.table.EvmLogs = topicsdb.New(s.table.ForEvmLogsTable)
 
 	s.initCache()
 
