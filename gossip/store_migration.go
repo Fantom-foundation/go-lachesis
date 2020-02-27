@@ -26,13 +26,13 @@ func (s *Store) migrations() *migration.Migration {
 				dst := s.service.Peers
 
 				old1 := s.table.PackInfos
-				err := s.move(old1, dst, []byte("serverPool"))
+				err := kvdb.Move(old1, dst, []byte("serverPool"))
 				if err != nil {
 					return err
 				}
 
 				old2 := table.New(s.mainDb, []byte("Z"))
-				err = s.move(old2, dst, nil)
+				err = kvdb.Move(old2, dst, nil)
 
 				return err
 			})
