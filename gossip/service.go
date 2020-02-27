@@ -94,6 +94,7 @@ type Service struct {
 	node                *node.ServiceContext
 	store               *Store
 	app                 *app.Store
+	abciApp             *app.App
 	engine              Consensus
 	engineMu            *sync.RWMutex
 	emitter             *Emitter
@@ -118,7 +119,7 @@ type Service struct {
 	logger.Instance
 }
 
-func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine Consensus, app *app.Store) (*Service, error) {
+func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine Consensus, apps *app.Store) (*Service, error) {
 	svc := &Service{
 		config: config,
 
@@ -126,9 +127,10 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 		Name: fmt.Sprintf("Node-%d", rand.Int()),
 
-		node:  ctx,
-		store: store,
-		app:   app,
+		node:    ctx,
+		store:   store,
+		app:     apps,
+		abciApp: app.New(config.Net, apps),
 
 		engineMu:          new(sync.RWMutex),
 		occurredTxs:       occuredtxs.New(txsRingBufferSize, types.NewEIP155Signer(config.Net.EvmChainConfig().ChainID)),

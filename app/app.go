@@ -29,6 +29,7 @@ type (
 	blockContext struct {
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
+		sealEpoch    bool
 	}
 )
 
@@ -43,11 +44,19 @@ func New(cfg lachesis.Config, s *Store) *App {
 }
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
-func (a *App) BeginBlock(stateHash common.Hash, stateReader evmcore.DummyChain) {
+func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) bool {
+	startBlock, startTime := a.store.GetLastVoting()
+	sealEpoch := (block.Index - startBlock) >= idx.Block(a.config.Dag.MaxEpochBlocks)
+	sealEpoch = sealEpoch || (block.Time-startTime) >= inter.Timestamp(a.config.Dag.MaxEpochDuration)
+	sealEpoch = sealEpoch || cheaters.Len() > 0
+
 	a.blockContext = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.EvmChainConfig(), stateReader),
+		sealEpoch:    sealEpoch,
 	}
+
+	return sealEpoch
 }
 
 // DeliverTxs includes a set of ABCIApplication.DeliverTx() calls
@@ -91,15 +100,20 @@ func (a *App) EndBlock(
 	epoch idx.Epoch,
 	block *inter.Block,
 	receipts types.Receipts,
-	sealEpoch bool,
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
 ) common.Hash {
-	a.processSfc(epoch, block, receipts, sealEpoch, cheaters, stats)
+
+	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)
 	newStateHash, err := a.blockContext.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
+
+	if a.blockContext.sealEpoch {
+		a.store.SetLastVoting(block.Index, block.Time)
+	}
+
 	// free resources
 	a.blockContext = nil
 

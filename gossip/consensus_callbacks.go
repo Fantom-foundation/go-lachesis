@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -90,7 +89,6 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 // applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
 func (s *Service) applyNewState(
 	block *inter.Block,
-	sealEpoch bool,
 	cheaters inter.Cheaters,
 ) (
 	*inter.Block,
@@ -98,6 +96,7 @@ func (s *Service) applyNewState(
 	types.Receipts,
 	map[common.Hash]TxPosition,
 	common.Hash,
+	bool,
 ) {
 	// s.engineMu is locked here
 
@@ -123,11 +122,10 @@ func (s *Service) applyNewState(
 
 	// Get app
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	app := app.New(s.config.Net, s.app)
-	app.BeginBlock(stateHash, s.GetEvmStateReader())
+	sealEpoch := s.abciApp.BeginBlock(block, cheaters, stateHash, s.GetEvmStateReader())
 
 	// Process txs
-	block, evmBlock, totalFee, receipts := app.DeliverTxs(block, evmBlock)
+	block, evmBlock, totalFee, receipts := s.abciApp.DeliverTxs(block, evmBlock)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -147,7 +145,7 @@ func (s *Service) applyNewState(
 	// Process SFC contract transactions
 	epoch := s.engine.GetEpoch()
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := app.EndBlock(epoch, block, receipts, sealEpoch, cheaters, stats)
+	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats)
 
 	// Process new epoch
 	if sealEpoch {
@@ -167,7 +165,7 @@ func (s *Service) applyNewState(
 	log.Info("New block", "index", block.Index, "atropos", block.Atropos, "fee", totalFee, "gasUsed",
 		evmBlock.GasUsed, "skipped_txs", len(block.SkippedTxs), "txs", len(evmBlock.Transactions), "t", time.Since(start))
 
-	return block, evmBlock, receipts, txPositions, appHash
+	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
@@ -242,14 +240,19 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	// s.engineMu is locked here
 
 	confirmBlocksMeter.Inc(1)
-	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
 
+	// TODO: legacy sanity check, remove it after few releases
 	epochStart := s.store.GetEpochStats(pendingEpoch).Start
-	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
-	sealEpoch = sealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
-	sealEpoch = sealEpoch || cheaters.Len() > 0
+	legacySealEpoch := decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
+	legacySealEpoch = legacySealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
+	legacySealEpoch = legacySealEpoch || cheaters.Len() > 0
 
-	block, evmBlock, receipts, txPositions, newAppHash := s.applyNewState(block, sealEpoch, cheaters)
+	block, evmBlock, receipts, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
+
+	// TODO: legacy sanity check, remove it after few releases
+	if legacySealEpoch != sealEpoch {
+		panic("SealEpoch is not compatible with legacy")
+	}
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)

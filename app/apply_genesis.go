@@ -74,6 +74,7 @@ func (s *Store) applyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, 
 		})
 	}
 	s.SetEpochValidators(1, validatorsArr)
+	s.SetLastVoting(0, net.Genesis.Time)
 
 	return
 }
