@@ -1,9 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
+	"github.com/naoina/toml/ast"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
@@ -74,21 +75,42 @@ var tomlSettings = toml.Config{
 }
 
 type config struct {
+	Version  string
 	Node     node.Config
 	Lachesis gossip.Config
 }
 
+func readConfigAST(fileName string) (*ast.Table, error) {
+	content, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		panic("can not read config file '" + fileName + "': " + err.Error())
+	}
+
+	res, err := toml.Parse(content)
+	if err != nil {
+		panic("can not parse config file '" + fileName + "': " + err.Error())
+	}
+
+	return res, nil
+}
+
 func loadAllConfigs(file string, cfg *config) error {
-	f, err := os.Open(file)
+	cfgTable, err := readConfigAST(file)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
 
-	err = tomlSettings.NewDecoder(bufio.NewReader(f)).Decode(cfg)
+	oldVersion, newVersion := cfg.migrate(cfgTable)
+
+	err = tomlSettings.UnmarshalTable(cfgTable, cfg)
 	// Add file name to errors that have a line number.
 	if _, ok := err.(*toml.LineError); ok {
 		err = errors.New(file + ", " + err.Error())
+	}
+
+	// If version changed - save new toml config
+	if err == nil && oldVersion != newVersion {
+		err = cfg.updateConfig(file)
 	}
 	return err
 }
@@ -284,6 +306,35 @@ func dumpConfig(ctx *cli.Context) error {
 	}
 	dump.WriteString(comment)
 	dump.Write(out)
+
+	return nil
+}
+
+func (cfg *config) updateConfig(file string) error {
+	out, err := tomlSettings.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Save new config in temp file
+	newFileName := file + ".new"
+	newFile, err := os.OpenFile(newFileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0640)
+	if err != nil {
+		panic("error when save config after migration: " + err.Error())
+	}
+	_, err = newFile.Write(out)
+	if err != nil {
+		newFile.Close()
+		os.Remove(newFileName)
+		panic("error when save config after migration: " + err.Error())
+	}
+	newFile.Close()
+
+	// Rename new config file to original name
+	err = os.Rename(newFileName, file)
+	if err != nil {
+		panic("error when rename new config after migration: " + err.Error())
+	}
 
 	return nil
 }

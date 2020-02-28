@@ -2,6 +2,7 @@ package migration
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -50,15 +51,19 @@ func (m *Migration) Id() string {
 	return fmt.Sprintf("%x", bytes)
 }
 
-func (m *Migration) Exec(curr IdProducer) error {
-	if m.exec == nil {
-		// only 1st empty migration
+// Exec method run migrations chain in right order
+func (m *Migration) Exec(curr IDStore) error {
+	currID := curr.GetID()
+	myID := m.Id()
+
+	if m.veryFirst() {
+		if currID != "" {
+			return errors.New("unknown version: " + currID)
+		}
 		return nil
 	}
 
-	myId := m.Id()
-
-	if curr.GetId() == myId {
+	if currID == myID {
 		return nil
 	}
 
@@ -74,6 +79,19 @@ func (m *Migration) Exec(curr IdProducer) error {
 	}
 	log.Warn("'" + m.name + "' migration has been applied")
 
-	curr.SetId(myId)
+	curr.SetID(myID)
 	return nil
+}
+
+func (m *Migration) veryFirst() bool {
+	return m.exec == nil
+}
+
+// IdChain return list of migrations ids in chain
+func (m *Migration) IdChain() []string {
+	if m.prev == nil {
+		return []string{m.Id()}
+	}
+
+	return append(m.prev.IdChain(), m.Id())
 }
