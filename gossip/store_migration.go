@@ -12,10 +12,6 @@ func (s *Store) migrate() {
 	if err != nil {
 		s.Log.Crit("gossip store migrations", "err", err)
 	}
-	err = s.Commit(nil, true)
-	if err != nil {
-		s.Log.Crit("gossip store commit", "err", err)
-	}
 }
 
 func (s *Store) migrations() *migration.Migration {
@@ -23,16 +19,16 @@ func (s *Store) migrations() *migration.Migration {
 		Begin("lachesis-gossip-store").
 		Next("service db",
 			func() error {
-				dst := s.service.Peers
+				dst := table.New(s.serviceDb, []byte("Z")) // service.Peers
 
-				old1 := s.table.PackInfos
-				err := s.move(old1, dst, []byte("serverPool"))
+				old1 := table.New(s.mainDb, []byte("p")) // table.PackInfos
+				err := kvdb.Move(old1, dst, []byte("serverPool"))
 				if err != nil {
 					return err
 				}
 
 				old2 := table.New(s.mainDb, []byte("Z"))
-				err = s.move(old2, dst, nil)
+				err = kvdb.Move(old2, dst, nil)
 
 				return err
 			})

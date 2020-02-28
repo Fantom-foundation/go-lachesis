@@ -39,6 +39,9 @@ type Store struct {
 		EpochStats kvdb.KeyValueStore `table:"E"`
 
 		// gas power economy tables
+		GasPowerRefund kvdb.KeyValueStore `table:"R"`
+
+		// gas power economy tables
 		LastEpochHeaders kvdb.KeyValueStore `table:"l"`
 
 		// API-only tables
@@ -215,35 +218,6 @@ func (s *Store) dropTable(it ethdb.Iterator, t kvdb.KeyValueStore) {
 			s.Log.Crit("Failed to erase key-value", "err", err)
 		}
 	}
-}
-
-func (s *Store) move(src, dst kvdb.KeyValueStore, prefix []byte) (err error) {
-	keys := make([][]byte, 0, 500) // don't write during iteration
-
-	it := src.NewIteratorWithPrefix(prefix)
-	defer it.Release()
-
-	for it.Next() {
-		err = dst.Put(it.Key(), it.Value())
-		if err != nil {
-			return
-		}
-		keys = append(keys, it.Key())
-	}
-
-	err = it.Error()
-	if err != nil {
-		return
-	}
-
-	for _, key := range keys {
-		err = src.Delete(key)
-		if err != nil {
-			return
-		}
-	}
-
-	return nil
 }
 
 func (s *Store) makeCache(size int) *lru.Cache {

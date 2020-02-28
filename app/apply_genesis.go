@@ -34,6 +34,7 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 		return
 	}
 	s.setGenesisState(block.Root)
+	s.FlushState()
 	return
 }
 
@@ -74,6 +75,7 @@ func (s *Store) applyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, 
 		})
 	}
 	s.SetEpochValidators(1, validatorsArr)
+	s.SetLastVoting(0, net.Genesis.Time)
 
 	return
 }

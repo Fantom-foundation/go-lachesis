@@ -1,9 +1,7 @@
 package app
 
 import (
-	"bytes"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -13,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
 
-	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
@@ -48,10 +45,8 @@ type Store struct {
 		AddressLastTxTime   kvdb.KeyValueStore `table:"X"`
 		TotalPoiFee         kvdb.KeyValueStore `table:"U"`
 
-		// gas power economy tables
-		GasPowerRefund kvdb.KeyValueStore `table:"R"`
-
 		// SFC-related economy tables
+		Voting       kvdb.KeyValueStore `table:"0"`
 		Validators   kvdb.KeyValueStore `table:"1"`
 		Stakers      kvdb.KeyValueStore `table:"2"`
 		Delegators   kvdb.KeyValueStore `table:"3"`
@@ -63,6 +58,10 @@ type Store struct {
 		DelegatorOldRewards        kvdb.KeyValueStore `table:"6"`
 		StakerOldRewards           kvdb.KeyValueStore `table:"7"`
 		StakerDelegatorsOldRewards kvdb.KeyValueStore `table:"8"`
+
+		// internal tables
+		ForEvmTable     kvdb.KeyValueStore `table:"M"`
+		ForEvmLogsTable kvdb.KeyValueStore `table:"L"`
 
 		Evm      ethdb.Database
 		EvmState state.Database
@@ -97,20 +96,20 @@ func NewMemStore() *Store {
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
 		cfg:      cfg,
-		mainDb:   dbs.GetDb("gossip-main"), // TODO: use "app-main" when database versioning is ready
+		mainDb:   dbs.GetDb("app-main"),
 		Instance: logger.MakeInstance(),
 	}
 
 	table.MigrateTables(&s.table, s.mainDb)
 
-	evmTable := nokeyiserr.Wrap(table.New(s.mainDb, []byte("M"))) // ETH expects that "not found" is an error
+	evmTable := nokeyiserr.Wrap(s.table.ForEvmTable) // ETH expects that "not found" is an error
 	s.table.Evm = rawdb.NewDatabase(evmTable)
 	s.table.EvmState = state.NewDatabaseWithCache(s.table.Evm, 16)
-	s.table.EvmLogs = topicsdb.New(table.New(s.mainDb, []byte("L")))
+	s.table.EvmLogs = topicsdb.New(s.table.ForEvmLogsTable)
 
 	s.initCache()
 
-	s.migrate()
+	s.migrate(dbs)
 
 	return s
 }
@@ -135,38 +134,12 @@ func (s *Store) Close() {
 	s.mainDb.Close()
 }
 
-// Commit changes.
-func (s *Store) Commit(flushID []byte, immediately bool) error {
-	// TODO: enable s.dbs (uncomment all the code) when database versioning is ready
-
-	if flushID == nil {
-		// if flushId not specified, use current time
-		buf := bytes.NewBuffer(nil)
-		buf.Write([]byte{0xbe, 0xee})                                    // 0xbeee eyecatcher that flushed time
-		buf.Write(bigendian.Int64ToBytes(uint64(time.Now().UnixNano()))) // current UnixNano time
-		/*
-			flushID = buf.Bytes()
-		*/
-	}
-
-	/*
-		if !immediately && !s.dbs.IsFlushNeeded() {
-			return nil
-		}
-	*/
-
-	// Flush trie on the DB
+// FlushState changes.
+func (s *Store) FlushState() {
 	err := s.table.EvmState.TrieDB().Cap(0)
 	if err != nil {
-		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
+		s.Log.Crit("Failed to flush trie on the DB", "err", err)
 	}
-	return err
-
-	// Flush the DBs
-	/*
-		return s.dbs.Flush(flushID)
-	*/
-
 }
 
 // StateDB returns state database.

@@ -64,6 +64,17 @@ func (s *Store) GetSfcStakers() []sfctype.SfcStakerAndID {
 	return stakers
 }
 
+// GetActiveSfcStakers returns stakers which will become validators in next epoch
+func (s *Store) GetActiveSfcStakers() []sfctype.SfcStakerAndID {
+	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
+	s.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+		if it.Staker.Ok() {
+			stakers = append(stakers, it)
+		}
+	})
+	return stakers
+}
+
 // GetEpochValidators returns all stored EpochValidators on the epoch
 func (s *Store) GetEpochValidators(epoch idx.Epoch) []sfctype.SfcStakerAndID {
 	// Get from cache

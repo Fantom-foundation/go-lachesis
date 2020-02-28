@@ -1,22 +1,19 @@
 package gossip
 
 import (
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
-	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
@@ -82,36 +79,12 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	}
 
 	immediately := (newEpoch != oldEpoch)
-
-	err := s.app.Commit(e.Hash().Bytes(), immediately)
-	if err != nil {
-		return err
-	}
 	return s.store.Commit(e.Hash().Bytes(), immediately)
-}
-
-func EpochIsForceSealed(receipts types.Receipts) bool {
-	// temporary magic, will be placed to a constant
-	asSigHash := hash.Of([]byte("AdvanceEpoch()"))
-
-	for _, receipt := range receipts {
-		for _, log := range receipt.Logs {
-			if len(log.Topics) == 0 {
-				continue
-			}
-
-			if log.Topics[0] == asSigHash {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 // applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
 func (s *Service) applyNewState(
 	block *inter.Block,
-	decidedFrame idx.Frame,
 	cheaters inter.Cheaters,
 ) (
 	*inter.Block,
@@ -143,13 +116,12 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	// Get stateDB
+	// Get app
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	statedb := s.app.StateDB(stateHash)
+	s.abciApp.BeginBlock(block, cheaters, stateHash, s.GetEvmStateReader())
 
-	// Process EVM txs
-	block, evmBlock, totalFee, receipts := s.executeEvmTransactions(block, evmBlock, statedb)
-	sealEpoch := s.shouldSealEpoch(block, decidedFrame, cheaters) || EpochIsForceSealed(receipts)
+	// Process txs
+	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -167,18 +139,16 @@ func (s *Service) applyNewState(
 	s.updateStakersPOI(block, sealEpoch)
 
 	// Process SFC contract transactions
-	s.processSfc(block, receipts, totalFee, sealEpoch, cheaters, statedb)
+	epoch := s.engine.GetEpoch()
+	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
+	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats)
 
 	// Process new epoch
 	if sealEpoch {
 		s.onEpochSealed(block, cheaters)
 	}
 
-	// Get state root
-	newStateHash, err := statedb.Commit(true)
-	if err != nil {
-		s.Log.Crit("Failed to commit state", "err", err)
-	}
+	// Save state root
 	block.Root = newStateHash
 	*evmBlock = evmcore.EvmBlock{
 		EvmHeader:    *evmcore.ToEvmHeader(block),
@@ -247,60 +217,6 @@ func (s *Service) assembleEvmBlock(
 	return evmBlock, blockEvents
 }
 
-func filterSkippedTxs(block *inter.Block, evmBlock *evmcore.EvmBlock) *evmcore.EvmBlock {
-	// Filter skipped transactions. Receipts are filtered already
-	skipCount := 0
-	filteredTxs := make(types.Transactions, 0, len(evmBlock.Transactions))
-	for i, tx := range evmBlock.Transactions {
-		if skipCount < len(block.SkippedTxs) && block.SkippedTxs[skipCount] == uint(i) {
-			skipCount++
-		} else {
-			filteredTxs = append(filteredTxs, tx)
-		}
-	}
-	evmBlock.Transactions = filteredTxs
-	return evmBlock
-}
-
-// executeTransactions execs ordered txns of new block on state.
-func (s *Service) executeEvmTransactions(
-	block *inter.Block,
-	evmBlock *evmcore.EvmBlock,
-	statedb *state.StateDB,
-) (
-	*inter.Block,
-	*evmcore.EvmBlock,
-	*big.Int,
-	types.Receipts,
-) {
-	// s.engineMu is locked here
-
-	evmProcessor := evmcore.NewStateProcessor(s.config.Net.EvmChainConfig(), s.GetEvmStateReader())
-
-	// Process txs
-	receipts, _, gasUsed, totalFee, skipped, err := evmProcessor.Process(evmBlock, statedb, vm.Config{}, false)
-	if err != nil {
-		s.Log.Crit("Shouldn't happen ever because it's not strict", "err", err)
-	}
-	block.SkippedTxs = skipped
-	block.GasUsed = gasUsed
-
-	// Filter skipped transactions
-	evmBlock = filterSkippedTxs(block, evmBlock)
-
-	block.TxHash = types.DeriveSha(evmBlock.Transactions)
-	*evmBlock = evmcore.EvmBlock{
-		EvmHeader:    *evmcore.ToEvmHeader(block),
-		Transactions: evmBlock.Transactions,
-	}
-
-	for _, r := range receipts {
-		s.app.IndexLogs(r.Logs...)
-	}
-
-	return block, evmBlock, totalFee, receipts
-}
-
 // onEpochSealed applies the new epoch sealing state
 func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 	// s.engineMu is locked here
@@ -315,7 +231,7 @@ func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 	s.store.DelLastHeaders(epoch - 1)
 }
 
-func (s *Service) shouldSealEpoch(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool) {
+func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool) {
 	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
 	epochStart := s.store.GetEpochStats(pendingEpoch).Start
 	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
@@ -330,7 +246,16 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, evmBlock, receipts, txPositions, newAppHash, sealEpoch := s.applyNewState(block, decidedFrame, cheaters)
+	// TODO: legacy sanity check, remove it after few releases
+	legacySealEpoch := s.legacyShouldSealEpoch(block, decidedFrame, cheaters)
+
+	block, evmBlock, receipts, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
+
+	// TODO: legacy sanity check, remove it after few releases
+	legacySealEpoch = legacySealEpoch || sfctype.EpochIsForceSealed(receipts)
+	if legacySealEpoch != sealEpoch {
+		panic("SealEpoch is not compatible with legacy")
+	}
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)

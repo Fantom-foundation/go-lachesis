@@ -43,7 +43,7 @@ func (s *Service) updateOriginationScores(block *inter.Block, evmBlock *evmcore.
 			}
 			notUsedGas := tx.Gas() - receipts[i].GasUsed
 			if notUsedGas >= minGasPowerRefund { // do not refund if refunding is more costly than refunded value
-				s.app.IncGasPowerRefund(epoch, txEvent.Creator, notUsedGas)
+				s.store.IncGasPowerRefund(epoch, txEvent.Creator, notUsedGas)
 			}
 		}
 	}
@@ -52,7 +52,7 @@ func (s *Service) updateOriginationScores(block *inter.Block, evmBlock *evmcore.
 		s.app.DelAllActiveOriginationScores()
 		s.app.MoveDirtyOriginationScoresToActive()
 		// prune not needed gas power records
-		s.app.DelGasPowerRefunds(epoch - 1)
+		s.store.DelGasPowerRefunds(epoch - 1)
 	}
 }
 
@@ -61,7 +61,7 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 	blockTimeDiff := block.Time - s.store.GetBlock(block.Index-1).Time
 
 	// Calc validation scores
-	for _, it := range s.GetActiveSfcStakers() {
+	for _, it := range s.app.GetActiveSfcStakers() {
 		// validators only
 		if !s.engine.GetValidators().Exists(it.StakerID) {
 			continue

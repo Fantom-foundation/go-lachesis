@@ -51,7 +51,7 @@ func (m *Migration) Id() string {
 	return fmt.Sprintf("%x", bytes)
 }
 
-// Exec method run migrations chain in right order
+// Exec method run migrations chain in order
 func (m *Migration) Exec(curr IDStore) error {
 	currID := curr.GetID()
 	myID := m.Id()
