@@ -99,7 +99,7 @@ func NewMemStore() *Store {
 func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
 		cfg:      cfg,
-		mainDb:   dbs.GetDb("gossip-main"), // TODO: use "app-main" when database versioning is ready
+		mainDb:   dbs.GetDb("app-main"),
 		Instance: logger.MakeInstance(),
 	}
 
@@ -112,7 +112,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	s.migrate()
+	s.migrate(dbs)
 
 	return s
 }

@@ -5,26 +5,30 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
-type voting struct {
-	Block idx.Block
-	Start inter.Timestamp
-}
-
-// GetLastVoting says when last voting was (epoch sealed)
+// GetLastVoting says when last voting was (sealed epoch)
 func (s *Store) GetLastVoting() (block idx.Block, start inter.Timestamp) {
 	key := []byte("last")
 
-	w, _ := s.get(s.table.Voting, key, &voting{}).(*voting)
+	buf, err := s.table.Voting.Get(key)
+	if err != nil {
+		s.Log.Crit("Failed to get key-value", "err", err)
+	}
+	if buf == nil {
+		return
+	}
 
-	block, start = w.Block, w.Start
+	block = idx.BytesToBlock(buf[:8])
+	start = inter.BytesToTimestamp(buf[8:])
 	return
 }
 
-// SetLastVoting saves when last voting was (epoch sealed)
+// SetLastVoting saves when last voting was (sealed epoch)
 func (s *Store) SetLastVoting(block idx.Block, start inter.Timestamp) {
 	key := []byte("last")
+	val := append(block.Bytes(), start.Bytes()...)
 
-	s.set(s.table.Voting, key, &voting{
-		block, start,
-	})
+	err := s.table.Voting.Put(key, val)
+	if err != nil {
+		s.Log.Crit("Failed to put key-value", "err", err)
+	}
 }
