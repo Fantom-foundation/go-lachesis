@@ -23,9 +23,9 @@ func (s *Store) migrations() *migration.Migration {
 		Begin("lachesis-gossip-store").
 		Next("service db",
 			func() error {
-				dst := s.service.Peers
+				dst := table.New(s.serviceDb, []byte("Z")) // service.Peers
 
-				old1 := s.table.PackInfos
+				old1 := table.New(s.mainDb, []byte("p")) // table.PackInfos
 				err := kvdb.Move(old1, dst, []byte("serverPool"))
 				if err != nil {
 					return err
