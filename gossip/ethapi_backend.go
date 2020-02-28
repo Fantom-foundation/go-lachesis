@@ -89,7 +89,7 @@ func (b *EthAPIBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumbe
 
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *evmcore.EvmHeader, error) {
 	if number == rpc.PendingBlockNumber {
-		return nil, nil, errors.New("pending block request isn't allowed")
+		number = rpc.LatestBlockNumber
 	}
 	var header *evmcore.EvmHeader
 	if number == rpc.LatestBlockNumber {
