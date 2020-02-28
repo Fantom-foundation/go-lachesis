@@ -12,10 +12,6 @@ func (s *Store) migrate() {
 	if err != nil {
 		s.Log.Crit("gossip store migrations", "err", err)
 	}
-	err = s.Commit(nil, true)
-	if err != nil {
-		s.Log.Crit("gossip store commit", "err", err)
-	}
 }
 
 func (s *Store) migrations() *migration.Migration {

@@ -325,10 +325,6 @@ func (s *Service) Stop() error {
 	s.engineMu.Lock()
 	defer s.engineMu.Unlock()
 
-	err := s.app.Commit(nil, true)
-	if err != nil {
-		return err
-	}
 	return s.store.Commit(nil, true)
 }
 

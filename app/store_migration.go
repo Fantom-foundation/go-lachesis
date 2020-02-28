@@ -18,11 +18,6 @@ func (s *Store) migrate(dbs *flushable.SyncedPool) {
 	if err != nil {
 		s.Log.Crit("app store migrations", "err", err)
 	}
-	err = s.Commit(nil, true)
-	if err != nil {
-		s.Log.Crit("app store commit", "err", err)
-	}
-
 }
 
 func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {

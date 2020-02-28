@@ -34,6 +34,7 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 		return
 	}
 	s.setGenesisState(block.Root)
+	s.FlushState()
 	return
 }
 

@@ -1,9 +1,7 @@
 package app
 
 import (
-	"bytes"
 	"sync"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -13,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/hashicorp/golang-lru"
 
-	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
@@ -137,38 +134,12 @@ func (s *Store) Close() {
 	s.mainDb.Close()
 }
 
-// Commit changes.
-func (s *Store) Commit(flushID []byte, immediately bool) error {
-	// TODO: enable s.dbs (uncomment all the code) when database versioning is ready
-
-	if flushID == nil {
-		// if flushId not specified, use current time
-		buf := bytes.NewBuffer(nil)
-		buf.Write([]byte{0xbe, 0xee})                                    // 0xbeee eyecatcher that flushed time
-		buf.Write(bigendian.Int64ToBytes(uint64(time.Now().UnixNano()))) // current UnixNano time
-		/*
-			flushID = buf.Bytes()
-		*/
-	}
-
-	/*
-		if !immediately && !s.dbs.IsFlushNeeded() {
-			return nil
-		}
-	*/
-
-	// Flush trie on the DB
+// FlushState changes.
+func (s *Store) FlushState() {
 	err := s.table.EvmState.TrieDB().Cap(0)
 	if err != nil {
-		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
+		s.Log.Crit("Failed to flush trie on the DB", "err", err)
 	}
-	return err
-
-	// Flush the DBs
-	/*
-		return s.dbs.Flush(flushID)
-	*/
-
 }
 
 // StateDB returns state database.

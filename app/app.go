@@ -116,6 +116,7 @@ func (a *App) EndBlock(
 
 	// free resources
 	a.blockContext = nil
+	a.store.FlushState()
 
 	return newStateHash
 }
