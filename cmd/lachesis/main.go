@@ -234,6 +234,8 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	engine, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
+	abci := integration.MakeABCI(cfg.Lachesis.Net, adb)
+
 	// configure emitter
 	var ks *keystore.KeyStore
 	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
@@ -246,7 +248,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	// the factory method approach is to support service restarts without relying on the
 	// individual implementations' support for such operations.
 	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine, adb)
+		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine, abci)
 	}
 
 	if err := stack.Register(gossipService); err != nil {

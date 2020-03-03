@@ -12,6 +12,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/poset"
 )
 
@@ -60,6 +61,11 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *app.St
 	engine := poset.New(gossipCfg.Net.Dag, cdb, gdb)
 
 	return engine, adb, gdb
+}
+
+// MakeABCI makes ABCI-application.
+func MakeABCI(cfg lachesis.Config, s *app.Store) *app.App {
+	return app.New(cfg, s)
 }
 
 // SetAccountKey sets key into accounts manager and unlocks it with pswd.
