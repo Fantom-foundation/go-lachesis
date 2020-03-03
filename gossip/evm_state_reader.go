@@ -20,7 +20,7 @@ type EvmStateReader struct {
 	engine   Consensus
 
 	store *Store
-	app   *app.Store
+	app   *app.App
 }
 
 func (s *Service) GetEvmStateReader() *EvmStateReader {
@@ -29,7 +29,7 @@ func (s *Service) GetEvmStateReader() *EvmStateReader {
 		engineMu:    s.engineMu,
 		engine:      s.engine,
 		store:       s.store,
-		app:         s.app,
+		app:         s.abciApp,
 	}
 }
 

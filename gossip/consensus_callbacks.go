@@ -64,8 +64,8 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 
 	if newEpoch != oldEpoch {
 		// notify event checkers about new validation data
-		s.heavyCheckReader.Addrs.Store(ReadEpochPubKeys(s.app, newEpoch))
-		s.gasPowerCheckReader.Ctx.Store(ReadGasPowerContext(s.store, s.app, s.engine.GetValidators(), newEpoch, &s.config.Net.Economy))
+		s.heavyCheckReader.Addrs.Store(ReadEpochPubKeys(s.abciApp, newEpoch))
+		s.gasPowerCheckReader.Ctx.Store(ReadGasPowerContext(s.store, s.abciApp, s.engine.GetValidators(), newEpoch, &s.config.Net.Economy))
 
 		// sealings/prunings
 		s.packsOnNewEpoch(oldEpoch, newEpoch)
@@ -269,7 +269,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 		}
 
 		if receipts.Len() != 0 {
-			s.app.SetReceipts(block.Index, receipts)
+			s.abciApp.SetReceipts(block.Index, receipts)
 		}
 	}
 
@@ -309,7 +309,7 @@ func (s *Service) selectValidatorsGroup(oldEpoch, newEpoch idx.Epoch) (newValida
 	// s.engineMu is locked here
 
 	builder := pos.NewBuilder()
-	for _, it := range s.app.GetEpochValidators(newEpoch) {
+	for _, it := range s.abciApp.GetEpochValidators(newEpoch) {
 		builder.Set(it.StakerID, pos.BalanceToStake(it.Staker.CalcTotalStake()))
 	}
 

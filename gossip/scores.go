@@ -35,7 +35,7 @@ func (s *Service) updateOriginationScores(block *inter.Block, evmBlock *evmcore.
 
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
 
-		s.app.AddDirtyOriginationScore(txEvent.Creator, txFee)
+		s.abciApp.AddDirtyOriginationScore(txEvent.Creator, txFee)
 
 		{ // logic for gas power refunds
 			if tx.Gas() < receipts[i].GasUsed {
@@ -49,8 +49,8 @@ func (s *Service) updateOriginationScores(block *inter.Block, evmBlock *evmcore.
 	}
 
 	if sealEpoch {
-		s.app.DelAllActiveOriginationScores()
-		s.app.MoveDirtyOriginationScoresToActive()
+		s.abciApp.DelAllActiveOriginationScores()
+		s.abciApp.MoveDirtyOriginationScoresToActive()
 		// prune not needed gas power records
 		s.store.DelGasPowerRefunds(epoch - 1)
 	}
@@ -61,7 +61,7 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 	blockTimeDiff := block.Time - s.store.GetBlock(block.Index-1).Time
 
 	// Calc validation scores
-	for _, it := range s.app.GetActiveSfcStakers() {
+	for _, it := range s.abciApp.GetActiveSfcStakers() {
 		// validators only
 		if !s.engine.GetValidators().Exists(it.StakerID) {
 			continue
@@ -72,28 +72,28 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 
 		// If have no confirmed events by this Atropos - just add missed blocks for validator
 		if missedBlock {
-			s.app.IncBlocksMissed(it.StakerID, blockTimeDiff)
+			s.abciApp.IncBlocksMissed(it.StakerID, blockTimeDiff)
 			continue
 		}
 
-		missedNum := s.app.GetBlocksMissed(it.StakerID).Num
+		missedNum := s.abciApp.GetBlocksMissed(it.StakerID).Num
 		if missedNum > s.config.Net.Economy.BlockMissedLatency {
 			missedNum = s.config.Net.Economy.BlockMissedLatency
 		}
 
 		// Add score for previous blocks, but no more than FrameLatency prev blocks
-		s.app.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(blockTimeDiff)))
+		s.abciApp.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(blockTimeDiff)))
 		for i := idx.Block(1); i <= missedNum && i < block.Index; i++ {
 			blockTime := s.store.GetBlock(block.Index - i).Time
 			prevBlockTime := s.store.GetBlock(block.Index - i - 1).Time
 			timeDiff := blockTime - prevBlockTime
-			s.app.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(timeDiff)))
+			s.abciApp.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(timeDiff)))
 		}
-		s.app.ResetBlocksMissed(it.StakerID)
+		s.abciApp.ResetBlocksMissed(it.StakerID)
 	}
 
 	if sealEpoch {
-		s.app.DelAllActiveValidationScores()
-		s.app.MoveDirtyValidationScoresToActive()
+		s.abciApp.DelAllActiveValidationScores()
+		s.abciApp.MoveDirtyValidationScoresToActive()
 	}
 }

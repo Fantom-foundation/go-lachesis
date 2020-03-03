@@ -43,7 +43,7 @@ const (
 // EmitterWorld is emitter's external world
 type EmitterWorld struct {
 	Store       *Store
-	App         *app.Store
+	App         *app.App
 	Engine      Consensus
 	EngineMu    *sync.RWMutex
 	Txpool      txPool
