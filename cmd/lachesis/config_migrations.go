@@ -1,9 +1,10 @@
 package main
 
 import (
+	"time"
+
 	_params "github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml/ast"
-	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 	"github.com/Fantom-foundation/go-lachesis/utils/toml"
@@ -30,6 +31,8 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 	return migration.Begin("lachesis-config").
 		Next("From v0.5.0-rc.1 & v0.6.0-rc.1 to current", func()error{
 			// v0.5.0-rc.1 -> HEAD
+
+			_ = data.DeleteParam("omitempty", "Lachesis")
 
 			// If ForcedBroadcast exists - this is version v0.5.0-rc.1
 			err := data.DeleteParam("Lachesis", "ForcedBroadcast")
@@ -61,22 +64,31 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
+
 				err = data.AddParam("MaxParents", "Lachesis.Emitter", 7)
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
-				_ = data.DeleteParam("MinEmitInterval", "Lachesis.Emitter")
-				_ = data.DeleteParam("MaxEmitInterval", "Lachesis.Emitter")
-				_ = data.DeleteParam("SelfForkProtectionInterval", "Lachesis.Emitter")
+
 				err = data.AddSection("Lachesis.Emitter.EmitIntervals", "")
 				if err != nil && err != toml.ErrorSectionAlreadyExists {
 					return err
 				}
-				err = data.AddParam("Min", "Lachesis.Emitter.EmitIntervals", 200 * time.Millisecond)
+
+				oldMin, err := data.GetParamInt("MinEmitInterval", "Lachesis.Emitter")
+				if err != nil || oldMin == 0 {
+					oldMin = int64(200*time.Millisecond)
+				}
+				err = data.AddParam("Min", "Lachesis.Emitter.EmitIntervals", oldMin)
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
-				err = data.AddParam("Max", "Lachesis.Emitter.EmitIntervals", 12 * time.Minute)
+
+				oldMax, err := data.GetParamInt("MaxEmitInterval", "Lachesis.Emitter")
+				if err != nil || oldMax == 0 {
+					oldMax = int64(12 * time.Minute)
+				}
+				err = data.AddParam("Max", "Lachesis.Emitter.EmitIntervals", oldMax)
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
@@ -84,10 +96,19 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
-				err = data.AddParam("SelfForkProtection", "Lachesis.Emitter.EmitIntervals", 30 * time.Minute)
+
+				oldSelfForkProtection, err := data.GetParamInt("MaxEmitInterval", "Lachesis.Emitter")
+				if err != nil || oldSelfForkProtection == 0 {
+					oldSelfForkProtection = int64(30 * time.Minute)
+				}
+				err = data.AddParam("SelfForkProtection", "Lachesis.Emitter.EmitIntervals", oldSelfForkProtection)
 				if err != nil && err != toml.ErrorParamAlreadyExists {
 					return err
 				}
+
+				_ = data.DeleteParam("MinEmitInterval", "Lachesis.Emitter")
+				_ = data.DeleteParam("MaxEmitInterval", "Lachesis.Emitter")
+				_ = data.DeleteParam("SelfForkProtectionInterval", "Lachesis.Emitter")
 			}
 
 			// v0.6.0-rc.1 -> HEAD
