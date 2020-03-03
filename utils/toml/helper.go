@@ -12,8 +12,12 @@ import (
 var (
 	// ErrorParamNotExists error for not exists params when read
 	ErrorParamNotExists = errors.New("param not exists")
+	// ErrorParamAlreadyExists error for already exists params when add
+	ErrorParamAlreadyExists = errors.New("param already exists")
 	// ErrorSectionNotExists error for not exists section when search
 	ErrorSectionNotExists = errors.New("section not exists")
+	// ErrorSectionAlreadyExists error for already exists section when add
+	ErrorSectionAlreadyExists = errors.New("section already exists")
 )
 
 // Helper is helper for simple manipulate with parsed toml data
@@ -42,7 +46,7 @@ func (d *Helper) AddSection(name, after string) error {
 	_, err := d.FindSection(name)
 	if err == nil {
 		// If exists - return error
-		return errors.New("section already exists: " + name)
+		return ErrorSectionAlreadyExists
 	}
 
 	path := strings.Split(name, ".")
@@ -119,7 +123,7 @@ func (d *Helper) RenameSection(name, newName string) error {
 func (d *Helper) AddParam(name, sectionName string, value interface{}) error {
 	_, sect, err := d.getKVData(name, sectionName)
 	if err == nil {
-		return errors.New("param already exists in section: " + sectionName + " / " + name)
+		return ErrorParamAlreadyExists
 	}
 	if sect == nil {
 		return err
