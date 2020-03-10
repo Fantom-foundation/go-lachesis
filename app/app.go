@@ -100,8 +100,12 @@ func (a *App) EndBlock(
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
 	txPositions map[common.Hash]TxPosition,
+	blockTime func(n idx.Block) inter.Timestamp,
+	blockParticipated map[idx.StakerID]bool,
 ) common.Hash {
+	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
+	a.updateValidationScores(epoch, block, blockParticipated, blockTime)
 
 	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)
 	newStateHash, err := a.blockContext.statedb.Commit(true)
