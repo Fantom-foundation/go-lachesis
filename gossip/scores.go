@@ -73,9 +73,6 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 		// If have no confirmed events by this Atropos - just add missed blocks for validator
 		if missedBlock {
 			s.app.IncBlocksMissed(it.StakerID, blockTimeDiff)
-			if sealEpoch && s.config.EpochDowntimeIndex {
-				s.app.IncBlocksMissedEpoch(it.StakerID, block.Atropos.Epoch(), blockTimeDiff)
-			}
 			continue
 		}
 
@@ -86,22 +83,25 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 
 		// Add score for previous blocks, but no more than FrameLatency prev blocks
 		s.app.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(blockTimeDiff)))
-		if sealEpoch && s.config.EpochActiveValidationScoreIndex {
-			s.app.AddDirtyValidationScoreEpoch(it.StakerID, block.Atropos.Epoch(), new(big.Int).SetUint64(uint64(blockTimeDiff)))
-		}
 		for i := idx.Block(1); i <= missedNum && i < block.Index; i++ {
 			blockTime := s.store.GetBlock(block.Index - i).Time
 			prevBlockTime := s.store.GetBlock(block.Index - i - 1).Time
 			timeDiff := blockTime - prevBlockTime
 			s.app.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(timeDiff)))
-			if sealEpoch && s.config.EpochActiveValidationScoreIndex {
-				s.app.AddDirtyValidationScoreEpoch(it.StakerID, block.Atropos.Epoch(), new(big.Int).SetUint64(uint64(timeDiff)))
-			}
 		}
 		s.app.ResetBlocksMissed(it.StakerID)
 	}
 
 	if sealEpoch {
+		epoch := s.engine.GetEpoch()
+
+		if s.config.EpochDowntimeIndex {
+			s.app.NewDowntimeSnapshotEpoch(epoch)
+		}
+		if s.config.EpochActiveValidationScoreIndex {
+			s.app.NewScoreSnapshotEpoch(epoch)
+		}
+
 		s.app.DelAllActiveValidationScores()
 		s.app.MoveDirtyValidationScoresToActive()
 	}

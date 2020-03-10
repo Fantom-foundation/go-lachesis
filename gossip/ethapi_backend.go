@@ -486,15 +486,7 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 }
 
 // GetValidationScore returns staker's ValidationScore.
-func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.app.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.app.GetActiveValidationScore(stakerID), nil
-}
-
-// GetValidationScoreEpoch returns staker's ValidationScore by epoch.
-func (b *EthAPIBackend) GetValidationScoreEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error) {
+func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error) {
 	idxEpoch, err := b.epochWithDefault(ctx, epoch)
 	if err != nil {
 		return nil, err
@@ -541,13 +533,7 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 }
 
 // GetDowntime returns staker's Downtime.
-func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
-	missed := b.svc.app.GetBlocksMissed(stakerID)
-	return missed.Num, missed.Period, nil
-}
-
-// GetDowntime returns staker's Downtime by epoch.
-func (b *EthAPIBackend) GetDowntimeEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error) {
+func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error) {
 	idxEpoch, err := b.epochWithDefault(ctx, epoch)
 	if err != nil {
 		return 0, 0, err

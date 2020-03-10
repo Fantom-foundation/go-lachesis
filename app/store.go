@@ -31,11 +31,13 @@ type Store struct {
 		Genesis kvdb.KeyValueStore `table:"G"`
 
 		// score economy tables
-		ActiveValidationScore  kvdb.KeyValueStore `table:"V"`
-		DirtyValidationScore   kvdb.KeyValueStore `table:"v"`
-		ActiveOriginationScore kvdb.KeyValueStore `table:"O"`
-		DirtyOriginationScore  kvdb.KeyValueStore `table:"o"`
-		BlockDowntime          kvdb.KeyValueStore `table:"m"`
+		ActiveValidationScore      kvdb.KeyValueStore `table:"V"`
+		DirtyValidationScore       kvdb.KeyValueStore `table:"v"`
+		ActiveOriginationScore     kvdb.KeyValueStore `table:"O"`
+		DirtyOriginationScore      kvdb.KeyValueStore `table:"o"`
+		BlockDowntime              kvdb.KeyValueStore `table:"m"`
+		BlockDowntimeEpoch         kvdb.KeyValueStore `table:"e"`
+		ActiveValidationScoreEpoch kvdb.KeyValueStore `table:"E"`
 
 		// PoI economy tables
 		StakerPOIScore      kvdb.KeyValueStore `table:"s"`

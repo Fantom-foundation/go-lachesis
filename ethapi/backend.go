@@ -99,13 +99,11 @@ type Backend interface {
 
 	// Lachesis SFC API
 	GetValidators(ctx context.Context) *pos.Validators
-	GetValidationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
-	GetValidationScoreEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error)
+	GetValidationScore(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error)
 	GetOriginationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
 	GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error)
 	GetStakerPoI(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
-	GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error)
-	GetDowntimeEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error)
+	GetDowntime(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error)
 	GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error)
 	GetStakerClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
 	GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
