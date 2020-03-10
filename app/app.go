@@ -98,6 +98,7 @@ func (a *App) EndBlock(
 	receipts types.Receipts,
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
+	txPositions map[common.Hash]TxPosition,
 ) common.Hash {
 
 	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)

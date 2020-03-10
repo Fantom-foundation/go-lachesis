@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -90,7 +91,7 @@ func (s *Service) applyNewState(
 	*inter.Block,
 	*evmcore.EvmBlock,
 	types.Receipts,
-	map[common.Hash]TxPosition,
+	map[common.Hash]app.TxPosition,
 	common.Hash,
 	bool,
 ) {
@@ -102,14 +103,14 @@ func (s *Service) applyNewState(
 	evmBlock, blockEvents := s.assembleEvmBlock(block)
 
 	// memorize position of each tx, for indexing and origination scores
-	txPositions := make(map[common.Hash]TxPosition)
+	txPositions := make(map[common.Hash]app.TxPosition)
 	for _, e := range blockEvents {
 		for i, tx := range e.Transactions {
 			// If tx was met in multiple events, then assign to first ordered event
 			if _, ok := txPositions[tx.Hash()]; ok {
 				continue
 			}
-			txPositions[tx.Hash()] = TxPosition{
+			txPositions[tx.Hash()] = app.TxPosition{
 				Event:       e.Hash(),
 				EventOffset: uint32(i),
 			}
@@ -141,7 +142,7 @@ func (s *Service) applyNewState(
 	// Process SFC contract transactions
 	epoch := s.engine.GetEpoch()
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats)
+	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats, txPositions)
 
 	// Process new epoch
 	if sealEpoch {
