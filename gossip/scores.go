@@ -16,42 +16,22 @@ const (
 	minGasPowerRefund = 800
 )
 
-// updateOriginationScores calculates the origination scores
-func (s *Service) updateOriginationScores(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, txPositions map[common.Hash]app.TxPosition, sealEpoch bool) {
-	epoch := s.engine.GetEpoch()
+// incGasPowerRefund calculates the origination gas power refund
+func (s *Service) incGasPowerRefund(epoch idx.Epoch, evmBlock *evmcore.EvmBlock, receipts types.Receipts, txPositions map[common.Hash]app.TxPosition, sealEpoch bool) {
 	// Calc origination scores
 	for i, tx := range evmBlock.Transactions {
 		txEventPos := txPositions[receipts[i].TxHash]
-		// sanity check
-		if txEventPos.Block != block.Index {
-			s.Log.Crit("Incorrect tx block position", "tx", receipts[i].TxHash,
-				"block", txEventPos.Block, "block_got", block.Index)
+
+		if tx.Gas() < receipts[i].GasUsed {
+			s.Log.Crit("Transaction gas used is higher than tx gas limit", "tx", receipts[i].TxHash)
 		}
-
-		txEvent := s.store.GetEventHeader(txEventPos.Event.Epoch(), txEventPos.Event)
-		// sanity check
-		if txEvent == nil {
-			s.Log.Crit("Incorrect tx event position", "tx", receipts[i].TxHash, "event", txEventPos.Event, "reason", "event has no transactions")
-		}
-
-		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
-
-		s.abciApp.AddDirtyOriginationScore(txEvent.Creator, txFee)
-
-		{ // logic for gas power refunds
-			if tx.Gas() < receipts[i].GasUsed {
-				s.Log.Crit("Transaction gas used is higher than tx gas limit", "tx", receipts[i].TxHash, "event", txEventPos.Event)
-			}
-			notUsedGas := tx.Gas() - receipts[i].GasUsed
-			if notUsedGas >= minGasPowerRefund { // do not refund if refunding is more costly than refunded value
-				s.store.IncGasPowerRefund(epoch, txEvent.Creator, notUsedGas)
-			}
+		notUsedGas := tx.Gas() - receipts[i].GasUsed
+		if notUsedGas >= minGasPowerRefund { // do not refund if refunding is more costly than refunded value
+			s.store.IncGasPowerRefund(epoch, txEventPos.Creator, notUsedGas)
 		}
 	}
 
 	if sealEpoch {
-		s.abciApp.DelAllActiveOriginationScores()
-		s.abciApp.MoveDirtyOriginationScoresToActive()
 		// prune not needed gas power records
 		s.store.DelGasPowerRefunds(epoch - 1)
 	}

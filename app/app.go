@@ -95,11 +95,13 @@ func (a *App) DeliverTxs(
 func (a *App) EndBlock(
 	epoch idx.Epoch,
 	block *inter.Block,
+	evmBlock *evmcore.EvmBlock,
 	receipts types.Receipts,
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
 	txPositions map[common.Hash]TxPosition,
 ) common.Hash {
+	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
 
 	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)
 	newStateHash, err := a.blockContext.statedb.Commit(true)

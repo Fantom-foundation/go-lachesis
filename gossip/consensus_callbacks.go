@@ -112,6 +112,7 @@ func (s *Service) applyNewState(
 			}
 			txPositions[tx.Hash()] = app.TxPosition{
 				Event:       e.Hash(),
+				Creator:     e.Creator,
 				EventOffset: uint32(i),
 			}
 		}
@@ -133,16 +134,18 @@ func (s *Service) applyNewState(
 		txPositions[tx.Hash()] = position
 	}
 
+	epoch := s.engine.GetEpoch()
+
 	// Process PoI/score changes
-	s.updateOriginationScores(block, evmBlock, receipts, txPositions, sealEpoch)
+	s.incGasPowerRefund(epoch, evmBlock, receipts, txPositions, sealEpoch)
+
 	s.updateValidationScores(block, sealEpoch)
 	s.updateUsersPOI(block, evmBlock, receipts, totalFee, sealEpoch)
 	s.updateStakersPOI(block, sealEpoch)
 
 	// Process SFC contract transactions
-	epoch := s.engine.GetEpoch()
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats, txPositions)
+	newStateHash := s.abciApp.EndBlock(epoch, block, evmBlock, receipts, cheaters, stats, txPositions)
 
 	// Process new epoch
 	if sealEpoch {
