@@ -28,6 +28,7 @@ type (
 		DecisiveEventsIndex bool // Whether to enable indexing events which decide blocks or not
 		EventLocalTimeIndex bool // Whether to enable indexing arrival time of events or not
 		EpochDowntimeIndex	bool // Whether to enable indexing downtime by epoch
+		EpochActiveValidationScoreIndex bool // Whether to enable indexing validation score by epoch
 
 		// Protocol options
 		Protocol ProtocolConfig
@@ -86,6 +87,7 @@ func DefaultConfig(network lachesis.Config) Config {
 		TxIndex:             true,
 		DecisiveEventsIndex: false,
 		EpochDowntimeIndex:	 false,
+		EpochActiveValidationScoreIndex: false,
 
 		Protocol: ProtocolConfig{
 			LatencyImportance:    60,

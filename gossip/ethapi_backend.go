@@ -493,6 +493,19 @@ func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.Sta
 	return b.svc.app.GetActiveValidationScore(stakerID), nil
 }
 
+// GetValidationScoreEpoch returns staker's ValidationScore by epoch.
+func (b *EthAPIBackend) GetValidationScoreEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error) {
+	idxEpoch, err := b.epochWithDefault(ctx, epoch)
+	if err != nil {
+		return nil, err
+	}
+
+	if !b.svc.app.HasSfcStaker(stakerID) {
+		return nil, nil
+	}
+	return b.svc.app.GetActiveValidationScoreEpoch(stakerID, idxEpoch), nil
+}
+
 // GetOriginationScore returns staker's OriginationScore.
 func (b *EthAPIBackend) GetOriginationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
 	if !b.svc.app.HasSfcStaker(stakerID) {

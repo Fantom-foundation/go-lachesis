@@ -27,17 +27,14 @@ func (s *Store) IncBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch, per
 	s.mutex.Inc.Lock()
 	defer s.mutex.Inc.Unlock()
 
-	key := bytes.Buffer{}
-	key.Write(stakerID.Bytes())
-	key.Write([]byte{':'})
-	key.Write(epoch.Bytes())
+	key := stakerEpochKey(stakerID, epoch)
 
 	missed := s.GetBlocksMissedEpoch(stakerID, epoch)
 	missed.Num++
 	missed.Period += periodDiff
-	s.set(s.table.BlockDowntime, key.Bytes(), &missed)
+	s.set(s.table.BlockDowntime, key, &missed)
 
-	s.cache.BlockDowntime.Add(key.Bytes(), missed)
+	s.cache.BlockDowntime.Add(key, missed)
 }
 
 // ResetBlocksMissed set to 0 missed blocks for validator
@@ -58,17 +55,14 @@ func (s *Store) ResetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) {
 	s.mutex.Inc.Lock()
 	defer s.mutex.Inc.Unlock()
 
-	key := bytes.Buffer{}
-	key.Write(stakerID.Bytes())
-	key.Write([]byte{':'})
-	key.Write(epoch.Bytes())
+	key := stakerEpochKey(stakerID, epoch)
 
-	err := s.table.BlockDowntime.Delete(key.Bytes())
+	err := s.table.BlockDowntime.Delete(key)
 	if err != nil {
 		s.Log.Crit("Failed to set key-value", "err", err)
 	}
 
-	s.cache.BlockDowntime.Add(key.Bytes(), BlocksMissed{})
+	s.cache.BlockDowntime.Add(key, BlocksMissed{})
 }
 
 // GetBlocksMissed return blocks missed num for validator
@@ -93,25 +87,22 @@ func (s *Store) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 
 // GetBlocksMissedEpoch return blocks missed num for validator by epoch
 func (s *Store) GetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) BlocksMissed {
-	key := bytes.Buffer{}
-	key.Write(stakerID.Bytes())
-	key.Write([]byte{':'})
-	key.Write(epoch.Bytes())
+	key := stakerEpochKey(stakerID, epoch)
 
-	missedVal, ok := s.cache.BlockDowntime.Get(key.Bytes())
+	missedVal, ok := s.cache.BlockDowntime.Get(key)
 	if ok {
 		if missed, ok := missedVal.(BlocksMissed); ok {
 			return missed
 		}
 	}
 
-	pMissed, _ := s.get(s.table.BlockDowntime, key.Bytes(), &BlocksMissed{}).(*BlocksMissed)
+	pMissed, _ := s.get(s.table.BlockDowntime, key, &BlocksMissed{}).(*BlocksMissed)
 	if pMissed == nil {
 		return BlocksMissed{}
 	}
 	missed := *pMissed
 
-	s.cache.BlockDowntime.Add(key.Bytes(), missed)
+	s.cache.BlockDowntime.Add(key, missed)
 
 	return missed
 }
@@ -121,9 +112,19 @@ func (s *Store) GetActiveValidationScore(stakerID idx.StakerID) *big.Int {
 	return s.getValidationScore(s.table.ActiveValidationScore, stakerID)
 }
 
+// GetActiveValidationScoreEpoch return gas value for active validator score by epoch
+func (s *Store) GetActiveValidationScoreEpoch(stakerID idx.StakerID, epoch idx.Epoch) *big.Int {
+	return s.getValidationScoreEpoch(s.table.ActiveValidationScore, stakerID, epoch)
+}
+
 // AddDirtyValidationScore add gas value for active validation score
 func (s *Store) AddDirtyValidationScore(stakerID idx.StakerID, v *big.Int) {
 	s.addValidationScore(s.table.DirtyValidationScore, stakerID, v)
+}
+
+// AddDirtyValidationScoreEpoch add gas value for active validation score by epoch
+func (s *Store) AddDirtyValidationScoreEpoch(stakerID idx.StakerID, epoch idx.Epoch, v *big.Int) {
+	s.addValidationScoreEpoch(s.table.DirtyValidationScore, stakerID, epoch, v)
 }
 
 // DelActiveValidationScore deletes record about active validation score of a staker
@@ -156,8 +157,32 @@ func (s *Store) addValidationScore(t kvdb.KeyValueStore, stakerID idx.StakerID, 
 	}
 }
 
+func (s *Store) addValidationScoreEpoch(t kvdb.KeyValueStore, stakerID idx.StakerID, epoch idx.Epoch, diff *big.Int) {
+	key := stakerEpochKey(stakerID, epoch)
+
+	score := s.getValidationScoreEpoch(t, stakerID, epoch)
+	score.Add(score, diff)
+	err := t.Put(key, score.Bytes())
+	if err != nil {
+		s.Log.Crit("Failed to set key-value", "err", err)
+	}
+}
+
 func (s *Store) getValidationScore(t kvdb.KeyValueStore, stakerID idx.StakerID) *big.Int {
 	scoreBytes, err := t.Get(stakerID.Bytes())
+	if err != nil {
+		s.Log.Crit("Failed to get key-value", "err", err)
+	}
+	if scoreBytes == nil {
+		return big.NewInt(0)
+	}
+	return new(big.Int).SetBytes(scoreBytes)
+}
+
+func (s *Store) getValidationScoreEpoch(t kvdb.KeyValueStore, stakerID idx.StakerID, epoch idx.Epoch) *big.Int {
+	key := stakerEpochKey(stakerID, epoch)
+
+	scoreBytes, err := t.Get(key)
 	if err != nil {
 		s.Log.Crit("Failed to get key-value", "err", err)
 	}
@@ -280,4 +305,13 @@ func (s *Store) MoveDirtyOriginationScoresToActive() {
 			s.Log.Crit("Failed to erase key-value", "err", err)
 		}
 	}
+}
+
+func stakerEpochKey(stakerID idx.StakerID, epoch idx.Epoch) []byte {
+	key := bytes.Buffer{}
+	key.Write(stakerID.Bytes())
+	key.Write([]byte{':'})
+	key.Write(epoch.Bytes())
+
+	return key.Bytes()
 }
