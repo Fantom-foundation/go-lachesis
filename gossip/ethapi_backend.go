@@ -533,6 +533,16 @@ func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) 
 	return missed.Num, missed.Period, nil
 }
 
+// GetDowntime returns staker's Downtime by epoch.
+func (b *EthAPIBackend) GetDowntimeEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error) {
+	idxEpoch, err := b.epochWithDefault(ctx, epoch)
+	if err != nil {
+		return 0, 0, err
+	}
+	missed := b.svc.app.GetBlocksMissedEpoch(stakerID, idxEpoch)
+	return missed.Num, missed.Period, nil
+}
+
 // GetStaker returns SFC staker's info
 func (b *EthAPIBackend) GetStaker(ctx context.Context, stakerID idx.StakerID) (*sfctype.SfcStaker, error) {
 	staker := b.svc.app.GetSfcStaker(stakerID)

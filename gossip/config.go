@@ -27,6 +27,7 @@ type (
 		TxIndex             bool // Whether to enable indexing transactions and receipts or not
 		DecisiveEventsIndex bool // Whether to enable indexing events which decide blocks or not
 		EventLocalTimeIndex bool // Whether to enable indexing arrival time of events or not
+		EpochDowntimeIndex	bool // Whether to enable indexing downtime by epoch
 
 		// Protocol options
 		Protocol ProtocolConfig
@@ -84,6 +85,7 @@ func DefaultConfig(network lachesis.Config) Config {
 
 		TxIndex:             true,
 		DecisiveEventsIndex: false,
+		EpochDowntimeIndex:	 false,
 
 		Protocol: ProtocolConfig{
 			LatencyImportance:    60,

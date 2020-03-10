@@ -73,6 +73,9 @@ func (s *Service) updateValidationScores(block *inter.Block, sealEpoch bool) {
 		// If have no confirmed events by this Atropos - just add missed blocks for validator
 		if missedBlock {
 			s.app.IncBlocksMissed(it.StakerID, blockTimeDiff)
+			if sealEpoch && s.config.EpochDowntimeIndex {
+				s.app.IncBlocksMissedEpoch(it.StakerID, block.Atropos.Epoch(), blockTimeDiff)
+			}
 			continue
 		}
 

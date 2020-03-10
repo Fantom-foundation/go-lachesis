@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"math/big"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -21,6 +22,24 @@ func (s *Store) IncBlocksMissed(stakerID idx.StakerID, periodDiff inter.Timestam
 	s.cache.BlockDowntime.Add(stakerID, missed)
 }
 
+// IncBlocksMissedEpoch add count of missed blocks for validator by epoch
+func (s *Store) IncBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch, periodDiff inter.Timestamp) {
+	s.mutex.Inc.Lock()
+	defer s.mutex.Inc.Unlock()
+
+	key := bytes.Buffer{}
+	key.Write(stakerID.Bytes())
+	key.Write([]byte{':'})
+	key.Write(epoch.Bytes())
+
+	missed := s.GetBlocksMissedEpoch(stakerID, epoch)
+	missed.Num++
+	missed.Period += periodDiff
+	s.set(s.table.BlockDowntime, key.Bytes(), &missed)
+
+	s.cache.BlockDowntime.Add(key.Bytes(), missed)
+}
+
 // ResetBlocksMissed set to 0 missed blocks for validator
 func (s *Store) ResetBlocksMissed(stakerID idx.StakerID) {
 	s.mutex.Inc.Lock()
@@ -32,6 +51,24 @@ func (s *Store) ResetBlocksMissed(stakerID idx.StakerID) {
 	}
 
 	s.cache.BlockDowntime.Add(stakerID, BlocksMissed{})
+}
+
+// ResetBlocksMissedEpoch set to 0 missed blocks for validator by epoch
+func (s *Store) ResetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) {
+	s.mutex.Inc.Lock()
+	defer s.mutex.Inc.Unlock()
+
+	key := bytes.Buffer{}
+	key.Write(stakerID.Bytes())
+	key.Write([]byte{':'})
+	key.Write(epoch.Bytes())
+
+	err := s.table.BlockDowntime.Delete(key.Bytes())
+	if err != nil {
+		s.Log.Crit("Failed to set key-value", "err", err)
+	}
+
+	s.cache.BlockDowntime.Add(key.Bytes(), BlocksMissed{})
 }
 
 // GetBlocksMissed return blocks missed num for validator
@@ -50,6 +87,31 @@ func (s *Store) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 	missed := *pMissed
 
 	s.cache.BlockDowntime.Add(stakerID, missed)
+
+	return missed
+}
+
+// GetBlocksMissedEpoch return blocks missed num for validator by epoch
+func (s *Store) GetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) BlocksMissed {
+	key := bytes.Buffer{}
+	key.Write(stakerID.Bytes())
+	key.Write([]byte{':'})
+	key.Write(epoch.Bytes())
+
+	missedVal, ok := s.cache.BlockDowntime.Get(key.Bytes())
+	if ok {
+		if missed, ok := missedVal.(BlocksMissed); ok {
+			return missed
+		}
+	}
+
+	pMissed, _ := s.get(s.table.BlockDowntime, key.Bytes(), &BlocksMissed{}).(*BlocksMissed)
+	if pMissed == nil {
+		return BlocksMissed{}
+	}
+	missed := *pMissed
+
+	s.cache.BlockDowntime.Add(key.Bytes(), missed)
 
 	return missed
 }

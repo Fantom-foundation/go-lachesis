@@ -104,6 +104,7 @@ type Backend interface {
 	GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error)
 	GetStakerPoI(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
 	GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error)
+	GetDowntimeEpoch(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error)
 	GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error)
 	GetStakerClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)
 	GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error)

@@ -2,6 +2,7 @@ package ethapi
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -66,6 +67,18 @@ func (s *PublicSfcAPI) GetStakerPoI(ctx context.Context, stakerID hexutil.Uint) 
 // GetDowntime returns staker's Downtime.
 func (s *PublicSfcAPI) GetDowntime(ctx context.Context, stakerID hexutil.Uint) (map[string]interface{}, error) {
 	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID))
+	if err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{
+		"missedBlocks": hexutil.Uint64(blocks),
+		"downtime":     hexutil.Uint64(period),
+	}, nil
+}
+
+// GetDowntime returns staker's Downtime by epoch.
+func (s *PublicSfcAPI) GetDowntimeEpoch(ctx context.Context, stakerID hexutil.Uint, epoch rpc.BlockNumber) (map[string]interface{}, error) {
+	blocks, period, err := s.b.GetDowntimeEpoch(ctx, idx.StakerID(stakerID), epoch)
 	if err != nil {
 		return nil, err
 	}
