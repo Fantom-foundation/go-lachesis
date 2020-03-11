@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"math/big"
 	"strconv"
 	"strings"
@@ -495,7 +496,14 @@ func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.Sta
 	if !b.svc.app.HasSfcStaker(stakerID) {
 		return nil, nil
 	}
-	return b.svc.app.GetActiveValidationScoreEpoch(stakerID, idxEpoch), nil
+	var score *big.Int
+	if b.svc.config.EpochActiveValidationScoreIndex {
+		score = b.svc.app.GetActiveValidationScoreEpoch(stakerID, idxEpoch)
+	} else {
+		score = b.svc.app.GetActiveValidationScore(stakerID)
+	}
+
+	return score, nil
 }
 
 // GetOriginationScore returns staker's OriginationScore.
@@ -538,7 +546,12 @@ func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID, 
 	if err != nil {
 		return 0, 0, err
 	}
-	missed := b.svc.app.GetBlocksMissedEpoch(stakerID, idxEpoch)
+	var missed app.BlocksMissed
+	if b.svc.config.EpochDowntimeIndex {
+		missed = b.svc.app.GetBlocksMissedEpoch(stakerID, idxEpoch)
+	} else {
+		missed = b.svc.app.GetBlocksMissed(stakerID)
+	}
 	return missed.Num, missed.Period, nil
 }
 
