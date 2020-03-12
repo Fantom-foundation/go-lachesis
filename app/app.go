@@ -30,6 +30,7 @@ type (
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
 		sealEpoch    bool
+		totalFee     *big.Int
 	}
 )
 
@@ -70,6 +71,7 @@ func (a *App) DeliverTxs(
 	if err != nil {
 		a.Log.Crit("Shouldn't happen ever because it's not strict", "err", err)
 	}
+	a.blockContext.totalFee = totalFee
 	block.SkippedTxs = skipped
 	block.GasUsed = gasUsed
 
@@ -88,7 +90,7 @@ func (a *App) DeliverTxs(
 		a.store.IndexLogs(r.Logs...)
 	}
 
-	return block, evmBlock, totalFee, receipts, a.blockContext.sealEpoch
+	return block, evmBlock, a.blockContext.totalFee, receipts, a.blockContext.sealEpoch
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
@@ -106,6 +108,8 @@ func (a *App) EndBlock(
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
 	a.updateValidationScores(epoch, block, blockParticipated, blockTime)
+	a.updateUsersPOI(block, evmBlock, receipts, a.blockContext.totalFee, a.blockContext.sealEpoch)
+	a.updateStakersPOI(block, blockTime, a.blockContext.sealEpoch)
 
 	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)
 	newStateHash, err := a.blockContext.statedb.Commit(true)
