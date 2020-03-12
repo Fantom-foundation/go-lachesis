@@ -493,11 +493,17 @@ func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.Sta
 		return nil, err
 	}
 
+	currentEpoch := b.svc.engine.GetEpoch()
+
+	if idxEpoch != currentEpoch && !b.svc.config.EpochActiveValidationScoreIndex {
+		return nil, errors.New("pass 'pending' epoch if EpochActiveValidationScoreIndex is false")
+	}
+
 	var score *big.Int
-	if b.svc.config.EpochActiveValidationScoreIndex {
-		score = b.svc.app.GetActiveValidationScoreEpoch(stakerID, idxEpoch)
-	} else {
+	if idxEpoch == currentEpoch {
 		score = b.svc.app.GetActiveValidationScore(stakerID)
+	} else {
+		score = b.svc.app.GetActiveValidationScoreEpoch(stakerID, idxEpoch)
 	}
 
 	return score, nil
@@ -546,10 +552,11 @@ func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID, 
 
 	currentEpoch := b.svc.engine.GetEpoch()
 
-	var missed app.BlocksMissed
 	if idxEpoch != currentEpoch && !b.svc.config.EpochDowntimeIndex {
-		return 0, 0, errors.New("use only current epoch if EpochDowntimeIndex is false")
+		return 0, 0, errors.New("pass 'pending' epoch if EpochDowntimeIndex is false")
 	}
+
+	var missed app.BlocksMissed
 	if idxEpoch == currentEpoch {
 		missed = b.svc.app.GetBlocksMissed(stakerID)
 	} else {
