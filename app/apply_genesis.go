@@ -7,19 +7,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
-	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 // ApplyGenesis writes initial state.
-// TODO: replace first block with DB-migrations
-func (s *Store) ApplyGenesis(net *lachesis.Config, firstBlock *inter.Block) (block *evmcore.EvmBlock, isNew bool, err error) {
+func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isNew bool, err error) {
 	stored := s.getGenesisState()
-
-	if stored == nil && firstBlock != nil {
-		stored = &firstBlock.Root
-	}
 
 	if stored != nil {
 		block, err = calcGenesisBlock(net)

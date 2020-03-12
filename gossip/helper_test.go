@@ -36,7 +36,7 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 	}
 
 	app := app.NewMemStore()
-	state, _, err := app.ApplyGenesis(&net, nil)
+	state, _, err := app.ApplyGenesis(&net)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -32,7 +32,7 @@ func TestGetGenesisBlock(t *testing.T) {
 	net.Genesis.Alloc.Accounts[addrWithStorage] = accountWithCode
 
 	app := app.NewMemStore()
-	state, _, err := app.ApplyGenesis(&net, nil)
+	state, _, err := app.ApplyGenesis(&net)
 	if !assertar.NoError(err) {
 		return
 	}
@@ -79,7 +79,7 @@ func TestGetBlock(t *testing.T) {
 	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 
 	app := app.NewMemStore()
-	state, _, err := app.ApplyGenesis(&net, nil)
+	state, _, err := app.ApplyGenesis(&net)
 	if !assertar.NoError(err) {
 		return
 	}
