@@ -198,8 +198,8 @@ func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNum
 }
 
 // GetHeads returns IDs of all the epoch events with no descendants.
-// * When epoch is -2 the heads for latest epoch are returned.
-// * When epoch is -1 the heads for latest sealed epoch are returned.
+// * When epoch is "pending" the heads for latest epoch are returned.
+// * When epoch is "latest" the heads for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetHeads(ctx context.Context, epoch rpc.BlockNumber) (heads hash.Events, err error) {
 	current := b.svc.engine.GetEpoch()
 
@@ -454,8 +454,8 @@ func (b *EthAPIBackend) CurrentEpoch(ctx context.Context) idx.Epoch {
 }
 
 // GetEpochStats returns epoch statistics.
-// * When epoch is -2 the statistics for latest epoch is returned.
-// * When epoch is -1 the statistics for latest sealed epoch is returned.
+// * When epoch is "pending" the heads for latest epoch are returned.
+// * When epoch is "latest" the heads for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (*sfctype.EpochStats, error) {
 	var epoch idx.Epoch
 	if requestedEpoch == rpc.PendingBlockNumber {
@@ -486,7 +486,9 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 	return stats, nil
 }
 
-// GetValidationScore returns staker's ValidationScore.
+// GetValidationScore validation score for latest epoch is returned
+// * When epoch is "pending" the heads for latest epoch are returned.
+// * When epoch is "latest" the heads for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (*big.Int, error) {
 	idxEpoch, err := b.epochWithDefault(ctx, epoch)
 	if err != nil {
@@ -543,7 +545,9 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 	return new(big.Int).SetBytes(baseRewardWeight256.Bytes()), new(big.Int).SetBytes(txRewardWeight256.Bytes()), nil
 }
 
-// GetDowntime returns staker's Downtime.
+// GetDowntime downtime for latest epoch is returned
+// * When epoch is "pending" the heads for latest epoch are returned.
+// * When epoch is "latest" the heads for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber) (idx.Block, inter.Timestamp, error) {
 	idxEpoch, err := b.epochWithDefault(ctx, epoch)
 	if err != nil {
