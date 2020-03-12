@@ -18,10 +18,10 @@ func PoiPeriod(t inter.Timestamp, config *lachesis.EconomyConfig) uint64 {
 }
 
 // updateUsersPOI calculates the Proof Of Importance weights for users
-func (a *App) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, totalFee *big.Int, sealEpoch bool) {
+func (a *App) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts) {
 	// User POI calculations
 	poiPeriod := PoiPeriod(block.Time, &a.config.Economy)
-	a.store.AddPoiFee(poiPeriod, totalFee)
+	a.store.AddPoiFee(poiPeriod, a.ctx.totalFee)
 
 	for i, tx := range evmBlock.Transactions {
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
@@ -100,7 +100,7 @@ func (a *App) updateStakerPOI(stakerID idx.StakerID, stakerAddress common.Addres
 }
 
 // updateStakersPOI calculates the Proof Of Importance weights for stakers
-func (a *App) updateStakersPOI(block *inter.Block, blockTime func(n idx.Block) inter.Timestamp, sealEpoch bool) {
+func (a *App) updateStakersPOI(block *inter.Block, blockTime func(n idx.Block) inter.Timestamp) {
 	// Stakers POI calculations
 	poiPeriod := PoiPeriod(block.Time, &a.config.Economy)
 	prevBlockPoiPeriod := PoiPeriod(blockTime(block.Index-1), &a.config.Economy)

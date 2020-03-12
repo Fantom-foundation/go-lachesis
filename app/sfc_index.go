@@ -121,7 +121,6 @@ func (a *App) processSfc(
 	epoch idx.Epoch,
 	block *inter.Block,
 	receipts types.Receipts,
-	sealEpoch bool,
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
 ) {
@@ -303,7 +302,7 @@ func (a *App) processSfc(
 		a.setState(sfc.ContractAddress, position.Status(), utils.U64to256(staker.Status))
 	}
 
-	if sealEpoch {
+	if a.ctx.sealEpoch {
 		if a.store.HasSfcConstants(epoch) {
 			a.store.SetSfcConstants(epoch+1, a.store.GetSfcConstants(epoch))
 		}
@@ -380,7 +379,7 @@ func (a *App) processSfc(
 		a.setState(sfc.ContractAddress, sfcpos.CurrentSealedEpoch(), utils.U64to256(uint64(epoch)))
 
 		// Add balance for SFC to pay rewards
-		a.blockContext.statedb.AddBalance(sfc.ContractAddress, rewards)
+		a.ctx.statedb.AddBalance(sfc.ContractAddress, rewards)
 
 		// Select new validators
 		a.store.SetEpochValidators(epoch+1, a.store.GetActiveSfcStakers())
@@ -389,5 +388,5 @@ func (a *App) processSfc(
 
 // setState is a short notation of
 func (a *App) setState(addr common.Address, key, value common.Hash) {
-	a.blockContext.statedb.SetState(addr, key, value)
+	a.ctx.statedb.SetState(addr, key, value)
 }

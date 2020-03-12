@@ -21,7 +21,7 @@ type (
 	App struct {
 		config lachesis.Config
 		store  *Store
-		*blockContext
+		ctx    *blockContext
 
 		logger.Instance
 	}
@@ -46,7 +46,7 @@ func New(cfg lachesis.Config, s *Store) *App {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
-	a.blockContext = &blockContext{
+	a.ctx = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.EvmChainConfig(), stateReader),
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
@@ -66,16 +66,16 @@ func (a *App) DeliverTxs(
 	bool,
 ) {
 	// Process txs
-	receipts, _, gasUsed, totalFee, skipped, err := a.blockContext.evmProcessor.
-		Process(evmBlock, a.blockContext.statedb, vm.Config{}, false)
+	receipts, _, gasUsed, totalFee, skipped, err := a.ctx.evmProcessor.
+		Process(evmBlock, a.ctx.statedb, vm.Config{}, false)
 	if err != nil {
 		a.Log.Crit("Shouldn't happen ever because it's not strict", "err", err)
 	}
-	a.blockContext.totalFee = totalFee
+	a.ctx.totalFee = totalFee
 	block.SkippedTxs = skipped
 	block.GasUsed = gasUsed
 
-	a.blockContext.sealEpoch = a.blockContext.sealEpoch || sfctype.EpochIsForceSealed(receipts)
+	a.ctx.sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(receipts)
 
 	// Filter skipped transactions
 	evmBlock = filterSkippedTxs(block, evmBlock)
@@ -90,7 +90,7 @@ func (a *App) DeliverTxs(
 		a.store.IndexLogs(r.Logs...)
 	}
 
-	return block, evmBlock, a.blockContext.totalFee, receipts, a.blockContext.sealEpoch
+	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
@@ -108,21 +108,21 @@ func (a *App) EndBlock(
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
 	a.updateValidationScores(epoch, block, blockParticipated, blockTime)
-	a.updateUsersPOI(block, evmBlock, receipts, a.blockContext.totalFee, a.blockContext.sealEpoch)
-	a.updateStakersPOI(block, blockTime, a.blockContext.sealEpoch)
+	a.updateUsersPOI(block, evmBlock, receipts)
+	a.updateStakersPOI(block, blockTime)
 
-	a.processSfc(epoch, block, receipts, a.blockContext.sealEpoch, cheaters, stats)
-	newStateHash, err := a.blockContext.statedb.Commit(true)
+	a.processSfc(epoch, block, receipts, cheaters, stats)
+	newStateHash, err := a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
 
-	if a.blockContext.sealEpoch {
+	if a.ctx.sealEpoch {
 		a.store.SetLastVoting(block.Index, block.Time)
 	}
 
 	// free resources
-	a.blockContext = nil
+	a.ctx = nil
 	a.store.FlushState()
 
 	return newStateHash
