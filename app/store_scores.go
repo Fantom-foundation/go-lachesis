@@ -24,12 +24,12 @@ func (s *Store) IncBlocksMissed(stakerID idx.StakerID, periodDiff inter.Timestam
 
 // NewDowntimeSnapshotEpoch add count of missed blocks for validator by epoch
 func (s *Store) NewDowntimeSnapshotEpoch(epoch idx.Epoch) {
-	s.newEpochSnapshot(s.table.BlockDowntime, s.table.BlockDowntimeEpoch, epoch)
+	s.newEpochDump(s.table.BlockDowntime, s.table.BlockDowntimeEpoch, epoch)
 }
 
 // NewScoreSnapshotEpoch add scores for validator by epoch
 func (s *Store) NewScoreSnapshotEpoch(epoch idx.Epoch) {
-	s.newEpochSnapshot(s.table.ActiveValidationScore, s.table.ActiveValidationScoreEpoch, epoch)
+	s.newEpochDump(s.table.ActiveValidationScore, s.table.ActiveValidationScoreEpoch, epoch)
 }
 
 // ResetBlocksMissed set to 0 missed blocks for validator
@@ -67,9 +67,7 @@ func (s *Store) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 
 func (s *Store) GetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) BlocksMissed {
 	key := bytes.Buffer{}
-	if epoch != 0 {
-		key.Write(epoch.Bytes())
-	}
+	key.Write(epoch.Bytes())
 	key.Write(stakerID.Bytes())
 
 	pMissed, _ := s.get(s.table.BlockDowntimeEpoch, key.Bytes(), &BlocksMissed{}).(*BlocksMissed)
@@ -267,7 +265,7 @@ func (s *Store) MoveDirtyOriginationScoresToActive() {
 	}
 }
 
-func (s *Store) newEpochSnapshot(from, to kvdb.KeyValueStore, epoch idx.Epoch) {
+func (s *Store) newEpochDump(from, to kvdb.KeyValueStore, epoch idx.Epoch) {
 	it := from.NewIterator()
 	for it.Next() {
 		k := it.Key()
