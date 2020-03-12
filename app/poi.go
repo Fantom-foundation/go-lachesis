@@ -17,17 +17,6 @@ func PoiPeriod(t inter.Timestamp, config *lachesis.EconomyConfig) uint64 {
 	return uint64(t) / uint64(config.PoiPeriodDuration)
 }
 
-// UpdateAddressPOI calculate and save POI for user
-func (a *App) UpdateAddressPOI(address common.Address, senderTotalFee *big.Int, poiPeriod uint64) {
-	/*if senderTotalFee.Sign() == 0 {
-		a.store.SetAddressPOI(address, common.Big0)
-		return // avoid division by 0
-	}
-	poi := new(big.Int).Mul(senderTotalFee, lachesis.PercentUnit)
-	poi.Div(poi, a.store.GetPoiFee(poiPeriod)) // rebase user's PoI as <= 1.0 ratio
-	a.store.SetAddressPOI(address, poi)*/
-}
-
 // updateUsersPOI calculates the Proof Of Importance weights for users
 func (a *App) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, totalFee *big.Int, sealEpoch bool) {
 	// User POI calculations
@@ -62,7 +51,7 @@ func (a *App) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, rec
 		}
 
 		if prevUserPoiPeriod != poiPeriod {
-			a.UpdateAddressPOI(sender, senderTotalFee, prevUserPoiPeriod)
+			a.updateAddressPOI(sender, senderTotalFee, prevUserPoiPeriod)
 			senderTotalFee = big.NewInt(0)
 		}
 
@@ -73,8 +62,19 @@ func (a *App) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, rec
 
 }
 
-// UpdateStakerPOI calculate and save POI for staker
-func (a *App) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Address, poiPeriod uint64) {
+// updateAddressPOI calculate and save POI for user
+func (a *App) updateAddressPOI(address common.Address, senderTotalFee *big.Int, poiPeriod uint64) {
+	/*if senderTotalFee.Sign() == 0 {
+		a.store.SetAddressPOI(address, common.Big0)
+		return // avoid division by 0
+	}
+	poi := new(big.Int).Mul(senderTotalFee, lachesis.PercentUnit)
+	poi.Div(poi, a.store.GetPoiFee(poiPeriod)) // rebase user's PoI as <= 1.0 ratio
+	a.store.SetAddressPOI(address, poi)*/
+}
+
+// updateStakerPOI calculate and save POI for staker
+func (a *App) updateStakerPOI(stakerID idx.StakerID, stakerAddress common.Address, poiPeriod uint64) {
 	staker := a.store.GetSfcStaker(stakerID)
 
 	vFee := a.store.GetAddressFee(stakerAddress, poiPeriod)
@@ -107,7 +107,7 @@ func (a *App) updateStakersPOI(block *inter.Block, blockTime func(n idx.Block) i
 
 	if poiPeriod != prevBlockPoiPeriod {
 		for _, it := range a.store.GetActiveSfcStakers() {
-			a.UpdateStakerPOI(it.StakerID, it.Staker.Address, prevBlockPoiPeriod)
+			a.updateStakerPOI(it.StakerID, it.Staker.Address, prevBlockPoiPeriod)
 		}
 		// clear StakersDelegatorsFee counters
 		a.store.DelAllWeightedDelegatorsFee()
