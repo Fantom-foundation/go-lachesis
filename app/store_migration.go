@@ -80,6 +80,27 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			s.SetLastVoting(b.Index, b.Time)
 
 			return
+		}).
+		Next("app-main genesis", func() (err error) {
+			key := []byte("genesis")
+			genesis := table.New(s.mainDb, []byte("G")) // table.Genesis
+			ok, err := genesis.Has(key)
+			if err != nil || ok {
+				return
+			}
+
+			// NOTE: cross db dependency
+			consensus := dbs.GetDb("gossip-main")
+			blocks := table.New(consensus, []byte("b")) // table.Blocks
+			b, _ := s.get(blocks, idx.Block(0).Bytes(), &inter.Block{}).(*inter.Block)
+			if b == nil {
+				return
+			}
+
+			err = genesis.Put(key, b.Root.Bytes())
+			s.Log.Warn("set app-main genesis", "root", b.Root)
+
+			return
 		})
 }
 

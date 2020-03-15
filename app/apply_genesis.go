@@ -14,6 +14,7 @@ import (
 // ApplyGenesis writes initial state.
 func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isNew bool, err error) {
 	stored := s.getGenesisState()
+
 	if stored != nil {
 		block, err = calcGenesisBlock(net)
 		if err != nil {
