@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -90,7 +91,7 @@ func (s *Service) applyNewState(
 	*inter.Block,
 	*evmcore.EvmBlock,
 	types.Receipts,
-	map[common.Hash]TxPosition,
+	map[common.Hash]app.TxPosition,
 	common.Hash,
 	bool,
 ) {
@@ -102,15 +103,16 @@ func (s *Service) applyNewState(
 	evmBlock, blockEvents := s.assembleEvmBlock(block)
 
 	// memorize position of each tx, for indexing and origination scores
-	txPositions := make(map[common.Hash]TxPosition)
+	txPositions := make(map[common.Hash]app.TxPosition)
 	for _, e := range blockEvents {
 		for i, tx := range e.Transactions {
 			// If tx was met in multiple events, then assign to first ordered event
 			if _, ok := txPositions[tx.Hash()]; ok {
 				continue
 			}
-			txPositions[tx.Hash()] = TxPosition{
+			txPositions[tx.Hash()] = app.TxPosition{
 				Event:       e.Hash(),
+				Creator:     e.Creator,
 				EventOffset: uint32(i),
 			}
 		}
@@ -132,16 +134,17 @@ func (s *Service) applyNewState(
 		txPositions[tx.Hash()] = position
 	}
 
-	// Process PoI/score changes
-	s.updateOriginationScores(block, evmBlock, receipts, txPositions, sealEpoch)
-	s.updateValidationScores(block, sealEpoch)
+	epoch := s.engine.GetEpoch()
+
+	s.incGasPowerRefund(epoch, evmBlock, receipts, txPositions, sealEpoch)
+
 	s.updateUsersPOI(block, evmBlock, receipts, totalFee, sealEpoch)
 	s.updateStakersPOI(block, sealEpoch)
 
 	// Process SFC contract transactions
-	epoch := s.engine.GetEpoch()
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := s.abciApp.EndBlock(epoch, block, receipts, cheaters, stats)
+	newStateHash := s.abciApp.EndBlock(epoch, block, evmBlock, receipts, cheaters,
+		stats, txPositions, s.blockTime, s.blockParticipated)
 
 	// Process new epoch
 	if sealEpoch {
@@ -162,6 +165,12 @@ func (s *Service) applyNewState(
 		evmBlock.GasUsed, "skipped_txs", len(block.SkippedTxs), "txs", len(evmBlock.Transactions), "t", time.Since(start))
 
 	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
+}
+
+// blockTime temporary resolves app dependency
+// TODO: refactor it
+func (s *Service) blockTime(n idx.Block) inter.Timestamp {
+	return s.store.GetBlock(n).Time
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
