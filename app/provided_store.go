@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 
-	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
@@ -78,11 +77,6 @@ func (a App) GetStakerPOI(stakerID idx.StakerID) *big.Int {
 	return a.store.GetStakerPOI(stakerID)
 }
 
-// SetStakerPOI provides store's method.
-func (a App) SetStakerPOI(stakerID idx.StakerID, poi *big.Int) {
-	a.store.SetStakerPOI(stakerID, poi)
-}
-
 // GetBlocksMissed provides store's method.
 func (a App) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 	return a.store.GetBlocksMissed(stakerID)
@@ -121,51 +115,4 @@ func (a App) GetStakerClaimedRewards(stakerID idx.StakerID) *big.Int {
 // GetStakerDelegatorsClaimedRewards provides store's method.
 func (a App) GetStakerDelegatorsClaimedRewards(stakerID idx.StakerID) *big.Int {
 	return a.store.GetStakerDelegatorsClaimedRewards(stakerID)
-}
-
-// POI
-
-// AddPoiFee provides store's method.
-func (a App) AddPoiFee(poiPeriod uint64, diff *big.Int) {
-	a.store.AddPoiFee(poiPeriod, diff)
-}
-
-// GetAddressLastTxTime provides store's method.
-func (a App) GetAddressLastTxTime(addr common.Address) inter.Timestamp {
-	return a.store.GetAddressLastTxTime(addr)
-}
-
-// SetAddressLastTxTime provides store's method.
-func (a App) SetAddressLastTxTime(addr common.Address, t inter.Timestamp) {
-	a.store.SetAddressLastTxTime(addr, t)
-}
-
-// GetAddressFee provides store's method.
-func (a App) GetAddressFee(addr common.Address, poiPeriod uint64) *big.Int {
-	return a.store.GetAddressFee(addr, poiPeriod)
-}
-
-// SetAddressFee provides store's method.
-func (a App) SetAddressFee(addr common.Address, poiPeriod uint64, val *big.Int) {
-	a.store.SetAddressFee(addr, poiPeriod, val)
-}
-
-//  provides store's method.
-func (a App) GetWeightedDelegatorsFee(stakerID idx.StakerID) *big.Int {
-	return a.store.GetWeightedDelegatorsFee(stakerID)
-}
-
-//  provides store's method.
-func (a App) SetWeightedDelegatorsFee(stakerID idx.StakerID, val *big.Int) {
-	a.store.SetWeightedDelegatorsFee(stakerID, val)
-}
-
-// GetActiveSfcStakers provides store's method.
-func (a App) GetActiveSfcStakers() []sfctype.SfcStakerAndID {
-	return a.store.GetActiveSfcStakers()
-}
-
-// DelAllWeightedDelegatorsFee provides store's method.
-func (a App) DelAllWeightedDelegatorsFee() {
-	a.store.DelAllWeightedDelegatorsFee()
 }

@@ -35,7 +35,7 @@ func (a *App) updateOriginationScores(epoch idx.Epoch, evmBlock *evmcore.EvmBloc
 		a.store.AddDirtyOriginationScore(txEventPos.Creator, txFee)
 	}
 
-	if a.blockContext.sealEpoch {
+	if a.ctx.sealEpoch {
 		a.store.DelAllActiveOriginationScores()
 		a.store.MoveDirtyOriginationScoresToActive()
 	}
@@ -82,7 +82,7 @@ func (a *App) updateValidationScores(
 		a.store.ResetBlocksMissed(it.StakerID)
 	}
 
-	if a.blockContext.sealEpoch {
+	if a.ctx.sealEpoch {
 		a.store.DelAllActiveValidationScores()
 		a.store.MoveDirtyValidationScoresToActive()
 	}

@@ -138,9 +138,6 @@ func (s *Service) applyNewState(
 
 	s.incGasPowerRefund(epoch, evmBlock, receipts, txPositions, sealEpoch)
 
-	s.updateUsersPOI(block, evmBlock, receipts, totalFee, sealEpoch)
-	s.updateStakersPOI(block, sealEpoch)
-
 	// Process SFC contract transactions
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
 	newStateHash := s.abciApp.EndBlock(epoch, block, evmBlock, receipts, cheaters,
