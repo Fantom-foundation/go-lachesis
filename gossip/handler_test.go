@@ -141,11 +141,13 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 	config.TxPool.Journal = ""
 
 	// create stores
-	app := app.NewMemStore()
-	state, _, err := app.ApplyGenesis(&net)
+	adb := app.NewMemStore()
+	state, _, err := adb.ApplyGenesis(&net)
 	if !assertar.NoError(err) {
 		return
 	}
+	abci := app.New(net, adb)
+
 	store := NewMemStore()
 	genesisAtropos, genesisEvmState, _, err := store.ApplyGenesis(&net, state)
 	if !assertar.NoError(err) {
@@ -166,7 +168,7 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 	ctx := &node.ServiceContext{
 		AccountManager: mockAccountManager(net.Genesis.Alloc.Accounts, creator),
 	}
-	svc, err := NewService(ctx, &config, store, engine, app)
+	svc, err := NewService(ctx, &config, store, engine, abci)
 	assertar.NoError(err)
 
 	// start PM
@@ -268,7 +270,7 @@ func mockAccountManager(accs genesis.Accounts, unlock ...common.Address) *accoun
 	)
 }
 
-func mockCheckers(epoch idx.Epoch, net *lachesis.Config, engine Consensus, s *Store, a *app.Store) *eventcheck.Checkers {
+func mockCheckers(epoch idx.Epoch, net *lachesis.Config, engine Consensus, s *Store, a *app.App) *eventcheck.Checkers {
 	heavyCheckReader := &HeavyCheckReader{}
 	heavyCheckReader.Addrs.Store(ReadEpochPubKeys(a, epoch))
 	gasPowerCheckReader := &GasPowerCheckReader{}

@@ -38,7 +38,7 @@ func gasPowerBounds(initialAlloc, minAlloc, maxAlloc, customAlloc uint64) uint64
 }
 
 // ReadGasPowerContext reads current validation context for gaspowercheck
-func ReadGasPowerContext(s *Store, a *app.Store, validators *pos.Validators, epoch idx.Epoch, cfg *lachesis.EconomyConfig) *gaspowercheck.ValidationContext {
+func ReadGasPowerContext(s *Store, a *app.App, validators *pos.Validators, epoch idx.Epoch, cfg *lachesis.EconomyConfig) *gaspowercheck.ValidationContext {
 	// engineMu is locked here
 	sfcConstants := a.GetSfcConstants(epoch - 1)
 
@@ -96,7 +96,7 @@ func (r *HeavyCheckReader) GetEpochPubKeys() (map[idx.StakerID]common.Address, i
 }
 
 // ReadEpochPubKeys is the same as GetEpochValidators, but returns only addresses
-func ReadEpochPubKeys(a *app.Store, epoch idx.Epoch) *ValidatorsPubKeys {
+func ReadEpochPubKeys(a *app.App, epoch idx.Epoch) *ValidatorsPubKeys {
 	addrs := make(map[idx.StakerID]common.Address)
 	for _, it := range a.GetEpochValidators(epoch) {
 		addrs[it.StakerID] = it.Staker.Address

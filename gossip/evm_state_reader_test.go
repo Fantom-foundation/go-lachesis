@@ -31,11 +31,12 @@ func TestGetGenesisBlock(t *testing.T) {
 	accountWithCode.Storage[common.Hash{}] = common.BytesToHash(common.Big1.Bytes())
 	net.Genesis.Alloc.Accounts[addrWithStorage] = accountWithCode
 
-	app := app.NewMemStore()
-	state, _, err := app.ApplyGenesis(&net)
+	adb := app.NewMemStore()
+	state, _, err := adb.ApplyGenesis(&net)
 	if !assertar.NoError(err) {
 		return
 	}
+	abci := app.New(net, adb)
 
 	store := NewMemStore()
 	genesisHash, stateHash, _, err := store.ApplyGenesis(&net, state)
@@ -48,7 +49,7 @@ func TestGetGenesisBlock(t *testing.T) {
 
 	reader := EvmStateReader{
 		store:    store,
-		app:      app,
+		app:      abci,
 		engineMu: new(sync.RWMutex),
 	}
 	genesisBlock := reader.GetBlock(common.Hash(genesisHash), 0)

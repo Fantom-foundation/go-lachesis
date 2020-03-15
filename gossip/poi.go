@@ -32,7 +32,7 @@ func (s *Service) UpdateAddressPOI(address common.Address, senderTotalFee *big.I
 func (s *Service) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock, receipts types.Receipts, totalFee *big.Int, sealEpoch bool) {
 	// User POI calculations
 	poiPeriod := PoiPeriod(block.Time, &s.config.Net.Economy)
-	s.app.AddPoiFee(poiPeriod, totalFee)
+	s.abciApp.AddPoiFee(poiPeriod, totalFee)
 
 	for i, tx := range evmBlock.Transactions {
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
@@ -43,21 +43,21 @@ func (s *Service) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock,
 			s.Log.Crit("Failed to get sender from transaction", "err", err)
 		}
 
-		senderLastTxTime := s.app.GetAddressLastTxTime(sender)
+		senderLastTxTime := s.abciApp.GetAddressLastTxTime(sender)
 		prevUserPoiPeriod := PoiPeriod(senderLastTxTime, &s.config.Net.Economy)
-		senderTotalFee := s.app.GetAddressFee(sender, prevUserPoiPeriod)
+		senderTotalFee := s.abciApp.GetAddressFee(sender, prevUserPoiPeriod)
 
-		delegator := s.app.GetSfcDelegator(sender)
+		delegator := s.abciApp.GetSfcDelegator(sender)
 		if delegator != nil {
-			staker := s.app.GetSfcStaker(delegator.ToStakerID)
+			staker := s.abciApp.GetSfcStaker(delegator.ToStakerID)
 			if staker != nil {
-				prevWeightedTxFee := s.app.GetWeightedDelegatorsFee(delegator.ToStakerID)
+				prevWeightedTxFee := s.abciApp.GetWeightedDelegatorsFee(delegator.ToStakerID)
 
 				weightedTxFee := new(big.Int).Mul(txFee, delegator.Amount)
 				weightedTxFee.Div(weightedTxFee, staker.CalcTotalStake())
 
 				weightedTxFee.Add(weightedTxFee, prevWeightedTxFee)
-				s.app.SetWeightedDelegatorsFee(delegator.ToStakerID, weightedTxFee)
+				s.abciApp.SetWeightedDelegatorsFee(delegator.ToStakerID, weightedTxFee)
 			}
 		}
 
@@ -66,21 +66,21 @@ func (s *Service) updateUsersPOI(block *inter.Block, evmBlock *evmcore.EvmBlock,
 			senderTotalFee = big.NewInt(0)
 		}
 
-		s.app.SetAddressLastTxTime(sender, block.Time)
+		s.abciApp.SetAddressLastTxTime(sender, block.Time)
 		senderTotalFee.Add(senderTotalFee, txFee)
-		s.app.SetAddressFee(sender, poiPeriod, senderTotalFee)
+		s.abciApp.SetAddressFee(sender, poiPeriod, senderTotalFee)
 	}
 
 }
 
 // UpdateStakerPOI calculate and save POI for staker
 func (s *Service) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Address, poiPeriod uint64) {
-	staker := s.app.GetSfcStaker(stakerID)
+	staker := s.abciApp.GetSfcStaker(stakerID)
 
-	vFee := s.app.GetAddressFee(stakerAddress, poiPeriod)
-	weightedDFee := s.app.GetWeightedDelegatorsFee(stakerID)
+	vFee := s.abciApp.GetAddressFee(stakerAddress, poiPeriod)
+	weightedDFee := s.abciApp.GetWeightedDelegatorsFee(stakerID)
 	if vFee.Sign() == 0 && weightedDFee.Sign() == 0 {
-		s.app.SetStakerPOI(stakerID, common.Big0)
+		s.abciApp.SetStakerPOI(stakerID, common.Big0)
 		return // optimization
 	}
 
@@ -90,13 +90,13 @@ func (s *Service) UpdateStakerPOI(stakerID idx.StakerID, stakerAddress common.Ad
 	weightedFee := new(big.Int).Add(weightedDFee, weightedVFee)
 
 	if weightedFee.Sign() == 0 {
-		s.app.SetStakerPOI(stakerID, common.Big0)
+		s.abciApp.SetStakerPOI(stakerID, common.Big0)
 		return // avoid division by 0
 	}
 	poi := weightedFee // no need to rebase validator's PoI as <= 1.0 ratio
 	/*poi := new(big.Int).Mul(weightedFee, lachesis.PercentUnit)
 	poi.Div(poi, s.store.GetPoiFee(poiPeriod))*/
-	s.app.SetStakerPOI(stakerID, poi)
+	s.abciApp.SetStakerPOI(stakerID, poi)
 }
 
 // updateStakersPOI calculates the Proof Of Importance weights for stakers
@@ -106,10 +106,10 @@ func (s *Service) updateStakersPOI(block *inter.Block, sealEpoch bool) {
 	prevBlockPoiPeriod := PoiPeriod(s.store.GetBlock(block.Index-1).Time, &s.config.Net.Economy)
 
 	if poiPeriod != prevBlockPoiPeriod {
-		for _, it := range s.app.GetActiveSfcStakers() {
+		for _, it := range s.abciApp.GetActiveSfcStakers() {
 			s.UpdateStakerPOI(it.StakerID, it.Staker.Address, prevBlockPoiPeriod)
 		}
 		// clear StakersDelegatorsFee counters
-		s.app.DelAllWeightedDelegatorsFee()
+		s.abciApp.DelAllWeightedDelegatorsFee()
 	}
 }

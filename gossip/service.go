@@ -93,7 +93,6 @@ type Service struct {
 	// application
 	node                *node.ServiceContext
 	store               *Store
-	app                 *app.Store
 	abciApp             *app.App
 	engine              Consensus
 	engineMu            *sync.RWMutex
@@ -119,7 +118,7 @@ type Service struct {
 	logger.Instance
 }
 
-func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine Consensus, apps *app.Store) (*Service, error) {
+func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine Consensus, abci *app.App) (*Service, error) {
 	svc := &Service{
 		config: config,
 
@@ -129,8 +128,7 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 		node:    ctx,
 		store:   store,
-		app:     apps,
-		abciApp: app.New(config.Net, apps),
+		abciApp: abci,
 
 		engineMu:          new(sync.RWMutex),
 		occurredTxs:       occuredtxs.New(txsRingBufferSize, types.NewEIP155Signer(config.Net.EvmChainConfig().ChainID)),
@@ -163,8 +161,8 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 	svc.txpool = evmcore.NewTxPool(config.TxPool, config.Net.EvmChainConfig(), stateReader)
 
 	// create checkers
-	svc.heavyCheckReader.Addrs.Store(ReadEpochPubKeys(svc.app, svc.engine.GetEpoch()))                                                                     // read pub keys of current epoch from disk
-	svc.gasPowerCheckReader.Ctx.Store(ReadGasPowerContext(svc.store, svc.app, svc.engine.GetValidators(), svc.engine.GetEpoch(), &svc.config.Net.Economy)) // read gaspower check data from disk
+	svc.heavyCheckReader.Addrs.Store(ReadEpochPubKeys(svc.abciApp, svc.engine.GetEpoch()))                                                                     // read pub keys of current epoch from disk
+	svc.gasPowerCheckReader.Ctx.Store(ReadGasPowerContext(svc.store, svc.abciApp, svc.engine.GetValidators(), svc.engine.GetEpoch(), &svc.config.Net.Economy)) // read gaspower check data from disk
 	svc.checkers = makeCheckers(&svc.config.Net, &svc.heavyCheckReader, &svc.gasPowerCheckReader, svc.engine, svc.store)
 
 	// create protocol manager
@@ -208,7 +206,7 @@ func (s *Service) makeEmitter() *Emitter {
 			Engine:      s.engine,
 			EngineMu:    s.engineMu,
 			Store:       s.store,
-			App:         s.app,
+			App:         s.abciApp,
 			Txpool:      s.txpool,
 			OccurredTxs: s.occurredTxs,
 			OnEmitted: func(emitted *inter.Event) {
