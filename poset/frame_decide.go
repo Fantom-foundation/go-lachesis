@@ -31,7 +31,7 @@ func (p *Poset) confirmEvents(frame idx.Frame, atropos hash.Event, onEventConfir
 func (p *Poset) confirmBlock(frame idx.Frame, atropos hash.Event) (block *inter.Block, cheaters []idx.StakerID) {
 	blockEvents := make([]*inter.EventHeaderData, 0, 50*p.Validators.Len())
 
-	atroposHighestBefore := p.vecClock.GetHighestBeforeAllBranches(atropos)
+	atroposHighestBefore := p.vecClock.GetHighestBeforeMerged(atropos)
 	var highestLamport idx.Lamport
 	var lowestLamport idx.Lamport
 	var confirmedNum int

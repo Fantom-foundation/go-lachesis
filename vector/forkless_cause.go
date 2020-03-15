@@ -95,7 +95,7 @@ func (vi *Index) NoCheaters(selfParent *hash.Event, options hash.Events) hash.Ev
 		if header == nil {
 			vi.Log.Crit("Event not found", "id", id.String())
 		}
-		if !highest.Get(vi.validatorIdxs[header.Creator]).IsForkDetected() {
+		if !highest.Get(vi.validators.GetIdx(header.Creator)).IsForkDetected() {
 			filtered.Add(id)
 		}
 	}

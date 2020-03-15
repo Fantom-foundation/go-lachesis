@@ -12,25 +12,20 @@ type Table struct {
 	prefix []byte
 }
 
-var (
-	// NOTE: key collisions are possible
-	separator = []byte{}
-)
-
-// prefixed key (prefix + separator + key)
+// prefixed key (prefix + key)
 func prefixed(key, prefix []byte) []byte {
-	prefixedKey := make([]byte, 0, len(prefix)+len(separator)+len(key))
-	prefixedKey = append(prefixedKey, prefix...)
-	prefixedKey = append(prefixedKey, separator...)
-	prefixedKey = append(prefixedKey, key...)
+	prefixedKey := make([]byte, len(prefix)+len(key))
+	bp := 0
+	bp += copy(prefixedKey[bp:], prefix)
+	bp += copy(prefixedKey[bp:], key)
 	return prefixedKey
 }
 
 func noPrefix(key, prefix []byte) []byte {
-	if len(key) < len(prefix)+len(separator) {
+	if len(key) < len(prefix) {
 		return key
 	}
-	return key[len(prefix)+len(separator):]
+	return key[len(prefix):]
 }
 
 /*
