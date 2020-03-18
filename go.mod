@@ -54,8 +54,8 @@ require (
 	go.uber.org/atomic v1.5.1 // indirect
 	golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413
 	golang.org/x/net v0.0.0-20191109021931-daa7c04131f5 // indirect
-	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20190709231704-1e4459ed25ff // indirect
-	gopkg.in/urfave/cli.v1 v1.22.4
+	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6 // indirect
+	gopkg.in/urfave/cli.v1 v1.22.1
 )
 
 replace gopkg.in/urfave/cli.v1 => github.com/urfave/cli v1.20.0
