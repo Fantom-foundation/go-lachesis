@@ -2,6 +2,7 @@ package toml
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -327,6 +328,13 @@ func (d *Helper) setKVData(name string, value interface{}, kvExists ...*ast.KeyV
 			Value:    s,
 			Data:     []rune(s),
 		}
+	case int64:
+		s := strconv.FormatInt(v, 10)
+		kv.Value = &ast.Integer{
+			Position: ast.Position{},
+			Value:    s,
+			Data:     []rune(s),
+		}
 	case float64:
 		s := strconv.FormatFloat(v, 'f', 16, 64)
 		kv.Value = &ast.Float{
@@ -348,6 +356,8 @@ func (d *Helper) setKVData(name string, value interface{}, kvExists ...*ast.KeyV
 			Value:    s,
 			Data:     []rune(s),
 		}
+	default:
+		log.Panic("Bad type of value for config key "+name)
 	}
 
 	return kv, nil

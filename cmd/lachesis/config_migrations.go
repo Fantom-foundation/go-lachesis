@@ -63,7 +63,7 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 					}
 				}
 
-				oldSelfForkProtection, err := data.GetParamInt("MaxEmitInterval", "Lachesis.Emitter")
+				oldSelfForkProtection, err := data.GetParamInt("SelfForkProtectionInterval", "Lachesis.Emitter")
 				if err == nil && oldSelfForkProtection >= 0 {
 					err = data.AddParam("SelfForkProtection", "Lachesis.Emitter.EmitIntervals", oldSelfForkProtection)
 					if err != nil && err != toml.ErrorParamAlreadyExists {
