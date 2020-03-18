@@ -32,6 +32,7 @@ EnablePreimageRecording = false
 EWASMInterpreter = ""
 EVMInterpreter = ""
 ExtRPCEnabled = false
+ForcedBroadcast = true
 
 [Lachesis.Net]
 Name = "test"
