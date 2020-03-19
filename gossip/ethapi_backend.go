@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 	errors2 "github.com/pkg/errors"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/ethapi"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
@@ -41,10 +42,11 @@ var ErrNotImplemented = func(name string) error { return errors.New(name + " met
 
 // EthAPIBackend implements ethapi.Backend.
 type EthAPIBackend struct {
-	extRPCEnabled bool
+	*app.EthAPIBackend
 	svc           *Service
 	state         *EvmStateReader
 	gpo           *gasprice.Oracle
+	extRPCEnabled bool
 }
 
 // ChainConfig returns the active chain configuration.
