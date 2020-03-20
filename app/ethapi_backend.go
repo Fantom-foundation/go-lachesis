@@ -85,3 +85,23 @@ func (b *EthAPIBackend) GetStakerClaimedRewards(ctx context.Context, stakerID id
 func (b *EthAPIBackend) GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
 	return b.app.store.GetStakerDelegatorsClaimedRewards(stakerID), nil
 }
+
+// HasSfcStaker provides store's method.
+func (b *EthAPIBackend) HasSfcStaker(stakerID idx.StakerID) bool {
+	return b.app.store.HasSfcStaker(stakerID)
+}
+
+// GetSfcStaker provides store's method.
+func (b *EthAPIBackend) GetSfcStaker(stakerID idx.StakerID) *sfctype.SfcStaker {
+	return b.app.store.GetSfcStaker(stakerID)
+}
+
+// ForEachSfcStaker provides store's method.
+func (b *EthAPIBackend) ForEachSfcStaker(do func(sfctype.SfcStakerAndID)) {
+	b.app.store.ForEachSfcStaker(do)
+}
+
+// ForEachSfcDelegator provides store's method.
+func (b *EthAPIBackend) ForEachSfcDelegator(do func(sfctype.SfcDelegatorAndAddr)) {
+	b.app.store.ForEachSfcDelegator(do)
+}

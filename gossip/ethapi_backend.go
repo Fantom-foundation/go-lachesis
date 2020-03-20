@@ -480,7 +480,7 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 
 // GetRewardWeights returns staker's reward weights.
 func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
+	if !b.HasSfcStaker(stakerID) {
 		return nil, nil, nil
 	}
 	header := b.state.CurrentHeader()
@@ -498,7 +498,7 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 
 // GetStaker returns SFC staker's info
 func (b *EthAPIBackend) GetStaker(ctx context.Context, stakerID idx.StakerID) (*sfctype.SfcStaker, error) {
-	staker := b.svc.abciApp.GetSfcStaker(stakerID)
+	staker := b.GetSfcStaker(stakerID)
 	if staker == nil {
 		return nil, nil
 	}
@@ -523,7 +523,7 @@ func (b *EthAPIBackend) GetStakers(ctx context.Context) ([]sfctype.SfcStakerAndI
 	defer b.svc.engineMu.RUnlock()
 
 	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
-	b.svc.abciApp.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+	b.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
 		it.Staker.IsValidator = b.svc.engine.GetValidators().Exists(it.StakerID)
 		stakers = append(stakers, it)
 	})
@@ -537,7 +537,7 @@ func (b *EthAPIBackend) GetDelegatorsOf(ctx context.Context, stakerID idx.Staker
 
 	delegators := make([]sfctype.SfcDelegatorAndAddr, 0, 200)
 	// TODO add additional DB index
-	b.svc.abciApp.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
+	b.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
 		if it.Delegator.ToStakerID == stakerID {
 			delegators = append(delegators, it)
 		}
