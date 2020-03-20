@@ -282,12 +282,12 @@ func (b *EthAPIBackend) GetReceiptsByNumber(ctx context.Context, number rpc.Bloc
 		number = rpc.BlockNumber(header.Number.Uint64())
 	}
 
-	receipts := b.svc.abciApp.GetReceipts(idx.Block(number))
+	receipts := b.GetReceipts(idx.Block(number))
 	return receipts, nil
 }
 
-// GetReceipts retrieves the receipts for all transactions in a given block.
-func (b *EthAPIBackend) GetReceipts(ctx context.Context, block common.Hash) (types.Receipts, error) {
+// GetReceiptsByHash returns receipts by block hash.
+func (b *EthAPIBackend) GetReceiptsByHash(ctx context.Context, block common.Hash) (types.Receipts, error) {
 	number := b.svc.store.GetBlockIndex(hash.Event(block))
 	if number == nil {
 		return nil, nil
@@ -297,7 +297,7 @@ func (b *EthAPIBackend) GetReceipts(ctx context.Context, block common.Hash) (typ
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, block common.Hash) ([][]*types.Log, error) {
-	receipts, err := b.GetReceipts(ctx, block)
+	receipts, err := b.GetReceiptsByHash(ctx, block)
 	if receipts == nil || err != nil {
 		return nil, err
 	}

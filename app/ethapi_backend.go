@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -29,6 +30,10 @@ func (b *EthAPIBackend) ChainDb() ethdb.Database {
 
 func (b *EthAPIBackend) EvmLogIndex() *topicsdb.Index {
 	return b.app.store.EvmLogs()
+}
+
+func (b *EthAPIBackend) GetReceipts(n idx.Block) types.Receipts {
+	return b.app.store.GetReceipts(n)
 }
 
 // GetValidationScore returns staker's ValidationScore.

@@ -28,11 +28,6 @@ func (a App) SetReceipts(n idx.Block, receipts types.Receipts) {
 	a.store.SetReceipts(n, receipts)
 }
 
-//  provides store's method.
-func (a App) GetReceipts(n idx.Block) types.Receipts {
-	return a.store.GetReceipts(n)
-}
-
 // StateDB provides store's method.
 func (a App) StateDB(from common.Hash) *state.StateDB {
 	return a.store.StateDB(from)
