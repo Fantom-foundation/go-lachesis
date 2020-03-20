@@ -50,26 +50,6 @@ func (a App) HasEpochValidator(epoch idx.Epoch, stakerID idx.StakerID) bool {
 	return a.store.HasEpochValidator(epoch, stakerID)
 }
 
-//  provides store's method.
-func (a App) GetActiveValidationScore(stakerID idx.StakerID) *big.Int {
-	return a.store.GetActiveValidationScore(stakerID)
-}
-
-// GetActiveOriginationScore provides store's method.
-func (a App) GetActiveOriginationScore(stakerID idx.StakerID) *big.Int {
-	return a.store.GetActiveOriginationScore(stakerID)
-}
-
-//  provides store's method.
-func (a App) GetStakerPOI(stakerID idx.StakerID) *big.Int {
-	return a.store.GetStakerPOI(stakerID)
-}
-
-// GetBlocksMissed provides store's method.
-func (a App) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
-	return a.store.GetBlocksMissed(stakerID)
-}
-
 // GetSfcStaker provides store's method.
 func (a App) GetSfcStaker(stakerID idx.StakerID) *sfctype.SfcStaker {
 	return a.store.GetSfcStaker(stakerID)

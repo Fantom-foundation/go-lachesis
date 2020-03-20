@@ -478,30 +478,6 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 	return stats, nil
 }
 
-// GetValidationScore returns staker's ValidationScore.
-func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetActiveValidationScore(stakerID), nil
-}
-
-// GetOriginationScore returns staker's OriginationScore.
-func (b *EthAPIBackend) GetOriginationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetActiveOriginationScore(stakerID), nil
-}
-
-// GetStakerPoI returns staker's PoI.
-func (b *EthAPIBackend) GetStakerPoI(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetStakerPOI(stakerID), nil
-}
-
 // GetRewardWeights returns staker's reward weights.
 func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error) {
 	if !b.svc.abciApp.HasSfcStaker(stakerID) {
@@ -518,12 +494,6 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 	txRewardWeight256 := statedb.GetState(sfc.ContractAddress, validatorPosition.TxRewardWeight())
 
 	return new(big.Int).SetBytes(baseRewardWeight256.Bytes()), new(big.Int).SetBytes(txRewardWeight256.Bytes()), nil
-}
-
-// GetDowntime returns staker's Downtime.
-func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
-	missed := b.svc.abciApp.GetBlocksMissed(stakerID)
-	return missed.Num, missed.Period, nil
 }
 
 // GetStaker returns SFC staker's info
