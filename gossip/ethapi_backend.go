@@ -545,26 +545,6 @@ func (b *EthAPIBackend) GetDelegatorsOf(ctx context.Context, stakerID idx.Staker
 	return delegators, nil
 }
 
-// GetDelegator returns SFC delegator info
-func (b *EthAPIBackend) GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error) {
-	return b.svc.abciApp.GetSfcDelegator(addr), nil
-}
-
-// GetDelegatorClaimedRewards returns sum of claimed rewards in past, by this delegator
-func (b *EthAPIBackend) GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error) {
-	return b.svc.abciApp.GetDelegatorClaimedRewards(addr), nil
-}
-
-// GetStakerClaimedRewards returns sum of claimed rewards in past, by this staker
-func (b *EthAPIBackend) GetStakerClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	return b.svc.abciApp.GetStakerClaimedRewards(stakerID), nil
-}
-
-// GetStakerDelegatorsClaimedRewards returns sum of claimed rewards in past, by this delegators of this staker
-func (b *EthAPIBackend) GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	return b.svc.abciApp.GetStakerDelegatorsClaimedRewards(stakerID), nil
-}
-
 // GetEventTime returns estimation of when event was created
 func (b *EthAPIBackend) GetEventTime(ctx context.Context, id hash.Event, arrivalTime bool) inter.Timestamp {
 	var t inter.Timestamp

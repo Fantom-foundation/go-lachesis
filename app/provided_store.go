@@ -1,8 +1,6 @@
 package app
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -63,24 +61,4 @@ func (a App) ForEachSfcStaker(do func(sfctype.SfcStakerAndID)) {
 // ForEachSfcDelegator provides store's method.
 func (a App) ForEachSfcDelegator(do func(sfctype.SfcDelegatorAndAddr)) {
 	a.store.ForEachSfcDelegator(do)
-}
-
-// GetSfcDelegator provides store's method.
-func (a App) GetSfcDelegator(addr common.Address) *sfctype.SfcDelegator {
-	return a.store.GetSfcDelegator(addr)
-}
-
-// GetDelegatorClaimedRewards provides store's method.
-func (a App) GetDelegatorClaimedRewards(addr common.Address) *big.Int {
-	return a.store.GetDelegatorClaimedRewards(addr)
-}
-
-// GetStakerClaimedRewards provides store's method.
-func (a App) GetStakerClaimedRewards(stakerID idx.StakerID) *big.Int {
-	return a.store.GetStakerClaimedRewards(stakerID)
-}
-
-// GetStakerDelegatorsClaimedRewards provides store's method.
-func (a App) GetStakerDelegatorsClaimedRewards(stakerID idx.StakerID) *big.Int {
-	return a.store.GetStakerDelegatorsClaimedRewards(stakerID)
 }

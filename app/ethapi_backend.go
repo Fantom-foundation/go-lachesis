@@ -4,10 +4,12 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 )
 
@@ -57,4 +59,24 @@ func (b *EthAPIBackend) GetStakerPoI(ctx context.Context, stakerID idx.StakerID)
 func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
 	missed := b.app.store.GetBlocksMissed(stakerID)
 	return missed.Num, missed.Period, nil
+}
+
+// GetDelegator returns SFC delegator info
+func (b *EthAPIBackend) GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error) {
+	return b.app.store.GetSfcDelegator(addr), nil
+}
+
+// GetDelegatorClaimedRewards returns sum of claimed rewards in past, by this delegator
+func (b *EthAPIBackend) GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error) {
+	return b.app.store.GetDelegatorClaimedRewards(addr), nil
+}
+
+// GetStakerClaimedRewards returns sum of claimed rewards in past, by this staker
+func (b *EthAPIBackend) GetStakerClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
+	return b.app.store.GetStakerClaimedRewards(stakerID), nil
+}
+
+// GetStakerDelegatorsClaimedRewards returns sum of claimed rewards in past, by this delegators of this staker
+func (b *EthAPIBackend) GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
+	return b.app.store.GetStakerDelegatorsClaimedRewards(stakerID), nil
 }
