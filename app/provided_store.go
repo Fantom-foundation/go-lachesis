@@ -6,11 +6,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
-	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 )
 
 /*
@@ -40,16 +38,6 @@ func (a App) GetReceipts(n idx.Block) types.Receipts {
 // StateDB provides store's method.
 func (a App) StateDB(from common.Hash) *state.StateDB {
 	return a.store.StateDB(from)
-}
-
-// EvmTable provides store's method.
-func (a App) EvmTable() ethdb.Database {
-	return a.store.EvmTable()
-}
-
-//  provides store's method.
-func (a App) EvmLogs() *topicsdb.Index {
-	return a.store.EvmLogs()
 }
 
 // HasSfcStaker provides store's method.
