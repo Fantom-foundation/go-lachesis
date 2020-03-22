@@ -46,7 +46,7 @@ func New(cfg lachesis.Config, s *Store) *App {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
-	a.store.SetBlock(block)
+	a.store.SetBlock(blockInfo(block))
 	a.ctx = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.EvmChainConfig(), stateReader),

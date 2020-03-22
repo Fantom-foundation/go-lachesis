@@ -65,8 +65,8 @@ func benchStoreSetBlock(b *testing.B, store *Store) {
 	}
 }
 
-func fakeBlock() *inter.Block {
-	return &inter.Block{
+func fakeBlock() *BlockInfo {
+	return &BlockInfo{
 		Index: idx.Block(1),
 		Time:  inter.Timestamp(rand.Int63()),
 	}

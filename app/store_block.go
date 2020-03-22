@@ -1,12 +1,11 @@
 package app
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
 // SetBlock stores chain block.
-func (s *Store) SetBlock(b *inter.Block) {
+func (s *Store) SetBlock(b *BlockInfo) {
 	s.set(s.table.Blocks, b.Index.Bytes(), b)
 
 	// Add to LRU cache.
@@ -16,17 +15,17 @@ func (s *Store) SetBlock(b *inter.Block) {
 }
 
 // GetBlock returns stored block.
-func (s *Store) GetBlock(n idx.Block) *inter.Block {
+func (s *Store) GetBlock(n idx.Block) *BlockInfo {
 	// Get block from LRU cache first.
 	if s.cache.Blocks != nil {
 		if c, ok := s.cache.Blocks.Get(n); ok {
-			if b, ok := c.(*inter.Block); ok {
+			if b, ok := c.(*BlockInfo); ok {
 				return b
 			}
 		}
 	}
 
-	block, _ := s.get(s.table.Blocks, n.Bytes(), &inter.Block{}).(*inter.Block)
+	block, _ := s.get(s.table.Blocks, n.Bytes(), &BlockInfo{}).(*BlockInfo)
 
 	// Add to LRU cache.
 	if block != nil && s.cache.Blocks != nil {

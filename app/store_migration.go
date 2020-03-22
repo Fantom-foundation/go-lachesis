@@ -2,6 +2,7 @@ package app
 
 import (
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -109,8 +110,20 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			src := table.New(consensus, []byte("b")) // table.Blocks
 			dst := table.New(s.mainDb, []byte("b"))  // table.Blocks
 
-			err = kvdb.Copy(src, dst, nil)
+			it := src.NewIterator()
+			defer it.Release()
 
+			for it.Next() {
+				block := new(inter.Block)
+				err = rlp.DecodeBytes(it.Value(), block)
+				if err != nil {
+					return
+				}
+				info := blockInfo(block)
+				s.set(dst, it.Key(), info)
+			}
+
+			err = it.Error()
 			return
 		})
 }
