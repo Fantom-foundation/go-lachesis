@@ -101,6 +101,17 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			s.Log.Warn("set app-main genesis", "root", b.Root)
 
 			return
+		}).
+		Next("app's own blocks", func() (err error) {
+			// NOTE: cross db dependency
+			consensus := dbs.GetDb("gossip-main")
+
+			src := table.New(consensus, []byte("b")) // table.Blocks
+			dst := table.New(s.mainDb, []byte("b"))  // table.Blocks
+
+			err = kvdb.Copy(src, dst, nil)
+
+			return
 		})
 }
 
