@@ -141,7 +141,7 @@ func (s *Service) applyNewState(
 	// Process SFC contract transactions
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
 	newStateHash := s.abciApp.EndBlock(epoch, block, evmBlock, receipts, cheaters,
-		stats, txPositions, s.blockTime, s.blockParticipated)
+		stats, txPositions, s.blockParticipated)
 
 	// Process new epoch
 	if sealEpoch {
@@ -162,12 +162,6 @@ func (s *Service) applyNewState(
 		evmBlock.GasUsed, "skipped_txs", len(block.SkippedTxs), "txs", len(evmBlock.Transactions), "t", time.Since(start))
 
 	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
-}
-
-// blockTime temporary resolves app dependency
-// TODO: refactor it
-func (s *Service) blockTime(n idx.Block) inter.Timestamp {
-	return s.store.GetBlock(n).Time
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
