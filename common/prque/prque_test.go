@@ -63,8 +63,10 @@ func testRemove(t *testing.T, p *Prque) {
 	itemValueSeize2 := 3
 	item1 := makeDataWithSeize(itemValueSeize1)
 	item2 := makeDataWithSeize(itemValueSeize2)
-	p.Push(item1, 0)
-	p.Push(item2, 0)
+	item1Priority := int64(2)
+	item2Priority := int64(1)
+	p.Push(item1, item1Priority)
+	p.Push(item2, item2Priority)
 	require.True(t, p.Size() == 2)
 
 	removedItem := p.Remove(-1)
@@ -73,10 +75,12 @@ func testRemove(t *testing.T, p *Prque) {
 	removedItem2 := p.Remove(1)
 	removedData2 := removedItem2.(*item)
 	require.True(t, len(removedData2.value.([]byte)) == itemValueSeize2)
+	require.True(t, removedData2.priority == item2Priority)
 	require.True(t, p.Size() == 1)
 	removedItem1 := p.Remove(0)
 	removedData1 := removedItem1.(*item)
 	require.True(t, len(removedData1.value.([]byte)) == itemValueSeize1)
+	require.True(t, removedData1.priority == item1Priority)
 	require.True(t, p.Empty())
 }
 
