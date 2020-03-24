@@ -124,7 +124,7 @@ const (
 type stateReader interface {
 	CurrentBlock() *EvmBlock
 	GetBlock(hash common.Hash, number uint64) *EvmBlock
-	StateAt(root common.Hash) (*state.StateDB, error)
+	StateAt(root common.Hash) *state.StateDB
 
 	SubscribeNewBlock(ch chan<- ChainHeadNotify) notify.Subscription
 }
@@ -1135,11 +1135,8 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	if newHead == nil {
 		newHead = pool.chain.CurrentBlock().Header() // Special case during testing
 	}
-	statedb, err := pool.chain.StateAt(newHead.Root)
-	if err != nil {
-		log.Error("Failed to reset txpool state", "err", err)
-		return
-	}
+	statedb := pool.chain.StateAt(newHead.Root)
+
 	pool.currentState = statedb
 	pool.pendingNonces = newTxNoncer(statedb)
 	pool.currentMaxGas = newHead.GasLimit

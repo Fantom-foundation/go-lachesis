@@ -37,7 +37,7 @@ type Backend interface {
 	ChainDb() ethdb.Database
 	HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*evmcore.EvmHeader, error)
 	HeaderByHash(ctx context.Context, blockHash common.Hash) (*evmcore.EvmHeader, error)
-	GetReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
+	GetReceiptsByHash(ctx context.Context, blockHash common.Hash) (types.Receipts, error)
 	GetLogs(ctx context.Context, blockHash common.Hash) ([][]*types.Log, error)
 
 	SubscribeNewBlockEvent(ch chan<- evmcore.ChainHeadNotify) notify.Subscription
@@ -191,7 +191,7 @@ func (f *Filter) checkMatches(ctx context.Context, header *evmcore.EvmHeader) (l
 	if len(logs) > 0 {
 		// We have matching logs, check if we need to resolve full logs via the light client
 		if logs[0].TxHash == hash.Zero {
-			receipts, err := f.backend.GetReceipts(ctx, header.Hash)
+			receipts, err := f.backend.GetReceiptsByHash(ctx, header.Hash)
 			if err != nil {
 				return nil, err
 			}

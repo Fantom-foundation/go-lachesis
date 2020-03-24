@@ -16,13 +16,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/ethdb"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	errors2 "github.com/pkg/errors"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/ethapi"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
@@ -33,7 +33,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
-	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
@@ -41,10 +40,11 @@ var ErrNotImplemented = func(name string) error { return errors.New(name + " met
 
 // EthAPIBackend implements ethapi.Backend.
 type EthAPIBackend struct {
-	extRPCEnabled bool
+	*app.EthAPIBackend
 	svc           *Service
 	state         *EvmStateReader
 	gpo           *gasprice.Oracle
+	extRPCEnabled bool
 }
 
 // ChainConfig returns the active chain configuration.
@@ -100,7 +100,8 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.B
 	if header == nil {
 		return nil, nil, errors.New("header not found")
 	}
-	stateDb := b.svc.abciApp.StateDB(header.Root)
+
+	stateDb := b.state.StateAt(header.Root)
 	return stateDb, header, nil
 }
 
@@ -281,12 +282,12 @@ func (b *EthAPIBackend) GetReceiptsByNumber(ctx context.Context, number rpc.Bloc
 		number = rpc.BlockNumber(header.Number.Uint64())
 	}
 
-	receipts := b.svc.abciApp.GetReceipts(idx.Block(number))
+	receipts := b.GetReceipts(idx.Block(number))
 	return receipts, nil
 }
 
-// GetReceipts retrieves the receipts for all transactions in a given block.
-func (b *EthAPIBackend) GetReceipts(ctx context.Context, block common.Hash) (types.Receipts, error) {
+// GetReceiptsByHash returns receipts by block hash.
+func (b *EthAPIBackend) GetReceiptsByHash(ctx context.Context, block common.Hash) (types.Receipts, error) {
 	number := b.svc.store.GetBlockIndex(hash.Event(block))
 	if number == nil {
 		return nil, nil
@@ -296,7 +297,7 @@ func (b *EthAPIBackend) GetReceipts(ctx context.Context, block common.Hash) (typ
 }
 
 func (b *EthAPIBackend) GetLogs(ctx context.Context, block common.Hash) ([][]*types.Log, error) {
-	receipts, err := b.GetReceipts(ctx, block)
+	receipts, err := b.GetReceiptsByHash(ctx, block)
 	if receipts == nil || err != nil {
 		return nil, err
 	}
@@ -427,10 +428,6 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	return b.gpo.SuggestPrice(ctx)
 }
 
-func (b *EthAPIBackend) ChainDb() ethdb.Database {
-	return b.svc.abciApp.EvmTable()
-}
-
 func (b *EthAPIBackend) AccountManager() *accounts.Manager {
 	return b.svc.AccountManager()
 }
@@ -441,10 +438,6 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
 
 func (b *EthAPIBackend) RPCGasCap() *big.Int {
 	return b.svc.config.RPCGasCap
-}
-
-func (b *EthAPIBackend) EvmLogIndex() *topicsdb.Index {
-	return b.svc.abciApp.EvmLogs()
 }
 
 // CurrentEpoch returns current epoch number.
@@ -476,7 +469,7 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 
 	// read total reward weights from SFC contract
 	header := b.state.CurrentHeader()
-	statedb := b.svc.abciApp.StateDB(header.Root)
+	statedb := b.state.StateAt(header.Root)
 
 	epochPosition := sfcpos.EpochSnapshot(epoch)
 	stats.TotalBaseRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalBaseRewardWeight()).Big()
@@ -485,37 +478,13 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 	return stats, nil
 }
 
-// GetValidationScore returns staker's ValidationScore.
-func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetActiveValidationScore(stakerID), nil
-}
-
-// GetOriginationScore returns staker's OriginationScore.
-func (b *EthAPIBackend) GetOriginationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetActiveOriginationScore(stakerID), nil
-}
-
-// GetStakerPoI returns staker's PoI.
-func (b *EthAPIBackend) GetStakerPoI(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
-		return nil, nil
-	}
-	return b.svc.abciApp.GetStakerPOI(stakerID), nil
-}
-
 // GetRewardWeights returns staker's reward weights.
 func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error) {
-	if !b.svc.abciApp.HasSfcStaker(stakerID) {
+	if !b.HasSfcStaker(stakerID) {
 		return nil, nil, nil
 	}
 	header := b.state.CurrentHeader()
-	statedb := b.svc.abciApp.StateDB(header.Root)
+	statedb := b.state.StateAt(header.Root)
 
 	// read reward weight from SFC contract
 	epoch := b.svc.engine.GetEpoch()
@@ -527,15 +496,9 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 	return new(big.Int).SetBytes(baseRewardWeight256.Bytes()), new(big.Int).SetBytes(txRewardWeight256.Bytes()), nil
 }
 
-// GetDowntime returns staker's Downtime.
-func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
-	missed := b.svc.abciApp.GetBlocksMissed(stakerID)
-	return missed.Num, missed.Period, nil
-}
-
 // GetStaker returns SFC staker's info
 func (b *EthAPIBackend) GetStaker(ctx context.Context, stakerID idx.StakerID) (*sfctype.SfcStaker, error) {
-	staker := b.svc.abciApp.GetSfcStaker(stakerID)
+	staker := b.GetSfcStaker(stakerID)
 	if staker == nil {
 		return nil, nil
 	}
@@ -546,7 +509,7 @@ func (b *EthAPIBackend) GetStaker(ctx context.Context, stakerID idx.StakerID) (*
 // GetStakerID returns SFC staker's Id by address
 func (b *EthAPIBackend) GetStakerID(ctx context.Context, addr common.Address) (idx.StakerID, error) {
 	header := b.state.CurrentHeader()
-	statedb := b.svc.abciApp.StateDB(header.Root)
+	statedb := b.state.StateAt(header.Root)
 
 	position := sfcpos.StakerID(addr)
 	stakerID256 := statedb.GetState(sfc.ContractAddress, position)
@@ -560,7 +523,7 @@ func (b *EthAPIBackend) GetStakers(ctx context.Context) ([]sfctype.SfcStakerAndI
 	defer b.svc.engineMu.RUnlock()
 
 	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
-	b.svc.abciApp.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+	b.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
 		it.Staker.IsValidator = b.svc.engine.GetValidators().Exists(it.StakerID)
 		stakers = append(stakers, it)
 	})
@@ -574,32 +537,12 @@ func (b *EthAPIBackend) GetDelegatorsOf(ctx context.Context, stakerID idx.Staker
 
 	delegators := make([]sfctype.SfcDelegatorAndAddr, 0, 200)
 	// TODO add additional DB index
-	b.svc.abciApp.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
+	b.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
 		if it.Delegator.ToStakerID == stakerID {
 			delegators = append(delegators, it)
 		}
 	})
 	return delegators, nil
-}
-
-// GetDelegator returns SFC delegator info
-func (b *EthAPIBackend) GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error) {
-	return b.svc.abciApp.GetSfcDelegator(addr), nil
-}
-
-// GetDelegatorClaimedRewards returns sum of claimed rewards in past, by this delegator
-func (b *EthAPIBackend) GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error) {
-	return b.svc.abciApp.GetDelegatorClaimedRewards(addr), nil
-}
-
-// GetStakerClaimedRewards returns sum of claimed rewards in past, by this staker
-func (b *EthAPIBackend) GetStakerClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	return b.svc.abciApp.GetStakerClaimedRewards(stakerID), nil
-}
-
-// GetStakerDelegatorsClaimedRewards returns sum of claimed rewards in past, by this delegators of this staker
-func (b *EthAPIBackend) GetStakerDelegatorsClaimedRewards(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	return b.svc.abciApp.GetStakerDelegatorsClaimedRewards(stakerID), nil
 }
 
 // GetEventTime returns estimation of when event was created
