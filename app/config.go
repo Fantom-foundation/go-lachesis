@@ -3,6 +3,8 @@ package app
 type (
 	// StoreConfig is a config for store db.
 	StoreConfig struct {
+		// Cache size for Block.
+		BlockCacheSize int
 		// Cache size for Receipts.
 		ReceiptsCacheSize int
 		// Cache size for Stakers.
@@ -15,6 +17,7 @@ type (
 // DefaultStoreConfig for product.
 func DefaultStoreConfig() StoreConfig {
 	return StoreConfig{
+		BlockCacheSize:      100,
 		ReceiptsCacheSize:   100,
 		DelegatorsCacheSize: 4000,
 		StakersCacheSize:    4000,
@@ -24,6 +27,7 @@ func DefaultStoreConfig() StoreConfig {
 // LiteStoreConfig is for tests or inmemory.
 func LiteStoreConfig() StoreConfig {
 	return StoreConfig{
+		BlockCacheSize:      50,
 		ReceiptsCacheSize:   100,
 		DelegatorsCacheSize: 400,
 		StakersCacheSize:    400,

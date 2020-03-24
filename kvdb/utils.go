@@ -29,3 +29,23 @@ func Move(src, dst KeyValueStore, prefix []byte) (err error) {
 
 	return nil
 }
+
+// Copy data from src to dst.
+func Copy(src, dst KeyValueStore, prefix []byte) (err error) {
+	it := src.NewIteratorWithPrefix(prefix)
+	defer it.Release()
+
+	for it.Next() {
+		err = dst.Put(it.Key(), it.Value())
+		if err != nil {
+			return
+		}
+	}
+
+	err = it.Error()
+	if err != nil {
+		return
+	}
+
+	return nil
+}
