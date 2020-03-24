@@ -123,7 +123,7 @@ func (s *Service) applyNewState(
 	s.abciApp.BeginBlock(block, cheaters, stateHash, s.GetEvmStateReader())
 
 	// Process txs
-	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock)
+	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock, s.config.TxIndex)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -266,10 +266,6 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 			// not skipped txs only
 			position := txPositions[tx.Hash()]
 			s.store.SetTxPosition(tx.Hash(), &position)
-		}
-
-		if receipts.Len() != 0 {
-			s.abciApp.SetReceipts(block.Index, receipts)
 		}
 	}
 
