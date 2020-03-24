@@ -84,6 +84,7 @@ func DefaultConfig(network lachesis.Config) Config {
 
 		TxIndex:             true,
 		DecisiveEventsIndex: false,
+		EventLocalTimeIndex: false,
 
 		Protocol: ProtocolConfig{
 			LatencyImportance:    60,

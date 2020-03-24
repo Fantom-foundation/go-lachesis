@@ -52,7 +52,7 @@ func (s *PublicDAGChainAPI) GetEvent(ctx context.Context, shortEventID string, i
 }
 
 // GetConsensusTime returns event's consensus time, if event is confirmed.
-func (s *PublicDAGChainAPI) GetConsensusTime(ctx context.Context, shortEventID string) (inter.Timestamp, error) {
+func (s *PublicDAGChainAPI) GetConsensusTime(ctx context.Context, shortEventID string) (uint64, error) {
 	return s.b.GetConsensusTime(ctx, shortEventID)
 }
 

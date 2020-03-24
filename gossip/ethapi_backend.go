@@ -171,12 +171,16 @@ func (b *EthAPIBackend) GetEventHeader(ctx context.Context, shortEventID string)
 }
 
 // GetConsensusTime returns event's consensus time, if event is confirmed.
-func (b *EthAPIBackend) GetConsensusTime(ctx context.Context, shortEventID string) (inter.Timestamp, error) {
+func (b *EthAPIBackend) GetConsensusTime(ctx context.Context, shortEventID string) (uint64, error) {
 	id, err := b.GetFullEventID(shortEventID)
 	if err != nil {
 		return 0, err
 	}
-	return b.svc.engine.GetConsensusTime(id)
+	tm, err := b.svc.engine.GetConsensusTime(id)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(tm), err
 }
 
 func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNumber) (requested idx.Epoch, err error) {
