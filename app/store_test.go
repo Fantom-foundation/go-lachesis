@@ -13,7 +13,7 @@ func cachedStore() *Store {
 	dbs := flushable.NewSyncedPool(mems)
 	cfg := LiteStoreConfig()
 
-	return NewStore(dbs, cfg)
+	return NewStore(dbs, cfg, true)
 }
 
 func nonCachedStore() *Store {
@@ -21,7 +21,7 @@ func nonCachedStore() *Store {
 	dbs := flushable.NewSyncedPool(mems)
 	cfg := StoreConfig{}
 
-	return NewStore(dbs, cfg)
+	return NewStore(dbs, cfg, true)
 }
 
 func withDelay(db kvdb.KeyValueStore) kvdb.KeyValueStore {

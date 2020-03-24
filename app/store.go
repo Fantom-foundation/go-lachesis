@@ -84,16 +84,16 @@ type Store struct {
 }
 
 // NewMemStore creates store over memory map.
-func NewMemStore() *Store {
+func NewMemStore(migrationLoggingIsEnabled bool) *Store {
 	mems := memorydb.NewProducer("")
 	dbs := flushable.NewSyncedPool(mems)
 	cfg := LiteStoreConfig()
 
-	return NewStore(dbs, cfg)
+	return NewStore(dbs, cfg, migrationLoggingIsEnabled)
 }
 
 // NewStore creates store over key-value db.
-func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
+func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig, migrationLoggingIsEnabled bool) *Store {
 	s := &Store{
 		cfg:      cfg,
 		mainDb:   dbs.GetDb("app-main"),
@@ -109,7 +109,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	s.migrate(dbs)
+	s.migrate(dbs, migrationLoggingIsEnabled)
 
 	return s
 }

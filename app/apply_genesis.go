@@ -41,7 +41,7 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 
 // calcGenesisBlock calcs hash of genesis state.
 func calcGenesisBlock(net *lachesis.Config) (*evmcore.EvmBlock, error) {
-	s := NewMemStore()
+	s := NewMemStore(false)
 	defer s.Close()
 
 	return s.applyGenesis(net)

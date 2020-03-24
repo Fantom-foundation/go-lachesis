@@ -35,7 +35,7 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 		return nil, nil, err
 	}
 
-	adb := app.NewMemStore()
+	adb := app.NewMemStore(true)
 	state, _, err := adb.ApplyGenesis(&net)
 	if err != nil {
 		return nil, nil, err

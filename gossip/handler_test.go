@@ -141,7 +141,7 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 	config.TxPool.Journal = ""
 
 	// create stores
-	adb := app.NewMemStore()
+	adb := app.NewMemStore(true)
 	state, _, err := adb.ApplyGenesis(&net)
 	if !assertar.NoError(err) {
 		return

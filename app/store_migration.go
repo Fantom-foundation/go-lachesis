@@ -12,10 +12,10 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
-func (s *Store) migrate(dbs *flushable.SyncedPool) {
+func (s *Store) migrate(dbs *flushable.SyncedPool, loggingIsEnabled bool) {
 	versions := kvdb.NewIDStore(s.table.Version)
 	err := s.migrations(dbs).Exec(versions)
-	if err != nil {
+	if err != nil && !loggingIsEnabled {
 		s.Log.Crit("app store migrations", "err", err)
 	}
 }
