@@ -21,6 +21,7 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *app.St
 	dbs := flushable.NewSyncedPool(dbProducer(dataDir))
 
 	appStoreConfig := app.StoreConfig{
+		TxIndex:             gossipCfg.TxIndex,
 		BlockCacheSize:      gossipCfg.BlockCacheSize,
 		ReceiptsCacheSize:   gossipCfg.ReceiptsCacheSize,
 		DelegatorsCacheSize: gossipCfg.DelegatorsCacheSize,

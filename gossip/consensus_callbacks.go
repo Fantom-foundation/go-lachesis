@@ -123,7 +123,7 @@ func (s *Service) applyNewState(
 	s.abciApp.BeginBlock(block, cheaters, stateHash, s.GetEvmStateReader())
 
 	// Process txs
-	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock, s.config.TxIndex)
+	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {

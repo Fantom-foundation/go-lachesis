@@ -59,7 +59,6 @@ func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash 
 func (a *App) DeliverTxs(
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
-	txIndex bool,
 ) (
 	*inter.Block,
 	*evmcore.EvmBlock,
@@ -92,9 +91,7 @@ func (a *App) DeliverTxs(
 		a.store.IndexLogs(r.Logs...)
 	}
 
-	if txIndex && receipts.Len() > 0 {
-		a.store.SetReceipts(block.Index, receipts)
-	}
+	a.store.SetReceipts(block.Index, receipts)
 
 	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
 }

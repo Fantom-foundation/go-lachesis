@@ -28,7 +28,12 @@ type BlocksMissed struct {
 }
 
 // updateOriginationScores calculates the origination scores
-func (a *App) updateOriginationScores(epoch idx.Epoch, evmBlock *evmcore.EvmBlock, receipts types.Receipts, txPositions map[common.Hash]TxPosition) {
+func (a *App) updateOriginationScores(
+	epoch idx.Epoch,
+	evmBlock *evmcore.EvmBlock,
+	receipts types.Receipts,
+	txPositions map[common.Hash]TxPosition,
+) {
 	for i, tx := range evmBlock.Transactions {
 		txEventPos := txPositions[receipts[i].TxHash]
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
