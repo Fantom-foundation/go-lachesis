@@ -3,27 +3,25 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
-	"unicode"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/naoina/toml"
-	"github.com/naoina/toml/ast"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
+	"github.com/Fantom-foundation/go-lachesis/utils/toml"
 )
 
 var (
@@ -57,62 +55,55 @@ var (
 	}
 )
 
-// These settings ensure that TOML keys use the same names as Go struct fields.
-var tomlSettings = toml.Config{
-	NormFieldName: func(rt reflect.Type, key string) string {
-		return key
-	},
-	FieldToKey: func(rt reflect.Type, field string) string {
-		return field
-	},
-	MissingField: func(rt reflect.Type, field string) error {
-		link := ""
-		if unicode.IsUpper(rune(rt.Name()[0])) && rt.PkgPath() != "main" {
-			link = fmt.Sprintf(", see https://godoc.org/%s#%s for available fields", rt.PkgPath(), rt.Name())
-		}
-		return fmt.Errorf("field '%s' is not defined in %s%s", field, rt.String(), link)
-	},
-}
-
 type config struct {
 	Version  string
 	Node     node.Config
 	Lachesis gossip.Config
 }
 
-func readConfigAST(fileName string) (*ast.Table, error) {
-	content, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		panic("can not read config file '" + fileName + "': " + err.Error())
-	}
-
-	res, err := toml.Parse(content)
-	if err != nil {
-		panic("can not parse config file '" + fileName + "': " + err.Error())
-	}
-
-	return res, nil
-}
-
-func loadAllConfigs(file string, cfg *config) error {
-	cfgTable, err := readConfigAST(file)
+func (cfg *config) Load(file string) error {
+	data, err := toml.ParseFile(file)
 	if err != nil {
 		return err
 	}
 
-	oldVersion, newVersion := cfg.migrate(cfgTable)
+	changed, err := cfg.migrate(data)
+	if err != nil {
+		return err
+	}
 
-	err = tomlSettings.UnmarshalTable(cfgTable, cfg)
-	// Add file name to errors that have a line number.
-	if _, ok := err.(*toml.LineError); ok {
+	err = toml.Settings.UnmarshalTable(data, cfg)
+	if err != nil {
 		err = errors.New(file + ", " + err.Error())
+		return err
 	}
 
-	// If version changed - save new toml config
-	if err == nil && oldVersion != newVersion {
-		err = cfg.updateConfig(file)
+	if !changed {
+		return nil
 	}
-	return err
+
+	_, fname := filepath.Split(file)
+	updated, err := ioutil.TempFile("", fname)
+	if err != nil {
+		return err
+	}
+
+	err = toml.WriteTo(data, updated)
+	updated.Close()
+	if err != nil {
+		return err
+	}
+
+	err = copyFile(file, file+".bak")
+	if err != nil {
+		return err
+	}
+	err = copyFile(updated.Name(), file)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func defaultLachesisConfig(ctx *cli.Context) lachesis.Config {
@@ -263,7 +254,7 @@ func makeAllConfigs(ctx *cli.Context) config {
 
 	// Load config file (medium priority)
 	if file := ctx.GlobalString(configFileFlag.Name); file != "" {
-		if err := loadAllConfigs(file, &cfg); err != nil {
+		if err := cfg.Load(file); err != nil {
 			utils.Fatalf("%v", err)
 		}
 	}
@@ -291,7 +282,7 @@ func dumpConfig(ctx *cli.Context) error {
 	cfg := makeAllConfigs(ctx)
 	comment := ""
 
-	out, err := tomlSettings.Marshal(&cfg)
+	out, err := toml.Settings.Marshal(&cfg)
 	if err != nil {
 		return err
 	}
@@ -310,31 +301,22 @@ func dumpConfig(ctx *cli.Context) error {
 	return nil
 }
 
-func (cfg *config) updateConfig(file string) error {
-	out, err := tomlSettings.Marshal(cfg)
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
+	defer in.Close()
 
-	// Save new config in temp file
-	newFileName := file + ".new"
-	newFile, err := os.OpenFile(newFileName, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0640)
+	out, err := os.Create(dst)
 	if err != nil {
-		panic("error when save config after migration: " + err.Error())
+		return err
 	}
-	_, err = newFile.Write(out)
-	if err != nil {
-		newFile.Close()
-		os.Remove(newFileName)
-		panic("error when save config after migration: " + err.Error())
-	}
-	newFile.Close()
+	defer out.Close()
 
-	// Rename new config file to original name
-	err = os.Rename(newFileName, file)
+	_, err = io.Copy(out, in)
 	if err != nil {
-		panic("error when rename new config after migration: " + err.Error())
+		return err
 	}
-
-	return nil
+	return out.Close()
 }

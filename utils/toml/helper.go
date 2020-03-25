@@ -2,6 +2,7 @@ package toml
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -12,8 +13,12 @@ import (
 var (
 	// ErrorParamNotExists error for not exists params when read
 	ErrorParamNotExists = errors.New("param not exists")
+	// ErrorParamAlreadyExists error for already exists params when add
+	ErrorParamAlreadyExists = errors.New("param already exists")
 	// ErrorSectionNotExists error for not exists section when search
 	ErrorSectionNotExists = errors.New("section not exists")
+	// ErrorSectionAlreadyExists error for already exists section when add
+	ErrorSectionAlreadyExists = errors.New("section already exists")
 )
 
 // Helper is helper for simple manipulate with parsed toml data
@@ -42,7 +47,7 @@ func (d *Helper) AddSection(name, after string) error {
 	_, err := d.FindSection(name)
 	if err == nil {
 		// If exists - return error
-		return errors.New("section already exists: " + name)
+		return ErrorSectionAlreadyExists
 	}
 
 	path := strings.Split(name, ".")
@@ -119,7 +124,7 @@ func (d *Helper) RenameSection(name, newName string) error {
 func (d *Helper) AddParam(name, sectionName string, value interface{}) error {
 	_, sect, err := d.getKVData(name, sectionName)
 	if err == nil {
-		return errors.New("param already exists in section: " + sectionName + " / " + name)
+		return ErrorParamAlreadyExists
 	}
 	if sect == nil {
 		return err
@@ -309,12 +314,12 @@ func (d *Helper) setKVData(name string, value interface{}, kvExists ...*ast.KeyV
 			Key: name,
 		}
 	}
+	// TODO: check if Data should be quoted (as ast.String)
 	switch v := value.(type) {
 	case string:
 		kv.Value = &ast.String{
-			Position: ast.Position{},
-			Value:    v,
-			Data:     []rune(v),
+			Value: v,
+			Data:  []rune(`"` + v + `"`),
 		}
 	case int:
 		s := strconv.FormatInt(int64(v), 10)
@@ -323,27 +328,32 @@ func (d *Helper) setKVData(name string, value interface{}, kvExists ...*ast.KeyV
 			Value:    s,
 			Data:     []rune(s),
 		}
+	case int64:
+		s := strconv.FormatInt(v, 10)
+		kv.Value = &ast.Integer{
+			Value: s,
+			Data:  []rune(s),
+		}
 	case float64:
 		s := strconv.FormatFloat(v, 'f', 16, 64)
 		kv.Value = &ast.Float{
-			Position: ast.Position{},
-			Value:    s,
-			Data:     []rune(s),
+			Value: s,
+			Data:  []rune(s),
 		}
 	case bool:
 		s := strconv.FormatBool(v)
 		kv.Value = &ast.Boolean{
-			Position: ast.Position{},
-			Value:    s,
-			Data:     []rune(s),
+			Value: s,
+			Data:  []rune(s),
 		}
 	case time.Time:
 		s := v.Format("2006-01-02T15:04:05.999999999Z07:00")
 		kv.Value = &ast.Datetime{
-			Position: ast.Position{},
-			Value:    s,
-			Data:     []rune(s),
+			Value: s,
+			Data:  []rune(s),
 		}
+	default:
+		log.Panic("Bad type of value for config key " + name)
 	}
 
 	return kv, nil

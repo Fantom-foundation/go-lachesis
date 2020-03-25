@@ -1,6 +1,9 @@
 package toml
 
-import "fmt"
+import (
+	"fmt"
+	//"github.com/naoina/toml"
+)
 
 // IDStore is implementation for migration id storage in toml file value
 type IDStore struct {
@@ -30,6 +33,7 @@ func (p *IDStore) GetID() string {
 func (p *IDStore) SetID(id string) {
 	v := p.id2human(id)
 	_, ok := p.data.GetTable().Fields["Version"]
+
 	var err error
 	if !ok {
 		err = p.data.AddParam("Version", "", v)

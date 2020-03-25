@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -20,13 +19,12 @@ func TestConfigParse(t *testing.T) {
 
 		source := filepath.Join("testdata", "test_config.toml")
 		modified := filepath.Join("testdata", "test_config_modified.toml")
-		err := copy(source, modified)
+		err := copyFile(source, modified)
 		require.NoError(err, "Copy error")
 
 		cfg := config{}
-		require.Panics(func() {
-			_ = loadAllConfigs(modified, &cfg)
-		}, "Panic when load version without migrations")
+		err = cfg.Load(modified)
+		require.Error(err, "Error when load version without migrations")
 
 		os.Remove(modified)
 		os.Remove(modified + ".init")
@@ -37,11 +35,11 @@ func TestConfigParse(t *testing.T) {
 
 		source := filepath.Join("testdata", "test_config_wo_version.toml")
 		modified := filepath.Join("testdata", "test_config_wo_version_modified.toml")
-		err := copy(source, modified)
+		err := copyFile(source, modified)
 		require.NoError(err, "Copy error")
 
 		cfg := config{}
-		err = loadAllConfigs(modified, &cfg)
+		err = cfg.Load(modified)
 		require.NoError(err, "Parse fixture config without error")
 
 		os.Remove(modified)
@@ -370,29 +368,9 @@ func TestConfigMigrations(t *testing.T) {
 	})
 }
 
-func copy(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, in)
-	if err != nil {
-		return err
-	}
-	return out.Close()
-}
-
 func execMigrations(t *testing.T, file string, migrationsFunc func(helper *toml.Helper) *migration.Migration) *toml.Helper {
 	source := filepath.Join("testdata", file)
-	table, err := readConfigAST(source)
+	table, err := toml.ParseFile(source)
 	require.NoError(t, err, "Parse config to Table")
 	helper := toml.NewTomlHelper(table)
 
