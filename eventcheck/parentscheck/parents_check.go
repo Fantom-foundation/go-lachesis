@@ -2,18 +2,18 @@ package parentscheck
 
 import (
 	"errors"
-
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 var (
-	ErrWrongSeq        = errors.New("event has wrong sequence time")
-	ErrWrongLamport    = errors.New("event has wrong Lamport time")
-	ErrDoubleParents   = errors.New("event has double parents")
-	ErrWrongSelfParent = errors.New("event is missing self-parent")
-	ErrPastTime        = errors.New("event has lower claimed time than self-parent")
+	ErrWrongSeq         = errors.New("event has wrong sequence time")
+	ErrWrongLamport     = errors.New("event has wrong Lamport time")
+	ErrDoubleParents    = errors.New("event has double parents")
+	ErrWrongSelfParent  = errors.New("event is missing self-parent")
+	ErrPastTime         = errors.New("event has lower claimed time than self-parent")
+	ErrIncorrectParents = errors.New("expected event's parents as an argument")
 )
 
 // Checker which require only parents list + current epoch info
@@ -31,9 +31,8 @@ func New(config *lachesis.DagConfig) *Checker {
 // Validate event
 func (v *Checker) Validate(e *inter.Event, parents []*inter.EventHeaderData) error {
 	if len(e.Parents) != len(parents) {
-		panic("parentscheck: expected event's parents as an argument")
+		return ErrIncorrectParents
 	}
-
 	// lamport
 	maxLamport := idx.Lamport(0)
 	for _, p := range parents {
@@ -59,6 +58,7 @@ func (v *Checker) Validate(e *inter.Event, parents []*inter.EventHeaderData) err
 	if (e.Seq <= 1) != (e.SelfParent() == nil) {
 		return ErrWrongSeq
 	}
+
 	if e.SelfParent() != nil {
 		selfParent := parents[0]
 		if !e.IsSelfParent(selfParent.Hash()) {

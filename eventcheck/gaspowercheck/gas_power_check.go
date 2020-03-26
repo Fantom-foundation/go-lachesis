@@ -14,6 +14,7 @@ import (
 var (
 	// ErrWrongGasPowerLeft indicates that event's GasPowerLeft is miscalculated.
 	ErrWrongGasPowerLeft = errors.New("event has wrong GasPowerLeft")
+	ErrIncorrectConfigIdx = errors.New("incorrect config idx")
 )
 
 // ValidationContext for gaspower checking
