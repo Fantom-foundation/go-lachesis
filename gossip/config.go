@@ -63,14 +63,6 @@ type (
 		TxPositionsCacheSize int
 		// Cache size for EpochStats.
 		EpochStatsCacheSize int
-
-		// NOTE: fields for config-file back compatibility
-		// Cache size for Receipts.
-		ReceiptsCacheSize int
-		// Cache size for Stakers.
-		StakersCacheSize int
-		// Cache size for Delegators.
-		DelegatorsCacheSize int
 	}
 )
 

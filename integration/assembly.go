@@ -20,13 +20,7 @@ import (
 func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *app.Store, *gossip.Store) {
 	dbs := flushable.NewSyncedPool(dbProducer(dataDir))
 
-	appStoreConfig := app.StoreConfig{
-		BlockCacheSize:      gossipCfg.BlockCacheSize,
-		ReceiptsCacheSize:   gossipCfg.ReceiptsCacheSize,
-		DelegatorsCacheSize: gossipCfg.DelegatorsCacheSize,
-		StakersCacheSize:    gossipCfg.StakersCacheSize,
-	}
-	adb := app.NewStore(dbs, appStoreConfig)
+	adb := app.NewStore(dbs, app.DefaultStoreConfig())
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
 	cdb := poset.NewStore(dbs, poset.DefaultStoreConfig())
 
