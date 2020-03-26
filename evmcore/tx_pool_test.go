@@ -75,8 +75,8 @@ func (bc *testBlockChain) GetBlock(hash common.Hash, number uint64) *EvmBlock {
 	return bc.CurrentBlock()
 }
 
-func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, error) {
-	return bc.statedb, nil
+func (bc *testBlockChain) StateAt(common.Hash) *state.StateDB {
+	return bc.statedb
 }
 
 func (bc *testBlockChain) SubscribeNewBlock(ch chan<- ChainHeadNotify) notify.Subscription {

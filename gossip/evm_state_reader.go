@@ -111,6 +111,6 @@ func (r *EvmStateReader) getBlock(h hash.Event, n idx.Block, readTxs bool) *evmc
 	return evmBlock
 }
 
-func (r *EvmStateReader) StateAt(root common.Hash) (*state.StateDB, error) {
-	return r.app.StateDB(root), nil
+func (r *EvmStateReader) StateAt(root common.Hash) *state.StateDB {
+	return r.app.StateDB(root)
 }

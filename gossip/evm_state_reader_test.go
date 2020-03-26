@@ -58,8 +58,7 @@ func TestGetGenesisBlock(t *testing.T) {
 	assertar.Equal(net.Genesis.Time, genesisBlock.Time)
 	assertar.Empty(genesisBlock.Transactions)
 
-	statedb, err := reader.StateAt(genesisBlock.Root)
-	assertar.NoError(err)
+	statedb := reader.StateAt(genesisBlock.Root)
 	for addr, account := range net.Genesis.Alloc.Accounts {
 		assertar.Equal(account.Balance.String(), statedb.GetBalance(addr).String())
 		assertar.Equal(account.Code, statedb.GetCode(addr))

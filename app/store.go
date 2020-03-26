@@ -29,6 +29,7 @@ type Store struct {
 		Version kvdb.KeyValueStore `table:"_"`
 
 		Genesis kvdb.KeyValueStore `table:"G"`
+		Blocks  kvdb.KeyValueStore `table:"b"`
 
 		// score economy tables
 		ActiveValidationScore  kvdb.KeyValueStore `table:"V"`
@@ -69,6 +70,7 @@ type Store struct {
 	}
 
 	cache struct {
+		Blocks        *lru.Cache `cache:"-"` // store by pointer
 		Receipts      *lru.Cache `cache:"-"` // store by value
 		Validators    *lru.Cache `cache:"-"` // store by pointer
 		Stakers       *lru.Cache `cache:"-"` // store by pointer
@@ -115,6 +117,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 }
 
 func (s *Store) initCache() {
+	s.cache.Blocks = s.makeCache(s.cfg.BlockCacheSize)
 	s.cache.Receipts = s.makeCache(s.cfg.ReceiptsCacheSize)
 	s.cache.Validators = s.makeCache(2)
 	s.cache.Stakers = s.makeCache(s.cfg.StakersCacheSize)

@@ -46,6 +46,7 @@ func New(cfg lachesis.Config, s *Store) *App {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
+	a.store.SetBlock(blockInfo(block))
 	a.ctx = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.EvmChainConfig(), stateReader),
@@ -102,14 +103,13 @@ func (a *App) EndBlock(
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,
 	txPositions map[common.Hash]TxPosition,
-	blockTime func(n idx.Block) inter.Timestamp,
 	blockParticipated map[idx.StakerID]bool,
 ) common.Hash {
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
-	a.updateValidationScores(epoch, block, blockParticipated, blockTime)
+	a.updateValidationScores(epoch, block, blockParticipated)
 	a.updateUsersPOI(block, evmBlock, receipts)
-	a.updateStakersPOI(block, blockTime)
+	a.updateStakersPOI(block)
 
 	a.processSfc(epoch, block, receipts, cheaters, stats)
 	newStateHash, err := a.ctx.statedb.Commit(true)
@@ -150,4 +150,9 @@ func filterSkippedTxs(block *inter.Block, evmBlock *evmcore.EvmBlock) *evmcore.E
 	}
 	evmBlock.Transactions = filteredTxs
 	return evmBlock
+}
+
+// blockTime by block number
+func (a *App) blockTime(n idx.Block) inter.Timestamp {
+	return a.store.GetBlock(n).Time
 }

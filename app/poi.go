@@ -100,10 +100,10 @@ func (a *App) updateStakerPOI(stakerID idx.StakerID, stakerAddress common.Addres
 }
 
 // updateStakersPOI calculates the Proof Of Importance weights for stakers
-func (a *App) updateStakersPOI(block *inter.Block, blockTime func(n idx.Block) inter.Timestamp) {
+func (a *App) updateStakersPOI(block *inter.Block) {
 	// Stakers POI calculations
 	poiPeriod := PoiPeriod(block.Time, &a.config.Economy)
-	prevBlockPoiPeriod := PoiPeriod(blockTime(block.Index-1), &a.config.Economy)
+	prevBlockPoiPeriod := PoiPeriod(a.blockTime(block.Index-1), &a.config.Economy)
 
 	if poiPeriod != prevBlockPoiPeriod {
 		for _, it := range a.store.GetActiveSfcStakers() {
