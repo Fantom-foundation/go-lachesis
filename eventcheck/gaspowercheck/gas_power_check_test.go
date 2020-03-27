@@ -138,7 +138,6 @@ func TestCalcGasPower(t *testing.T) {
 			checker := New(dagReader)
 			if event.SelfParent() != nil {
 				gasPower, err = checker.CalcGasPower(&event.EventHeaderData, &event.EventHeaderData)
-				continue
 			} else {
 				gasPower, err = checker.CalcGasPower(&event.EventHeaderData, nil)
 			}
@@ -256,7 +255,6 @@ func checkErrorResponse(t *testing.T, err error, event *inter.Event, parent *int
 		}
 	}
 	require.Equal(t, err, nil)
-	return
 }
 
 // makeParentsForTests creates parents for an event

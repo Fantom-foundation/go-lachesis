@@ -167,11 +167,7 @@ func (t *TestArbitraryTaskData) GetOnValidatedFn() OnValidatedFn {
 
 // testEnqueue tests Enqueue function
 func testEnqueue(t *testing.T, checker *Checker, event inter.Events) {
-	onValidatedFns := []func(ArbitraryTaskData){
-		func(ArbitraryTaskData) {
-			return
-		},
-	}
+	onValidatedFns := []func(ArbitraryTaskData) { func(ArbitraryTaskData) {}, }
 	for _, fn := range onValidatedFns {
 		err := checker.Enqueue(event, fn)
 		require.Nil(t, err)
@@ -213,7 +209,6 @@ func testValidate(t *testing.T, checker *Checker, event *inter.Event) {
 	}
 
 	require.Equal(t, nil, err)
-	return
 }
 
 // newTestWallet creates test wallet

@@ -20,9 +20,6 @@ import (
 	"time"
 )
 
-var lachesisNilConfig *lachesis.DagConfig = nil
-var lachesisEmptyConfig lachesis.DagConfig = lachesis.DagConfig{}
-
 // TestBasicCheck is a main testing func
 func TestBasicCheck(t *testing.T) {
 	lachesisConfigs := []*lachesis.DagConfig{
@@ -94,12 +91,12 @@ func checkValidateTxError(t *testing.T, event *inter.Event, err error, c *Checke
 		require.Equal(t, err, ErrHugeValue)
 		return
 	}
-	if event.Seq <= 0 || event.Epoch <= 0 || event.Frame <= 0 || event.Lamport <= 0 {
+	if event.Seq == 0 || event.Epoch == 0 || event.Frame == 0 || event.Lamport == 0 {
 		require.Equal(t, err, ErrNotInited)
 		return
 	}
 
-	if event.ClaimedTime <= 0 {
+	if event.ClaimedTime == 0 {
 		require.Equal(t, err, ErrZeroTime)
 		return
 	}
