@@ -1,11 +1,10 @@
 package epochcheck
 
 import (
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/testCommon"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
-	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/Fantom-foundation/go-lachesis/vector"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -55,26 +54,7 @@ func makeTestEvents() []inter.Event {
 
 // TestEpochCheck is a main testing func
 func TestEpochCheck(t *testing.T) {
-	lachesisConfigs := []*lachesis.DagConfig{
-		nil,
-		&lachesis.DagConfig{
-			MaxParents:                0,
-			MaxFreeParents:            0,
-			MaxEpochBlocks:            0,
-			MaxEpochDuration:          0,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 0,
-		},
-		&lachesis.DagConfig{
-			MaxParents:                1e10,
-			MaxFreeParents:            1,
-			MaxEpochBlocks:            20,
-			MaxEpochDuration:          2000,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 10,
-		},
-	}
-
+	lachesisConfigs := testCommon.MakeTestConfigs()
 	for _, lachesisConfig := range lachesisConfigs {
 		dagReader := TestDagReader{}
 		checker := New(lachesisConfig, dagReader)

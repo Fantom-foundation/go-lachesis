@@ -1,38 +1,17 @@
 package parentscheck
 
 import (
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/testCommon"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/Fantom-foundation/go-lachesis/vector"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 // TestParentsCheck is a main testing func
 func TestParentsCheck(t *testing.T) {
-	lachesisConfigs := []*lachesis.DagConfig{
-		nil,
-		&lachesis.DagConfig{
-			MaxParents:                0,
-			MaxFreeParents:            0,
-			MaxEpochBlocks:            0,
-			MaxEpochDuration:          0,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 0,
-		},
-		&lachesis.DagConfig{
-			MaxParents:                1e10,
-			MaxFreeParents:            1,
-			MaxEpochBlocks:            20,
-			MaxEpochDuration:          2000,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 10,
-		},
-	}
-
+	lachesisConfigs := testCommon.MakeTestConfigs()
 	for _, lachesisConfig := range lachesisConfigs {
 		checker := New(lachesisConfig)
 
@@ -109,24 +88,12 @@ func checkErrorResponse(t *testing.T, err error, event *inter.Event, parents []*
 	require.Nil(t, err)
 }
 
-// makeParentsForTests creates parents for an event
-func makeParentsForTests(num int) hash.Events {
-	var hashEvents hash.Events
-	var h common.Hash
-	for i := num; i > 0; i-- {
-		arrId := i % 32
-		h[arrId] = h[arrId] + 1
-		hashEvents = append(hashEvents, hash.Event(h))
-	}
-	return hashEvents
-}
-
 // makeTestEventsAndParents creates test data of events and parents
 func makeTestEventsAndParents(valid bool) ([]*inter.Event, [][]*inter.EventHeaderData) {
 	var events []*inter.Event
 	var eventHeaderDataSets [][]*inter.EventHeaderData
 	if valid {
-		parentData := makeParentsForTests(2)
+		parentData := testCommon.MakeParentsForTests(2)
 		events = []*inter.Event{
 			{
 				EventHeader: inter.EventHeader{
@@ -174,7 +141,7 @@ func makeTestEventsAndParents(valid bool) ([]*inter.Event, [][]*inter.EventHeade
 	} else {
 		mainParent := (&inter.EventHeaderData{}).Hash()
 
-		parentDatas := []hash.Events{makeParentsForTests(0), makeParentsForTests(2), {hash.Event{}, hash.Event{}}, {mainParent}}
+		parentDatas := []hash.Events{testCommon.MakeParentsForTests(0), testCommon.MakeParentsForTests(2), {hash.Event{}, hash.Event{}}, {mainParent}}
 		creators := []idx.StakerID{0, 1, 2}
 		lamports := []idx.Lamport{0, 1, 3}
 		claimedTimes := []inter.Timestamp{0, 10}

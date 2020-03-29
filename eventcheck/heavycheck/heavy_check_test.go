@@ -1,26 +1,23 @@
 package heavycheck
 
 import (
-	"crypto/ecdsa"
+	"errors"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
-	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/testCommon"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
-	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
-	"github.com/Fantom-foundation/go-lachesis/vector"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 	"log"
-	"math"
 	"math/big"
+	"reflect"
 	"runtime"
 	"testing"
-	"time"
 )
 
 type TestDagReader struct {
@@ -37,12 +34,12 @@ func (t *TestDagReader) GetEpochPubKeys() (map[idx.StakerID]common.Address, idx.
 func getTestDagReaders(t *testing.T) []TestDagReader {
 	var tdr []TestDagReader
 	epochPubKeys1 := map[idx.StakerID]common.Address{}
-	epochPubKeys1[1] = newTestWallet(t).Address
-	epochPubKeys1[2] = newTestWallet(t).Address
+	epochPubKeys1[1] = testCommon.NewTestWallet().Address
+	epochPubKeys1[2] = testCommon.NewTestWallet().Address
 
 	epochPubKeys2 := map[idx.StakerID]common.Address{}
-	epochPubKeys2[11] = newTestWallet(t).Address
-	epochPubKeys2[22] = newTestWallet(t).Address
+	epochPubKeys2[11] = testCommon.NewTestWallet().Address
+	epochPubKeys2[22] = testCommon.NewTestWallet().Address
 	epochs := []idx.Epoch{0, 1, 10}
 	for _, epoch := range epochs {
 		tdr = append(tdr, TestDagReader{epochPubKeys1, epoch})
@@ -53,34 +50,16 @@ func getTestDagReaders(t *testing.T) []TestDagReader {
 
 // TestHeavyCheck main testing func
 func TestHeavyCheck(t *testing.T) {
-	lachesisConfigs := []*lachesis.DagConfig{
-		nil,
-		&lachesis.DagConfig{
-			MaxParents:                0,
-			MaxFreeParents:            0,
-			MaxEpochBlocks:            0,
-			MaxEpochDuration:          0,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 0,
-		},
-		&lachesis.DagConfig{
-			MaxParents:                1e10,
-			MaxFreeParents:            1,
-			MaxEpochBlocks:            20,
-			MaxEpochDuration:          2000,
-			VectorClockConfig:         vector.IndexConfig{},
-			MaxValidatorEventsInBlock: 10,
-		},
-	}
+	lachesisConfigs := testCommon.MakeTestConfigs()
 	dagReaders := getTestDagReaders(t)
 	for _, cfg := range lachesisConfigs {
 		for _, dagReader := range dagReaders {
 			net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 			ledgerID := net.EvmChainConfig().ChainID
 
-			testEvents := makeTestEvents(t)
+			testEvents := testCommon.MakeEventList() // makeTestEvents(t)
 			testEvent := testEvents[0]
-			tw := newTestWallet(t)
+			tw := testCommon.NewTestWallet()
 			sig, err := crypto.Sign(testEvent.Hash().Bytes(), &tw.PrivateKey)
 			require.Nil(t, err)
 			testEvent.Sig = sig
@@ -139,7 +118,7 @@ func testOverloaded(t *testing.T, checker *Checker) {
 // makeTaskData creates array of taskData objects
 func makeTaskData(num int) []*TaskData {
 	var taskDatas []*TaskData
-	for i :=0 ; i< num; i++ {
+	for i := 0; i < num; i++ {
 		td := TaskData{}
 		td.onValidated = func(ArbitraryTaskData) {}
 		taskDatas = append(taskDatas, &td)
@@ -167,7 +146,7 @@ func (t *TestArbitraryTaskData) GetOnValidatedFn() OnValidatedFn {
 
 // testEnqueue tests Enqueue function
 func testEnqueue(t *testing.T, checker *Checker, event inter.Events) {
-	onValidatedFns := []func(ArbitraryTaskData) { func(ArbitraryTaskData) {}, }
+	onValidatedFns := []func(ArbitraryTaskData){func(ArbitraryTaskData) {},}
 	for _, fn := range onValidatedFns {
 		err := checker.Enqueue(event, fn)
 		require.Nil(t, err)
@@ -177,6 +156,10 @@ func testEnqueue(t *testing.T, checker *Checker, event inter.Events) {
 // testValidate tests validate function
 func testValidate(t *testing.T, checker *Checker, event *inter.Event) {
 	err := checker.Validate(event)
+	if event == nil {
+		require.Equal(t, ErrEventIsNil, err)
+		return
+	}
 
 	addrs, epoch := checker.reader.GetEpochPubKeys()
 	if event.Epoch != epoch {
@@ -211,140 +194,23 @@ func testValidate(t *testing.T, checker *Checker, event *inter.Event) {
 	require.Equal(t, nil, err)
 }
 
-// newTestWallet creates test wallet
-func newTestWallet(t *testing.T) TestWallet {
-	privateKey, err := crypto.GenerateKey()
-	require.Nil(t, err)
+// TestTaskData is here for test coverage purposes. TaskData's getters actually has no logic for now
+func TestTaskData(t *testing.T) {
+	td := TaskData{}
+	events := inter.Events{inter.NewEvent()}
+	result := []error{errors.New("test err")}
+	onVal := func(ArbitraryTaskData) {}
 
-	publicKey := privateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	require.True(t, ok)
+	td.Events = events
+	td.Result = result
+	td.onValidated = onVal
 
-	publicKeyBytes := crypto.FromECDSAPub(publicKeyECDSA)
-	address := crypto.PubkeyToAddress(*publicKeyECDSA)
-	return TestWallet{
-		PrivateKey: *privateKey,
-		PubKey:     publicKeyBytes,
-		Address:    address,
-	}
-}
+	onvalFnRet := td.GetOnValidatedFn()
 
-// TestWallet is just a wallet for tests
-type TestWallet struct {
-	Address    common.Address
-	PubKey     []byte
-	PrivateKey ecdsa.PrivateKey
-}
+	sf1 := reflect.ValueOf(onVal)
+	sf2 := reflect.ValueOf(onvalFnRet)
 
-// makeParentsForTests creates parents for an event
-func makeParentsForTests(num int) hash.Events {
-	var hashEvents hash.Events
-	var h common.Hash
-	for i := num; i > 0; i-- {
-		arrId := i % 32
-		h[arrId] = h[arrId] + 1
-		hashEvents = append(hashEvents, hash.Event(h))
-	}
-	return hashEvents
-}
-
-// makeDataWithLen creates array of bytes
-func makeDataWithLen(len int) []byte {
-	var data []byte
-	for i := len; i > 0; i-- {
-		data = append(data, 0x00)
-	}
-	return data
-}
-
-// makeTestEvents creates test events
-func makeTestEvents(t *testing.T) []*inter.Event {
-	var events []*inter.Event
-	versions := []uint32{
-		0, 1,
-	}
-	seqs := []idx.Event{
-		0, 1, (math.MaxInt32 / 2) + 1,
-	}
-	epochs := []idx.Epoch{
-		0, 1, (math.MaxInt32 / 2) + 1,
-	}
-	frames := []idx.Frame{
-		0, 1, (math.MaxInt32 / 2) + 1,
-	}
-	lamports := []idx.Lamport{
-		0, 1, (math.MaxInt32 / 2) + 1,
-	}
-	extras := [][]byte{
-		[]byte{}, makeDataWithLen(1), makeDataWithLen(params.MaxExtraData + 1),
-	}
-	claimedTimes := []inter.Timestamp{
-		0, 1, inter.Timestamp(uint64(time.Now().Unix())),
-	}
-	parentss := []hash.Events{
-		makeParentsForTests(0),
-		makeParentsForTests(1),
-	}
-	creators := []idx.StakerID{1, 102}
-	txsSet := [][]*types.Transaction{makeTestTransactions(t), []*types.Transaction{}}
-
-	for _, version := range versions {
-		for _, seq := range seqs {
-			for _, extra := range extras {
-				for _, parents := range parentss {
-					for _, epoch := range epochs {
-						for _, frame := range frames {
-							for _, lamport := range lamports {
-								for _, claimedTime := range claimedTimes {
-									for _, txs := range txsSet {
-										for _, creator := range creators {
-											event := inter.Event{
-												EventHeader: inter.EventHeader{
-													EventHeaderData: inter.EventHeaderData{
-														Version:     version,
-														Creator:     creator,
-														Seq:         seq,
-														Parents:     parents,
-														Epoch:       epoch,
-														Frame:       frame,
-														Lamport:     lamport,
-														ClaimedTime: claimedTime,
-														Extra:       extra,
-													}, Sig: nil,
-												},
-												Transactions: txs,
-											}
-											//pk := newTestWallet(t).PrivateKey
-											//sig, err := crypto.Sign(event.DataToSign(), &pk)
-											//require.Nil(t, err)
-											//
-											//event.Sig = sig
-											events = append(events, &event)
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return events
-}
-
-// makeTestTransactions generates test transactions
-func makeTestTransactions(t *testing.T) []*types.Transaction {
-	var transactions []*types.Transaction
-	transactions = append(transactions, newTransaction(newTestWallet(t).Address, big.NewInt(0), 1e10, big.NewInt(1), []byte{0x01}))
-	return transactions
-}
-
-var nonce uint64 = 0
-
-// newTransaction creates new testing transaction
-func newTransaction(address common.Address, amount *big.Int, gasLimit uint64, gasPrice *big.Int, data []byte) *types.Transaction {
-	defer func() { nonce += 1 }()
-	tx := types.NewTransaction(nonce, address, amount, gasLimit, gasPrice, data)
-	return tx
+	require.Equal(t, events, td.GetEvents())
+	require.Equal(t, result, td.GetResult())
+	require.Equal(t, sf1.Pointer(), sf2.Pointer())
 }

@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	ErrEventIsNil = errors.New("cannot handle nil event")
 	ErrWrongEventSig  = errors.New("event has wrong signature")
 	ErrMalformedTxSig = errors.New("tx has wrong signature")
 	ErrWrongTxHash    = errors.New("tx has wrong txs Merkle tree root")
@@ -111,6 +112,10 @@ func (v *Checker) Enqueue(events inter.Events, onValidated OnValidatedFn) error 
 
 // Validate event
 func (v *Checker) Validate(e *inter.Event) error {
+	if e == nil {
+		return ErrEventIsNil
+	}
+
 	addrs, epoch := v.reader.GetEpochPubKeys()
 	if e.Epoch != epoch {
 		return epochcheck.ErrNotRelevant
