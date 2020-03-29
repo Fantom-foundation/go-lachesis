@@ -30,6 +30,10 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 
 	// if we'here, then it's first time genesis is applied
 	isNew = true
+	s.SetBlock(&BlockInfo{
+		Index: 0,
+		Time:  net.Genesis.Time,
+	})
 	block, err = s.applyGenesis(net)
 	if err != nil {
 		return
