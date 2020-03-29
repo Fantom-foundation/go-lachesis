@@ -111,8 +111,6 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 	s.initCache()
 
-	s.migrate()
-
 	return s
 }
 

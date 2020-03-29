@@ -29,7 +29,11 @@ func (s *Store) migrations() *migration.Migration {
 
 				old2 := table.New(s.mainDb, []byte("Z"))
 				err = kvdb.Move(old2, dst, nil)
+				if err != nil {
+					return err
+				}
 
-				return err
+				s.Log.Warn("service db migration has been applied")
+				return nil
 			})
 }

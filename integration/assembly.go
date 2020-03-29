@@ -30,6 +30,10 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *app.St
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
 	cdb := poset.NewStore(dbs, poset.DefaultStoreConfig())
 
+	adb.SetName("app-db")
+	gdb.SetName("gossip-db")
+	cdb.SetName("poset-db")
+
 	// write genesis
 
 	state, _, err := adb.ApplyGenesis(&gossipCfg.Net)

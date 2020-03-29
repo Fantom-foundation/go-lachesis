@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
@@ -27,6 +28,8 @@ func (e *GenesisMismatchError) Error() string {
 
 // ApplyGenesis writes initial state.
 func (s *Store) ApplyGenesis(net *lachesis.Config, state *evmcore.EvmBlock) (genesisAtropos hash.Event, genesisState common.Hash, new bool, err error) {
+	s.migrate()
+
 	storedGenesis := s.GetBlock(0)
 	if storedGenesis != nil {
 		newHash := calcGenesisHash(net, state)
@@ -52,8 +55,9 @@ func calcGenesisHash(net *lachesis.Config, state *evmcore.EvmBlock) hash.Event {
 	s := NewMemStore()
 	defer s.Close()
 
-	h, _, _ := s.applyGenesis(net, state)
+	s.Log.SetHandler(log.DiscardHandler())
 
+	h, _, _ := s.applyGenesis(net, state)
 	return h
 }
 

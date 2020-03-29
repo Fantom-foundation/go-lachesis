@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
@@ -13,6 +14,8 @@ import (
 
 // ApplyGenesis writes initial state.
 func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isNew bool, err error) {
+	s.migrate()
+
 	stored := s.getGenesisState()
 
 	if stored != nil {
@@ -47,6 +50,8 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 func calcGenesisBlock(net *lachesis.Config) (*evmcore.EvmBlock, error) {
 	s := NewMemStore()
 	defer s.Close()
+
+	s.Log.SetHandler(log.DiscardHandler())
 
 	return s.applyGenesis(net)
 }

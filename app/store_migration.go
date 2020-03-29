@@ -13,9 +13,9 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
-func (s *Store) migrate(dbs *flushable.SyncedPool) {
+func (s *Store) migrate() {
 	versions := kvdb.NewIDStore(s.table.Version)
-	err := s.migrations(dbs).Exec(versions)
+	err := s.migrations(s.dbs).Exec(versions)
 	if err != nil {
 		s.Log.Crit("app store migrations", "err", err)
 	}
@@ -24,6 +24,11 @@ func (s *Store) migrate(dbs *flushable.SyncedPool) {
 func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 	return migration.Begin("lachesis-app-store").
 		Next("dedicated app-main database", func() (err error) {
+			defer func() {
+				if err == nil {
+					s.Log.Warn("dedicated app-main database migration has been applied")
+				}
+			}()
 			// NOTE: cross db dependency
 			consensus := dbs.GetDb("gossip-main")
 			engine := dbs.GetDb("poset-main")
@@ -75,14 +80,16 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			if b == nil {
 				return
 			}
-
-			s.Log.Warn("SetLastVoting", "block", b.Index, "time", b.Time)
-
 			s.SetLastVoting(b.Index, b.Time)
 
 			return
 		}).
 		Next("app-main genesis", func() (err error) {
+			defer func() {
+				if err == nil {
+					s.Log.Warn("app-main genesis migration has been applied")
+				}
+			}()
 			key := []byte("genesis")
 			genesis := table.New(s.mainDb, []byte("G")) // table.Genesis
 			ok, err := genesis.Has(key)
@@ -99,11 +106,14 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			}
 
 			err = genesis.Put(key, b.Root.Bytes())
-			s.Log.Warn("set app-main genesis", "root", b.Root)
-
 			return
 		}).
 		Next("app's own blocks", func() (err error) {
+			defer func() {
+				if err == nil {
+					s.Log.Warn("app's own blocks migration has been applied")
+				}
+			}()
 			// NOTE: cross db dependency
 			consensus := dbs.GetDb("gossip-main")
 

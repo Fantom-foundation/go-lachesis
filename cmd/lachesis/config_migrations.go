@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/naoina/toml/ast"
 
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
@@ -27,13 +28,18 @@ func (c *config) migrate(t *ast.Table) (changed bool, err error) {
 
 func (c *config) migrations(data *toml.Helper) *migration.Migration {
 	return migration.Begin("lachesis-config").
-		Next("from v0.5.0-rc.1 & v0.6.0-rc.1", func() error {
+		Next("from v0.5.0-rc.1 & v0.6.0-rc.1", func() (err error) {
+			defer func() {
+				if err == nil {
+					log.Warn("config migration from v0.5.0-rc.1 & v0.6.0-rc.1 has been applied")
+				}
+			}()
 
 			_ = data.DeleteParam("omitempty", "Lachesis")
 			_ = data.DeleteParam("omitempty", "Node")
 
 			// detect v0.5.0-rc.1 version
-			err := data.DeleteParam("ForcedBroadcast", "Lachesis")
+			err = data.DeleteParam("ForcedBroadcast", "Lachesis")
 			if err == toml.ErrorParamNotExists {
 				return nil
 			}
