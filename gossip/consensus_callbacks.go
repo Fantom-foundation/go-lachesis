@@ -267,10 +267,6 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 			position := txPositions[tx.Hash()]
 			s.store.SetTxPosition(tx.Hash(), &position)
 		}
-
-		if receipts.Len() != 0 {
-			s.abciApp.SetReceipts(block.Index, receipts)
-		}
 	}
 
 	var logs []*types.Log

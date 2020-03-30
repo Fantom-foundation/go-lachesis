@@ -3,6 +3,8 @@ package app
 type (
 	// StoreConfig is a config for store db.
 	StoreConfig struct {
+		// TxIndex enables indexing transactions and receipts.
+		TxIndex bool
 		// Cache size for Block.
 		BlockCacheSize int
 		// Cache size for Receipts.
@@ -17,6 +19,7 @@ type (
 // DefaultStoreConfig for product.
 func DefaultStoreConfig() StoreConfig {
 	return StoreConfig{
+		TxIndex:             true,
 		BlockCacheSize:      100,
 		ReceiptsCacheSize:   100,
 		DelegatorsCacheSize: 4000,
@@ -27,6 +30,7 @@ func DefaultStoreConfig() StoreConfig {
 // LiteStoreConfig is for tests or inmemory.
 func LiteStoreConfig() StoreConfig {
 	return StoreConfig{
+		TxIndex:             true,
 		BlockCacheSize:      50,
 		ReceiptsCacheSize:   100,
 		DelegatorsCacheSize: 400,

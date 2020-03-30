@@ -91,6 +91,8 @@ func (a *App) DeliverTxs(
 		a.store.IndexLogs(r.Logs...)
 	}
 
+	a.store.SetReceipts(block.Index, receipts)
+
 	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
 }
 

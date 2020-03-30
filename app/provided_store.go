@@ -3,7 +3,6 @@ package app
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
@@ -26,11 +25,6 @@ func (a App) GetEpochValidators(epoch idx.Epoch) []sfctype.SfcStakerAndID {
 // GetSfcConstants provides store's method.
 func (a App) GetSfcConstants(epoch idx.Epoch) SfcConstants {
 	return a.store.GetSfcConstants(epoch)
-}
-
-// SetReceipts provides store's method.
-func (a App) SetReceipts(n idx.Block, receipts types.Receipts) {
-	a.store.SetReceipts(n, receipts)
 }
 
 // StateDB provides store's method.
