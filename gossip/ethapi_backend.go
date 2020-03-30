@@ -198,8 +198,8 @@ func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNum
 }
 
 // GetHeads returns IDs of all the epoch events with no descendants.
-// * When epoch is -2 the heads for latest epoch are returned.
-// * When epoch is -1 the heads for latest sealed epoch are returned.
+// * When epoch is "pending" the heads for latest epoch are returned.
+// * When epoch is "latest" the heads for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetHeads(ctx context.Context, epoch rpc.BlockNumber) (heads hash.Events, err error) {
 	current := b.svc.engine.GetEpoch()
 
@@ -446,8 +446,8 @@ func (b *EthAPIBackend) CurrentEpoch(ctx context.Context) idx.Epoch {
 }
 
 // GetEpochStats returns epoch statistics.
-// * When epoch is -2 the statistics for latest epoch is returned.
-// * When epoch is -1 the statistics for latest sealed epoch is returned.
+// * When epoch is "pending" the statistics for latest epoch are returned.
+// * When epoch is "latest" the statistics for latest sealed epoch are returned.
 func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (*sfctype.EpochStats, error) {
 	var epoch idx.Epoch
 	if requestedEpoch == rpc.PendingBlockNumber {

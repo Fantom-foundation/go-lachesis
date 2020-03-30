@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"math/big"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -19,6 +20,16 @@ func (s *Store) IncBlocksMissed(stakerID idx.StakerID, periodDiff inter.Timestam
 	s.set(s.table.BlockDowntime, stakerID.Bytes(), &missed)
 
 	s.cache.BlockDowntime.Add(stakerID, missed)
+}
+
+// NewDowntimeSnapshotEpoch add count of missed blocks for validator by epoch
+func (s *Store) NewDowntimeSnapshotEpoch(epoch idx.Epoch) {
+	s.newEpochDump(s.table.BlockDowntime, s.table.BlockDowntimeEpoch, epoch)
+}
+
+// NewScoreSnapshotEpoch add scores for validator by epoch
+func (s *Store) NewScoreSnapshotEpoch(epoch idx.Epoch) {
+	s.newEpochDump(s.table.ActiveValidationScore, s.table.ActiveValidationScoreEpoch, epoch)
 }
 
 // ResetBlocksMissed set to 0 missed blocks for validator
@@ -54,9 +65,28 @@ func (s *Store) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 	return missed
 }
 
+func (s *Store) GetBlocksMissedEpoch(stakerID idx.StakerID, epoch idx.Epoch) BlocksMissed {
+	key := bytes.Buffer{}
+	key.Write(epoch.Bytes())
+	key.Write(stakerID.Bytes())
+
+	pMissed, _ := s.get(s.table.BlockDowntimeEpoch, key.Bytes(), &BlocksMissed{}).(*BlocksMissed)
+	if pMissed == nil {
+		return BlocksMissed{}
+	}
+	missed := *pMissed
+
+	return missed
+}
+
 // GetActiveValidationScore return gas value for active validator score
 func (s *Store) GetActiveValidationScore(stakerID idx.StakerID) *big.Int {
 	return s.getValidationScore(s.table.ActiveValidationScore, stakerID)
+}
+
+// GetActiveValidationScore return gas value for active validator score
+func (s *Store) GetActiveValidationScoreEpoch(stakerID idx.StakerID, epoch idx.Epoch) *big.Int {
+	return s.getValidationScoreEpoch(s.table.ActiveValidationScoreEpoch, stakerID, epoch)
 }
 
 // AddDirtyValidationScore add gas value for active validation score
@@ -96,6 +126,21 @@ func (s *Store) addValidationScore(t kvdb.KeyValueStore, stakerID idx.StakerID, 
 
 func (s *Store) getValidationScore(t kvdb.KeyValueStore, stakerID idx.StakerID) *big.Int {
 	scoreBytes, err := t.Get(stakerID.Bytes())
+	if err != nil {
+		s.Log.Crit("Failed to get key-value", "err", err)
+	}
+	if scoreBytes == nil {
+		return big.NewInt(0)
+	}
+	return new(big.Int).SetBytes(scoreBytes)
+}
+
+func (s *Store) getValidationScoreEpoch(t kvdb.KeyValueStore, stakerID idx.StakerID, epoch idx.Epoch) *big.Int {
+	key := bytes.Buffer{}
+	key.Write(epoch.Bytes())
+	key.Write(stakerID.Bytes())
+
+	scoreBytes, err := t.Get(key.Bytes())
 	if err != nil {
 		s.Log.Crit("Failed to get key-value", "err", err)
 	}
@@ -216,6 +261,23 @@ func (s *Store) MoveDirtyOriginationScoresToActive() {
 		err = s.table.DirtyOriginationScore.Delete(keys[i])
 		if err != nil {
 			s.Log.Crit("Failed to erase key-value", "err", err)
+		}
+	}
+}
+
+func (s *Store) newEpochDump(from, to kvdb.KeyValueStore, epoch idx.Epoch) {
+	it := from.NewIterator()
+	for it.Next() {
+		k := it.Key()
+		v := it.Value()
+
+		newKey := bytes.Buffer{}
+		newKey.Write(epoch.Bytes())
+		newKey.Write(k)
+
+		err := to.Put(newKey.Bytes(), v)
+		if err != nil {
+			s.Log.Error("error when write to epoch snapshot table")
 		}
 	}
 }

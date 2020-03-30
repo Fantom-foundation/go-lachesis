@@ -2,11 +2,13 @@ package app
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -36,12 +38,33 @@ func (b *EthAPIBackend) GetReceipts(n idx.Block) types.Receipts {
 	return b.app.store.GetReceipts(n)
 }
 
-// GetValidationScore returns staker's ValidationScore.
-func (b *EthAPIBackend) GetValidationScore(ctx context.Context, stakerID idx.StakerID) (*big.Int, error) {
-	if !b.app.store.HasSfcStaker(stakerID) {
-		return nil, nil
+// GetValidationScore returns staker's ValidationScore for epoch.
+// * When epoch is "pending" the validation score for latest epoch are returned.
+// * When epoch is "latest" the validation score for latest sealed epoch are returned.
+func (b *EthAPIBackend) GetValidationScore(
+	ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber,
+) (
+	score *big.Int, err error,
+) {
+	idxEpoch, err := b.epochWithDefault(ctx, epoch)
+	if err != nil {
+		return
 	}
-	return b.app.store.GetActiveValidationScore(stakerID), nil
+
+	currentEpoch := b.app.GetEpoch()
+
+	if idxEpoch != currentEpoch && !b.app.config.EpochActiveValidationScoreIndex {
+		err = errors.New("pass 'pending' epoch if EpochActiveValidationScoreIndex is false")
+		return
+	}
+
+	if idxEpoch == currentEpoch {
+		score = b.app.store.GetActiveValidationScore(stakerID)
+	} else {
+		score = b.app.store.GetActiveValidationScoreEpoch(stakerID, idxEpoch)
+	}
+
+	return
 }
 
 // GetOriginationScore returns staker's OriginationScore.
@@ -60,10 +83,36 @@ func (b *EthAPIBackend) GetStakerPoI(ctx context.Context, stakerID idx.StakerID)
 	return b.app.store.GetStakerPOI(stakerID), nil
 }
 
-// GetDowntime returns staker's Downtime.
-func (b *EthAPIBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
-	missed := b.app.store.GetBlocksMissed(stakerID)
-	return missed.Num, missed.Period, nil
+// GetDowntime returns staker's Downtime for epoch.
+// * When epoch is "pending" the downtime for latest epoch are returned.
+// * When epoch is "latest" the downtime for latest sealed epoch are returned.
+func (b *EthAPIBackend) GetDowntime(
+	ctx context.Context, stakerID idx.StakerID, epoch rpc.BlockNumber,
+) (
+	num idx.Block, period inter.Timestamp, err error,
+) {
+	idxEpoch, err := b.epochWithDefault(ctx, epoch)
+	if err != nil {
+		return
+	}
+
+	currentEpoch := b.app.GetEpoch()
+
+	if idxEpoch != currentEpoch && !b.app.config.EpochDowntimeIndex {
+		err = errors.New("pass 'pending' epoch if EpochDowntimeIndex is false")
+		return
+	}
+
+	var missed BlocksMissed
+	if idxEpoch == currentEpoch {
+		missed = b.app.store.GetBlocksMissed(stakerID)
+	} else {
+		missed = b.app.store.GetBlocksMissedEpoch(stakerID, idxEpoch)
+	}
+
+	num = missed.Num
+	period = missed.Period
+	return
 }
 
 // GetDelegator returns SFC delegator info
@@ -104,4 +153,21 @@ func (b *EthAPIBackend) ForEachSfcStaker(do func(sfctype.SfcStakerAndID)) {
 // ForEachSfcDelegator provides store's method.
 func (b *EthAPIBackend) ForEachSfcDelegator(do func(sfctype.SfcDelegatorAndAddr)) {
 	b.app.store.ForEachSfcDelegator(do)
+}
+
+func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNumber) (requested idx.Epoch, err error) {
+	current := b.app.GetEpoch()
+
+	switch {
+	case epoch == rpc.PendingBlockNumber:
+		requested = current
+	case epoch == rpc.LatestBlockNumber:
+		requested = current - 1
+	case epoch >= 0 && idx.Epoch(epoch) <= current:
+		requested = idx.Epoch(epoch)
+	default:
+		err = errors.New("epoch is not in range")
+		return
+	}
+	return requested, nil
 }

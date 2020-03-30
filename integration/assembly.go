@@ -64,7 +64,7 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*
 
 // MakeABCI makes ABCI-application.
 func MakeABCI(cfg lachesis.Config, s *app.Store) *app.App {
-	return app.New(cfg, s)
+	return app.New(app.DefaultConfig(cfg), s)
 }
 
 // SetAccountKey sets key into accounts manager and unlocks it with pswd.

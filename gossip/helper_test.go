@@ -40,7 +40,7 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 	if err != nil {
 		return nil, nil, err
 	}
-	abci := app.New(net, adb)
+	abci := app.New(app.DefaultConfig(net), adb)
 
 	store := NewMemStore()
 	_, _, _, err = store.ApplyGenesis(&net, state)

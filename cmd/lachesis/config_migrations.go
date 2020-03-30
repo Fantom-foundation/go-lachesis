@@ -102,7 +102,6 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 
 			var val int64
 			for _, param := range []string{
-				"TxIndex",
 				"BlockCacheSize",
 				"ReceiptsCacheSize",
 				"StakersCacheSize",
@@ -117,6 +116,14 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 					return
 				}
 				_ = data.DeleteParam(param, "Lachesis.StoreConfig")
+			}
+
+			txi, err := data.GetParamBool("TxIndex", "Lachesis")
+			if err == nil {
+				err = data.AddParam("TxIndex", "App", txi)
+				if isCritical(err) {
+					return err
+				}
 			}
 
 			log.Warn("app's store config migration has been applied")

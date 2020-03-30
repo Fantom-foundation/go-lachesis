@@ -13,7 +13,7 @@ import (
 // NewIntegration creates gossip service for the integration test
 func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config) *gossip.Service {
 	gossipCfg := gossip.DefaultConfig(network)
-	appCfg := app.DefaultConfig()
+	appCfg := app.DefaultConfig(network)
 
 	engine, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg, &appCfg)
 	abci := MakeABCI(network, adb)

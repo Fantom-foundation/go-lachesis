@@ -140,7 +140,7 @@ func (s *Service) applyNewState(
 
 	// Process SFC contract transactions
 	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := s.abciApp.EndBlock(epoch, block, evmBlock, receipts, cheaters,
+	newStateHash := s.abciApp.EndBlock(block, evmBlock, receipts, cheaters,
 		stats, txPositions, s.blockParticipated)
 
 	// Process new epoch

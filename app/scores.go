@@ -71,8 +71,8 @@ func (a *App) updateValidationScores(
 		}
 
 		missedNum := a.store.GetBlocksMissed(it.StakerID).Num
-		if missedNum > a.config.Economy.BlockMissedLatency {
-			missedNum = a.config.Economy.BlockMissedLatency
+		if missedNum > a.config.Net.Economy.BlockMissedLatency {
+			missedNum = a.config.Net.Economy.BlockMissedLatency
 		}
 
 		// Add score for previous blocks, but no more than FrameLatency prev blocks
@@ -86,8 +86,17 @@ func (a *App) updateValidationScores(
 		a.store.ResetBlocksMissed(it.StakerID)
 	}
 
-	if a.ctx.sealEpoch {
-		a.store.DelAllActiveValidationScores()
-		a.store.MoveDirtyValidationScoresToActive()
+	if !a.ctx.sealEpoch {
+		return
 	}
+
+	if a.config.EpochDowntimeIndex {
+		a.store.NewDowntimeSnapshotEpoch(epoch)
+	}
+	if a.config.EpochActiveValidationScoreIndex {
+		a.store.NewScoreSnapshotEpoch(epoch)
+	}
+
+	a.store.DelAllActiveValidationScores()
+	a.store.MoveDirtyValidationScoresToActive()
 }

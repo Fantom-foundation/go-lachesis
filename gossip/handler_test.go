@@ -146,7 +146,7 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 	if !assertar.NoError(err) {
 		return
 	}
-	abci := app.New(net, adb)
+	abci := app.New(app.DefaultConfig(net), adb)
 
 	store := NewMemStore()
 	genesisAtropos, genesisEvmState, _, err := store.ApplyGenesis(&net, state)

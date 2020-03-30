@@ -255,7 +255,7 @@ func makeAllConfigs(ctx *cli.Context) config {
 	cfg := config{
 		Lachesis: gossip.DefaultConfig(net),
 		Node:     defaultNodeConfig(),
-		App:      app.DefaultConfig(),
+		App:      app.DefaultConfig(net),
 	}
 
 	// Load config file (medium priority)

@@ -20,10 +20,6 @@ type receiptRLP struct {
 
 // SetReceipts stores transaction receipts.
 func (s *Store) SetReceipts(n idx.Block, receipts types.Receipts) {
-	if !s.cfg.TxIndex || receipts.Len() < 1 {
-		return
-	}
-
 	receiptsStorage := make([]*receiptRLP, len(receipts))
 	for i, r := range receipts {
 		receiptsStorage[i] = &receiptRLP{
@@ -42,10 +38,6 @@ func (s *Store) SetReceipts(n idx.Block, receipts types.Receipts) {
 
 // GetReceipts returns stored transaction receipts.
 func (s *Store) GetReceipts(n idx.Block) types.Receipts {
-	if !s.cfg.TxIndex {
-		return nil
-	}
-
 	var receiptsStorage *[]*receiptRLP
 
 	// Get data from LRU cache first.

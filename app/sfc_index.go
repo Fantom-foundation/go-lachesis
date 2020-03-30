@@ -73,7 +73,7 @@ func (a *App) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDuration
 		// txRewardWeight = ({origination score} + {CONST} * {PoI}) * {validation score}
 		// origination score is roughly proportional to {validation score} * {stake}, so the whole formula is roughly
 		// {stake} * {validation score} ^ 2
-		poiWithRatio := new(big.Int).Mul(pois[i], a.config.Economy.TxRewardPoiImpact)
+		poiWithRatio := new(big.Int).Mul(pois[i], a.config.Net.Economy.TxRewardPoiImpact)
 		poiWithRatio.Div(poiWithRatio, lachesis.PercentUnit)
 
 		txRewardWeight := new(big.Int).Add(originationScores[i], poiWithRatio)
@@ -108,10 +108,10 @@ func (a *App) calcRewardWeights(stakers []sfctype.SfcStakerAndID, _epochDuration
 func (a *App) getRewardPerSec(epoch idx.Epoch) *big.Int {
 	rewardPerSecond := a.store.GetSfcConstants(epoch).BaseRewardPerSec
 	if rewardPerSecond == nil || rewardPerSecond.Sign() == 0 {
-		rewardPerSecond = a.config.Economy.InitialRewardPerSecond
+		rewardPerSecond = a.config.Net.Economy.InitialRewardPerSecond
 	}
-	if rewardPerSecond.Cmp(a.config.Economy.MaxRewardPerSecond) > 0 {
-		rewardPerSecond = a.config.Economy.MaxRewardPerSecond
+	if rewardPerSecond.Cmp(a.config.Net.Economy.MaxRewardPerSecond) > 0 {
+		rewardPerSecond = a.config.Net.Economy.MaxRewardPerSecond
 	}
 	return new(big.Int).Set(rewardPerSecond)
 }
@@ -314,7 +314,7 @@ func (a *App) processSfc(
 			}
 
 			gotMissed := a.store.GetBlocksMissed(it.StakerID)
-			badMissed := a.config.Economy.OfflinePenaltyThreshold
+			badMissed := a.config.Net.Economy.OfflinePenaltyThreshold
 			if gotMissed.Num >= badMissed.BlocksNum && gotMissed.Period >= inter.Timestamp(badMissed.Period) {
 				// write into DB
 				it.Staker.Status |= sfctype.OfflineBit

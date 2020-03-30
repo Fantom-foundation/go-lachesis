@@ -12,16 +12,17 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
-	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 )
 
 type (
 	// App is a prototype of Tendermint ABCI Application
 	App struct {
-		config lachesis.Config
+		config Config
 		store  *Store
 		ctx    *blockContext
+
+		epoch idx.Epoch
 
 		logger.Instance
 	}
@@ -35,7 +36,7 @@ type (
 )
 
 // New is a constructor
-func New(cfg lachesis.Config, s *Store) *App {
+func New(cfg Config, s *Store) *App {
 	return &App{
 		config: cfg,
 		store:  s,
@@ -44,12 +45,18 @@ func New(cfg lachesis.Config, s *Store) *App {
 	}
 }
 
+// InitChain is a prototype of ABCIApplication.InitChain.
+// It should be Called once upon genesis.
+func (a *App) InitChain(current idx.Epoch) {
+	a.setEpoch(current)
+}
+
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
 	a.store.SetBlock(blockInfo(block))
 	a.ctx = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
-		evmProcessor: evmcore.NewStateProcessor(a.config.EvmChainConfig(), stateReader),
+		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), stateReader),
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 	}
 }
@@ -91,14 +98,15 @@ func (a *App) DeliverTxs(
 		a.store.IndexLogs(r.Logs...)
 	}
 
-	a.store.SetReceipts(block.Index, receipts)
+	if a.config.TxIndex && receipts.Len() > 0 {
+		a.store.SetReceipts(block.Index, receipts)
+	}
 
 	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
 func (a *App) EndBlock(
-	epoch idx.Epoch,
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
 	receipts types.Receipts,
@@ -107,6 +115,8 @@ func (a *App) EndBlock(
 	txPositions map[common.Hash]TxPosition,
 	blockParticipated map[idx.StakerID]bool,
 ) common.Hash {
+	epoch := a.GetEpoch()
+
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
 	a.updateValidationScores(epoch, block, blockParticipated)
@@ -121,6 +131,7 @@ func (a *App) EndBlock(
 
 	if a.ctx.sealEpoch {
 		a.store.SetLastVoting(block.Index, block.Time)
+		a.incEpoch()
 	}
 
 	// free resources
@@ -132,8 +143,8 @@ func (a *App) EndBlock(
 
 func (a *App) shouldSealEpoch(block *inter.Block, cheaters inter.Cheaters) bool {
 	startBlock, startTime := a.store.GetLastVoting()
-	seal := (block.Index - startBlock) >= idx.Block(a.config.Dag.MaxEpochBlocks)
-	seal = seal || (block.Time-startTime) >= inter.Timestamp(a.config.Dag.MaxEpochDuration)
+	seal := (block.Index - startBlock) >= idx.Block(a.config.Net.Dag.MaxEpochBlocks)
+	seal = seal || (block.Time-startTime) >= inter.Timestamp(a.config.Net.Dag.MaxEpochDuration)
 	seal = seal || cheaters.Len() > 0
 
 	return seal

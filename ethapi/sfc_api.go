@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
@@ -22,8 +23,8 @@ func NewPublicSfcAPI(b Backend) *PublicSfcAPI {
 }
 
 // GetValidationScore returns staker's ValidationScore.
-func (s *PublicSfcAPI) GetValidationScore(ctx context.Context, stakerID hexutil.Uint) (*hexutil.Big, error) {
-	v, err := s.b.GetValidationScore(ctx, idx.StakerID(stakerID))
+func (s *PublicSfcAPI) GetValidationScore(ctx context.Context, stakerID hexutil.Uint, epoch rpc.BlockNumber) (*hexutil.Big, error) {
+	v, err := s.b.GetValidationScore(ctx, idx.StakerID(stakerID), epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -64,8 +65,8 @@ func (s *PublicSfcAPI) GetStakerPoI(ctx context.Context, stakerID hexutil.Uint) 
 }
 
 // GetDowntime returns staker's Downtime.
-func (s *PublicSfcAPI) GetDowntime(ctx context.Context, stakerID hexutil.Uint) (map[string]interface{}, error) {
-	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID))
+func (s *PublicSfcAPI) GetDowntime(ctx context.Context, stakerID hexutil.Uint, epoch rpc.BlockNumber) (map[string]interface{}, error) {
+	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID), epoch)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +123,7 @@ func RPCMarshalStaker(it sfctype.SfcStakerAndID) map[string]interface{} {
 }
 
 func (s *PublicSfcAPI) addStakerMetricFields(ctx context.Context, res map[string]interface{}, stakerID idx.StakerID) (map[string]interface{}, error) {
-	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID))
+	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID), rpc.LatestBlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +143,7 @@ func (s *PublicSfcAPI) addStakerMetricFields(ctx context.Context, res map[string
 	res["baseRewardWeight"] = (*hexutil.Big)(baseRewardWeight)
 	res["txRewardWeight"] = (*hexutil.Big)(txRewardWeight)
 
-	validationScore, err := s.b.GetValidationScore(ctx, stakerID)
+	validationScore, err := s.b.GetValidationScore(ctx, stakerID, rpc.LatestBlockNumber)
 	if err != nil {
 		return nil, err
 	}
