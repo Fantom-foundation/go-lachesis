@@ -17,17 +17,10 @@ import (
 )
 
 // MakeEngine makes consensus engine from config.
-func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *app.Store, *gossip.Store) {
+func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*poset.Poset, *app.Store, *gossip.Store) {
 	dbs := flushable.NewSyncedPool(dbProducer(dataDir))
 
-	appStoreConfig := app.StoreConfig{
-		TxIndex:             gossipCfg.TxIndex,
-		BlockCacheSize:      gossipCfg.BlockCacheSize,
-		ReceiptsCacheSize:   gossipCfg.ReceiptsCacheSize,
-		DelegatorsCacheSize: gossipCfg.DelegatorsCacheSize,
-		StakersCacheSize:    gossipCfg.StakersCacheSize,
-	}
-	adb := app.NewStore(dbs, appStoreConfig)
+	adb := app.NewStore(dbs, appCfg.StoreConfig)
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
 	cdb := poset.NewStore(dbs, poset.DefaultStoreConfig())
 

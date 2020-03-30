@@ -13,10 +13,10 @@ type (
 	// ProtocolConfig is config for p2p protocol
 	ProtocolConfig struct {
 		// 0/M means "optimize only for throughput", N/0 means "optimize only for latency", N/M is a balanced mode
-
 		LatencyImportance    int
 		ThroughputImportance int
 	}
+
 	// Config for the gossip service.
 	Config struct {
 		Net     lachesis.Config
@@ -63,14 +63,6 @@ type (
 		TxPositionsCacheSize int
 		// Cache size for EpochStats.
 		EpochStatsCacheSize int
-
-		// NOTE: fields for config-file back compatibility
-		// Cache size for Receipts.
-		ReceiptsCacheSize int
-		// Cache size for Stakers.
-		StakersCacheSize int
-		// Cache size for Delegators.
-		DelegatorsCacheSize int
 	}
 )
 

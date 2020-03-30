@@ -21,13 +21,12 @@ func TestConfigParse(t *testing.T) {
 		modified := filepath.Join("testdata", "test_config_modified.toml")
 		err := copyFile(source, modified)
 		require.NoError(err, "Copy error")
+		defer os.Remove(modified)
 
 		cfg := config{}
 		err = cfg.Load(modified)
 		require.Error(err, "Error when load version without migrations")
-
-		os.Remove(modified)
-		os.Remove(modified + ".init")
+		defer os.Remove(modified + ".bak")
 	})
 
 	t.Run("Test parse fixture config without version", func(t *testing.T) {
@@ -37,13 +36,12 @@ func TestConfigParse(t *testing.T) {
 		modified := filepath.Join("testdata", "test_config_wo_version_modified.toml")
 		err := copyFile(source, modified)
 		require.NoError(err, "Copy error")
+		defer os.Remove(modified)
 
 		cfg := config{}
 		err = cfg.Load(modified)
 		require.NoError(err, "Parse fixture config without error")
-
-		os.Remove(modified)
-		os.Remove(modified + ".init")
+		defer os.Remove(modified + ".bak")
 	})
 }
 

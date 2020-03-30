@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
@@ -12,8 +13,9 @@ import (
 // NewIntegration creates gossip service for the integration test
 func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config) *gossip.Service {
 	gossipCfg := gossip.DefaultConfig(network)
+	appCfg := app.DefaultConfig()
 
-	engine, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg)
+	engine, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg, &appCfg)
 	abci := MakeABCI(network, adb)
 
 	coinbase := SetAccountKey(

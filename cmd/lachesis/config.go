@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
@@ -59,6 +60,7 @@ type config struct {
 	Version  string
 	Node     node.Config
 	Lachesis gossip.Config
+	App      app.Config
 }
 
 func (cfg *config) Load(file string) error {
@@ -250,7 +252,11 @@ func nodeConfigWithFlags(ctx *cli.Context, cfg node.Config) node.Config {
 func makeAllConfigs(ctx *cli.Context) config {
 	// Defaults (low priority)
 	net := defaultLachesisConfig(ctx)
-	cfg := config{Lachesis: gossip.DefaultConfig(net), Node: defaultNodeConfig()}
+	cfg := config{
+		Lachesis: gossip.DefaultConfig(net),
+		Node:     defaultNodeConfig(),
+		App:      app.DefaultConfig(),
+	}
 
 	// Load config file (medium priority)
 	if file := ctx.GlobalString(configFileFlag.Name); file != "" {

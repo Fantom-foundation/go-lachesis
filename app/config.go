@@ -1,6 +1,11 @@
 package app
 
 type (
+	// Config for the application.
+	Config struct {
+		StoreConfig
+	}
+
 	// StoreConfig is a config for store db.
 	StoreConfig struct {
 		// TxIndex enables indexing transactions and receipts.
@@ -15,6 +20,13 @@ type (
 		DelegatorsCacheSize int
 	}
 )
+
+// DefaultConfig for product.
+func DefaultConfig() Config {
+	return Config{
+		DefaultStoreConfig(),
+	}
+}
 
 // DefaultStoreConfig for product.
 func DefaultStoreConfig() StoreConfig {

@@ -27,6 +27,13 @@ func (c *config) migrate(t *ast.Table) (changed bool, err error) {
 }
 
 func (c *config) migrations(data *toml.Helper) *migration.Migration {
+
+	isCritical := func(err error) bool {
+		return err != nil &&
+			err != toml.ErrorSectionAlreadyExists &&
+			err != toml.ErrorParamAlreadyExists
+	}
+
 	return migration.Begin("lachesis-config").
 		Next("from v0.5.0-rc.1 & v0.6.0-rc.1", func() (err error) {
 			defer func() {
@@ -42,12 +49,6 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 			err = data.DeleteParam("ForcedBroadcast", "Lachesis")
 			if err == toml.ErrorParamNotExists {
 				return nil
-			}
-
-			isCritical := func(err error) bool {
-				return err != nil &&
-					err != toml.ErrorSectionAlreadyExists &&
-					err != toml.ErrorParamAlreadyExists
 			}
 
 			// Lachesis
@@ -91,5 +92,35 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 			_ = data.DeleteParam("SelfForkProtectionInterval", "Lachesis.Emitter")
 
 			return nil
+
+		}).
+		Next("app's store", func() (err error) {
+			err = data.AddSection("App.StoreConfig", "")
+			if isCritical(err) {
+				return
+			}
+
+			var val int64
+			for _, param := range []string{
+				"TxIndex",
+				"BlockCacheSize",
+				"ReceiptsCacheSize",
+				"StakersCacheSize",
+				"DelegatorsCacheSize",
+			} {
+				val, err = data.GetParamInt(param, "Lachesis.StoreConfig")
+				if err != nil {
+					continue
+				}
+				err = data.AddParam(param, "App.StoreConfig", val)
+				if isCritical(err) {
+					return
+				}
+				_ = data.DeleteParam(param, "Lachesis.StoreConfig")
+			}
+
+			log.Warn("app's store config migration has been applied")
+			return
+
 		})
 }

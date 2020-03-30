@@ -36,8 +36,8 @@ var (
 	// Git SHA1 commit hash of the release (set via linker flags).
 	gitCommit = ""
 	gitDate   = ""
-	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
+	// App that holds all commands and flags.
+	App = utils.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
 
 	testFlags    []cli.Flag
 	nodeFlags    []cli.Flag
@@ -146,10 +146,10 @@ func init() {
 
 	// App.
 
-	app.Action = lachesisMain
-	app.Version = params.VersionWithCommit(gitCommit, gitDate)
-	app.HideVersion = true // we have a command to print the version
-	app.Commands = []cli.Command{
+	App.Action = lachesisMain
+	App.Version = params.VersionWithCommit(gitCommit, gitDate)
+	App.HideVersion = true // we have a command to print the version
+	App.Commands = []cli.Command{
 		// See accountcmd.go:
 		accountCommand,
 		walletCommand,
@@ -163,16 +163,16 @@ func init() {
 		versionCommand,
 		licenseCommand,
 	}
-	sort.Sort(cli.CommandsByName(app.Commands))
+	sort.Sort(cli.CommandsByName(App.Commands))
 
-	app.Flags = append(app.Flags, testFlags...)
-	app.Flags = append(app.Flags, nodeFlags...)
-	app.Flags = append(app.Flags, rpcFlags...)
-	app.Flags = append(app.Flags, consoleFlags...)
-	app.Flags = append(app.Flags, debug.Flags...)
-	app.Flags = append(app.Flags, metricsFlags...)
+	App.Flags = append(App.Flags, testFlags...)
+	App.Flags = append(App.Flags, nodeFlags...)
+	App.Flags = append(App.Flags, rpcFlags...)
+	App.Flags = append(App.Flags, consoleFlags...)
+	App.Flags = append(App.Flags, debug.Flags...)
+	App.Flags = append(App.Flags, metricsFlags...)
 
-	app.Before = func(ctx *cli.Context) error {
+	App.Before = func(ctx *cli.Context) error {
 		logdir := ""
 		if err := debug.Setup(ctx, logdir); err != nil {
 			return err
@@ -185,7 +185,7 @@ func init() {
 		return nil
 	}
 
-	app.After = func(ctx *cli.Context) error {
+	App.After = func(ctx *cli.Context) error {
 		debug.Exit()
 		console.Stdin.Close() // Resets terminal mode.
 
@@ -194,7 +194,7 @@ func init() {
 }
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := App.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -231,7 +231,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 
 	stack := makeConfigNode(ctx, &cfg.Node)
 
-	engine, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
+	engine, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis, &cfg.App)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
 	abci := integration.MakeABCI(cfg.Lachesis.Net, adb)
