@@ -6,44 +6,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
-	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
-
-func SetBackendStateDB(b *testBackend) *state.StateDB {
-	db1 := rawdb.NewDatabase(
-		nokeyiserr.Wrap(
-			table.New(
-				memorydb.New(), []byte("evm1_"))))
-	stateDB, _ := state.New(common.HexToHash("0x0"), state.NewDatabase(db1))
-	b.Returned("StateAndHeaderByNumber", stateDB, &evmcore.EvmHeader{})
-	vmCtx := vm.Context{}
-	evm := vm.NewEVM(vmCtx, stateDB, &params.ChainConfig{}, vm.Config{})
-	b.Returned("GetEVM", evm, func()error{return nil})
-	b.Returned("AccountManager", &accounts.Manager{})
-
-	return stateDB
-}
 
 // TODO: for no error
 func TestDoCall(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	SetBackendStateDB(b)
 
 	nonce := hexutil.Uint64(1)
 	assert.NotPanics(t, func() {
@@ -58,7 +35,6 @@ func TestDoCall(t *testing.T) {
 func TestDoEstimateGas(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	SetBackendStateDB(b)
 
 	assert.NotPanics(t, func() {
 		gas := hexutil.Uint64(21000)

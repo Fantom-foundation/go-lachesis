@@ -2,13 +2,10 @@ package ethapi
 
 import (
 	"context"
-	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 )
 
 // PublicDebugAPI
@@ -16,12 +13,6 @@ import (
 func TestPublicDebugAPI_GetBlockRlp(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-		},
-		Transactions: nil,
-	})
 
 	api := NewPublicDebugAPI(b)
 	assert.NotPanics(t, func() {
@@ -33,12 +24,6 @@ func TestPublicDebugAPI_GetBlockRlp(t *testing.T) {
 func TestPublicDebugAPI_PrintBlock(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-		},
-		Transactions: nil,
-	})
 
 	api := NewPublicDebugAPI(b)
 	assert.NotPanics(t, func() {
@@ -50,12 +35,6 @@ func TestPublicDebugAPI_PrintBlock(t *testing.T) {
 func TestPublicDebugAPI_SeedHash(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-		},
-		Transactions: nil,
-	})
 
 	api := NewPublicDebugAPI(b)
 	assert.NotPanics(t, func() {

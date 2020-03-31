@@ -7,20 +7,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 )
 
 // PublicBlockChainAPI
 
 func TestPublicBlockChainAPI_BlockNumber(t *testing.T) {
 	b := NewTestBackend()
-	b.Returned("HeaderByNumber", &evmcore.EvmHeader{
-		Number:     big.NewInt(1),
-	})
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -30,9 +24,6 @@ func TestPublicBlockChainAPI_BlockNumber(t *testing.T) {
 }
 func TestPublicBlockChainAPI_ChainID(t *testing.T) {
 	b := NewTestBackend()
-	b.Returned("ChainConfig", &params.ChainConfig{
-		ChainID: big.NewInt(1),
-	})
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -43,8 +34,6 @@ func TestPublicBlockChainAPI_ChainID(t *testing.T) {
 func TestPublicBlockChainAPI_EstimateGas(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	SetBackendStateDB(b)
-	b.Returned("RPCGasCap", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -54,8 +43,6 @@ func TestPublicBlockChainAPI_EstimateGas(t *testing.T) {
 func TestPublicBlockChainAPI_GetBalance(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	stateDB := SetBackendStateDB(b)
-	stateDB.AddBalance(common.Address{1}, big.NewInt(10))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -67,21 +54,6 @@ func TestPublicBlockChainAPI_GetBalance(t *testing.T) {
 func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("GetBlock", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -93,21 +65,6 @@ func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 func TestPublicBlockChainAPI_GetBlockByNumber(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -119,9 +76,6 @@ func TestPublicBlockChainAPI_GetBlockByNumber(t *testing.T) {
 func TestPublicBlockChainAPI_GetCode(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	stateDB := SetBackendStateDB(b)
-	stateDB.AddBalance(common.Address{1}, big.NewInt(10))
-	stateDB.SetCode(common.Address{1}, []byte{1, 2, 3})
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -133,10 +87,6 @@ func TestPublicBlockChainAPI_GetCode(t *testing.T) {
 func TestPublicBlockChainAPI_GetHeaderByHash(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("HeaderByHash", &evmcore.EvmHeader{
-		Number:     big.NewInt(1),
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -147,10 +97,6 @@ func TestPublicBlockChainAPI_GetHeaderByHash(t *testing.T) {
 func TestPublicBlockChainAPI_GetHeaderByNumber(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("HeaderByNumber", &evmcore.EvmHeader{
-		Number:     big.NewInt(1),
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -162,8 +108,6 @@ func TestPublicBlockChainAPI_GetHeaderByNumber(t *testing.T) {
 func TestPublicBlockChainAPI_GetProof(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	stateDB := SetBackendStateDB(b)
-	stateDB.AddBalance(common.Address{1}, big.NewInt(10))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -175,8 +119,6 @@ func TestPublicBlockChainAPI_GetProof(t *testing.T) {
 func TestPublicBlockChainAPI_GetStorageAt(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	stateDB := SetBackendStateDB(b)
-	stateDB.AddBalance(common.Address{1}, big.NewInt(10))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -188,21 +130,6 @@ func TestPublicBlockChainAPI_GetStorageAt(t *testing.T) {
 func TestPublicBlockChainAPI_GetUncleByBlockHashAndIndex(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("GetBlock", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -213,21 +140,6 @@ func TestPublicBlockChainAPI_GetUncleByBlockHashAndIndex(t *testing.T) {
 func TestPublicBlockChainAPI_GetUncleByBlockNumberAndIndex(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -238,21 +150,6 @@ func TestPublicBlockChainAPI_GetUncleByBlockNumberAndIndex(t *testing.T) {
 func TestPublicBlockChainAPI_GetUncleCountByBlockHash(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("GetBlock", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
@@ -262,21 +159,6 @@ func TestPublicBlockChainAPI_GetUncleCountByBlockHash(t *testing.T) {
 func TestPublicBlockChainAPI_GetUncleCountByBlockNumber(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
-	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
-			Number:     big.NewInt(1),
-			Hash:       common.Hash{2},
-			ParentHash: common.Hash{3},
-			Root:       common.Hash{4},
-			TxHash:     common.Hash{5},
-			Time:       6,
-			Coinbase:   common.Address{7},
-			GasLimit:   8,
-			GasUsed:    9,
-		},
-		Transactions: nil,
-	})
-	b.Returned("GetTd", big.NewInt(1))
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {

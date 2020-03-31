@@ -2,6 +2,11 @@ package ethapi
 
 import (
 	"context"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"math/big"
 	"runtime"
 	"strings"
@@ -44,6 +49,7 @@ func TestMethod(t *testing.T) {
 }
 
 type testBackend struct {
+	StateDB *state.StateDB
 	result struct {
 		returned map[string][]interface{}
 		err      map[string]error
@@ -52,7 +58,7 @@ type testBackend struct {
 }
 
 func NewTestBackend() *testBackend {
-	return &testBackend{
+	b := &testBackend{
 		result: struct {
 			returned map[string][]interface{}
 			err      map[string]error
@@ -63,6 +69,118 @@ func NewTestBackend() *testBackend {
 			panic: make(map[string]string),
 		},
 	}
+	b.PrepareMethods()
+	return b
+}
+
+func (b *testBackend) PrepareMethods() {
+	b.Returned("GetTd", big.NewInt(1))
+	b.Returned("SuggestPrice", big.NewInt(1))
+	b.Returned("GetPoolNonce", uint64(1))
+	b.Returned("RPCGasCap", big.NewInt(1))
+	b.Returned("Stats", 2, 2)
+	b.Returned("ProtocolVersion", 1)
+	b.Returned("GetBlock", &evmcore.EvmBlock{
+		EvmHeader:    evmcore.EvmHeader{
+			Number:     big.NewInt(1),
+			Hash:       common.Hash{2},
+			ParentHash: common.Hash{3},
+			Root:       common.Hash{4},
+			TxHash:     common.Hash{5},
+			Time:       6,
+			Coinbase:   common.Address{7},
+			GasLimit:   8,
+			GasUsed:    9,
+		},
+		Transactions: types.Transactions{
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		},
+	})
+	b.Returned("BlockByNumber", &evmcore.EvmBlock{
+		EvmHeader:    evmcore.EvmHeader{
+			Number:     big.NewInt(1),
+			Hash:       common.Hash{2},
+			ParentHash: common.Hash{3},
+			Root:       common.Hash{4},
+			TxHash:     common.Hash{5},
+			Time:       6,
+			Coinbase:   common.Address{7},
+			GasLimit:   8,
+			GasUsed:    9,
+		},
+		Transactions: types.Transactions{
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		},
+	})
+	b.Returned("TxPoolContent",
+		map[common.Address]types.Transactions{
+			common.Address{1}: types.Transactions{
+				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				types.NewTransaction(2, common.Address{2}, big.NewInt(2), 2, big.NewInt(0), []byte{}),
+			},
+		},
+		map[common.Address]types.Transactions{
+			common.Address{1}: types.Transactions{
+				types.NewTransaction(3, common.Address{3}, big.NewInt(3), 3, big.NewInt(0), []byte{}),
+				types.NewTransaction(4, common.Address{4}, big.NewInt(4), 4, big.NewInt(0), []byte{}),
+			},
+		},
+	)
+	b.Returned("GetPoolTransactions", types.Transactions{
+			types.NewTransaction(3, common.Address{3}, big.NewInt(3), 3, big.NewInt(0), []byte{}),
+			types.NewTransaction(4, common.Address{4}, big.NewInt(4), 4, big.NewInt(0), []byte{}),
+		},
+	)
+	b.Returned("HeaderByNumber", &evmcore.EvmHeader{
+		Number:     big.NewInt(1),
+	})
+	b.Returned("HeaderByHash", &evmcore.EvmHeader{
+		Number:     big.NewInt(1),
+	})
+	b.Returned("ChainConfig", &params.ChainConfig{
+		ChainID: big.NewInt(1),
+	})
+	ts := inter.Timestamp(time.Now().Add(-91 * time.Minute).UnixNano())
+	b.Returned("Progress", PeerProgress{
+		CurrentEpoch:     1,
+		CurrentBlock:     2,
+		CurrentBlockHash: hash.Event{3},
+		CurrentBlockTime: ts,
+		HighestBlock:     5,
+		HighestEpoch:     6,
+	})
+
+	// Set state DB
+	db1 := rawdb.NewDatabase(
+		nokeyiserr.Wrap(
+			table.New(
+				memorydb.New(), []byte("evm1_"))))
+	b.StateDB, _ = state.New(common.HexToHash("0x0"), state.NewDatabase(db1))
+	b.Returned("StateAndHeaderByNumber", b.StateDB, &evmcore.EvmHeader{})
+	b.StateDB.SetNonce(common.Address{1}, 1)
+	b.StateDB.AddBalance(common.Address{1}, big.NewInt(10))
+	b.StateDB.SetCode(common.Address{1}, []byte{1, 2, 3})
+
+	// Set EVM
+	vmCtx := vm.Context{}
+	evm := vm.NewEVM(vmCtx, b.StateDB, &params.ChainConfig{}, vm.Config{})
+	b.Returned("GetEVM", evm, func()error{return nil})
+	b.Returned("AccountManager", &accounts.Manager{
+
+	})
+
+	// GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error)
+	b.Returned("GetTransaction",
+		types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		uint64(1), uint64(1))
+
+	b.Returned("GetReceiptsByNumber", types.Receipts{
+		types.NewReceipt([]byte{}, false, 100),
+		types.NewReceipt([]byte{}, false, 100),
+	})
+
+	b.Returned("Wallets", []accounts.Wallet{})
+	b.Returned("Subscribe", &testAccountSubscription{})
 }
 
 func (b *testBackend) Returned(method string, args ...interface{}) {
@@ -350,3 +468,87 @@ func (b *testBackend) GetDelegator(ctx context.Context, addr common.Address) (*s
 	b.checkPanic(method)
 	return b.result.returned[method][0].(*sfctype.SfcDelegator), b.result.err[method]
 }
+func (b *testBackend) Wallets() []accounts.Wallet {
+	method := method()
+	b.checkPanic(method)
+	return b.result.returned[method][0].([]accounts.Wallet)
+}
+func (b *testBackend) Subscribe(sink chan<- accounts.WalletEvent) notify.Subscription {
+	method := method()
+	b.checkPanic(method)
+	return b.result.returned[method][0].(notify.Subscription)
+}
+
+type testWallet struct {}
+
+func (w *testWallet) URL() accounts.URL {
+	return accounts.URL{
+		Scheme: "https",
+		Path:   "test.ru/test",
+	}
+}
+
+func (w *testWallet) Status() (string, error) {
+	return "ok", nil
+}
+
+func (w *testWallet) Open(passphrase string) error {
+	return nil
+}
+
+func (w *testWallet) Close() error {
+	return nil
+}
+func (w *testWallet) Accounts() []accounts.Account {
+	return []accounts.Account{
+		accounts.Account{
+			Address: common.Address{1},
+			URL:     w.URL(),
+		},
+	}
+}
+
+func (w *testWallet) Contains(account accounts.Account) bool {
+	return true
+}
+
+func (w *testWallet) Derive(path accounts.DerivationPath, pin bool) (accounts.Account, error) {
+	return w.Accounts()[0], nil
+}
+
+func (w *testWallet) SelfDerive(bases []accounts.DerivationPath, chain ethereum.ChainStateReader) {
+}
+
+func (w *testWallet) SignData(account accounts.Account, mimeType string, data []byte) ([]byte, error) {
+	return []byte{1, 2, 3}, nil
+}
+
+func (w *testWallet) SignDataWithPassphrase(account accounts.Account, passphrase, mimeType string, data []byte) ([]byte, error) {
+	return []byte{1, 2, 3}, nil
+}
+
+func (w *testWallet) SignText(account accounts.Account, text []byte) ([]byte, error) {
+	return []byte{1, 2, 3}, nil
+}
+
+func (w *testWallet) SignTextWithPassphrase(account accounts.Account, passphrase string, hash []byte) ([]byte, error) {
+	return []byte{1, 2, 3}, nil
+}
+
+func (w *testWallet) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
+	trx := types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{})
+	return trx, nil
+}
+
+func (w *testWallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
+	trx := types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{})
+	return trx, nil
+}
+
+type testAccountSubscription struct {}
+
+func (s *testAccountSubscription) Err() <-chan error {
+	ch := make(chan error)
+	return ch
+}
+func (s *testAccountSubscription) Unsubscribe() {}
