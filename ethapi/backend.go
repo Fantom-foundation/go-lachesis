@@ -89,7 +89,7 @@ type Backend interface {
 	// Lachesis DAG API
 	GetEvent(ctx context.Context, shortEventID string) (*inter.Event, error)
 	GetEventHeader(ctx context.Context, shortEventID string) (*inter.EventHeaderData, error)
-	GetConsensusTime(ctx context.Context, shortEventID string) (inter.Timestamp, error)
+	GetConsensusTime(ctx context.Context, shortEventID string) (uint64, error)
 	GetHeads(ctx context.Context, epoch rpc.BlockNumber) (hash.Events, error)
 	CurrentEpoch(ctx context.Context) idx.Epoch
 	GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (*sfctype.EpochStats, error)
@@ -151,6 +151,7 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Namespace: "debug",
 			Version:   "1.0",
 			Service:   NewPrivateDebugAPI(apiBackend),
+			Public:    false,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
@@ -165,7 +166,7 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Namespace: "sfc",
 			Version:   "1.0",
 			Service:   NewPublicSfcAPI(apiBackend),
-			Public:    false,
+			Public:    true,
 		},
 	}
 
