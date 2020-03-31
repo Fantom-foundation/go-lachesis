@@ -180,7 +180,60 @@ func (b *testBackend) PrepareMethods() {
 	})
 
 	b.Returned("Wallets", []accounts.Wallet{})
+
 	b.Returned("Subscribe", &testAccountSubscription{})
+	b.Returned("CurrentEpoch", idx.Epoch(1))
+	b.Returned("GetConsensusTime", inter.Timestamp(1))
+	b.Returned("GetEpochStats", &sfctype.EpochStats{
+		Start:                 1,
+		End:                   2,
+		Epoch:                 1,
+	})
+	b.Returned("GetEvent", &inter.Event{
+		EventHeader:    inter.EventHeader{
+			EventHeaderData: inter.EventHeaderData{
+				Version:       1,
+				Epoch:         2,
+				Seq:           1,
+				Frame:         1,
+				IsRoot:        true,
+				Creator:       1,
+				PrevEpochHash: common.Hash{0},
+				Parents:       nil,
+				GasPowerLeft:  inter.GasPowerLeft{},
+				GasPowerUsed:  0,
+				Lamport:       0,
+				ClaimedTime:   0,
+				MedianTime:    0,
+				TxHash:        common.Hash{},
+				Extra:         nil,
+			},
+			Sig:             nil,
+		},
+		Transactions: types.Transactions{
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		},
+	})
+	b.Returned("GetEventHeader", &inter.EventHeaderData{
+			Version:       1,
+			Epoch:         2,
+			Seq:           1,
+			Frame:         1,
+			IsRoot:        true,
+			Creator:       1,
+			PrevEpochHash: common.Hash{0},
+			Parents:       nil,
+			GasPowerLeft:  inter.GasPowerLeft{},
+			GasPowerUsed:  0,
+			Lamport:       0,
+			ClaimedTime:   0,
+			MedianTime:    0,
+			TxHash:        common.Hash{},
+			Extra:         nil,
+	})
+	b.Returned("GetHeads", hash.Events{
+		hash.Event{1},
+	})
 }
 
 func (b *testBackend) Returned(method string, args ...interface{}) {
