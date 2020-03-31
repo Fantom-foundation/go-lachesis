@@ -52,6 +52,7 @@ func (p *Prque) Size() int {
 }
 
 // Reset clears the contents of the priority queue.
+// TODO: maybe replace with p.cont.Reset() ?
 func (p *Prque) Reset() {
 	*p = *New(p.cont.setIndex)
 }

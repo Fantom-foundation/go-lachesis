@@ -50,7 +50,7 @@ func (s *sstack) Push(data interface{}) {
 		s.blocks = append(s.blocks, s.active)
 		s.capacity += blockSize
 		s.offset = 0
-	} else if s.offset == blockSize {
+	} else if s.offset == blockSize { // this block is never called and cannot actually be called
 		s.active = s.blocks[s.size/blockSize]
 		s.offset = 0
 	}
