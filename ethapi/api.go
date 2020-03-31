@@ -423,6 +423,7 @@ func (s *PrivateAccountAPI) Sign(ctx context.Context, data hexutil.Bytes, addr c
 	account := accounts.Account{Address: addr}
 
 	wallet, err := s.b.AccountManager().Find(account)
+
 	if err != nil {
 		return nil, err
 	}

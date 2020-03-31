@@ -2,23 +2,22 @@ package ethapi
 
 import (
 	"context"
-	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
-	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"math/big"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -30,6 +29,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
 
 func method() string {
@@ -48,9 +49,19 @@ func TestMethod(t *testing.T) {
 	assert.Equal(t, method(), "TestMethod")
 }
 
+func TestGetAPIs(t *testing.T) {
+	b := NewTestBackend()
+
+	assert.NotPanics(t, func() {
+		res := GetAPIs(b)
+		assert.NotEmpty(t, res)
+	})
+}
+
 type testBackend struct {
 	StateDB *state.StateDB
-	result struct {
+	AM      *accounts.Manager
+	result  struct {
 		returned map[string][]interface{}
 		err      map[string]error
 		panic    map[string]string
@@ -65,8 +76,8 @@ func NewTestBackend() *testBackend {
 			panic    map[string]string
 		}{
 			returned: make(map[string][]interface{}),
-			err: make(map[string]error),
-			panic: make(map[string]string),
+			err:      make(map[string]error),
+			panic:    make(map[string]string),
 		},
 	}
 	b.PrepareMethods()
@@ -81,7 +92,7 @@ func (b *testBackend) PrepareMethods() {
 	b.Returned("Stats", 2, 2)
 	b.Returned("ProtocolVersion", 1)
 	b.Returned("GetBlock", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
+		EvmHeader: evmcore.EvmHeader{
 			Number:     big.NewInt(1),
 			Hash:       common.Hash{2},
 			ParentHash: common.Hash{3},
@@ -97,7 +108,7 @@ func (b *testBackend) PrepareMethods() {
 		},
 	})
 	b.Returned("BlockByNumber", &evmcore.EvmBlock{
-		EvmHeader:    evmcore.EvmHeader{
+		EvmHeader: evmcore.EvmHeader{
 			Number:     big.NewInt(1),
 			Hash:       common.Hash{2},
 			ParentHash: common.Hash{3},
@@ -127,15 +138,15 @@ func (b *testBackend) PrepareMethods() {
 		},
 	)
 	b.Returned("GetPoolTransactions", types.Transactions{
-			types.NewTransaction(3, common.Address{3}, big.NewInt(3), 3, big.NewInt(0), []byte{}),
-			types.NewTransaction(4, common.Address{4}, big.NewInt(4), 4, big.NewInt(0), []byte{}),
-		},
+		types.NewTransaction(3, common.Address{3}, big.NewInt(3), 3, big.NewInt(0), []byte{}),
+		types.NewTransaction(4, common.Address{4}, big.NewInt(4), 4, big.NewInt(0), []byte{}),
+	},
 	)
 	b.Returned("HeaderByNumber", &evmcore.EvmHeader{
-		Number:     big.NewInt(1),
+		Number: big.NewInt(1),
 	})
 	b.Returned("HeaderByHash", &evmcore.EvmHeader{
-		Number:     big.NewInt(1),
+		Number: big.NewInt(1),
 	})
 	b.Returned("ChainConfig", &params.ChainConfig{
 		ChainID: big.NewInt(1),
@@ -164,33 +175,50 @@ func (b *testBackend) PrepareMethods() {
 	// Set EVM
 	vmCtx := vm.Context{}
 	evm := vm.NewEVM(vmCtx, b.StateDB, &params.ChainConfig{}, vm.Config{})
-	b.Returned("GetEVM", evm, func()error{return nil})
-	b.Returned("AccountManager", &accounts.Manager{
+	b.Returned("GetEVM", evm, func() error { return nil })
 
+	b.Returned("Wallets", []accounts.Wallet{
+		&testWallet{},
+		&testWallet{},
+		&testWallet{},
 	})
+
+	b.Returned("Subscribe", notify.NewSubscription(func(c <-chan struct{}) error { return nil }))
+
+	// Prepare keystore
+	keyStore := keystore.NewKeyStore("/tmp", 2, 2)
+	for _, ac := range keyStore.Accounts() {
+		keyStore.Delete(ac, "1234")
+	}
+
+	// Prepare account manager
+	b.AM = accounts.NewManager(&accounts.Config{InsecureUnlockAllowed: true}, b, keyStore)
+	b.Returned("AccountManager", b.AM)
 
 	// GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error)
 	b.Returned("GetTransaction",
 		types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 		uint64(1), uint64(1))
 
+	rec1 := types.NewReceipt([]byte{}, false, 100)
+	rec1.PostState = []byte{1, 2, 3}
+	rec1.ContractAddress = common.Address{1}
+	rec2 := types.NewReceipt([]byte{}, false, 100)
 	b.Returned("GetReceiptsByNumber", types.Receipts{
-		types.NewReceipt([]byte{}, false, 100),
-		types.NewReceipt([]byte{}, false, 100),
+		rec1,
+		rec2,
 	})
-
-	b.Returned("Wallets", []accounts.Wallet{})
 
 	b.Returned("Subscribe", &testAccountSubscription{})
 	b.Returned("CurrentEpoch", idx.Epoch(1))
 	b.Returned("GetConsensusTime", inter.Timestamp(1))
 	b.Returned("GetEpochStats", &sfctype.EpochStats{
-		Start:                 1,
-		End:                   2,
-		Epoch:                 1,
+		Start: 1,
+		End:   2,
+		Epoch: 1,
 	})
 	b.Returned("GetEvent", &inter.Event{
-		EventHeader:    inter.EventHeader{
+		EventHeader: inter.EventHeader{
 			EventHeaderData: inter.EventHeaderData{
 				Version:       1,
 				Epoch:         2,
@@ -208,32 +236,109 @@ func (b *testBackend) PrepareMethods() {
 				TxHash:        common.Hash{},
 				Extra:         nil,
 			},
-			Sig:             nil,
+			Sig: nil,
 		},
 		Transactions: types.Transactions{
 			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 		},
 	})
 	b.Returned("GetEventHeader", &inter.EventHeaderData{
-			Version:       1,
-			Epoch:         2,
-			Seq:           1,
-			Frame:         1,
-			IsRoot:        true,
-			Creator:       1,
-			PrevEpochHash: common.Hash{0},
-			Parents:       nil,
-			GasPowerLeft:  inter.GasPowerLeft{},
-			GasPowerUsed:  0,
-			Lamport:       0,
-			ClaimedTime:   0,
-			MedianTime:    0,
-			TxHash:        common.Hash{},
-			Extra:         nil,
+		Version:       1,
+		Epoch:         2,
+		Seq:           1,
+		Frame:         1,
+		IsRoot:        true,
+		Creator:       1,
+		PrevEpochHash: common.Hash{0},
+		Parents:       nil,
+		GasPowerLeft:  inter.GasPowerLeft{},
+		GasPowerUsed:  0,
+		Lamport:       0,
+		ClaimedTime:   0,
+		MedianTime:    0,
+		TxHash:        common.Hash{},
+		Extra:         nil,
 	})
 	b.Returned("GetHeads", hash.Events{
 		hash.Event{1},
 	})
+
+	b.Returned("GetDelegator", &sfctype.SfcDelegator{
+		CreatedEpoch:     1,
+		CreatedTime:      2,
+		DeactivatedEpoch: 0,
+		DeactivatedTime:  0,
+		Amount:           nil,
+		ToStakerID:       1,
+	})
+	b.Returned("GetDelegatorClaimedRewards", big.NewInt(1))
+	b.Returned("GetDelegatorsOf", []sfctype.SfcDelegatorAndAddr{
+		{
+			Delegator: &sfctype.SfcDelegator{
+				CreatedEpoch:     1,
+				CreatedTime:      2,
+				DeactivatedEpoch: 0,
+				DeactivatedTime:  0,
+				Amount:           nil,
+				ToStakerID:       1,
+			},
+			Addr: common.Address{1},
+		},
+	})
+	b.Returned("GetDowntime", idx.Block(1), inter.Timestamp(1))
+	b.Returned("GetOriginationScore", big.NewInt(1))
+	b.Returned("GetRewardWeights", big.NewInt(1), big.NewInt(1))
+	b.Returned("GetStaker", &sfctype.SfcStaker{
+		CreatedEpoch:     1,
+		CreatedTime:      1,
+		DeactivatedEpoch: 0,
+		DeactivatedTime:  0,
+		Address:          common.Address{1},
+		StakeAmount:      big.NewInt(1),
+		DelegatedMe:      big.NewInt(0),
+	})
+	b.Returned("GetStakerPoI", big.NewInt(1))
+	b.Returned("GetValidationScore", big.NewInt(1))
+	b.Returned("GetStakerClaimedRewards", big.NewInt(1))
+	b.Returned("GetStakerDelegatorsClaimedRewards", big.NewInt(1))
+	b.Returned("GetStakers", []sfctype.SfcStakerAndID{
+		{
+			StakerID: 1,
+			Staker: &sfctype.SfcStaker{
+				CreatedEpoch:     1,
+				CreatedTime:      1,
+				DeactivatedEpoch: 0,
+				DeactivatedTime:  0,
+				Address:          common.Address{1},
+				StakeAmount:      big.NewInt(1),
+				DelegatedMe:      big.NewInt(0),
+			},
+		},
+	})
+	b.Returned("GetStakerID", idx.StakerID(1))
+	b.Returned("TtfReport", map[hash.Event]time.Duration{
+		hash.HexToEventHash("0x1"): time.Second,
+		hash.HexToEventHash("0x2"): 2 * time.Second,
+		hash.HexToEventHash("0x3"): 3 * time.Second,
+		hash.HexToEventHash("0x4"): 4 * time.Second,
+	})
+	b.Returned("ValidatorTimeDrifts", map[idx.StakerID]map[hash.Event]time.Duration{
+		idx.StakerID(1): {
+			hash.HexToEventHash("0x1"): time.Second,
+			hash.HexToEventHash("0x2"): 2 * time.Second,
+		},
+		idx.StakerID(2): {
+			hash.HexToEventHash("0x3"): 3 * time.Second,
+			hash.HexToEventHash("0x4"): 4 * time.Second,
+		},
+	})
+
+	db2 := rawdb.NewDatabase(
+		nokeyiserr.Wrap(
+			table.New(
+				memorydb.New(), []byte("evm2_"))))
+	b.Returned("ChainDb", db2)
+	b.Returned("ExtRPCEnabled", false)
 }
 
 func (b *testBackend) Returned(method string, args ...interface{}) {
@@ -253,16 +358,11 @@ func (b *testBackend) Panic(method string, msg string) {
 	b.result.panic[method] = msg
 }
 
-
 func (b *testBackend) checkPanic(method string) {
 	if b.result.panic[method] != "" {
 		panic(b.result.panic[method])
 	}
 }
-
-
-
-
 
 func (b *testBackend) ProtocolVersion() int {
 	method := method()
@@ -319,9 +419,9 @@ func (b *testBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber)
 func (b *testBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *evmcore.EvmHeader, error) {
 	method := method()
 	b.checkPanic(method)
-	return 	b.result.returned[method][0].(*state.StateDB),
-			b.result.returned[method][1].(*evmcore.EvmHeader),
-			b.result.err[method]
+	return b.result.returned[method][0].(*state.StateDB),
+		b.result.returned[method][1].(*evmcore.EvmHeader),
+		b.result.err[method]
 }
 
 //GetHeader(ctx context.Context, hash common.Hash) *evmcore.EvmHeader
@@ -355,10 +455,10 @@ func (b *testBackend) SendTx(ctx context.Context, signedTx *types.Transaction) e
 func (b *testBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error) {
 	method := method()
 	b.checkPanic(method)
-	return 	b.result.returned[method][0].(*types.Transaction),
-			b.result.returned[method][1].(uint64),
-			b.result.returned[method][2].(uint64),
-			b.result.err[method]
+	return b.result.returned[method][0].(*types.Transaction),
+		b.result.returned[method][1].(uint64),
+		b.result.returned[method][2].(uint64),
+		b.result.err[method]
 }
 func (b *testBackend) GetPoolTransactions() (types.Transactions, error) {
 	method := method()
@@ -383,8 +483,8 @@ func (b *testBackend) Stats() (pending int, queued int) {
 func (b *testBackend) TxPoolContent() (map[common.Address]types.Transactions, map[common.Address]types.Transactions) {
 	method := method()
 	b.checkPanic(method)
-	return 	b.result.returned[method][0].(map[common.Address]types.Transactions),
-			b.result.returned[method][1].(map[common.Address]types.Transactions)
+	return b.result.returned[method][0].(map[common.Address]types.Transactions),
+		b.result.returned[method][1].(map[common.Address]types.Transactions)
 }
 func (b *testBackend) SubscribeNewTxsNotify(chan<- evmcore.NewTxsNotify) notify.Subscription {
 	method := method()
@@ -442,6 +542,19 @@ func (b *testBackend) TtfReport(ctx context.Context, untilBlock rpc.BlockNumber,
 func (b *testBackend) ForEachEvent(ctx context.Context, epoch rpc.BlockNumber, onEvent func(event *inter.Event) bool) error {
 	method := method()
 	b.checkPanic(method)
+	onEvent(&inter.Event{
+		EventHeader: inter.EventHeader{
+			EventHeaderData: inter.EventHeaderData{
+				Version: 1,
+				Epoch:   2,
+				Seq:     1,
+				Frame:   0,
+				IsRoot:  false,
+			},
+			Sig: nil,
+		},
+		Transactions: nil,
+	})
 	return b.result.err[method]
 }
 func (b *testBackend) ValidatorTimeDrifts(ctx context.Context, epoch rpc.BlockNumber, maxEvents idx.Event) (map[idx.StakerID]map[hash.Event]time.Duration, error) {
@@ -479,7 +592,7 @@ func (b *testBackend) GetStakerPoI(ctx context.Context, stakerID idx.StakerID) (
 func (b *testBackend) GetDowntime(ctx context.Context, stakerID idx.StakerID) (idx.Block, inter.Timestamp, error) {
 	method := method()
 	b.checkPanic(method)
-	return b.result.returned[method][0].(idx.Block), b.result.returned[method][0].(inter.Timestamp), b.result.err[method]
+	return b.result.returned[method][0].(idx.Block), b.result.returned[method][1].(inter.Timestamp), b.result.err[method]
 }
 func (b *testBackend) GetDelegatorClaimedRewards(ctx context.Context, addr common.Address) (*big.Int, error) {
 	method := method()
@@ -532,7 +645,7 @@ func (b *testBackend) Subscribe(sink chan<- accounts.WalletEvent) notify.Subscri
 	return b.result.returned[method][0].(notify.Subscription)
 }
 
-type testWallet struct {}
+type testWallet struct{}
 
 func (w *testWallet) URL() accounts.URL {
 	return accounts.URL{
@@ -573,19 +686,19 @@ func (w *testWallet) SelfDerive(bases []accounts.DerivationPath, chain ethereum.
 }
 
 func (w *testWallet) SignData(account accounts.Account, mimeType string, data []byte) ([]byte, error) {
-	return []byte{1, 2, 3}, nil
+	return make([]byte, 128, 128), nil
 }
 
 func (w *testWallet) SignDataWithPassphrase(account accounts.Account, passphrase, mimeType string, data []byte) ([]byte, error) {
-	return []byte{1, 2, 3}, nil
+	return make([]byte, 128, 128), nil
 }
 
 func (w *testWallet) SignText(account accounts.Account, text []byte) ([]byte, error) {
-	return []byte{1, 2, 3}, nil
+	return make([]byte, 128, 128), nil
 }
 
 func (w *testWallet) SignTextWithPassphrase(account accounts.Account, passphrase string, hash []byte) ([]byte, error) {
-	return []byte{1, 2, 3}, nil
+	return make([]byte, 128, 128), nil
 }
 
 func (w *testWallet) SignTx(account accounts.Account, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
@@ -598,7 +711,7 @@ func (w *testWallet) SignTxWithPassphrase(account accounts.Account, passphrase s
 	return trx, nil
 }
 
-type testAccountSubscription struct {}
+type testAccountSubscription struct{}
 
 func (s *testAccountSubscription) Err() <-chan error {
 	ch := make(chan error)

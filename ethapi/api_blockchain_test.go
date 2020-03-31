@@ -13,6 +13,38 @@ import (
 
 // PublicBlockChainAPI
 
+func TestPublicBlockChainAPI_Call(t *testing.T) {
+	ctx := context.TODO()
+	b := NewTestBackend()
+
+	gas := hexutil.Uint64(0)
+	gasPrice := hexutil.Big(*big.NewInt(0))
+	value := hexutil.Big(*big.NewInt(0))
+	data := hexutil.Bytes([]byte{1, 2, 3})
+	code := hexutil.Bytes([]byte{1, 2, 3})
+	balance := &hexutil.Big{}
+	nonce := hexutil.Uint64(1)
+
+	api := NewPublicBlockChainAPI(b)
+	assert.NotPanics(t, func() {
+		api.Call(ctx, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), &map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		})
+		// assert.NoError(t, err)
+	})
+}
 func TestPublicBlockChainAPI_BlockNumber(t *testing.T) {
 	b := NewTestBackend()
 
@@ -68,7 +100,7 @@ func TestPublicBlockChainAPI_GetBlockByNumber(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
-		res, err := api.GetBlockByNumber(ctx, rpc.BlockNumber(1), true)
+		res, err := api.GetBlockByNumber(ctx, rpc.BlockNumber(rpc.PendingBlockNumber), true)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
 	})
@@ -100,7 +132,7 @@ func TestPublicBlockChainAPI_GetHeaderByNumber(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	assert.NotPanics(t, func() {
-		res, err := api.GetHeaderByNumber(ctx, rpc.BlockNumber(1))
+		res, err := api.GetHeaderByNumber(ctx, rpc.BlockNumber(rpc.PendingBlockNumber))
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
 	})

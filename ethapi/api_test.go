@@ -23,14 +23,33 @@ func TestDoCall(t *testing.T) {
 	b := NewTestBackend()
 
 	nonce := hexutil.Uint64(1)
+	gas := hexutil.Uint64(0)
+	gasPrice := hexutil.Big(*big.NewInt(0))
+	value := hexutil.Big(*big.NewInt(0))
+	data := hexutil.Bytes([]byte{1, 2, 3})
+	code := hexutil.Bytes([]byte{1, 2, 3})
+	balance := &hexutil.Big{}
+
 	assert.NotPanics(t, func() {
-		gas := hexutil.Uint64(1)
-		DoCall(ctx, b, CallArgs{Gas: &gas, }, rpc.BlockNumber(1), map[common.Address]account{
-			common.HexToAddress("0x0"): account{Nonce: &nonce},
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
 		// assert.NoError(t, err)
 	})
 }
+
 // TODO: for no error
 func TestDoEstimateGas(t *testing.T) {
 	ctx := context.TODO()
@@ -38,7 +57,7 @@ func TestDoEstimateGas(t *testing.T) {
 
 	assert.NotPanics(t, func() {
 		gas := hexutil.Uint64(21000)
-		DoEstimateGas(ctx, b, CallArgs{Gas: &gas, }, rpc.BlockNumber(1), big.NewInt(22000))
+		DoEstimateGas(ctx, b, CallArgs{Gas: &gas}, rpc.BlockNumber(1), big.NewInt(22000))
 		// assert.NoError(t, err)
 	})
 }
@@ -68,7 +87,7 @@ func TestFormatLogs(t *testing.T) {
 func TestRPCMarshalBlock(t *testing.T) {
 	assert.NotPanics(t, func() {
 		res, err := RPCMarshalBlock(&evmcore.EvmBlock{
-			EvmHeader:    evmcore.EvmHeader{
+			EvmHeader: evmcore.EvmHeader{
 				Number:     big.NewInt(1),
 				Hash:       common.Hash{2},
 				ParentHash: common.Hash{1},
@@ -92,7 +111,7 @@ func TestRPCMarshalEvent(t *testing.T) {
 	assert.NotPanics(t, func() {
 		res, err := RPCMarshalEvent(
 			&inter.Event{
-				EventHeader:  inter.EventHeader{
+				EventHeader: inter.EventHeader{
 					EventHeaderData: inter.EventHeaderData{
 						Version:       0,
 						Epoch:         0,
@@ -110,7 +129,7 @@ func TestRPCMarshalEvent(t *testing.T) {
 						TxHash:        common.Hash{},
 						Extra:         nil,
 					},
-					Sig:             nil,
+					Sig: nil,
 				},
 				Transactions: types.Transactions{
 					types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
@@ -165,6 +184,7 @@ func TestRPCMarshalHeader(t *testing.T) {
 		assert.NotEmpty(t, res)
 	})
 }
+
 // TODO
 func TestSubmitTransaction(t *testing.T) {
 

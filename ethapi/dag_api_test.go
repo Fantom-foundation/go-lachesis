@@ -2,9 +2,10 @@ package ethapi
 
 import (
 	"context"
+	"testing"
+
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // PublicDAGChainAPI

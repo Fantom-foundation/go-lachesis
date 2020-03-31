@@ -2,12 +2,12 @@ package ethapi
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
 	"math/big"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,9 +22,9 @@ func TestPublicTransactionPoolAPI_FillTransaction(t *testing.T) {
 	assert.NotPanics(t, func() {
 		gas := hexutil.Uint64(1)
 		res, err := api.FillTransaction(ctx, SendTxArgs{
-			From:     common.Address{1},
-			To:       &common.Address{2},
-			Gas:      &gas,
+			From: common.Address{1},
+			To:   &common.Address{2},
+			Gas:  &gas,
 		})
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
@@ -162,10 +162,61 @@ func TestPublicTransactionPoolAPI_Resend(t *testing.T) {
 		nonce := hexutil.Uint64(1)
 		gas := hexutil.Uint64(0)
 		_, _ = api.Resend(ctx, SendTxArgs{
+			From:  common.Address{1},
+			To:    &common.Address{2},
+			Nonce: &nonce,
+			Gas:   &gas,
+		}, &gasPrice, &gasLimit)
+	})
+}
+func TestPublicTransactionPoolAPI_Sign(t *testing.T) {
+	ctx := context.TODO()
+	b := NewTestBackend()
+
+	nonceLock := new(AddrLocker)
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		gasPrice := hexutil.Big(*big.NewInt(0))
+		nonce := hexutil.Uint64(1)
+		res, err := api.SignTransaction(ctx, SendTxArgs{
 			From:     common.Address{1},
 			To:       &common.Address{2},
-			Nonce:	  &nonce,
-			Gas:	  &gas,
-		}, &gasPrice, &gasLimit)
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Nonce:    &nonce,
+		})
+		assert.NoError(t, err)
+		assert.NotEmpty(t, res)
+	})
+}
+func TestPublicTransactionPoolAPI_SendTransaction(t *testing.T) {
+	ctx := context.TODO()
+	b := NewTestBackend()
+
+	nonceLock := new(AddrLocker)
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+
+	api2 := NewPrivateAccountAPI(b, nonceLock)
+	api2.am = b.AM
+
+	addr, _ := api2.NewAccount("1234")
+	key, _ := api2.ImportRawKey("11223344556677889900aabbccddff0011223344556677889900aabbccddff00", "1234")
+	d := uint64(1)
+	_, _ = api2.UnlockAccount(ctx, key, "1234", &d)
+
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		gasPrice := hexutil.Big(*big.NewInt(0))
+		nonce := hexutil.Uint64(1)
+		res, err := api.SendTransaction(ctx, SendTxArgs{
+			From:     addr,
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Nonce:    &nonce,
+		})
+		assert.NoError(t, err)
+		assert.NotEmpty(t, res)
 	})
 }
