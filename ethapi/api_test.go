@@ -48,6 +48,123 @@ func TestDoCall(t *testing.T) {
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
 		// assert.NoError(t, err)
 	})
+	assert.NotPanics(t, func() {
+		b.Returned("StateAndHeaderByNumber", nil, nil)
+		b.Error("StateAndHeaderByNumber", ErrBackendTest)
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
+		// assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		b.PrepareMethods()
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				State: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
+		// assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+				State: &map[common.Hash]common.Hash{},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
+		// assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(1000)
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100))
+		// assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		b.Error("GetEVM", ErrBackendTest)
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				StateDiff: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
+		// assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		DoCall(ctx, b, CallArgs{
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Data:     &data,
+		}, rpc.BlockNumber(1), map[common.Address]account{
+			common.HexToAddress("0x0"): account{
+				Nonce:   &nonce,
+				Code:    &code,
+				Balance: &balance,
+				State: &map[common.Hash]common.Hash{
+					common.Hash{1}: {1},
+				},
+			},
+		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
+		// assert.NoError(t, err)
+	})
 }
 
 // TODO: for no error
@@ -188,4 +305,229 @@ func TestRPCMarshalHeader(t *testing.T) {
 // TODO
 func TestSubmitTransaction(t *testing.T) {
 
+}
+
+// SendTxArgs
+func TestSendTxArgs_setDefaults(t *testing.T) {
+	ctx := context.TODO()
+	b := NewTestBackend()
+
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     nil,
+			Input:    nil,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		data := hexutil.Bytes([]byte{1, 2, 3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       nil,
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     &data,
+			Input:    nil,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		data := hexutil.Bytes([]byte{1, 2, 3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       nil,
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     nil,
+			Input:    &data,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.NoError(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		data := hexutil.Bytes([]byte{})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       nil,
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     nil,
+			Input:    &data,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		data := hexutil.Bytes([]byte{1,2,3})
+		input := hexutil.Bytes([]byte{3,2,1})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       nil,
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     &data,
+			Input:    &input,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		b.Error("GetPoolNonce", ErrBackendTest)
+		gas := hexutil.Uint64(0)
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     nil,
+			Input:    nil,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		b.Error("SuggestPrice", ErrBackendTest)
+		gas := hexutil.Uint64(0)
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     nil,
+			Input:    nil,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		b.PrepareMethods()
+		data := hexutil.Bytes([]byte{1,2,3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      nil,
+			GasPrice: nil,
+			Value:    nil,
+			Nonce:    nil,
+			Data:     &data,
+			Input:    nil,
+		}
+
+		err := args.setDefaults(ctx, b)
+		assert.Error(t, err)
+	})
+}
+
+func TestSendTxArgs_toTransaction(t *testing.T) {
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		nonce := hexutil.Uint64(1)
+		value := hexutil.Big(*big.NewInt(1))
+		gasPrice := hexutil.Big(*big.NewInt(1))
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Nonce:    &nonce,
+			Data:     nil,
+			Input:    nil,
+		}
+
+		res := args.toTransaction()
+		assert.NotEmpty(t, res)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		nonce := hexutil.Uint64(1)
+		value := hexutil.Big(*big.NewInt(1))
+		gasPrice := hexutil.Big(*big.NewInt(1))
+		input := hexutil.Bytes([]byte{1,2,3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Nonce:    &nonce,
+			Data:     nil,
+			Input:    &input,
+		}
+
+		res := args.toTransaction()
+		assert.NotEmpty(t, res)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		nonce := hexutil.Uint64(1)
+		value := hexutil.Big(*big.NewInt(1))
+		gasPrice := hexutil.Big(*big.NewInt(1))
+		data := hexutil.Bytes([]byte{1,2,3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       &common.Address{2},
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Nonce:    &nonce,
+			Data:     &data,
+			Input:    nil,
+		}
+
+		res := args.toTransaction()
+		assert.NotEmpty(t, res)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		nonce := hexutil.Uint64(1)
+		value := hexutil.Big(*big.NewInt(1))
+		gasPrice := hexutil.Big(*big.NewInt(1))
+		data := hexutil.Bytes([]byte{1,2,3})
+		args := SendTxArgs{
+			From:     common.Address{1},
+			To:       nil,
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Value:    &value,
+			Nonce:    &nonce,
+			Data:     &data,
+			Input:    nil,
+		}
+
+		res := args.toTransaction()
+		assert.NotEmpty(t, res)
+	})
 }

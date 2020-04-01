@@ -339,6 +339,8 @@ func (b *testBackend) PrepareMethods() {
 				memorydb.New(), []byte("evm2_"))))
 	b.Returned("ChainDb", db2)
 	b.Returned("ExtRPCEnabled", false)
+	b.Returned("GetPoolTransaction",
+		types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}))
 }
 
 func (b *testBackend) Returned(method string, args ...interface{}) {
@@ -404,21 +406,33 @@ func (b *testBackend) RPCGasCap() *big.Int {
 func (b *testBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*evmcore.EvmHeader), b.result.err[method]
 }
 func (b *testBackend) HeaderByHash(ctx context.Context, hash common.Hash) (*evmcore.EvmHeader, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*evmcore.EvmHeader), b.result.err[method]
 }
 func (b *testBackend) BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmBlock, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*evmcore.EvmBlock), b.result.err[method]
 }
 func (b *testBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *evmcore.EvmHeader, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil && b.result.returned[method][1] == nil {
+		return nil, nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*state.StateDB),
 		b.result.returned[method][1].(*evmcore.EvmHeader),
 		b.result.err[method]
@@ -428,11 +442,17 @@ func (b *testBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.Blo
 func (b *testBackend) GetBlock(ctx context.Context, hash common.Hash) (*evmcore.EvmBlock, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*evmcore.EvmBlock), b.result.err[method]
 }
 func (b *testBackend) GetReceiptsByNumber(ctx context.Context, number rpc.BlockNumber) (types.Receipts, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(types.Receipts), b.result.err[method]
 }
 func (b *testBackend) GetTd(hash common.Hash) *big.Int {
@@ -455,6 +475,9 @@ func (b *testBackend) SendTx(ctx context.Context, signedTx *types.Transaction) e
 func (b *testBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, 0, 0, b.result.err[method]
+	}
 	return b.result.returned[method][0].(*types.Transaction),
 		b.result.returned[method][1].(uint64),
 		b.result.returned[method][2].(uint64),
@@ -463,11 +486,17 @@ func (b *testBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*
 func (b *testBackend) GetPoolTransactions() (types.Transactions, error) {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil, b.result.err[method]
+	}
 	return b.result.returned[method][0].(types.Transactions), b.result.err[method]
 }
 func (b *testBackend) GetPoolTransaction(txHash common.Hash) *types.Transaction {
 	method := method()
 	b.checkPanic(method)
+	if b.result.returned[method][0] == nil {
+		return nil
+	}
 	return b.result.returned[method][0].(*types.Transaction)
 }
 func (b *testBackend) GetPoolNonce(ctx context.Context, addr common.Address) (uint64, error) {

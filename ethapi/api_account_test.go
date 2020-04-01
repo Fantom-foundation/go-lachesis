@@ -2,8 +2,11 @@ package ethapi
 
 import (
 	"context"
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -97,6 +100,16 @@ func TestPrivateAccountAPI_UnlockAccount(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
 	})
+	assert.NotPanics(t, func() {
+		res, err := api.UnlockAccount(ctx, addr, "1234", nil)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, res)
+	})
+	assert.NotPanics(t, func() {
+		d := uint64(time.Duration(math.MaxInt64) / time.Second + 1)
+		_, err := api.UnlockAccount(ctx, addr, "1234", &d)
+		assert.Error(t, err)
+	})
 }
 func TestPrivateAccountAPI_LockAccount(t *testing.T) {
 	ctx := context.TODO()
@@ -161,6 +174,42 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
 	})
+	assert.NotPanics(t, func() {
+		gasPrice := hexutil.Big(*big.NewInt(0))
+		nonce := hexutil.Uint64(1)
+		_, err := api.SignTransaction(ctx, SendTxArgs{
+			From:     addr,
+			To:       &common.Address{1},
+			Gas:      nil,
+			GasPrice: &gasPrice,
+			Nonce:    &nonce,
+		}, "1234")
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		nonce := hexutil.Uint64(1)
+		_, err := api.SignTransaction(ctx, SendTxArgs{
+			From:     addr,
+			To:       &common.Address{1},
+			Gas:      &gas,
+			GasPrice: nil,
+			Nonce:    &nonce,
+		}, "1234")
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		gas := hexutil.Uint64(0)
+		gasPrice := hexutil.Big(*big.NewInt(0))
+		_, err := api.SignTransaction(ctx, SendTxArgs{
+			From:     addr,
+			To:       &common.Address{1},
+			Gas:      &gas,
+			GasPrice: &gasPrice,
+			Nonce:    nil,
+		}, "1234")
+		assert.Error(t, err)
+	})
 }
 func TestPrivateAccountAPI_SignAndSendTransaction(t *testing.T) {
 	ctx := context.TODO()
@@ -214,5 +263,33 @@ func TestPrivateAccountAPI_SendTransaction(t *testing.T) {
 		}, "1234")
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
+	})
+}
+func TestPrivateAccountAPI_EcRecover(t *testing.T) {
+	ctx := context.TODO()
+	b := NewTestBackend()
+
+	nonceLock := new(AddrLocker)
+	api := NewPrivateAccountAPI(b, nonceLock)
+	api.am = b.AM
+
+	assert.NotPanics(t, func() {
+		sig := hexutil.Bytes([]byte{})
+		data:= hexutil.Bytes([]byte{})
+		_, err := api.EcRecover(ctx, data, sig)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		sig := hexutil.Bytes(make([]byte, crypto.SignatureLength, crypto.SignatureLength))
+		data:= hexutil.Bytes([]byte{})
+		_, err := api.EcRecover(ctx, data, sig)
+		assert.Error(t, err)
+	})
+	assert.NotPanics(t, func() {
+		sig := hexutil.Bytes(make([]byte, crypto.SignatureLength, crypto.SignatureLength))
+		sig[crypto.RecoveryIDOffset] = 27
+		data:= hexutil.Bytes([]byte{})
+		_, err := api.EcRecover(ctx, data, sig)
+		assert.Error(t, err)
 	})
 }

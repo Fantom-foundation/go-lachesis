@@ -2,6 +2,7 @@ package ethapi
 
 import (
 	"context"
+	"github.com/Fantom-foundation/go-lachesis/hash"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,5 +40,17 @@ func TestPublicEthereumAPI_Syncing(t *testing.T) {
 		res, err := api.Syncing()
 		assert.NoError(t, err)
 		assert.NotEmpty(t, res)
+	})
+	assert.NotPanics(t, func() {
+		b.Returned("Progress", PeerProgress{
+			CurrentEpoch:     1,
+			CurrentBlock:     2,
+			CurrentBlockHash: hash.Event{3},
+			CurrentBlockTime: 1,
+			HighestBlock:     5,
+			HighestEpoch:     6,
+		})
+		_, err := api.Syncing()
+		assert.NoError(t, err)
 	})
 }
