@@ -13,6 +13,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 )
 
@@ -153,6 +155,32 @@ func (b *EthAPIBackend) ForEachSfcStaker(do func(sfctype.SfcStakerAndID)) {
 // ForEachSfcDelegator provides store's method.
 func (b *EthAPIBackend) ForEachSfcDelegator(do func(sfctype.SfcDelegatorAndAddr)) {
 	b.app.store.ForEachSfcDelegator(do)
+}
+
+// GetEpochStats returns epoch statistics.
+// * When epoch is "pending" the statistics for latest epoch are returned.
+// * When epoch is "latest" the statistics for latest sealed epoch are returned.
+func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (*sfctype.EpochStats, error) {
+	epoch, err := b.epochWithDefault(ctx, requestedEpoch)
+	if err != nil {
+		return nil, err
+	}
+
+	stats := b.app.store.GetEpochStats(epoch)
+	if stats == nil {
+		return nil, nil
+	}
+	stats.Epoch = epoch
+
+	// read total reward weights from SFC contract
+	root := b.app.LastBlock().Root
+	statedb := b.app.StateDB(root)
+
+	epochPosition := sfcpos.EpochSnapshot(epoch)
+	stats.TotalBaseRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalBaseRewardWeight()).Big()
+	stats.TotalTxRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalTxRewardWeight()).Big()
+
+	return stats, nil
 }
 
 func (b *EthAPIBackend) epochWithDefault(ctx context.Context, epoch rpc.BlockNumber) (requested idx.Epoch, err error) {
