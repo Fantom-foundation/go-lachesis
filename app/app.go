@@ -52,13 +52,20 @@ func (a *App) InitChain(current idx.Epoch) {
 }
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
-func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
+func (a *App) BeginBlock(
+	block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain,
+) (
+	sealEpoch bool,
+) {
+	sealEpoch = a.shouldSealEpoch(block, cheaters)
 	a.store.SetBlock(blockInfo(block))
 	a.ctx = &blockContext{
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), stateReader),
-		sealEpoch:    a.shouldSealEpoch(block, cheaters),
+		sealEpoch:    sealEpoch,
 	}
+
+	return
 }
 
 // DeliverTxs includes a set of ABCIApplication.DeliverTx() calls
@@ -71,7 +78,6 @@ func (a *App) DeliverTxs(
 	*evmcore.EvmBlock,
 	*big.Int,
 	types.Receipts,
-	bool,
 ) {
 	// Process txs
 	receipts, _, gasUsed, totalFee, skipped, err := a.ctx.evmProcessor.
@@ -102,7 +108,7 @@ func (a *App) DeliverTxs(
 		a.store.SetReceipts(block.Index, receipts)
 	}
 
-	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
+	return block, evmBlock, a.ctx.totalFee, receipts
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
