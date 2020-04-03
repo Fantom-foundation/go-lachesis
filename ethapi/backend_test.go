@@ -21,7 +21,7 @@ import (
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
@@ -46,15 +46,15 @@ func method() string {
 }
 
 func TestMethod(t *testing.T) {
-	assert.Equal(t, method(), "TestMethod")
+	require.Equal(t, method(), "TestMethod")
 }
 
 func TestGetAPIs(t *testing.T) {
 	b := NewTestBackend()
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res := GetAPIs(b)
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 

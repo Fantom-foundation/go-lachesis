@@ -2,10 +2,11 @@ package ethapi
 
 import (
 	"context"
-	"github.com/Fantom-foundation/go-lachesis/hash"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/Fantom-foundation/go-lachesis/hash"
 )
 
 // PublicEthereumAPI
@@ -15,10 +16,10 @@ func TestPublicEthereumAPI_GasPrice(t *testing.T) {
 	b := NewTestBackend()
 
 	api := NewPublicEthereumAPI(b)
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.GasPrice(ctx)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -26,9 +27,9 @@ func TestPublicEthereumAPI_ProtocolVersion(t *testing.T) {
 	b := NewTestBackend()
 
 	api := NewPublicEthereumAPI(b)
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res := api.ProtocolVersion()
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -36,12 +37,12 @@ func TestPublicEthereumAPI_Syncing(t *testing.T) {
 	b := NewTestBackend()
 
 	api := NewPublicEthereumAPI(b)
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.Syncing()
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.Returned("Progress", PeerProgress{
 			CurrentEpoch:     1,
 			CurrentBlock:     2,
@@ -51,6 +52,6 @@ func TestPublicEthereumAPI_Syncing(t *testing.T) {
 			HighestEpoch:     6,
 		})
 		_, err := api.Syncing()
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 }

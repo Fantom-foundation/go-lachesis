@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -30,7 +30,7 @@ func TestDoCall(t *testing.T) {
 	code := hexutil.Bytes([]byte{1, 2, 3})
 	balance := &hexutil.Big{}
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
 			GasPrice: &gasPrice,
@@ -46,9 +46,9 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.Returned("StateAndHeaderByNumber", nil, nil)
 		b.Error("StateAndHeaderByNumber", ErrBackendTest)
 		DoCall(ctx, b, CallArgs{
@@ -66,9 +66,9 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.PrepareMethods()
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
@@ -88,9 +88,9 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
 			GasPrice: &gasPrice,
@@ -107,9 +107,9 @@ func TestDoCall(t *testing.T) {
 				State: &map[common.Hash]common.Hash{},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(1000)
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
@@ -126,9 +126,9 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.Error("GetEVM", ErrBackendTest)
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
@@ -145,9 +145,9 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		DoCall(ctx, b, CallArgs{
 			Gas:      &gas,
 			GasPrice: &gasPrice,
@@ -163,7 +163,7 @@ func TestDoCall(t *testing.T) {
 				},
 			},
 		}, vm.Config{}, 100*time.Second, big.NewInt(100000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
 }
 
@@ -172,14 +172,14 @@ func TestDoEstimateGas(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(21000)
 		DoEstimateGas(ctx, b, CallArgs{Gas: &gas}, rpc.BlockNumber(1), big.NewInt(22000))
-		// assert.NoError(t, err)
+		// require.NoError(t, err)
 	})
 }
 func TestFormatLogs(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		stack := make([]*big.Int, 0, 1024)
 		stack = append(stack, big.NewInt(1))
 		mem := make([]byte, 32, 32)
@@ -198,11 +198,11 @@ func TestFormatLogs(t *testing.T) {
 			Err:           nil,
 		}
 		res := FormatLogs([]vm.StructLog{log})
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 func TestRPCMarshalBlock(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := RPCMarshalBlock(&evmcore.EvmBlock{
 			EvmHeader: evmcore.EvmHeader{
 				Number:     big.NewInt(1),
@@ -220,12 +220,12 @@ func TestRPCMarshalBlock(t *testing.T) {
 				types.NewTransaction(2, common.Address{2}, big.NewInt(2), 2, big.NewInt(0), []byte{}),
 			},
 		}, true, true)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestRPCMarshalEvent(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := RPCMarshalEvent(
 			&inter.Event{
 				EventHeader: inter.EventHeader{
@@ -255,12 +255,12 @@ func TestRPCMarshalEvent(t *testing.T) {
 			},
 			true, true,
 		)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestRPCMarshalEventHeader(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res := RPCMarshalEventHeader(
 			&inter.EventHeaderData{
 				Version:       0,
@@ -280,11 +280,11 @@ func TestRPCMarshalEventHeader(t *testing.T) {
 				Extra:         nil,
 			},
 		)
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 func TestRPCMarshalHeader(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res := RPCMarshalHeader(
 			&evmcore.EvmHeader{
 				Number:     big.NewInt(1),
@@ -298,7 +298,7 @@ func TestRPCMarshalHeader(t *testing.T) {
 				GasUsed:    9,
 			},
 		)
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -312,7 +312,7 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 	ctx := context.TODO()
 	b := NewTestBackend()
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		args := SendTxArgs{
 			From:     common.Address{1},
@@ -326,9 +326,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		data := hexutil.Bytes([]byte{1, 2, 3})
 		args := SendTxArgs{
@@ -343,9 +343,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		data := hexutil.Bytes([]byte{1, 2, 3})
 		args := SendTxArgs{
@@ -360,9 +360,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		data := hexutil.Bytes([]byte{})
 		args := SendTxArgs{
@@ -377,9 +377,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		data := hexutil.Bytes([]byte{1,2,3})
 		input := hexutil.Bytes([]byte{3,2,1})
@@ -395,9 +395,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.Error("GetPoolNonce", ErrBackendTest)
 		gas := hexutil.Uint64(0)
 		args := SendTxArgs{
@@ -412,9 +412,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.Error("SuggestPrice", ErrBackendTest)
 		gas := hexutil.Uint64(0)
 		args := SendTxArgs{
@@ -429,9 +429,9 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		b.PrepareMethods()
 		data := hexutil.Bytes([]byte{1,2,3})
 		args := SendTxArgs{
@@ -446,12 +446,12 @@ func TestSendTxArgs_setDefaults(t *testing.T) {
 		}
 
 		err := args.setDefaults(ctx, b)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 
 func TestSendTxArgs_toTransaction(t *testing.T) {
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		nonce := hexutil.Uint64(1)
 		value := hexutil.Big(*big.NewInt(1))
@@ -468,9 +468,9 @@ func TestSendTxArgs_toTransaction(t *testing.T) {
 		}
 
 		res := args.toTransaction()
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		nonce := hexutil.Uint64(1)
 		value := hexutil.Big(*big.NewInt(1))
@@ -488,9 +488,9 @@ func TestSendTxArgs_toTransaction(t *testing.T) {
 		}
 
 		res := args.toTransaction()
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		nonce := hexutil.Uint64(1)
 		value := hexutil.Big(*big.NewInt(1))
@@ -508,9 +508,9 @@ func TestSendTxArgs_toTransaction(t *testing.T) {
 		}
 
 		res := args.toTransaction()
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		nonce := hexutil.Uint64(1)
 		value := hexutil.Big(*big.NewInt(1))
@@ -528,6 +528,6 @@ func TestSendTxArgs_toTransaction(t *testing.T) {
 		}
 
 		res := args.toTransaction()
-		assert.NotEmpty(t, res)
+		require.NotEmpty(t, res)
 	})
 }

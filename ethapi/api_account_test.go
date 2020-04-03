@@ -2,15 +2,15 @@ package ethapi
 
 import (
 	"context"
-	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/crypto"
 	"math/big"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/stretchr/testify/assert"
+	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/stretchr/testify/require"
 )
 
 // PublicAccountAPI
@@ -19,7 +19,7 @@ func TestPublicAccountAPI_Accounts(t *testing.T) {
 	b := NewTestBackend()
 
 	api := NewPublicAccountAPI(b.AM)
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		api.Accounts()
 	})
 }
@@ -31,7 +31,7 @@ func TestPrivateAccountAPI_DeriveAccount(t *testing.T) {
 
 	nonceLock := new(AddrLocker)
 	api := NewPrivateAccountAPI(b, nonceLock)
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		api.DeriveAccount("https://test.ru", "/test", nil)
 	})
 }
@@ -42,10 +42,10 @@ func TestPrivateAccountAPI_ImportRawKey(t *testing.T) {
 	api := NewPrivateAccountAPI(b, nonceLock)
 	api.am = b.AM
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.ImportRawKey("11223344556677889900aabbccddff0011223344556677889900aabbccddff00", "1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestPrivateAccountAPI_ListAccounts(t *testing.T) {
@@ -55,7 +55,7 @@ func TestPrivateAccountAPI_ListAccounts(t *testing.T) {
 	api := NewPrivateAccountAPI(b, nonceLock)
 	api.am = b.AM
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		api.ListAccounts()
 	})
 }
@@ -66,7 +66,7 @@ func TestPrivateAccountAPI_ListWallets(t *testing.T) {
 	api := NewPrivateAccountAPI(b, nonceLock)
 	api.am = b.AM
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		api.ListWallets()
 	})
 }
@@ -77,10 +77,10 @@ func TestPrivateAccountAPI_NewAccount(t *testing.T) {
 	api := NewPrivateAccountAPI(b, nonceLock)
 	api.am = b.AM
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.NewAccount("1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestPrivateAccountAPI_UnlockAccount(t *testing.T) {
@@ -94,21 +94,21 @@ func TestPrivateAccountAPI_UnlockAccount(t *testing.T) {
 	addr, _ := api.NewAccount("1234")
 	api.ImportRawKey("11223344556677889900aabbccddff0011223344556677889900aabbccddff00", "1234")
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		d := uint64(1)
 		res, err := api.UnlockAccount(ctx, addr, "1234", &d)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.UnlockAccount(ctx, addr, "1234", nil)
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		d := uint64(time.Duration(math.MaxInt64) / time.Second + 1)
 		_, err := api.UnlockAccount(ctx, addr, "1234", &d)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 func TestPrivateAccountAPI_LockAccount(t *testing.T) {
@@ -124,7 +124,7 @@ func TestPrivateAccountAPI_LockAccount(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, addr, "1234", &d)
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		api.LockAccount(addr)
 	})
 }
@@ -141,10 +141,10 @@ func TestPrivateAccountAPI_Sign(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, key, "1234", &d)
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		res, err := api.Sign(ctx, hexutil.Bytes([]byte{1, 2, 3}), addr, "1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
@@ -160,7 +160,7 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, key, "1234", &d)
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		gasPrice := hexutil.Big(*big.NewInt(0))
 		nonce := hexutil.Uint64(1)
@@ -171,10 +171,10 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 			GasPrice: &gasPrice,
 			Nonce:    &nonce,
 		}, "1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gasPrice := hexutil.Big(*big.NewInt(0))
 		nonce := hexutil.Uint64(1)
 		_, err := api.SignTransaction(ctx, SendTxArgs{
@@ -184,9 +184,9 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 			GasPrice: &gasPrice,
 			Nonce:    &nonce,
 		}, "1234")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		nonce := hexutil.Uint64(1)
 		_, err := api.SignTransaction(ctx, SendTxArgs{
@@ -196,9 +196,9 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 			GasPrice: nil,
 			Nonce:    &nonce,
 		}, "1234")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		gasPrice := hexutil.Big(*big.NewInt(0))
 		_, err := api.SignTransaction(ctx, SendTxArgs{
@@ -208,7 +208,7 @@ func TestPrivateAccountAPI_SignTransaction(t *testing.T) {
 			GasPrice: &gasPrice,
 			Nonce:    nil,
 		}, "1234")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
 func TestPrivateAccountAPI_SignAndSendTransaction(t *testing.T) {
@@ -224,7 +224,7 @@ func TestPrivateAccountAPI_SignAndSendTransaction(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, key, "1234", &d)
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		gasPrice := hexutil.Big(*big.NewInt(0))
 		nonce := hexutil.Uint64(1)
@@ -235,8 +235,8 @@ func TestPrivateAccountAPI_SignAndSendTransaction(t *testing.T) {
 			GasPrice: &gasPrice,
 			Nonce:    &nonce,
 		}, "1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestPrivateAccountAPI_SendTransaction(t *testing.T) {
@@ -252,7 +252,7 @@ func TestPrivateAccountAPI_SendTransaction(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, key, "1234", &d)
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(0)
 		gasPrice := hexutil.Big(*big.NewInt(0))
 		res, err := api.SendTransaction(ctx, SendTxArgs{
@@ -261,8 +261,8 @@ func TestPrivateAccountAPI_SendTransaction(t *testing.T) {
 			Gas:      &gas,
 			GasPrice: &gasPrice,
 		}, "1234")
-		assert.NoError(t, err)
-		assert.NotEmpty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 func TestPrivateAccountAPI_EcRecover(t *testing.T) {
@@ -273,23 +273,23 @@ func TestPrivateAccountAPI_EcRecover(t *testing.T) {
 	api := NewPrivateAccountAPI(b, nonceLock)
 	api.am = b.AM
 
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		sig := hexutil.Bytes([]byte{})
 		data:= hexutil.Bytes([]byte{})
 		_, err := api.EcRecover(ctx, data, sig)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		sig := hexutil.Bytes(make([]byte, crypto.SignatureLength, crypto.SignatureLength))
 		data:= hexutil.Bytes([]byte{})
 		_, err := api.EcRecover(ctx, data, sig)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-	assert.NotPanics(t, func() {
+	require.NotPanics(t, func() {
 		sig := hexutil.Bytes(make([]byte, crypto.SignatureLength, crypto.SignatureLength))
 		sig[crypto.RecoveryIDOffset] = 27
 		data:= hexutil.Bytes([]byte{})
 		_, err := api.EcRecover(ctx, data, sig)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 }
