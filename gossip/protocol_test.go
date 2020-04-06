@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
 	"time"
@@ -59,7 +60,7 @@ func testStatusMsgErrors(t *testing.T, protocol int) {
 	}
 
 	for i, test := range tests {
-		p, errc := newTestPeer("peer", protocol, pm, false)
+		p, errc := newTestPeer(t, "peer", protocol, pm, false)
 		// The send call might hang until reset because
 		// the protocol might not read the payload.
 		go p2p.Send(p.app, test.code, test.data)
@@ -88,14 +89,13 @@ func testRecvTransactions(t *testing.T, protocol int) {
 	txAdded := make(chan []*types.Transaction)
 	pm, _ := newTestProtocolManagerMust(t, 5, 5, txAdded, nil)
 	pm.synced = 1 // mark synced to accept transactions
-	p, _ := newTestPeer("peer", protocol, pm, true)
+	p, _ := newTestPeer(t, "peer", protocol, pm, true)
 	defer pm.Stop()
 	defer p.close()
 
 	tx := newTestTransaction(testAccount, 0, 0)
-	if err := p2p.Send(p.app, EvmTxMsg, []interface{}{tx}); err != nil {
-		t.Fatalf("send error: %v", err)
-	}
+	require.NoError(t, p2p.Send(p.app, EvmTxMsg, []interface{}{tx}), "send error")
+
 	select {
 	case added := <-txAdded:
 		if len(added) != 1 {
@@ -161,7 +161,7 @@ func testSendTransactions(t *testing.T, protocol int) {
 		}
 	}
 	for i := 0; i < 3; i++ {
-		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), protocol, pm, true)
+		p, _ := newTestPeer(t, fmt.Sprintf("peer #%d", i), protocol, pm, true)
 		wg.Add(1)
 		go checktxs(p)
 	}

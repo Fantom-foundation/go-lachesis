@@ -1,6 +1,7 @@
 package poset
 
 import (
+	"github.com/stretchr/testify/require"
 	"strconv"
 	"strings"
 	"testing"
@@ -250,6 +251,7 @@ func TestPosetRandomRoots(t *testing.T) {
 func testSpecialNamedRoots(t *testing.T, scheme string) {
 	//logger.SetTestMode(t)
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	// decode is a event name parser
 	decode := func(name string) (frameN idx.Frame, isRoot bool) {
@@ -289,13 +291,9 @@ func testSpecialNamedRoots(t *testing.T, scheme string) {
 	for name, event := range names {
 		mustBeFrame, mustBeRoot := decode(name)
 		// check root
-		if !assertar.Equal(mustBeRoot, event.IsRoot, name+" is root") {
-			break
-		}
+		require.Equal(mustBeRoot, event.IsRoot, name+" is root")
 		// check frame
-		if !assertar.Equal(idx.Frame(mustBeFrame), event.Frame, "frame of "+name) {
-			break
-		}
+		require.Equal(idx.Frame(mustBeFrame), event.Frame, "frame of "+name)
 	}
 }
 

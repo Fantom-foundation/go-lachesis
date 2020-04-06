@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,9 +39,7 @@ func benchStoreGetPackInfo(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetPackInfo(epoch, pack.Index) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotNilf(b, store.GetPackInfo(epoch, pack.Index), "invalid result")
 	}
 }
 

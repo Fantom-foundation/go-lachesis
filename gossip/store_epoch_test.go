@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -48,7 +49,8 @@ func TestStoreEpochStore(t *testing.T) {
 }
 
 func testStoreEpochStore(t *testing.T, store *Store) {
-	assertar := assert.New(t)
+	require := require.New(t)
+
 	var (
 		epoch = idx.Epoch(1)
 		key   = idx.StakerID(9).Bytes()
@@ -56,37 +58,25 @@ func testStoreEpochStore(t *testing.T, store *Store) {
 	)
 
 	es := store.getEpochStore(epoch)
-	if !assertar.NotNil(es) {
-		return
-	}
+	require.NotNil(es)
 
 	err := es.Tips.Put(key, val)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	got, err := es.Tips.Get(key)
-	if !assertar.NoError(err) {
-		return
-	}
-	if !assertar.Equal(val, got) {
-		return
-	}
+	require.NoError(err)
+
+	require.Equal(val, got)
 
 	store.delEpochStore(epoch)
 
 	got, err = es.Tips.Get(key)
-	if !assertar.NoError(err) {
-		return
-	}
-	if !assertar.Nil(got) {
-		return
-	}
+	require.NoError(err)
+
+	require.Nil(got)
 
 	err = es.Tips.Put(key, val)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 }
 
 func BenchmarkStoreGetEventHeader(b *testing.B) {
@@ -108,9 +98,7 @@ func benchStoreGetEventHeader(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetEventHeader(e.Epoch, h) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotNilf(b, store.GetEventHeader(e.Epoch, h), "invalid result")
 	}
 }
 

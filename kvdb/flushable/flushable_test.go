@@ -3,6 +3,7 @@ package flushable
 import (
 	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -206,9 +207,7 @@ func TestFlushable(t *testing.T) {
 					}
 				}
 
-				if !assertar.NoError(it.Error()) {
-					return
-				}
+				require.NoError(t, it.Error())
 
 				assertar.Equal(len(expectPairs), got) // check that we've got the same num of pairs
 			}
@@ -263,8 +262,6 @@ func TestFlushable(t *testing.T) {
 }
 
 func TestFlushableIterator(t *testing.T) {
-	assertar := assert.New(t)
-
 	disk := dbProducer("TestFlushableIterator")
 
 	leveldb := disk.OpenDb("1")
@@ -307,15 +304,12 @@ func TestFlushableIterator(t *testing.T) {
 	defer it.Release()
 
 	err := flushable2.Flush()
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(t, err)
 
 	for i := 0; it.Next(); i++ {
-		if !assertar.Equal(expected[i], it.Key()) ||
-			!assertar.Equal([]byte("in-order"), it.Value()) {
-			break
-		}
+		require.True(t,
+			bytes.Equal(expected[i], it.Key()) || bytes.Equal([]byte("in-order"), it.Value()),
+		)
 	}
 }
 

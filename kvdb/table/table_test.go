@@ -3,6 +3,7 @@ package table
 import (
 	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -75,17 +76,15 @@ func TestTable(t *testing.T) {
 			}
 
 			// write
-			for name, t := range tables {
+			for name, table := range tables {
 				for k, v := range testData {
-					err := t.Put([]byte(k), v)
-					if !assertar.NoError(err, name) {
-						return
-					}
+					err := table.Put([]byte(k), v)
+					require.NoError(t, err, name)
 				}
 			}
 
 			// read
-			for name, t := range tables {
+			for name, keyValueStore := range tables {
 
 				for pref, count := range map[string]int{
 					"0": len(prefix0),
@@ -95,7 +94,7 @@ func TestTable(t *testing.T) {
 					got := 0
 					var prevKey []byte
 
-					it := t.NewIteratorWithPrefix([]byte(pref))
+					it := keyValueStore.NewIteratorWithPrefix([]byte(pref))
 					defer it.Release()
 					for it.Next() {
 						if prevKey == nil {
@@ -111,13 +110,9 @@ func TestTable(t *testing.T) {
 						)
 					}
 
-					if !assertar.NoError(it.Error()) {
-						return
-					}
+					require.NoError(t, it.Error())
 
-					if !assertar.Equal(count, got) {
-						return
-					}
+					require.Equal(t, count, got)
 				}
 			}
 		})

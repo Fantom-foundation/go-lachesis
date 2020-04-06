@@ -1,6 +1,7 @@
 package inter
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,34 +56,28 @@ a04 ╫ ─ ─ ╬  ╝║   ║
 		"e00": {"d02"},
 	}
 
-	if !assert.Equal(t, 5, len(nodes), "node count") {
-		return
-	}
-	if !assert.Equal(t, len(expected), len(named), "event count") {
-		return
-	}
+	require.Equal(t, 5, len(nodes), "node count")
+
+	require.Equal(t, len(expected), len(named), "event count")
 
 	checkParents(t, named, expected)
 }
 
 func TestDAGtoASCIIschemeRand(t *testing.T) {
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	nodes := GenNodes(5)
 	ee := GenRandEvents(nodes, 10, 3, nil)
 	src := delPeerIndex(ee)
 
 	scheme0, err := DAGtoASCIIscheme(src)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	_, _, names := ASCIIschemeToDAG(scheme0)
 	got := delPeerIndex(ee)
 
-	if !assertar.Equal(len(src), len(got), "event count") {
-		return
-	}
+	require.Equal(len(src), len(got), "event count")
 
 	for _, e0 := range src {
 		n := e0.Hash().String()
@@ -95,9 +90,8 @@ func TestDAGtoASCIIschemeRand(t *testing.T) {
 		}
 		// print info if not EqualValues:
 		scheme1, err := DAGtoASCIIscheme(got)
-		if !assertar.NoError(err) {
-			return
-		}
+		require.NoError(err)
+
 		out := utils.TextColumns(scheme0, scheme1)
 		t.Log(out)
 		return
@@ -386,9 +380,7 @@ func testDAGtoASCIIschemeOptimisation(t *testing.T, origScheme string, refs map[
 
 	// step 2: DAG --> ASCII
 	genScheme, err := DAGtoASCIIscheme(delPeerIndex(events))
-	if !assert.NoError(t, err) {
-		return
-	}
+	require.NoError(t, err)
 
 	out := utils.TextColumns(origScheme, genScheme)
 	t.Log(out)
@@ -399,8 +391,6 @@ func testDAGtoASCIIschemeOptimisation(t *testing.T, origScheme string, refs map[
 }
 
 func checkParents(t *testing.T, named map[string]*Event, expected map[string][]string) {
-	assertar := assert.New(t)
-
 	for n, e1 := range named {
 		parents0 := make(map[string]struct{}, len(expected[n]))
 		for _, s := range expected[n] {
@@ -412,9 +402,7 @@ func checkParents(t *testing.T, named map[string]*Event, expected map[string][]s
 			parents1[s.String()] = struct{}{}
 		}
 
-		if !assertar.Equal(parents0, parents1, "at event "+n) {
-			return
-		}
+		require.Equal(t, parents0, parents1, "at event "+n)
 	}
 }
 

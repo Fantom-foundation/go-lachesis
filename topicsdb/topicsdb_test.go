@@ -1,16 +1,15 @@
 package topicsdb
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 func TestTopicsDb(t *testing.T) {
@@ -21,17 +20,15 @@ func TestTopicsDb(t *testing.T) {
 	db := New(memorydb.New())
 
 	t.Run("Push", func(t *testing.T) {
-		assertar := assert.New(t)
+		require := require.New(t)
 
 		for _, rec := range recs {
-			if !assertar.NoError(db.Push(rec)) {
-				return
-			}
+			require.NoError(db.Push(rec))
 		}
 	})
 
 	find := func(t *testing.T) {
-		assertar := assert.New(t)
+		require := require.New(t)
 
 		for i := 0; i < len(topics); i++ {
 			from, to := topics4rec(i)
@@ -43,9 +40,7 @@ func TestTopicsDb(t *testing.T) {
 			}
 
 			got, err := db.Find(qq)
-			if !assertar.NoError(err) {
-				return
-			}
+			require.NoError(err)
 
 			var expect []*types.Log
 			for j, rec := range recs {
@@ -56,9 +51,7 @@ func TestTopicsDb(t *testing.T) {
 				expect = append(expect, rec)
 			}
 
-			if !assertar.ElementsMatchf(expect, got, "step %d", i) {
-				return
-			}
+			require.ElementsMatchf(expect, got, "step %d", i)
 		}
 	}
 

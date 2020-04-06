@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 
@@ -40,9 +41,7 @@ func benchStoreGetBlock(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetBlock(block.Index) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotEmptyf(b, store.GetBlock(block.Index), "invalid result")
 	}
 }
 

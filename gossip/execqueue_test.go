@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -24,12 +25,9 @@ func TestExecQueue(t *testing.T) {
 			case <-testexit:
 			}
 		}
-		if q.canQueue() != wantOK {
-			t.Fatalf("canQueue() == %t for %s", !wantOK, state)
-		}
-		if q.queue(qf) != wantOK {
-			t.Fatalf("canQueue() == %t for %s", !wantOK, state)
-		}
+		require.Equalf(t, wantOK, q.canQueue(), "canQueue() == %t for %s", !wantOK, state)
+
+		require.Equalf(t, wantOK, q.queue(qf), "canQueue() == %t for %s", !wantOK, state)
 	}
 
 	for i := 0; i < N; i++ {
@@ -37,9 +35,8 @@ func TestExecQueue(t *testing.T) {
 	}
 	check("full queue", false)
 	for i := 0; i < N; i++ {
-		if c := <-execd; c != i {
-			t.Fatal("execution out of order")
-		}
+		c := <-execd
+		require.Equal(t, i, c, "execution out of order")
 	}
 	q.quit()
 	check("closed queue", false)

@@ -1,6 +1,7 @@
 package poset
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -67,11 +68,8 @@ func TestConfirmBlockEvents(t *testing.T) {
 		// call confirmBlock again
 		gotBlock, cheaters := poset.confirmBlock(frame, atropos)
 
-		if !assertar.Empty(cheaters) {
-			break
-		}
-		if !assertar.Equal(block.Events, gotBlock.Events) {
-			break
-		}
+		require.Empty(t, cheaters)
+
+		require.Equal(t, block.Events, gotBlock.Events)
 	}
 }

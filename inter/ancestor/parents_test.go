@@ -1,6 +1,7 @@
 package ancestor
 
 import (
+	"github.com/stretchr/testify/require"
 	"sort"
 	"strconv"
 	"strings"
@@ -144,13 +145,11 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 				assertar.Nil(selfParentResult)
 			}
 			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
-			if !assertar.Equal(
+			require.Equal(t,
 				exp[stage][utils.NameOf(node)],
 				parentsToString(parents),
 				"stage %d, %s", stage, utils.NameOf(node),
-			) {
-				return
-			}
+			)
 		}
 	}
 

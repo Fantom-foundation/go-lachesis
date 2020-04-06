@@ -1,6 +1,7 @@
 package poset
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 
@@ -106,11 +107,9 @@ func compareResults(t *testing.T, posets []*ExtendedPoset) {
 			}
 
 			for b := idx.Block(1); b <= both; b++ {
-				if !assertar.Equal(
+				require.Equalf(t,
 					p0.blocks[b], p1.blocks[b],
-					"block %d", b) {
-					break
-				}
+					"block %d", b)
 			}
 
 		}

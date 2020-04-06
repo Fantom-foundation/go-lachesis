@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/stretchr/testify/require"
 	"math/big"
 	"sync"
 	"testing"
@@ -22,6 +23,7 @@ import (
 func TestGetGenesisBlock(t *testing.T) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 	addrWithStorage := net.Genesis.Alloc.Accounts.Addresses()[0]
@@ -33,16 +35,12 @@ func TestGetGenesisBlock(t *testing.T) {
 
 	adb := app.NewMemStore()
 	state, _, err := adb.ApplyGenesis(&net)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 	abci := app.New(app.DefaultConfig(net), adb)
 
 	store := NewMemStore()
 	genesisHash, stateHash, _, err := store.ApplyGenesis(&net, state)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	assertar.NotEqual(common.Hash{}, genesisHash)
 	assertar.NotEqual(common.Hash{}, stateHash)
@@ -75,20 +73,17 @@ func TestGetGenesisBlock(t *testing.T) {
 func TestGetBlock(t *testing.T) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 
 	app := app.NewMemStore()
 	state, _, err := app.ApplyGenesis(&net)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	store := NewMemStore()
 	genesisHash, _, _, err := store.ApplyGenesis(&net, state)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	txs := types.Transactions{}
 	key, err := crypto.GenerateKey()

@@ -1,6 +1,7 @@
 package poset
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -108,19 +109,16 @@ func TestEventStore(t *testing.T) {
 	})
 
 	t.Run("Events", func(t *testing.T) {
-		assertar := assert.New(t)
+		require := require.New(t)
 
 		events := inter.FakeFuzzingEvents()
 		for _, e0 := range events {
 			store.SetEvent(e0)
 			e1 := store.GetEvent(e0.Hash())
 
-			if !assertar.Equal(e0.Hash(), e1.Hash()) {
-				break
-			}
-			if !assertar.Equal(e0, e1) {
-				break
-			}
+			require.Equal(e0.Hash(), e1.Hash())
+
+			require.Equal(e0, e1)
 		}
 	})
 

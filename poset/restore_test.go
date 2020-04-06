@@ -2,6 +2,7 @@ package poset
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 
@@ -133,9 +134,8 @@ func TestRestore(t *testing.T) {
 		}
 	}
 
-	if !assertar.Equal(maxEpochBlocks*epochs, len(posets[EXPECTED].blocks)) {
-		return
-	}
+	require.Equal(t, maxEpochBlocks*epochs, len(posets[EXPECTED].blocks))
+
 	compareBlocks(assertar, posets[EXPECTED], posets[RESTORED])
 }
 

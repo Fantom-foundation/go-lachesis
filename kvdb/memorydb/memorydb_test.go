@@ -2,6 +2,7 @@ package memorydb
 
 import (
 	"bytes"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -59,9 +60,8 @@ func TestMemoryDBIterator(t *testing.T) {
 		// Create the key-value data store
 		db := New()
 		for key, val := range tt.content {
-			if err := db.Put([]byte(key), []byte(val)); err != nil {
-				t.Fatalf("test %d: failed to insert item %s:%s into database: %v", i, key, val, err)
-			}
+			err := db.Put([]byte(key), []byte(val))
+			require.NoErrorf(t, err, "test %d: failed to insert item %s:%s into database: %v", i, key, val, err)
 		}
 		// Iterate over the database with the given configs and verify the results
 		it, idx := db.NewIteratorWithPrefix([]byte(tt.prefix)), 0

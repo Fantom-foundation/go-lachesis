@@ -1,6 +1,7 @@
 package inter
 
 import (
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
@@ -26,10 +27,7 @@ func TestEventsByParents(t *testing.T) {
 			if !ok {
 				continue
 			}
-			if pos > i {
-				t.Fatalf("parent %s is not before %s", p.String(), e.Hash().String())
-				return
-			}
+			require.LessOrEqualf(t, pos, i, "parent %s is not before %s", p.String(), e.Hash().String())
 		}
 	}
 }
