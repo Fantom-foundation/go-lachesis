@@ -19,6 +19,7 @@ package evmcore
 import (
 	"errors"
 	"fmt"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 	"math"
 	"math/big"
 	"sort"
@@ -107,6 +108,7 @@ var (
 	pendingCounter = metrics.NewRegisteredCounter("txpool/pending", nil)
 	queuedCounter  = metrics.NewRegisteredCounter("txpool/queued", nil)
 	localCounter   = metrics.NewRegisteredCounter("txpool/local", nil)
+	trustedCounter   = metrics.NewRegisteredCounter("txpool/trusted", nil)
 )
 
 // TxStatus is the current status of a transaction as seen by the pool.
@@ -117,6 +119,7 @@ const (
 	TxStatusQueued
 	TxStatusPending
 	TxStatusIncluded
+	TxStatusTrusted
 )
 
 // stateReader provides the state of blockchain and current gas limit to do
@@ -244,6 +247,7 @@ type TxPool struct {
 	beats   map[common.Address]time.Time // Last heartbeat from each known account
 	all     *txLookup                    // All transactions to allow lookups
 	priced  *txPricedList                // All transactions sorted by price
+	trusted map[common.Hash]struct{}	 // Flag for trusted transactions (by trx hash) - executed without timeouts
 
 	chainHeadCh     chan ChainHeadNotify
 	chainHeadSub    notify.Subscription
@@ -274,6 +278,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain state
 		pending:         make(map[common.Address]*txList),
 		queue:           make(map[common.Address]*txList),
 		beats:           make(map[common.Address]time.Time),
+		trusted:		 make(map[common.Hash]struct{}),
 		all:             newTxLookup(),
 		chainHeadCh:     make(chan ChainHeadNotify, chainHeadChanSize),
 		reqResetCh:      make(chan *txpoolResetRequest),
@@ -495,6 +500,27 @@ func (pool *TxPool) Pending() (map[common.Address]types.Transactions, error) {
 	return pending, nil
 }
 
+// Trusted retrieves all currently processable transactions, grouped by origin
+// account and sorted by nonce. The returned transaction set is a copy and can be
+// freely modified by calling code.
+func (pool *TxPool) Trusted() (map[common.Address]types.Transactions, error) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	trusted := make(map[common.Address]types.Transactions)
+	for addr, list := range pool.queue {
+		for _, tx := range list.Flatten() {
+			if _, ok := pool.trusted[tx.Hash()]; ok {
+				if trusted[addr] == nil {
+					trusted[addr] = make(types.Transactions, 0, 1)
+				}
+				trusted[addr] = append(trusted[addr], tx)
+			}
+		}
+	}
+	return trusted, nil
+}
+
 // Locals retrieves the accounts currently considered local by the pool.
 func (pool *TxPool) Locals() []common.Address {
 	pool.mu.Lock()
@@ -578,7 +604,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 // If a newly added transaction is marked as local, its sending account will be
 // whitelisted, preventing any associated transaction from being dropped out of the pool
 // due to pricing constraints.
-func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err error) {
+func (pool *TxPool) add(tx *types.Transaction, flags ...bool) (replaced bool, err error) {
+	local := utils.ParseFlag(flags, 0, false)
+	trusted := utils.ParseFlag(flags, 1, false)
+
 	// If the transaction is already known, discard it
 	hash := tx.Hash()
 	if pool.all.Get(hash) != nil {
@@ -596,7 +625,7 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 	// If the transaction pool is full, discard underpriced transactions
 	if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
 		// If the new transaction is underpriced, don't accept it
-		if !local && pool.priced.Underpriced(tx, pool.locals) {
+		if !local && !trusted && pool.priced.Underpriced(tx, pool.locals) {
 			log.Trace("Discarding underpriced transaction", "hash", hash, "price", tx.GasPrice())
 			underpricedTxMeter.Mark(1)
 			return false, ErrUnderpriced
@@ -650,6 +679,15 @@ func (pool *TxPool) add(tx *types.Transaction, local bool) (replaced bool, err e
 		localCounter.Inc(1)
 	}
 	pool.journalTx(from, tx)
+
+	// Mark trusted transaction
+	if trusted {
+		_, exists := pool.trusted[tx.Hash()]
+		pool.trusted[tx.Hash()] = struct{}{}
+		if ! exists {
+			trustedCounter.Inc(1)
+		}
+	}
 
 	log.Trace("Pooled new future transaction", "hash", hash, "from", from, "to", tx.To())
 	return replaced, nil
@@ -756,6 +794,21 @@ func (pool *TxPool) AddLocal(tx *types.Transaction) error {
 	return errs[0]
 }
 
+// AddTrustedTxs enqueues a batch of transactions into the pool if they are valid.
+//
+// This method is used to add transactions from the RPC API and performs synchronous pool
+// reorganization and event propagation.
+func (pool *TxPool) AddTrustedTxs(txs []*types.Transaction) []error {
+	return pool.addTxs(txs, !pool.config.NoLocals, true)
+}
+
+// AddTrusted enqueues a single local transaction into the pool if it is valid. This is
+// a convenience wrapper aroundd AddTrustedTxs.
+func (pool *TxPool) AddTrusted(tx *types.Transaction) error {
+	errs := pool.AddTrustedTxs([]*types.Transaction{tx})
+	return errs[0]
+}
+
 // AddRemotes enqueues a batch of transactions into the pool if they are valid. If the
 // senders are not among the locally tracked ones, full pricing constraints will apply.
 //
@@ -786,14 +839,18 @@ func (pool *TxPool) AddRemote(tx *types.Transaction) error {
 }
 
 // addTxs attempts to queue a batch of transactions if they are valid.
-func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
+func (pool *TxPool) addTxs(txs []*types.Transaction, flags ...bool) []error {
+	local := utils.ParseFlag(flags, 0, false)
+	synced := utils.ParseFlag(flags, 1, false)
+	trusted := utils.ParseFlag(flags, 2, false)
+
 	// Cache senders in transactions before obtaining lock (pool.signer is immutable)
 	for _, tx := range txs {
 		types.Sender(pool.signer, tx)
 	}
 
 	pool.mu.Lock()
-	errs, dirtyAddrs := pool.addTxsLocked(txs, local)
+	errs, dirtyAddrs := pool.addTxsLocked(txs, local, trusted)
 	pool.mu.Unlock()
 
 	// NOTE: all txs tracing
@@ -806,7 +863,7 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 	*/
 
 	done := pool.requestPromoteExecutables(dirtyAddrs)
-	if sync {
+	if synced {
 		<-done
 	}
 	return errs
@@ -814,11 +871,14 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 
 // addTxsLocked attempts to queue a batch of transactions if they are valid.
 // The transaction pool lock must be held.
-func (pool *TxPool) addTxsLocked(txs []*types.Transaction, local bool) ([]error, *accountSet) {
+func (pool *TxPool) addTxsLocked(txs []*types.Transaction, flags ...bool) ([]error, *accountSet) {
+	local := utils.ParseFlag(flags, 0, false)
+	trusted := utils.ParseFlag(flags, 1, false)
+
 	dirty := newAccountSet(pool.signer)
 	errs := make([]error, len(txs))
 	for i, tx := range txs {
-		replaced, err := pool.add(tx, local)
+		replaced, err := pool.add(tx, local, trusted)
 		errs[i] = err
 		if err == nil && !replaced {
 			dirty.addTx(tx)
@@ -828,7 +888,7 @@ func (pool *TxPool) addTxsLocked(txs []*types.Transaction, local bool) ([]error,
 	return errs, dirty
 }
 
-// Status returns the status (unknown/pending/queued) of a batch of transactions
+// Status returns the status (unknown/pending/queued/trusted) of a batch of transactions
 // identified by their hashes.
 func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 	pool.mu.RLock()
@@ -840,6 +900,8 @@ func (pool *TxPool) Status(hashes []common.Hash) []TxStatus {
 			from, _ := types.Sender(pool.signer, tx) // already validated
 			if pool.pending[from] != nil && pool.pending[from].txs.items[tx.Nonce()] != nil {
 				status[i] = TxStatusPending
+			} else if _, exists := pool.trusted[hash]; exists {
+				status[i] = TxStatusTrusted
 			} else {
 				status[i] = TxStatusQueued
 			}
@@ -870,6 +932,10 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 	}
 	if pool.locals.contains(addr) {
 		localCounter.Dec(1)
+	}
+	if _, exists := pool.trusted[hash]; exists {
+		delete(pool.trusted, hash)
+		trustedCounter.Dec(1)
 	}
 	// Remove the transaction from the pending lists and reset the account nonce
 	if pending := pool.pending[addr]; pending != nil {
@@ -1331,6 +1397,10 @@ func (pool *TxPool) truncateQueue() {
 		// Drop all transactions if they are less than the overflow
 		if size := uint64(list.Len()); size <= drop {
 			for _, tx := range list.Flatten() {
+				if _, exists := pool.trusted[tx.Hash()]; exists {
+					// Do not remove trusted transactions
+					continue
+				}
 				pool.removeTx(tx.Hash(), true)
 			}
 			drop -= size
@@ -1340,6 +1410,10 @@ func (pool *TxPool) truncateQueue() {
 		// Otherwise drop only last few transactions
 		txs := list.Flatten()
 		for i := len(txs) - 1; i >= 0 && drop > 0; i-- {
+			if _, exists := pool.trusted[txs[i].Hash()]; exists {
+				// Do not remove trusted transactions
+				continue
+			}
 			pool.removeTx(txs[i].Hash(), true)
 			drop--
 			queuedRateLimitMeter.Mark(1)
