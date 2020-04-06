@@ -28,7 +28,7 @@ require (
 	github.com/golang/mock v1.4.3
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.1 // indirect
-	github.com/hashicorp/golang-lru v0.5.3
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/huin/goupnp v1.0.0 // indirect
 	github.com/influxdata/influxdb v1.7.9 // indirect
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
