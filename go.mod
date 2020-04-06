@@ -34,7 +34,7 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0 // indirect
 	github.com/karalabe/usb v0.0.0-20191104083709-911d15fe12a9 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/mattn/go-colorable v0.1.4
+	github.com/mattn/go-colorable v0.1.6
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.6 // indirect
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
