@@ -123,7 +123,7 @@ func RPCMarshalStaker(it sfctype.SfcStakerAndID) map[string]interface{} {
 }
 
 func (s *PublicSfcAPI) addStakerMetricFields(ctx context.Context, res map[string]interface{}, stakerID idx.StakerID) (map[string]interface{}, error) {
-	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID), rpc.LatestBlockNumber)
+	blocks, period, err := s.b.GetDowntime(ctx, idx.StakerID(stakerID), rpc.PendingBlockNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (s *PublicSfcAPI) addStakerMetricFields(ctx context.Context, res map[string
 	res["baseRewardWeight"] = (*hexutil.Big)(baseRewardWeight)
 	res["txRewardWeight"] = (*hexutil.Big)(txRewardWeight)
 
-	validationScore, err := s.b.GetValidationScore(ctx, stakerID, rpc.LatestBlockNumber)
+	validationScore, err := s.b.GetValidationScore(ctx, stakerID, rpc.PendingBlockNumber)
 	if err != nil {
 		return nil, err
 	}
