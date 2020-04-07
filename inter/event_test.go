@@ -2,11 +2,11 @@ package inter
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 )

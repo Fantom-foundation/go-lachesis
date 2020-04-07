@@ -1,7 +1,6 @@
 package topicsdb
 
 import (
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"testing"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTopicsDb(t *testing.T) {

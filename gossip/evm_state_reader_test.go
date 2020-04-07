@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"github.com/stretchr/testify/require"
 	"math/big"
 	"sync"
 	"testing"
@@ -10,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/hash"

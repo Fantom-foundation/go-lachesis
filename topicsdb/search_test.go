@@ -1,11 +1,11 @@
 package topicsdb
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 )

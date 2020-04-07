@@ -3,7 +3,6 @@ package flushable
 import (
 	"bytes"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"math/big"
 	"math/rand"
@@ -13,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"

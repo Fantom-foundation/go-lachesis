@@ -2,7 +2,6 @@ package inter
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
 	"math"
 	"math/rand"
 	"testing"
@@ -11,6 +10,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/utils/fast"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEventHeaderDataSerialization(t *testing.T) {
