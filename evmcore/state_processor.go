@@ -51,7 +51,11 @@ func NewStateProcessor(config *params.ChainConfig, bc DummyChain) *StateProcesso
 // Process returns the receipts and logs accumulated during the process and
 // returns the amount of gas that was used in the process. If any of the
 // transactions failed to execute due to insufficient gas it will return an error.
-func (p *StateProcessor) Process(block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool) (types.Receipts, []*types.Log, uint64, *big.Int, []uint, error) {
+func (p *StateProcessor) Process(
+	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool,
+) (
+	types.Receipts, []*types.Log, uint64, *big.Int, []uint, error,
+) {
 	var (
 		receipts types.Receipts
 		usedGas  = new(uint64)
@@ -62,8 +66,7 @@ func (p *StateProcessor) Process(block *EvmBlock, statedb *state.StateDB, cfg vm
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions {
-		statedb.Prepare(tx.Hash(), block.Hash, i)
-		receipt, _, fee, skip, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, block.Header(), tx, usedGas, cfg, strict)
+		receipt, fee, skip, err := p.ProcessTx(tx, i, gp, usedGas, block, statedb, cfg, strict)
 		if !strict && (skip || err != nil) {
 			skipped = append(skipped, uint(i))
 			continue
@@ -74,6 +77,24 @@ func (p *StateProcessor) Process(block *EvmBlock, statedb *state.StateDB, cfg vm
 	}
 
 	return receipts, allLogs, *usedGas, totalFee, skipped, nil
+}
+
+// ProcessTx processes the state changes according to the Ethereum rules by running
+// the transaction messages using the statedb and applying any rewards to both
+// the processor (coinbase) and any included uncles.
+//
+// ProcessTx returns the receipt and logs of the process and
+// returns the amount of gas that was used by the tx.
+// If tx failed to execute due to insufficient gas it will return an error.
+func (p *StateProcessor) ProcessTx(
+	tx *types.Transaction, i int, gp *GasPool, usedGas *uint64,
+	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool,
+) (
+	receipt *types.Receipt, fee *big.Int, skip bool, err error,
+) {
+	statedb.Prepare(tx.Hash(), block.Hash, i)
+	receipt, _, fee, skip, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, block.Header(), tx, usedGas, cfg, strict)
+	return
 }
 
 func TransactionPreCheck(statedb *state.StateDB, msg types.Message, tx *types.Transaction) error {

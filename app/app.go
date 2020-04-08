@@ -23,15 +23,20 @@ type (
 		ctx    *blockContext
 
 		epoch idx.Epoch
+		block idx.Block
 
 		logger.Instance
 	}
 
 	blockContext struct {
+		block        *inter.Block
+		evmBlock     *evmcore.EvmBlock
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
 		sealEpoch    bool
 		totalFee     *big.Int
+		receipts     types.Receipts
+		gp           *evmcore.GasPool
 	}
 )
 
@@ -47,47 +52,72 @@ func New(cfg Config, s *Store) *App {
 
 // InitChain is a prototype of ABCIApplication.InitChain.
 // It should be Called once upon genesis.
-func (a *App) InitChain(current idx.Epoch) {
+func (a *App) InitChain(current idx.Epoch, last idx.Block) {
 	a.setEpoch(current)
+	a.setLastBlock(last)
 }
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
-func (a *App) BeginBlock(block *inter.Block, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain) {
+func (a *App) BeginBlock(
+	block *inter.Block, evmBlock *evmcore.EvmBlock, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain,
+) {
 	a.store.SetBlock(blockInfo(block))
+	block.SkippedTxs = make([]uint, 0, len(evmBlock.Transactions))
 	a.ctx = &blockContext{
+		block:        block,
+		evmBlock:     evmBlock,
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), stateReader),
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
+		gp:           new(evmcore.GasPool),
+		totalFee:     big.NewInt(0),
 	}
+
+	a.ctx.gp.AddGas(evmBlock.GasLimit)
 }
 
-// DeliverTxs includes a set of ABCIApplication.DeliverTx() calls
-// It execs ordered txns of new block on state.
-func (a *App) DeliverTxs(
+// DeliverTx is a prototype of ABCIApplication.DeliverTx
+func (a *App) DeliverTx(
+	tx *types.Transaction,
+	i int,
+) {
+	const strict = false
+	// Process txs
+	receipt, fee, skip, err := a.ctx.evmProcessor.
+		ProcessTx(tx, i, a.ctx.gp, &a.ctx.block.GasUsed, a.ctx.evmBlock, a.ctx.statedb, vm.Config{}, strict)
+	if !strict && (skip || err != nil) {
+		a.ctx.block.SkippedTxs = append(a.ctx.block.SkippedTxs, uint(i))
+		return
+	}
+
+	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
+	a.ctx.receipts = append(a.ctx.receipts, receipt)
+}
+
+// EndBlock is a prototype of ABCIApplication.EndBlock
+func (a *App) EndBlock(
+	cheaters inter.Cheaters,
+	txPositions map[common.Hash]TxPosition,
+	blockParticipated map[idx.StakerID]bool,
+) (
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
-) (
-	*inter.Block,
-	*evmcore.EvmBlock,
-	*big.Int,
-	types.Receipts,
-	bool,
+	receipts types.Receipts,
+	totalFee *big.Int,
+	sealEpoch bool,
 ) {
-	// Process txs
-	receipts, _, gasUsed, totalFee, skipped, err := a.ctx.evmProcessor.
-		Process(evmBlock, a.ctx.statedb, vm.Config{}, false)
-	if err != nil {
-		a.Log.Crit("Shouldn't happen ever because it's not strict", "err", err)
-	}
-	a.ctx.totalFee = totalFee
-	block.SkippedTxs = skipped
-	block.GasUsed = gasUsed
+	var (
+		epoch = a.GetEpoch()
+		err   error
+	)
 
-	a.ctx.sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(receipts)
+	block = a.ctx.block
+	evmBlock = a.ctx.evmBlock
+	receipts = a.ctx.receipts
+	totalFee = a.ctx.totalFee
+	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(receipts)
 
-	// Filter skipped transactions
-	evmBlock = filterSkippedTxs(block, evmBlock)
-
+	evmBlock.Transactions = filterSkippedTxs(block, evmBlock.Transactions)
 	block.TxHash = types.DeriveSha(evmBlock.Transactions)
 	*evmBlock = evmcore.EvmBlock{
 		EvmHeader:    *evmcore.ToEvmHeader(block),
@@ -102,34 +132,22 @@ func (a *App) DeliverTxs(
 		a.store.SetReceipts(block.Index, receipts)
 	}
 
-	return block, evmBlock, a.ctx.totalFee, receipts, a.ctx.sealEpoch
-}
-
-// EndBlock is a prototype of ABCIApplication.EndBlock
-func (a *App) EndBlock(
-	block *inter.Block,
-	evmBlock *evmcore.EvmBlock,
-	receipts types.Receipts,
-	cheaters inter.Cheaters,
-	stats *sfctype.EpochStats,
-	txPositions map[common.Hash]TxPosition,
-	blockParticipated map[idx.StakerID]bool,
-) common.Hash {
-	epoch := a.GetEpoch()
-
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
 	a.updateValidationScores(epoch, block, blockParticipated)
 	a.updateUsersPOI(block, evmBlock, receipts)
 	a.updateStakersPOI(block)
 
+	// Process SFC contract transactions
+	stats := a.updateEpochStats(epoch, block.Time, totalFee, sealEpoch)
 	a.processSfc(epoch, block, receipts, cheaters, stats)
-	newStateHash, err := a.ctx.statedb.Commit(true)
+	a.ctx.block.Root, err = a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
 
-	if a.ctx.sealEpoch {
+	a.incLastBlock()
+	if sealEpoch {
 		a.store.SetLastVoting(block.Index, block.Time)
 		a.incEpoch()
 	}
@@ -138,7 +156,7 @@ func (a *App) EndBlock(
 	a.ctx = nil
 	a.store.FlushState()
 
-	return newStateHash
+	return
 }
 
 func (a *App) shouldSealEpoch(block *inter.Block, cheaters inter.Cheaters) bool {
@@ -150,19 +168,18 @@ func (a *App) shouldSealEpoch(block *inter.Block, cheaters inter.Cheaters) bool 
 	return seal
 }
 
-func filterSkippedTxs(block *inter.Block, evmBlock *evmcore.EvmBlock) *evmcore.EvmBlock {
-	// Filter skipped transactions. Receipts are filtered already
+func filterSkippedTxs(block *inter.Block, txs types.Transactions) types.Transactions {
+	// receipts are filtered already
 	skipCount := 0
-	filteredTxs := make(types.Transactions, 0, len(evmBlock.Transactions))
-	for i, tx := range evmBlock.Transactions {
+	filteredTxs := make(types.Transactions, 0, len(txs))
+	for i, tx := range txs {
 		if skipCount < len(block.SkippedTxs) && block.SkippedTxs[skipCount] == uint(i) {
 			skipCount++
 		} else {
 			filteredTxs = append(filteredTxs, tx)
 		}
 	}
-	evmBlock.Transactions = filteredTxs
-	return evmBlock
+	return filteredTxs
 }
 
 // blockTime by block number

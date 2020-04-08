@@ -42,6 +42,17 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 		return
 	}
 	s.setGenesisState(block.Root)
+
+	s.SetEpochStats(0, &sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		End:      net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+	s.SetDirtyEpochStats(&sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+
 	s.FlushState()
 	return
 }

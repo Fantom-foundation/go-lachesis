@@ -61,6 +61,7 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 				{src.StakerDelegatorsOldRewards, dst.StakerDelegatorsOldRewards},
 				{src.ForEvmTable, dst.ForEvmTable},
 				{src.ForEvmLogsTable, dst.ForEvmLogsTable},
+				{src.EpochStats, dst.EpochStats},
 			} {
 				err = kvdb.Move(t[0], t[1], nil)
 				if err != nil {
@@ -163,6 +164,7 @@ type tablesToMoveFromGossip struct {
 	StakerDelegatorsOldRewards kvdb.KeyValueStore `table:"8"`
 	ForEvmTable                kvdb.KeyValueStore `table:"M"`
 	ForEvmLogsTable            kvdb.KeyValueStore `table:"L"`
+	EpochStats                 kvdb.KeyValueStore `table:"E"`
 }
 
 // engineCheckpoint is a snapshot of poset.Checkpoint for migration

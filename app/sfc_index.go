@@ -390,3 +390,28 @@ func (a *App) processSfc(
 func (a *App) setState(addr common.Address, key, value common.Hash) {
 	a.ctx.statedb.SetState(addr, key, value)
 }
+
+func (a *App) updateEpochStats(
+	epoch idx.Epoch,
+	blockTime inter.Timestamp,
+	blockFee *big.Int,
+	sealEpoch bool,
+) *sfctype.EpochStats {
+	stats := a.store.GetDirtyEpochStats()
+	stats.TotalFee = new(big.Int).Add(stats.TotalFee, blockFee)
+	if sealEpoch {
+		// dirty EpochStats becomes active
+		stats.End = blockTime
+		a.store.SetEpochStats(epoch, stats)
+
+		// new dirty EpochStats
+		a.store.SetDirtyEpochStats(&sfctype.EpochStats{
+			Start:    blockTime,
+			TotalFee: new(big.Int),
+		})
+	} else {
+		a.store.SetDirtyEpochStats(stats)
+	}
+
+	return stats
+}
