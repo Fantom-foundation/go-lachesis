@@ -106,6 +106,7 @@ func init() {
 		utils.EVMInterpreterFlag,
 		configFileFlag,
 		validatorFlag,
+		noCheckVersionFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -225,6 +226,7 @@ func lachesisMain(ctx *cli.Context) error {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	cfg := makeAllConfigs(ctx)
 
+	checkNodeVersion(ctx)
 	// check errlock file
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)
 	errlock.Check()
