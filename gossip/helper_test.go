@@ -155,6 +155,7 @@ func newTestPeer(t *testing.T, name string, version int, pm *ProtocolManager, sh
 // handshake simulates a trivial handshake that expects the same state from the
 // remote side as we are simulating locally.
 func (p *testPeer) handshake(t *testing.T, progress *PeerProgress, genesis common.Hash) {
+	require := require.New(t)
 	msg := &ethStatusData{
 		ProtocolVersion:   uint32(p.version),
 		NetworkID:         lachesis.FakeNetworkID,
@@ -163,13 +164,13 @@ func (p *testPeer) handshake(t *testing.T, progress *PeerProgress, genesis commo
 		DummyCurrentBlock: common.Hash(progress.LastBlock),
 	}
 
-	require.NoError(t, p2p.ExpectMsg(p.app, EthStatusMsg, msg), "status recv")
+	require.NoError(p2p.ExpectMsg(p.app, EthStatusMsg, msg), "status recv")
 
-	require.NoError(t, p2p.Send(p.app, EthStatusMsg, msg), "status send")
+	require.NoError(p2p.Send(p.app, EthStatusMsg, msg), "status send")
 
-	require.NoError(t, p2p.ExpectMsg(p.app, ProgressMsg, progress), "progress recv")
+	require.NoError(p2p.ExpectMsg(p.app, ProgressMsg, progress), "progress recv")
 
-	require.NoError(t, p2p.Send(p.app, ProgressMsg, progress), "progress send")
+	require.NoError(p2p.Send(p.app, ProgressMsg, progress), "progress send")
 }
 
 // close terminates the local side of the peer, notifying the remote protocol

@@ -66,6 +66,7 @@ func TestTable(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assertar := assert.New(t)
+			requirer := require.New(t)
 
 			// tables
 			t1 := New(db, []byte("t1"))
@@ -110,9 +111,9 @@ func TestTable(t *testing.T) {
 						)
 					}
 
-					require.NoError(t, it.Error())
+					requirer.NoError(it.Error())
 
-					require.Equal(t, count, got)
+					requirer.Equal(count, got)
 				}
 			}
 		})

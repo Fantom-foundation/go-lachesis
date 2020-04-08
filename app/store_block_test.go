@@ -40,7 +40,7 @@ func benchStoreGetBlock(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		require.NotEqual(b, nil, store.GetBlock(block.Index), "invalid result")
+		require.NotNil(b, store.GetBlock(block.Index), "invalid result")
 	}
 }
 
