@@ -59,7 +59,7 @@ func (a *App) InitChain(current idx.Epoch, last idx.Block) {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(
-	block *inter.Block, evmBlock *evmcore.EvmBlock, cheaters inter.Cheaters, stateHash common.Hash, stateReader evmcore.DummyChain,
+	block *inter.Block, evmBlock *evmcore.EvmBlock, cheaters inter.Cheaters, stateHash common.Hash,
 ) {
 	a.store.SetBlock(blockInfo(block))
 	block.SkippedTxs = make([]uint, 0, len(evmBlock.Transactions))
@@ -67,7 +67,7 @@ func (a *App) BeginBlock(
 		block:        block,
 		evmBlock:     evmBlock,
 		statedb:      a.store.StateDB(stateHash),
-		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), stateReader),
+		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),

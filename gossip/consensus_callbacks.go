@@ -117,7 +117,7 @@ func (s *Service) applyNewState(
 	}
 
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	s.abciApp.BeginBlock(block, evmBlock, cheaters, stateHash, s.GetEvmStateReader())
+	s.abciApp.BeginBlock(block, evmBlock, cheaters, stateHash)
 
 	for i, tx := range evmBlock.Transactions {
 		s.abciApp.DeliverTx(tx, i)
