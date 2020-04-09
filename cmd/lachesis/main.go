@@ -226,7 +226,7 @@ func lachesisMain(ctx *cli.Context) error {
 func makeFullNode(ctx *cli.Context) *node.Node {
 	cfg := makeAllConfigs(ctx)
 
-	checkNodeVersion(ctx)
+	checkNodeVersion(nil, ctx, &cfg, App.Version)
 	// check errlock file
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)
 	errlock.Check()

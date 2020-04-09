@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -17,11 +17,19 @@ const (
 	maxIdleConns    = 10
 	idleConnTimeout = 15 * time.Second
 
+	nightlyBuildMsgPtrn = `You use nightly build - %s. 
+Nightly builds are intended for development testing and may include bugs and other issues. 
+You might want to use the stable releases instead.
+The latest stable(recommended) version of lachesis is published on the page: %s.
+Zip archive latest lachesis version: %s, 
+Tar archive latest lachesis version: %s.`
+
 	FailedGetNodeVersionMsg = "failed to check the latest version of the node, try again later"
-	versionsNotEqualMsgPtrn = `The current version - %s of the node is not the latest - %s, 
-please update the node from here - %s to continue.
-If it doesn’t work, download the zip archive from here - %s, 
-or tar archive from here - %s.`
+
+	versionsLessThanLatestMsgPtrn = `The latest lachesis version is %s, but you are currently running %s, 
+The latest stable(recommended) version of lachesis is published on the page: %s.
+Zip archive latest lachesis version: %s, 
+Tar archive latest lachesis version: %s.`
 
 	githubApiUrl     = "api.github.com"
 	releasesListPath = "repos/Fantom-foundation/go-lachesis/releases"
@@ -41,11 +49,17 @@ type ReleaseVersion struct {
 }
 
 // CheckNodeVersion - checks the version of the node for the latest
-func CheckNodeVersion(uri *url.URL, version string) error {
+// return:
+// 		IsNightlyBuild - true if version is nightly build
+// 		Message - warning message into log
+//		error - error
+func CheckNodeVersion(uri *url.URL, version string) (resp struct {
+	IsNightlyBuild bool
+	Message        string
+}, err error) {
 	if uri == nil {
 		uri = &url.URL{Scheme: "https", Host: githubApiUrl, Path: releasesListPath}
 	}
-
 	client := http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:       maxIdleConns,
@@ -55,25 +69,42 @@ func CheckNodeVersion(uri *url.URL, version string) error {
 	}
 	latestReleaseVersion, err := getLatestReleaseVersion(client, *uri)
 	if err != nil {
-		return err
+		return resp, err
 	}
-	if compare := strings.Compare(version, latestReleaseVersion.Name); compare < 0 {
-		return fmt.Errorf(
-			versionsNotEqualMsgPtrn,
-			version,
+	compare, err := compareVersions(version, latestReleaseVersion.Name)
+	if err != nil {
+		return resp, err
+	}
+	switch compare {
+	case -1: // less than the latest
+		resp.Message = fmt.Sprintf(
+			versionsLessThanLatestMsgPtrn,
 			latestReleaseVersion.Name,
+			version,
 			latestReleaseVersion.HtmlUrl,
 			latestReleaseVersion.ZipballUrl,
 			latestReleaseVersion.TarballUrl,
 		)
+		return resp, nil
+	case 1: // night build
+		resp.IsNightlyBuild = true
+		resp.Message = fmt.Sprintf(
+			nightlyBuildMsgPtrn,
+			version,
+			latestReleaseVersion.HtmlUrl,
+			latestReleaseVersion.ZipballUrl,
+			latestReleaseVersion.TarballUrl,
+		)
+		return resp, nil
+	default:
+		return resp, nil
 	}
-	return nil
 }
 
 // getLatestReleaseVersion - gets the list of releases from "api.github.com/repos/Fantom-foundation/go-lachesis/releases"
 // and finds among them the latest release by creation date
 func getLatestReleaseVersion(client http.Client, url url.URL) (*ReleaseVersion, error) {
-	var releases = []*ReleaseVersion{}
+	var releases = make([]*ReleaseVersion, 0)
 	resp, err := client.Get(url.String())
 	if err != nil {
 		log.Error("http client Get releases failed", "ur+l", url.String())
@@ -85,7 +116,11 @@ func getLatestReleaseVersion(client http.Client, url url.URL) (*ReleaseVersion, 
 		log.Error("read response body failed", "url", url.String())
 		return nil, errors.New(FailedGetNodeVersionMsg)
 	}
-	json.Unmarshal(respB, &releases)
+	err = json.Unmarshal(respB, &releases)
+	if err != nil {
+		log.Error("unmarshal response body failed", "error", err, "body", string(respB))
+		return nil, errors.New(FailedGetNodeVersionMsg)
+	}
 	if len(releases) == 0 {
 		return nil, errors.New(FailedGetNodeVersionMsg)
 	}
@@ -112,4 +147,22 @@ func findLatestRelease(releases []*ReleaseVersion) *ReleaseVersion {
 	}
 
 	return latestRelease
+}
+
+// compareVersions - compares versions
+// return:
+// 		-1 - if version < latest version;
+// 		0 - if version == latest version;
+// 		1 - if version > latest version.
+func compareVersions(version, latestVersion string) (int, error) {
+	currentV, err := semver.NewVersion(version)
+	if err != nil {
+		return 0, err
+	}
+	latestV, err := semver.NewVersion(latestVersion)
+	if err != nil {
+		return 0, err
+	}
+
+	return currentV.Compare(latestV), nil
 }

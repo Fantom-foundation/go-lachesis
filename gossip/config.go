@@ -47,6 +47,9 @@ type (
 		RPCGasCap *big.Int `toml:",omitempty"`
 
 		ExtRPCEnabled bool
+
+		// DisablePrivateAccountAPI - is need for disable PrivateAccountApi, if node version not latest
+		DisablePrivateAccountAPI bool
 	}
 
 	// StoreConfig is a config for store db.
