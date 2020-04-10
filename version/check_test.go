@@ -18,7 +18,6 @@ import (
 func TestCheckNodeVersion(t *testing.T) {
 	assertar := assert.New(t)
 	type args struct {
-		resp    []*ReleaseVersion
 		version string
 	}
 	tests := []struct {
