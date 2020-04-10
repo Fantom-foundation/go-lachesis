@@ -98,8 +98,6 @@ func (s *Service) applyNewState(
 	// s.engineMu is locked here
 
 	start := time.Now()
-
-	// Assemble block data
 	evmBlock, blockEvents := s.assembleEvmBlock(block)
 
 	// memorize position of each tx, for indexing and origination scores
@@ -118,12 +116,14 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	// Get app
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	s.abciApp.BeginBlock(block, cheaters, stateHash, s.GetEvmStateReader())
+	s.abciApp.BeginBlock(block, evmBlock, cheaters, stateHash)
 
-	// Process txs
-	block, evmBlock, totalFee, receipts, sealEpoch := s.abciApp.DeliverTxs(block, evmBlock)
+	for i, tx := range evmBlock.Transactions {
+		s.abciApp.DeliverTx(tx, i)
+	}
+
+	block, evmBlock, receipts, totalFee, sealEpoch := s.abciApp.EndBlock(cheaters, txPositions, s.blockParticipated)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -138,21 +138,9 @@ func (s *Service) applyNewState(
 
 	s.incGasPowerRefund(epoch, evmBlock, receipts, txPositions, sealEpoch)
 
-	// Process SFC contract transactions
-	stats := s.updateEpochStats(epoch, block, totalFee, sealEpoch)
-	newStateHash := s.abciApp.EndBlock(block, evmBlock, receipts, cheaters,
-		stats, txPositions, s.blockParticipated)
-
 	// Process new epoch
 	if sealEpoch {
 		s.onEpochSealed(block, cheaters)
-	}
-
-	// Save state root
-	block.Root = newStateHash
-	*evmBlock = evmcore.EvmBlock{
-		EvmHeader:    *evmcore.ToEvmHeader(block),
-		Transactions: evmBlock.Transactions,
 	}
 
 	// calc appHash
@@ -233,7 +221,7 @@ func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 
 func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool) {
 	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
-	epochStart := s.store.GetEpochStats(pendingEpoch).Start
+	epochStart := s.abciApp.GetDirtyEpochStats().Start
 	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
 	sealEpoch = sealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
 	sealEpoch = sealEpoch || cheaters.Len() > 0

@@ -68,7 +68,7 @@ func ReadGasPowerContext(s *Store, a *app.App, validators *pos.Validators, epoch
 		Epoch:                epoch,
 		Validators:           validators,
 		PrevEpochLastHeaders: s.GetLastHeaders(epoch - 1),
-		PrevEpochEndTime:     s.GetEpochStats(epoch - 1).End,
+		PrevEpochEndTime:     a.GetEpochStats(epoch - 1).End,
 		PrevEpochRefunds:     s.GetGasPowerRefunds(epoch - 1),
 		Configs: [2]gaspowercheck.Config{
 			idx.ShortTermGas: shortTermConfig,

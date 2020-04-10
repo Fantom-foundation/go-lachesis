@@ -35,9 +35,6 @@ type Store struct {
 		Packs     kvdb.KeyValueStore `table:"P"`
 		PacksNum  kvdb.KeyValueStore `table:"n"`
 
-		// general economy tables
-		EpochStats kvdb.KeyValueStore `table:"E"`
-
 		// gas power economy tables
 		GasPowerRefund kvdb.KeyValueStore `table:"R"`
 
@@ -127,7 +124,6 @@ func (s *Store) initCache() {
 	s.cache.EventsHeaders = s.makeCache(s.cfg.EventsHeadersCacheSize)
 	s.cache.Blocks = s.makeCache(s.cfg.BlockCacheSize)
 	s.cache.PackInfos = s.makeCache(s.cfg.PackInfosCacheSize)
-	s.cache.EpochStats = s.makeCache(s.cfg.EpochStatsCacheSize)
 	s.cache.TxPositions = s.makeCache(s.cfg.TxPositionsCacheSize)
 	s.cache.BlockHashes = s.makeCache(s.cfg.BlockCacheSize)
 }

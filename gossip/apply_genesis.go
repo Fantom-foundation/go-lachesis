@@ -2,7 +2,6 @@ package gossip
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -11,7 +10,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
@@ -87,15 +85,6 @@ func (s *Store) applyGenesis(net *lachesis.Config, state *evmcore.EvmBlock) (gen
 	block.Root = state.Root
 	s.SetBlock(block)
 	s.SetBlockIndex(genesisAtropos, block.Index)
-	s.SetEpochStats(0, &sfctype.EpochStats{
-		Start:    net.Genesis.Time,
-		End:      net.Genesis.Time,
-		TotalFee: new(big.Int),
-	})
-	s.SetDirtyEpochStats(&sfctype.EpochStats{
-		Start:    net.Genesis.Time,
-		TotalFee: new(big.Int),
-	})
 
 	return genesisAtropos, genesisState, nil
 }

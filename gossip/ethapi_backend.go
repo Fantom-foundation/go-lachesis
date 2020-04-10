@@ -449,38 +449,7 @@ func (b *EthAPIBackend) CurrentEpoch(ctx context.Context) idx.Epoch {
 	return b.svc.engine.GetEpoch()
 }
 
-// GetEpochStats returns epoch statistics.
-// * When epoch is "pending" the statistics for latest epoch are returned.
-// * When epoch is "latest" the statistics for latest sealed epoch are returned.
-func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.BlockNumber) (*sfctype.EpochStats, error) {
-	var epoch idx.Epoch
-	if requestedEpoch == rpc.PendingBlockNumber {
-		epoch = pendingEpoch
-	} else if requestedEpoch == rpc.LatestBlockNumber {
-		epoch = b.CurrentEpoch(ctx) - 1
-	} else {
-		epoch = idx.Epoch(requestedEpoch)
-	}
-	if epoch == b.CurrentEpoch(ctx) {
-		return nil, errors.New("current epoch isn't sealed yet, request pending epoch")
-	}
 
-	stats := b.svc.store.GetEpochStats(epoch)
-	if stats == nil {
-		return nil, nil
-	}
-	stats.Epoch = epoch
-
-	// read total reward weights from SFC contract
-	header := b.state.CurrentHeader()
-	statedb := b.state.StateAt(header.Root)
-
-	epochPosition := sfcpos.EpochSnapshot(epoch)
-	stats.TotalBaseRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalBaseRewardWeight()).Big()
-	stats.TotalTxRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalTxRewardWeight()).Big()
-
-	return stats, nil
-}
 
 // GetRewardWeights returns staker's reward weights.
 func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error) {

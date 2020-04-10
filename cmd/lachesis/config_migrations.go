@@ -106,6 +106,7 @@ func (c *config) migrations(data *toml.Helper) *migration.Migration {
 				"ReceiptsCacheSize",
 				"StakersCacheSize",
 				"DelegatorsCacheSize",
+				"EpochStatsCacheSize",
 			} {
 				val, err = data.GetParamInt(param, "Lachesis.StoreConfig")
 				if err != nil {

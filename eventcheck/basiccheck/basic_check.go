@@ -13,20 +13,23 @@ import (
 )
 
 var (
-	ErrSigMalformed   = errors.New("event signature malformed")
-	ErrVersion        = errors.New("event has wrong version")
-	ErrExtraTooLarge  = errors.New("event extra is too big")
-	ErrNoParents      = errors.New("event has no parents")
-	ErrTooManyParents = errors.New("event has too many parents")
-	ErrTooBigGasUsed  = errors.New("event uses too much gas power")
-	ErrWrongGasUsed   = errors.New("event has incorrect gas power")
-	ErrIntrinsicGas   = errors.New("intrinsic gas too low")
-	ErrUnderpriced    = errors.New("event transaction underpriced")
-	ErrNotInited      = errors.New("event field is not initialized")
-	ErrZeroTime       = errors.New("event has zero timestamp")
-	ErrNegativeValue  = errors.New("negative value")
-	ErrHugeValue      = errors.New("too big value")
+	ErrUninitialisedEvent = errors.New("cannot validate uninitialised event")
+	ErrSigMalformed       = errors.New("event signature malformed")
+	ErrVersion            = errors.New("event has wrong version")
+	ErrExtraTooLarge      = errors.New("event extra is too big")
+	ErrNoParents          = errors.New("event has no parents")
+	ErrTooManyParents     = errors.New("event has too many parents")
+	ErrTooBigGasUsed      = errors.New("event uses too much gas power")
+	ErrWrongGasUsed       = errors.New("event has incorrect gas power")
+	ErrIntrinsicGas       = errors.New("intrinsic gas too low")
+	ErrUnderpriced        = errors.New("event transaction underpriced")
+	ErrNotInited          = errors.New("event field is not initialized")
+	ErrZeroTime           = errors.New("event has zero timestamp")
+	ErrNegativeValue      = errors.New("negative value")
+	ErrHugeValue          = errors.New("too big value")
 )
+
+const validSigLength = 65
 
 type Checker struct {
 	config *lachesis.DagConfig
@@ -122,7 +125,7 @@ func (v *Checker) checkInited(e *inter.Event) error {
 	if e.Seq > 1 && len(e.Parents) == 0 {
 		return ErrNoParents
 	}
-	if len(e.Sig) != 65 {
+	if len(e.Sig) != validSigLength {
 		return ErrSigMalformed
 	}
 
@@ -131,6 +134,9 @@ func (v *Checker) checkInited(e *inter.Event) error {
 
 // Validate event
 func (v *Checker) Validate(e *inter.Event) error {
+	if e == nil {
+		return ErrUninitialisedEvent
+	}
 	if e.Version != 0 {
 		return ErrVersion
 	}
