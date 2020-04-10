@@ -13,21 +13,31 @@ import (
  */
 
 // HasEpochValidator provides store's method.
-func (a App) HasEpochValidator(epoch idx.Epoch, stakerID idx.StakerID) bool {
+func (a *App) HasEpochValidator(epoch idx.Epoch, stakerID idx.StakerID) bool {
 	return a.store.HasEpochValidator(epoch, stakerID)
 }
 
 // GetEpochValidators provides store's method.
-func (a App) GetEpochValidators(epoch idx.Epoch) []sfctype.SfcStakerAndID {
+func (a *App) GetEpochValidators(epoch idx.Epoch) []sfctype.SfcStakerAndID {
 	return a.store.GetEpochValidators(epoch)
 }
 
 // GetSfcConstants provides store's method.
-func (a App) GetSfcConstants(epoch idx.Epoch) SfcConstants {
+func (a *App) GetSfcConstants(epoch idx.Epoch) SfcConstants {
 	return a.store.GetSfcConstants(epoch)
 }
 
 // StateDB provides store's method.
-func (a App) StateDB(from common.Hash) *state.StateDB {
+func (a *App) StateDB(from common.Hash) *state.StateDB {
 	return a.store.StateDB(from)
+}
+
+// GetEpochStats provides store's method.
+func (a *App) GetEpochStats(e idx.Epoch) *sfctype.EpochStats {
+	return a.store.GetEpochStats(e)
+}
+
+// GetDirtyEpochStats gets EpochStats for current (not sealed) epoch
+func (a *App) GetDirtyEpochStats() *sfctype.EpochStats {
+	return a.store.GetDirtyEpochStats()
 }

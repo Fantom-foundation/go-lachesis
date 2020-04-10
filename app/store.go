@@ -31,6 +31,8 @@ type Store struct {
 
 		Genesis kvdb.KeyValueStore `table:"G"`
 		Blocks  kvdb.KeyValueStore `table:"b"`
+		// general economy tables
+		EpochStats kvdb.KeyValueStore `table:"E"`
 
 		// score economy tables
 		ActiveValidationScore      kvdb.KeyValueStore `table:"V"`
@@ -39,7 +41,7 @@ type Store struct {
 		DirtyOriginationScore      kvdb.KeyValueStore `table:"o"`
 		BlockDowntime              kvdb.KeyValueStore `table:"m"`
 		BlockDowntimeEpoch         kvdb.KeyValueStore `table:"e"`
-		ActiveValidationScoreEpoch kvdb.KeyValueStore `table:"E"`
+		ActiveValidationScoreEpoch kvdb.KeyValueStore `table:"S"`
 
 		// PoI economy tables
 		StakerPOIScore      kvdb.KeyValueStore `table:"s"`
@@ -74,6 +76,7 @@ type Store struct {
 
 	cache struct {
 		Blocks        *lru.Cache `cache:"-"` // store by pointer
+		EpochStats    *lru.Cache `cache:"-"` // store by value
 		Receipts      *lru.Cache `cache:"-"` // store by value
 		Validators    *lru.Cache `cache:"-"` // store by pointer
 		Stakers       *lru.Cache `cache:"-"` // store by pointer
@@ -120,6 +123,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 
 func (s *Store) initCache() {
 	s.cache.Blocks = s.makeCache(s.cfg.BlockCacheSize)
+	s.cache.EpochStats = s.makeCache(s.cfg.EpochStatsCacheSize)
 	s.cache.Receipts = s.makeCache(s.cfg.ReceiptsCacheSize)
 	s.cache.Validators = s.makeCache(2)
 	s.cache.Stakers = s.makeCache(s.cfg.StakersCacheSize)
