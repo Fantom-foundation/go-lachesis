@@ -124,6 +124,7 @@ a1_5 ────╣        ║
 // where by-level means that event is forkless seen by all event with level >= by-level.
 func testForklessCaused(t *testing.T, dag string) {
 	logger.SetTestMode(t)
+	require := require.New(t)
 
 	nodes, _, _ := inter.ASCIIschemeToDAG(dag)
 	validators := pos.EqualStakeValidators(nodes, 1)
@@ -151,7 +152,7 @@ func testForklessCaused(t *testing.T, dag string) {
 
 			who := by.Hash()
 			whom := ev.Hash()
-			require.Equalf(t,
+			require.Equalf(
 				bylevel > 0 && bylevel <= level,
 				vi.ForklessCause(who, whom),
 				"%s forkless sees %s", who.String(), whom.String(),

@@ -8,6 +8,7 @@ import (
 
 func TestExecQueue(t *testing.T) {
 	var (
+		require  = require.New(t)
 		N        = 10000
 		q        = newExecQueue(N)
 		counter  int
@@ -26,9 +27,9 @@ func TestExecQueue(t *testing.T) {
 			case <-testexit:
 			}
 		}
-		require.Equalf(t, wantOK, q.canQueue(), "canQueue() == %t for %s", !wantOK, state)
+		require.Equalf(wantOK, q.canQueue(), "canQueue() == %t for %s", !wantOK, state)
 
-		require.Equalf(t, wantOK, q.queue(qf), "canQueue() == %t for %s", !wantOK, state)
+		require.Equalf(wantOK, q.queue(qf), "canQueue() == %t for %s", !wantOK, state)
 	}
 
 	for i := 0; i < N; i++ {
@@ -37,7 +38,7 @@ func TestExecQueue(t *testing.T) {
 	check("full queue", false)
 	for i := 0; i < N; i++ {
 		c := <-execd
-		require.Equal(t, i, c, "execution out of order")
+		require.Equal(i, c, "execution out of order")
 	}
 	q.quit()
 	check("closed queue", false)
