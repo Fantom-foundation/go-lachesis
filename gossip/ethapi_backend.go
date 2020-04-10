@@ -338,6 +338,19 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 	return err
 }
 
+func (b *EthAPIBackend) SendTrustedTx(ctx context.Context, signedTx *types.Transaction) error {
+	err := b.svc.txpool.AddTrusted(signedTx)
+	if err == nil {
+		// NOTE: only sent txs tracing, see TxPool.addTxs() for all
+		tracing.StartTx(signedTx.Hash(), "EthAPIBackend.SendTrustedTx()")
+		// TODO: txLatency cleaning, possible memory leak
+		if metrics.Enabled {
+			txLatency.Start(signedTx.Hash())
+		}
+	}
+	return err
+}
+
 func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) notify.Subscription {
 	return b.svc.feed.SubscribeNewLogs(ch)
 }

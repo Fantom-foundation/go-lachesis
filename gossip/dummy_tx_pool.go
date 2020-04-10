@@ -14,7 +14,8 @@ import (
 // dummyTxPool is a fake, helper transaction pool for testing purposes
 type dummyTxPool struct {
 	txFeed notify.Feed
-	pool   []*types.Transaction        // Collection of all transactions
+	pool   		[]*types.Transaction        // Collection of all transactions
+	trusted   	[]*types.Transaction        // Collection of all transactions
 	added  chan<- []*types.Transaction // Notification channel for new transactions
 
 	lock sync.RWMutex // Protects the transaction pool
@@ -40,6 +41,25 @@ func (p *dummyTxPool) Pending() (map[common.Address]types.Transactions, error) {
 
 	batches := make(map[common.Address]types.Transactions)
 	for _, tx := range p.pool {
+		from, _ := types.Sender(types.HomesteadSigner{}, tx)
+		batches[from] = append(batches[from], tx)
+	}
+	for _, batch := range batches {
+		sort.Sort(types.TxByNonce(batch))
+	}
+	return batches, nil
+}
+
+func (p *dummyTxPool) Trusted() (map[common.Address]types.Transactions, error) {
+	if p.trusted == nil {
+		return map[common.Address]types.Transactions{}, nil
+	}
+
+	p.lock.RLock()
+	defer p.lock.RUnlock()
+
+	batches := make(map[common.Address]types.Transactions)
+	for _, tx := range p.trusted {
 		from, _ := types.Sender(types.HomesteadSigner{}, tx)
 		batches[from] = append(batches[from], tx)
 	}

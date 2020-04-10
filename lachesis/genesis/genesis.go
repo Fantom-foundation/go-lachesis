@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
@@ -42,10 +43,17 @@ func preDeploySfc(g Genesis, implCode []byte) Genesis {
 
 // FakeGenesis generates fake genesis with n-nodes.
 func FakeGenesis(accs VAccounts) Genesis {
+	pvtKey, _ := crypto.HexToECDSA("ae2037b61158065161bc5eeafe43b227663f1614c123ae5f378e8201d3a5f3e5")
+	accs.Accounts[common.HexToAddress("0xf9352d0ca3820e4b16b5242c74adb0e26471fbea")] = Account{
+			Balance:    utils.ToFtm(1000000),
+			PrivateKey: pvtKey,
+	}
+
 	g := Genesis{
 		Alloc: accs,
 		Time:  genesisTime,
 	}
+
 	g = preDeploySfc(g, sfc.GetTestContractBinV1())
 	return g
 }
@@ -141,6 +149,12 @@ func MainGenesis() Genesis {
 
 // TestGenesis returns builtin genesis keys of testnet.
 func TestGenesis() Genesis {
+	pvtKey, _ := crypto.HexToECDSA("ae2037b61158065161bc5eeafe43b227663f1614c123ae5f378e8201d3a5f3e5")
+	acc := Account{
+		Balance:    utils.ToFtm(1000000000),
+		PrivateKey: pvtKey,
+	}
+
 	g := Genesis{
 		Time: genesisTime,
 		Alloc: VAccounts{
@@ -149,6 +163,7 @@ func TestGenesis() Genesis {
 				common.HexToAddress("0xcc8b10332478e26f676bccfc73f8c687e3ad1d04"): Account{Balance: utils.ToFtm(400)},
 				common.HexToAddress("0x30e3b5cc7e8fb98a22e688dfb20b327be8a9fe30"): Account{Balance: utils.ToFtm(400)},
 				common.HexToAddress("0x567b6f3d4ba1f55652cf90df6db90ad6d8f9abc1"): Account{Balance: utils.ToFtm(400)},
+				common.HexToAddress("0xf9352d0ca3820e4b16b5242c74adb0e26471fbea"): acc,
 			},
 			Validators: pos.GValidators{
 				pos.GenesisValidator{

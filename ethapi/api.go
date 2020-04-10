@@ -381,6 +381,24 @@ func (s *PrivateAccountAPI) SendTransaction(ctx context.Context, args SendTxArgs
 	return SubmitTransaction(ctx, s.b, signed)
 }
 
+// SendTrustedTransaction will create a trusted transaction from the given arguments and
+// tries to sign it with the key associated with args.To. If the given passwd isn't
+// able to decrypt the key it fails.
+func (s *PrivateAccountAPI) SendTrustedTransaction(ctx context.Context, args SendTxArgs, passwd string) (common.Hash, error) {
+	if args.Nonce == nil {
+		// Hold the addresse's mutex around signing to prevent concurrent assignment of
+		// the same nonce to multiple accounts.
+		s.nonceLock.LockAddr(args.From)
+		defer s.nonceLock.UnlockAddr(args.From)
+	}
+	signed, err := s.signTransaction(ctx, &args, passwd)
+	if err != nil {
+		log.Warn("Failed transaction send attempt", "from", args.From, "to", args.To, "value", args.Value.ToInt(), "err", err)
+		return common.Hash{}, err
+	}
+	return SubmitTrustedTransaction(ctx, s.b, signed)
+}
+
 // SignTransaction will create a transaction from the given arguments and
 // tries to sign it with the key associated with args.To. If the given passwd isn't
 // able to decrypt the key it fails. The transaction is returned in RLP-form, not broadcast
@@ -1527,6 +1545,25 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
 	} else {
 		log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
+	}
+	return tx.Hash(), nil
+}
+
+// SubmitTrustedTransaction is a helper function that submits trusted tx to txPool and logs a message.
+func SubmitTrustedTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
+	if err := b.SendTrustedTx(ctx, tx); err != nil {
+		return common.Hash{}, err
+	}
+	if tx.To() == nil {
+		signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number)
+		from, err := types.Sender(signer, tx)
+		if err != nil {
+			return common.Hash{}, err
+		}
+		addr := crypto.CreateAddress(from, tx.Nonce())
+		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
+	} else {
+		log.Info("Submitted trusted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
 	}
 	return tx.Hash(), nil
 }
