@@ -16,7 +16,6 @@ import (
 func TestConfirmBlockEvents(t *testing.T) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
-	require := require.New(t)
 
 	nodes := inter.GenNodes(5)
 	poset, _, input := FakePoset("", nodes)
@@ -69,8 +68,8 @@ func TestConfirmBlockEvents(t *testing.T) {
 		// call confirmBlock again
 		gotBlock, cheaters := poset.confirmBlock(frame, atropos)
 
-		require.Empty(cheaters)
+		require.Empty(t, cheaters)
 
-		require.Equal(block.Events, gotBlock.Events)
+		require.Equal(t, block.Events, gotBlock.Events)
 	}
 }

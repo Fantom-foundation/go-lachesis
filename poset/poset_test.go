@@ -87,7 +87,6 @@ func reorder(events inter.Events) inter.Events {
 
 func compareResults(t *testing.T, posets []*ExtendedPoset) {
 	assertar := assert.New(t)
-	require := require.New(t)
 
 	for i := 0; i < len(posets)-1; i++ {
 		p0 := posets[i]
@@ -108,7 +107,7 @@ func compareResults(t *testing.T, posets []*ExtendedPoset) {
 			}
 
 			for b := idx.Block(1); b <= both; b++ {
-				require.Equalf(
+				require.Equalf(t,
 					p0.blocks[b], p1.blocks[b],
 					"block %d", b)
 			}

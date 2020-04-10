@@ -20,7 +20,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
@@ -30,6 +29,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 )
 
 func TestApplyGenesis(t *testing.T) {

@@ -69,7 +69,6 @@ a2.1 ──╣      ║      ║      ║
 func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[string]string) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
-	require := require.New(t)
 
 	// decode is a event name parser
 	decode := func(name string) (stage int) {
@@ -146,7 +145,7 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 				assertar.Nil(selfParentResult)
 			}
 			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
-			require.Equal(
+			require.Equal(t,
 				exp[stage][utils.NameOf(node)],
 				parentsToString(parents),
 				"stage %d, %s", stage, utils.NameOf(node),

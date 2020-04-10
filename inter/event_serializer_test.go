@@ -6,12 +6,11 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/stretchr/testify/require"
-
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/utils/fast"
+	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/stretchr/testify/require"
 )
 
 func TestEventHeaderDataSerialization(t *testing.T) {
@@ -69,30 +68,28 @@ func TestEventHeaderDataSerialization(t *testing.T) {
 }
 
 func BenchmarkEventHeaderData_EncodeRLP(b *testing.B) {
-	require := require.New(b)
 	header := FakeEvent().EventHeaderData
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		buf, err := rlp.EncodeToBytes(&header)
-		require.NoError(err)
+		require.NoError(b, err)
 		b.ReportMetric(float64(len(buf)), "size")
 	}
 }
 
 func BenchmarkEventHeaderData_DecodeRLP(b *testing.B) {
-	require := require.New(b)
 	header := FakeEvent().EventHeaderData
 
 	buf, err := rlp.EncodeToBytes(&header)
-	require.NoError(err)
+	require.NoError(b, err)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		err = rlp.DecodeBytes(buf, &header)
-		require.NoError(err)
+		require.NoError(b, err)
 	}
 }
 

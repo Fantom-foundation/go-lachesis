@@ -41,7 +41,7 @@ func benchStoreGetBlock(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		require.NotNilf(b, store.GetBlock(block.Index), "invalid result")
+		require.NotEmptyf(b, store.GetBlock(block.Index), "invalid result")
 	}
 }
 

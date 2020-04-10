@@ -10,7 +10,6 @@ import (
 )
 
 func TestASCIIschemeToDAG(t *testing.T) {
-	require := require.New(t)
 	nodes, _, named := ASCIIschemeToDAG(`
 a00 b00   c00 d00
 ║   ║     ║   ║
@@ -57,9 +56,9 @@ a04 ╫ ─ ─ ╬  ╝║   ║
 		"e00": {"d02"},
 	}
 
-	require.Equal(5, len(nodes), "node count")
+	require.Equal(t, 5, len(nodes), "node count")
 
-	require.Equal(len(expected), len(named), "event count")
+	require.Equal(t, len(expected), len(named), "event count")
 
 	checkParents(t, named, expected)
 }
@@ -392,7 +391,6 @@ func testDAGtoASCIIschemeOptimisation(t *testing.T, origScheme string, refs map[
 }
 
 func checkParents(t *testing.T, named map[string]*Event, expected map[string][]string) {
-	require := require.New(t)
 	for n, e1 := range named {
 		parents0 := make(map[string]struct{}, len(expected[n]))
 		for _, s := range expected[n] {
@@ -404,7 +402,7 @@ func checkParents(t *testing.T, named map[string]*Event, expected map[string][]s
 			parents1[s.String()] = struct{}{}
 		}
 
-		require.Equal(parents0, parents1, "at event "+n)
+		require.Equal(t, parents0, parents1, "at event "+n)
 	}
 }
 

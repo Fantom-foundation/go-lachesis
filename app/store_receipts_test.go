@@ -3,12 +3,12 @@ package app
 import (
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 func TestStoreGetReceipts(t *testing.T) {
@@ -40,7 +40,7 @@ func benchStoreGetReceipts(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		require.NotNil(b, store.GetReceipts(block), "invalid result")
+		require.NotEqual(b, nil, store.GetReceipts(block), "invalid result")
 	}
 }
 
