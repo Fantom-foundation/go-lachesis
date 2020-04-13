@@ -250,10 +250,12 @@ func (em *Emitter) isMyTxTurn(txHash common.Hash, sender common.Address, account
 	return validatorsArr[turns[roundIndex]] == me
 }
 
-func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Transactions) *inter.Event {
+func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Transactions, flags ...bool) *inter.Event {
 	if poolTxs == nil || len(poolTxs) == 0 {
 		return e
 	}
+
+	trusted := utils.ParseFlag(flags, 0, false)
 
 	maxGasUsed := em.maxGasPowerToUse(e)
 
@@ -266,7 +268,7 @@ func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Trans
 	}
 
 	for sender, txs := range poolTxs {
-		if txs.Len() > em.config.MaxTxsFromSender { // no more than MaxTxsFromSender txs from 1 sender
+		if !trusted && txs.Len() > em.config.MaxTxsFromSender { // no more than MaxTxsFromSender txs from 1 sender
 			txs = txs[:em.config.MaxTxsFromSender]
 		}
 
@@ -277,11 +279,11 @@ func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Trans
 				break // txs are dependent, so break the loop
 			}
 			// check not conflicted with already included txs (in any connected event)
-			if em.world.OccurredTxs.MayBeConflicted(sender, tx.Hash()) {
+			if !trusted && em.world.OccurredTxs.MayBeConflicted(sender, tx.Hash()) {
 				break // txs are dependent, so break the loop
 			}
 			// my turn, i.e. try to not include the same tx simultaneously by different validators
-			if !em.isMyTxTurn(tx.Hash(), sender, tx.Nonce(), now, validatorsArr, validatorsArrStakes, e.Creator) {
+			if !trusted && !em.isMyTxTurn(tx.Hash(), sender, tx.Nonce(), now, validatorsArr, validatorsArrStakes, e.Creator) {
 				break // txs are dependent, so break the loop
 			}
 
@@ -329,7 +331,16 @@ func (em *Emitter) findBestParents(epoch idx.Epoch, myStakerID idx.StakerID) (*h
 }
 
 // createEvent is not safe for concurrent use.
-func (em *Emitter) createEvent(poolTxs map[common.Address]types.Transactions) *inter.Event {
+func (em *Emitter) createEvent(txs ...map[common.Address]types.Transactions) *inter.Event {
+	var poolTxs map[common.Address]types.Transactions
+	var trustedTxs map[common.Address]types.Transactions
+	if len(txs) > 0 {
+		poolTxs = txs[0]
+	}
+	if len(txs) > 1 {
+		trustedTxs = txs[1]
+	}
+
 	if em.myStakerID == 0 {
 		// not a validator
 		return nil
@@ -418,6 +429,7 @@ func (em *Emitter) createEvent(poolTxs map[common.Address]types.Transactions) *i
 
 	// Add txs
 	event = em.addTxs(event, poolTxs)
+	event = em.addTxs(event, trustedTxs, true)
 
 	if !em.isAllowedToEmit(event, selfParentHeader) {
 		return nil
@@ -706,10 +718,23 @@ func (em *Emitter) EmitEvent() *inter.Event {
 		}
 	}
 
+	trustedTxs, err := em.world.Txpool.Trusted(true)
+	if err != nil {
+		em.Log.Error("Tx pool trusted transactions fetching error", "err", err)
+		return nil
+	}
+
+	for _, tt := range trustedTxs {
+		for _, t := range tt {
+			span := tracing.CheckTx(t.Hash(), "Emitter.EmitEvent(trusted candidate)")
+			defer span.Finish()
+		}
+	}
+
 	em.world.EngineMu.Lock()
 	defer em.world.EngineMu.Unlock()
 
-	e := em.createEvent(poolTxs)
+	e := em.createEvent(poolTxs, trustedTxs)
 	if e == nil {
 		return nil
 	}

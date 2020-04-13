@@ -16,6 +16,8 @@ type Transaction struct {
 }
 
 type generator struct {
+	chainId uint
+
 	accs   []*Acc
 	offset uint
 
@@ -30,8 +32,10 @@ type generator struct {
 	logger.Instance
 }
 
-func newTxGenerator(num, accs, offset uint) *generator {
+func newTxGenerator(num, accs, offset uint, chainId uint) *generator {
 	g := &generator{
+		chainId: chainId,
+
 		accs:   make([]*Acc, accs),
 		offset: offset,
 
@@ -118,7 +122,7 @@ func (g *generator) generate(position uint) *Transaction {
 	amount := big.NewInt(1e6)
 
 	tx := &Transaction{
-		Raw:  from.TransactionTo(to, nonce, amount),
+		Raw:  from.TransactionTo(to, nonce, amount, g.chainId),
 		Info: meta.NewInfo(a, b),
 	}
 

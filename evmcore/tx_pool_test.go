@@ -292,6 +292,36 @@ func TestInvalidTransactions(t *testing.T) {
 	}
 }
 
+func TestTrustedTransaction(t *testing.T) {
+	t.Parallel()
+
+	key, _ := crypto.GenerateKey()
+	pool := setupTxPool()
+	defer pool.Stop()
+
+	tx := transaction(0, 100000, key)
+	from, _ := deriveSender(tx)
+	pool.currentState.AddBalance(from, big.NewInt(10001000000000))
+	<-pool.requestReset(nil, nil)
+
+	// broadcast transactions
+	txsCh := make(chan NewTxsNotify, 4)
+	txsSub := pool.SubscribeNewTxsNotify(txsCh)
+	defer txsSub.Unsubscribe()
+
+	err := pool.AddTrusted(tx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	select {
+	case <-txsCh:
+		t.Fatal("trusted tx is broadcasted")
+	case <-time.After(time.Second * 2):
+		return
+	}
+}
+
 func TestTransactionQueue(t *testing.T) {
 	t.Parallel()
 
@@ -304,7 +334,7 @@ func TestTransactionQueue(t *testing.T) {
 	pool.currentState.AddBalance(from, big.NewInt(1000))
 	<-pool.requestReset(nil, nil)
 
-	pool.enqueueTx(tx.Hash(), tx)
+	pool.enqueueTx(tx.Hash(), tx, txRemote)
 	<-pool.requestPromoteExecutables(newAccountSet(pool.signer, from))
 	if len(pool.pending) != 1 {
 		t.Error("expected valid txs to be 1 is", len(pool.pending))
@@ -313,7 +343,7 @@ func TestTransactionQueue(t *testing.T) {
 	tx = transaction(1, 100, key)
 	from, _ = deriveSender(tx)
 	pool.currentState.SetNonce(from, 2)
-	pool.enqueueTx(tx.Hash(), tx)
+	pool.enqueueTx(tx.Hash(), tx, txRemote)
 
 	<-pool.requestPromoteExecutables(newAccountSet(pool.signer, from))
 	if _, ok := pool.pending[from].txs.items[tx.Nonce()]; ok {
@@ -338,9 +368,9 @@ func TestTransactionQueue2(t *testing.T) {
 	pool.currentState.AddBalance(from, big.NewInt(1000))
 	pool.reset(nil, nil)
 
-	pool.enqueueTx(tx1.Hash(), tx1)
-	pool.enqueueTx(tx2.Hash(), tx2)
-	pool.enqueueTx(tx3.Hash(), tx3)
+	pool.enqueueTx(tx1.Hash(), tx1, txRemote)
+	pool.enqueueTx(tx2.Hash(), tx2, txRemote)
+	pool.enqueueTx(tx3.Hash(), tx3, txRemote)
 
 	pool.promoteExecutables([]common.Address{from})
 	if len(pool.pending) != 1 {
@@ -380,14 +410,14 @@ func TestTransactionChainFork(t *testing.T) {
 
 	<-pool.requestReset(nil, nil)
 	tx := transaction(0, 100000, key)
-	if _, err := pool.add(tx, false); err != nil {
+	if _, err := pool.add(tx, txRemote); err != nil {
 		t.Error("didn't expect error", err)
 	}
 	pool.removeTx(tx.Hash(), true)
 
 	// reset the pool's internal state
 	<-pool.requestReset(nil, nil)
-	if _, err := pool.add(tx, false); err != nil {
+	if _, err := pool.add(tx, txRemote); err != nil {
 		t.Error("didn't expect error", err)
 	}
 }
@@ -410,10 +440,10 @@ func TestTransactionDoubleNonce(t *testing.T) {
 	tx3, _ := types.SignTx(types.NewTransaction(0, common.Address{}, big.NewInt(100), 1000000, big.NewInt(1), nil), signer, key)
 
 	// Add the first two transaction, ensure higher priced stays only
-	if replace, err := pool.add(tx1, false); err != nil || replace {
+	if replace, err := pool.add(tx1, txRemote); err != nil || replace {
 		t.Errorf("first transaction insert failed (%v) or reported replacement (%v)", err, replace)
 	}
-	if replace, err := pool.add(tx2, false); err != nil || !replace {
+	if replace, err := pool.add(tx2, txRemote); err != nil || !replace {
 		t.Errorf("second transaction insert failed (%v) or not reported replacement (%v)", err, replace)
 	}
 	<-pool.requestPromoteExecutables(newAccountSet(signer, addr))
@@ -425,7 +455,7 @@ func TestTransactionDoubleNonce(t *testing.T) {
 	}
 
 	// Add the third transaction and ensure it's not saved (smaller price)
-	pool.add(tx3, false)
+	pool.add(tx3, txRemote)
 	<-pool.requestPromoteExecutables(newAccountSet(signer, addr))
 	if pool.pending[addr].Len() != 1 {
 		t.Error("expected 1 pending transactions, got", pool.pending[addr].Len())
@@ -449,7 +479,7 @@ func TestTransactionMissingNonce(t *testing.T) {
 	addr := crypto.PubkeyToAddress(key.PublicKey)
 	pool.currentState.AddBalance(addr, big.NewInt(100000000000000))
 	tx := transaction(1, 100000, key)
-	if _, err := pool.add(tx, false); err != nil {
+	if _, err := pool.add(tx, txRemote); err != nil {
 		t.Error("didn't expect error", err)
 	}
 	if len(pool.pending) != 0 {
@@ -515,9 +545,9 @@ func TestTransactionDropping(t *testing.T) {
 	pool.promoteTx(account, tx0.Hash(), tx0)
 	pool.promoteTx(account, tx1.Hash(), tx1)
 	pool.promoteTx(account, tx2.Hash(), tx2)
-	pool.enqueueTx(tx10.Hash(), tx10)
-	pool.enqueueTx(tx11.Hash(), tx11)
-	pool.enqueueTx(tx12.Hash(), tx12)
+	pool.enqueueTx(tx10.Hash(), tx10, txRemote)
+	pool.enqueueTx(tx11.Hash(), tx11, txRemote)
+	pool.enqueueTx(tx12.Hash(), tx12, txRemote)
 
 	// Check that pre and post validations leave the pool as is
 	if pool.pending[account].Len() != 3 {
@@ -1844,7 +1874,7 @@ func benchmarkFuturePromotion(b *testing.B, size int) {
 
 	for i := 0; i < size; i++ {
 		tx := transaction(uint64(1+i), 100000, key)
-		pool.enqueueTx(tx.Hash(), tx)
+		pool.enqueueTx(tx.Hash(), tx, txRemote)
 	}
 	// Benchmark the speed of pool validation
 	b.ResetTimer()

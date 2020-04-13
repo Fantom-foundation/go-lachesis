@@ -49,6 +49,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	lachesisparams "github.com/Fantom-foundation/go-lachesis/lachesis/params"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 const (
@@ -379,6 +380,24 @@ func (s *PrivateAccountAPI) SendTransaction(ctx context.Context, args SendTxArgs
 		return common.Hash{}, err
 	}
 	return SubmitTransaction(ctx, s.b, signed)
+}
+
+// SendTrustedTransaction will create a trusted transaction from the given arguments and
+// tries to sign it with the key associated with args.To. If the given passwd isn't
+// able to decrypt the key it fails.
+func (s *PrivateAccountAPI) SendTrustedTransaction(ctx context.Context, args SendTxArgs, passwd string) (common.Hash, error) {
+	if args.Nonce == nil {
+		// Hold the addresse's mutex around signing to prevent concurrent assignment of
+		// the same nonce to multiple accounts.
+		s.nonceLock.LockAddr(args.From)
+		defer s.nonceLock.UnlockAddr(args.From)
+	}
+	signed, err := s.signTransaction(ctx, &args, passwd)
+	if err != nil {
+		log.Warn("Failed transaction send attempt", "from", args.From, "to", args.To, "value", args.Value.ToInt(), "err", err)
+		return common.Hash{}, err
+	}
+	return SubmitTransaction(ctx, s.b, signed, true)
 }
 
 // SignTransaction will create a transaction from the given arguments and
@@ -1514,8 +1533,10 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
-func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
-	if err := b.SendTx(ctx, tx); err != nil {
+func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction, flags ...bool) (common.Hash, error) {
+	trusted := utils.ParseFlag(flags, 0, false)
+
+	if err := b.SendTx(ctx, tx, trusted); err != nil {
 		return common.Hash{}, err
 	}
 	if tx.To() == nil {

@@ -125,3 +125,11 @@ func NameOf(p idx.StakerID) string {
 
 	return fmt.Sprintf("%d", p)
 }
+
+// ParseFlag return flag if exists and default if not exists
+func ParseFlag(flags []bool, idx int, def bool) bool {
+	if len(flags) < (idx + 1) {
+		return def
+	}
+	return flags[idx]
+}

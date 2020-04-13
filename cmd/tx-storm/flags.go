@@ -8,6 +8,17 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+var BlockChainIDFlag = cli.IntFlag{
+	Name:  "chain-id",
+	Usage: "chain id for sign transactions",
+	Value: 4003,	// Chain id for fakenet
+}
+
+func getChainId(ctx *cli.Context) (chainid uint) {
+	chainid = uint(ctx.GlobalInt(BlockChainIDFlag.Name))
+	return
+}
+
 var AccsStartFlag = cli.IntFlag{
 	Name:  "accs-start",
 	Usage: "offset of predefined fake accounts",

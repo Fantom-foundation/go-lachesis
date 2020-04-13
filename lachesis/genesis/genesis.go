@@ -46,6 +46,7 @@ func FakeGenesis(accs VAccounts) Genesis {
 		Alloc: accs,
 		Time:  genesisTime,
 	}
+
 	g = preDeploySfc(g, sfc.GetTestContractBinV1())
 	return g
 }

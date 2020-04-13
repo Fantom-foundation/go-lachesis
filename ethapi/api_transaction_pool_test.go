@@ -487,7 +487,7 @@ func TestPublicTransactionPoolAPI_SendTransaction(t *testing.T) {
 	b.EXPECT().GetPoolNonce(gomock.Any(), gomock.Any()).
 		Return(uint64(1), nil).
 		AnyTimes()
-	b.EXPECT().SendTx(ctx, gomock.Any()).
+	b.EXPECT().SendTx(ctx, gomock.Any(), false).
 		Return(nil).
 		Times(2)
 
@@ -525,7 +525,7 @@ func TestPublicTransactionPoolAPI_SendRawTransaction(t *testing.T) {
 	ctx := context.TODO()
 	b := newTestBackend(t)
 
-	b.EXPECT().SendTx(ctx, gomock.Any()).
+	b.EXPECT().SendTx(ctx, gomock.Any(), false).
 		Return(nil).
 		Times(1)
 

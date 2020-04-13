@@ -271,17 +271,22 @@ func (mr *MockBackendMockRecorder) GetEVM(ctx, msg, state, header interface{}) *
 }
 
 // SendTx mocks base method
-func (m *MockBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+func (m *MockBackend) SendTx(ctx context.Context, signedTx *types.Transaction, flags ...bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendTx", ctx, signedTx)
+	varargs := []interface{}{ctx, signedTx}
+	for _, a := range flags {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "SendTx", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SendTx indicates an expected call of SendTx
-func (mr *MockBackendMockRecorder) SendTx(ctx, signedTx interface{}) *gomock.Call {
+func (mr *MockBackendMockRecorder) SendTx(ctx, signedTx interface{}, flags ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTx", reflect.TypeOf((*MockBackend)(nil).SendTx), ctx, signedTx)
+	varargs := append([]interface{}{ctx, signedTx}, flags...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTx", reflect.TypeOf((*MockBackend)(nil).SendTx), varargs...)
 }
 
 // GetTransaction mocks base method

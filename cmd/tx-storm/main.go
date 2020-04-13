@@ -29,6 +29,7 @@ var (
 func init() {
 	// Flags.
 	flags = []cli.Flag{
+		BlockChainIDFlag,
 		NumberFlag,
 		AccsStartFlag,
 		AccsCountFlag,
@@ -80,8 +81,9 @@ func generatorMain(ctx *cli.Context) error {
 	num, ofTotal := getNumber(ctx)
 	maxTxnsPerSec := getTxnsRate(ctx)
 	accsFrom, accsCount := getTestAccs(ctx)
+	chainId := getChainId(ctx)
 
-	tt := newThreads(url, num, ofTotal, maxTxnsPerSec, accsFrom, accsCount)
+	tt := newThreads(url, num, ofTotal, maxTxnsPerSec, accsFrom, accsCount, chainId)
 	tt.SetName("Threads")
 	tt.Start()
 

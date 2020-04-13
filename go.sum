@@ -16,6 +16,8 @@ github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03
 github.com/DataDog/zstd v1.3.6-0.20190409195224-796139022798/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t7BBo=
 github.com/Fantom-foundation/go-ethereum v1.9.8-ftm-0.5 h1:XYmSAmF4j3I0a+F9+Byhcz7Zg7Hw8p1Vt3B/6gfs9HA=
 github.com/Fantom-foundation/go-ethereum v1.9.8-ftm-0.5/go.mod h1:arcJDscBoRuY4gwPHUuFztJEyFZWHLUgBGXUBcr5ARY=
+github.com/Fantom-foundation/go-ethereum v1.9.8-ftm-0.6 h1:C+6GXL+HDqdk51FqsrgydoG4kL4saY1L14b7W/WRY+U=
+github.com/Fantom-foundation/go-ethereum v1.9.8-ftm-0.6/go.mod h1:arcJDscBoRuY4gwPHUuFztJEyFZWHLUgBGXUBcr5ARY=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/OneOfOne/xxhash v1.2.5/go.mod h1:eZbhyaAYD41SGSSsnmcpxVoRiQ/MPUTjUdIIOT9Um7Q=
 github.com/Shopify/sarama v1.23.1/go.mod h1:XLH1GYJnLVE0XCr6KdJGVJRTwY30moWNJ4sERjXX6fs=
@@ -82,6 +84,8 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea/go.mod h1:93vsz/8Wt4joVM7c2AVqh+YRMiUSc14yDtF28KmMOgQ=
 github.com/deckarep/golang-set v1.7.1 h1:SCQV0S6gTtp6itiFrTqI+pfmJ4LN85S1YzhDf9rTHJQ=
 github.com/deckarep/golang-set v1.7.1/go.mod h1:93vsz/8Wt4joVM7c2AVqh+YRMiUSc14yDtF28KmMOgQ=
+github.com/devintegral3/go-ethereum v1.9.8-ftm-0.6 h1:1DEbV3Q0VXdnVp0IpsRruTbNkNfAoCQqEO/MZ+TEAfc=
+github.com/devintegral3/go-ethereum v1.9.8-ftm-0.6/go.mod h1:arcJDscBoRuY4gwPHUuFztJEyFZWHLUgBGXUBcr5ARY=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf/go.mod h1:eEKB0N0r5NX/I1kEveEz05bcu8tLC/8azJZsviup8Sk=

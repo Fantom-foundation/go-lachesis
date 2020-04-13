@@ -10,7 +10,6 @@ do
     NODE=node$i
     NAME=txgen$i
 
-    i=$((i+1))
     docker run -d --rm \
 	--net=${NETWORK} --name=${NAME} \
 	--cpus=${LIMIT_CPU} --blkio-weight=${LIMIT_IO} \

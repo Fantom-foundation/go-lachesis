@@ -33,6 +33,7 @@ func newThreads(
 	num, ofTotal uint,
 	maxTxnsPerSec uint,
 	accsFrom, accsCount uint,
+	chainId uint,
 ) *threads {
 	if num >= ofTotal {
 		panic("num is a generator number of total generators count")
@@ -56,7 +57,7 @@ func newThreads(
 	tt.Log.Info("Will use", "accounts", accs, "from", offset, "to", accs+offset)
 
 	for i := range tt.generators {
-		tt.generators[i] = newTxGenerator(uint(i), accsOnThread, offset)
+		tt.generators[i] = newTxGenerator(uint(i), accsOnThread, offset, chainId)
 		offset += accsOnThread
 		tt.generators[i].SetName(fmt.Sprintf("Generator%d", i))
 	}

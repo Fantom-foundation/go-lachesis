@@ -217,7 +217,7 @@ func TestPrivateAccountAPI_SignAndSendTransaction(t *testing.T) {
 	d := uint64(1)
 	_, _ = api.UnlockAccount(ctx, key, "1234", &d)
 
-	b.EXPECT().SendTx(ctx, gomock.Any()).
+	b.EXPECT().SendTx(ctx, gomock.Any(), false).
 		Return(nil).
 		Times(1)
 
@@ -251,7 +251,7 @@ func TestPrivateAccountAPI_SendTransaction(t *testing.T) {
 	b.EXPECT().GetPoolNonce(ctx, gomock.Any()).
 		Return(uint64(1), nil).
 		AnyTimes()
-	b.EXPECT().SendTx(ctx, gomock.Any()).
+	b.EXPECT().SendTx(ctx, gomock.Any(), false).
 		Return(nil).
 		Times(2) // TODO: why 2 ?
 
