@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
@@ -33,7 +33,8 @@ import (
 )
 
 func TestApplyGenesis(t *testing.T) {
-	assertar := assert.New(t)
+	require := require.New(t)
+
 	logger.SetTestMode(t)
 
 	db1 := rawdb.NewDatabase(
@@ -47,34 +48,21 @@ func TestApplyGenesis(t *testing.T) {
 
 	// no genesis
 	_, err := ApplyGenesis(db1, nil)
-	if !assertar.Error(err) {
-		return
-	}
+	require.Error(err)
 
 	// the same genesis
 	accsA := genesis.FakeAccounts(0, 3, big.NewInt(10000000000), pos.StakeToBalance(1))
 	netA := lachesis.FakeNetConfig(accsA)
 	blockA1, err := ApplyGenesis(db1, &netA)
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 	blockA2, err := ApplyGenesis(db2, &netA)
-	if !assertar.NoError(err) {
-		return
-	}
-	if !assertar.Equal(blockA1, blockA2) {
-		return
-	}
+	require.NoError(err)
+	require.Equal(blockA1, blockA2)
 
 	// different genesis
 	accsB := genesis.FakeAccounts(0, 4, big.NewInt(10000000000), pos.StakeToBalance(1))
 	netB := lachesis.FakeNetConfig(accsB)
 	blockB, err := ApplyGenesis(db2, &netB)
-	if !assertar.NotEqual(blockA1, blockB) {
-		return
-	}
-	if !assertar.NoError(err) {
-		return
-	}
-
+	require.NotEqual(blockA1, blockB)
+	require.NoError(err)
 }

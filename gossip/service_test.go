@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p/enode"
 )
 
+// TODO unused. M.b. remove
 func getProtocol(svc node.Service, name string, version uint) *p2p.Protocol {
 	for _, p := range svc.Protocols() {
 		if p.Name == name && p.Version == version {
@@ -17,6 +18,7 @@ func getProtocol(svc node.Service, name string, version uint) *p2p.Protocol {
 	return nil
 }
 
+// TODO unused. M.b. remove
 func runProtocol(name string, p *p2p.Protocol, errc chan<- error) *p2p.MsgPipeRW {
 	// Generate a random id and create the peer
 	var id enode.ID

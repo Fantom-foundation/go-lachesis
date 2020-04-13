@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/hash"
@@ -91,9 +92,7 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 // fails the test.
 func newTestProtocolManagerMust(t *testing.T, nodes int, events int, newtx chan<- []*types.Transaction, onNewEvent func(e *inter.Event)) (*ProtocolManager, *Store) {
 	pm, db, err := newTestProtocolManager(nodes, events, newtx, onNewEvent)
-	if err != nil {
-		t.Fatalf("Failed to create protocol manager: %v", err)
-	}
+	require.NoError(t, err, "Failed to create protocol manager")
 	return pm, db
 }
 
@@ -112,7 +111,7 @@ type testPeer struct {
 }
 
 // newTestPeer creates a new peer registered at the given protocol manager.
-func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*testPeer, <-chan error) {
+func newTestPeer(t *testing.T, name string, version int, pm *ProtocolManager, shake bool) (*testPeer, <-chan error) {
 	// Create a message pipe to communicate through
 	app, net := p2p.MsgPipe()
 
@@ -148,7 +147,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 				LastPackInfo: pm.store.GetPackInfoOrDefault(epoch, pm.store.GetPacksNumOrDefault(epoch)-1),
 			}
 		)
-		tp.handshake(nil, myProgress, genesis)
+		tp.handshake(t, myProgress, genesis)
 	}
 	return tp, errc
 }
@@ -156,6 +155,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 // handshake simulates a trivial handshake that expects the same state from the
 // remote side as we are simulating locally.
 func (p *testPeer) handshake(t *testing.T, progress *PeerProgress, genesis common.Hash) {
+	require := require.New(t)
 	msg := &ethStatusData{
 		ProtocolVersion:   uint32(p.version),
 		NetworkID:         lachesis.FakeNetworkID,
@@ -163,18 +163,14 @@ func (p *testPeer) handshake(t *testing.T, progress *PeerProgress, genesis commo
 		DummyTD:           big.NewInt(int64(progress.NumOfBlocks)), // for ETH clients
 		DummyCurrentBlock: common.Hash(progress.LastBlock),
 	}
-	if err := p2p.ExpectMsg(p.app, EthStatusMsg, msg); err != nil {
-		t.Fatalf("status recv: %v", err)
-	}
-	if err := p2p.Send(p.app, EthStatusMsg, msg); err != nil {
-		t.Fatalf("status send: %v", err)
-	}
-	if err := p2p.ExpectMsg(p.app, ProgressMsg, progress); err != nil {
-		t.Fatalf("progress recv: %v", err)
-	}
-	if err := p2p.Send(p.app, ProgressMsg, progress); err != nil {
-		t.Fatalf("progress send: %v", err)
-	}
+
+	require.NoError(p2p.ExpectMsg(p.app, EthStatusMsg, msg), "status recv")
+
+	require.NoError(p2p.Send(p.app, EthStatusMsg, msg), "status send")
+
+	require.NoError(p2p.ExpectMsg(p.app, ProgressMsg, progress), "progress recv")
+
+	require.NoError(p2p.Send(p.app, ProgressMsg, progress), "progress send")
 }
 
 // close terminates the local side of the peer, notifying the remote protocol

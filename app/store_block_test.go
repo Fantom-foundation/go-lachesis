@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -19,7 +19,7 @@ func TestStoreGetBlock(t *testing.T) {
 	store.SetBlock(expect)
 
 	got := store.GetBlock(expect.Index)
-	assert.EqualValues(t, expect, got)
+	require.EqualValues(t, expect, got)
 }
 
 func BenchmarkStoreGetBlock(b *testing.B) {
@@ -40,9 +40,7 @@ func benchStoreGetBlock(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetBlock(block.Index) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotNil(b, store.GetBlock(block.Index), "invalid result")
 	}
 }
 

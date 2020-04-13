@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -68,6 +69,7 @@ a2.1 ──╣      ║      ║      ║
 func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[string]string) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	// decode is a event name parser
 	decode := func(name string) (stage int) {
@@ -144,13 +146,11 @@ func testSpecialNamedParents(t *testing.T, asciiScheme string, exp map[int]map[s
 				assertar.Nil(selfParentResult)
 			}
 			//t.Logf("\"%s\": \"%s\",", node.String(), parentsToString(parents))
-			if !assertar.Equal(
+			require.Equal(
 				exp[stage][utils.NameOf(node)],
 				parentsToString(parents),
 				"stage %d, %s", stage, utils.NameOf(node),
-			) {
-				return
-			}
+			)
 		}
 	}
 

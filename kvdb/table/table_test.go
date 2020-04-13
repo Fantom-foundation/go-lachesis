@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
@@ -65,6 +66,7 @@ func TestTable(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			assertar := assert.New(t)
+			requirer := require.New(t)
 
 			// tables
 			t1 := New(db, []byte("t1"))
@@ -75,17 +77,15 @@ func TestTable(t *testing.T) {
 			}
 
 			// write
-			for name, t := range tables {
+			for name, table := range tables {
 				for k, v := range testData {
-					err := t.Put([]byte(k), v)
-					if !assertar.NoError(err, name) {
-						return
-					}
+					err := table.Put([]byte(k), v)
+					require.NoError(t, err, name)
 				}
 			}
 
 			// read
-			for name, t := range tables {
+			for name, keyValueStore := range tables {
 
 				for pref, count := range map[string]int{
 					"0": len(prefix0),
@@ -95,7 +95,7 @@ func TestTable(t *testing.T) {
 					got := 0
 					var prevKey []byte
 
-					it := t.NewIteratorWithPrefix([]byte(pref))
+					it := keyValueStore.NewIteratorWithPrefix([]byte(pref))
 					defer it.Release()
 					for it.Next() {
 						if prevKey == nil {
@@ -111,13 +111,9 @@ func TestTable(t *testing.T) {
 						)
 					}
 
-					if !assertar.NoError(it.Error()) {
-						return
-					}
+					requirer.NoError(it.Error())
 
-					if !assertar.Equal(count, got) {
-						return
-					}
+					requirer.Equal(count, got)
 				}
 			}
 		})

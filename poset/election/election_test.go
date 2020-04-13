@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -201,6 +202,7 @@ func testProcessRoot(
 	dag string,
 ) {
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	// events:
 	ordered := make(inter.Events, 0)
@@ -275,23 +277,19 @@ func testProcessRoot(
 	for _, root := range ordered {
 		rootHash := root.Hash()
 		rootSlot, ok := vertices[rootHash]
-		if !ok {
-			t.Fatal("inconsistent vertices")
-		}
+		require.True(ok, "inconsistent vertices")
+
 		got, err := election.ProcessRoot(RootAndSlot{
 			ID:   rootHash,
 			Slot: rootSlot,
 		})
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(err)
 
 		// checking:
 		decisive := expected != nil && expected.DecisiveRoots[root.Hash().String()]
 		if decisive || alreadyDecided {
-			if !assertar.NotNil(got) {
-				t.Fatal(err)
-			}
+			require.NotNil(got)
+
 			assertar.Equal(expected.DecidedFrame, got.Frame)
 			assertar.Equal(expected.DecidedAtropos, got.Atropos.String())
 			alreadyDecided = true

@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -15,6 +16,7 @@ import (
 func TestConfirmBlockEvents(t *testing.T) {
 	logger.SetTestMode(t)
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	nodes := inter.GenNodes(5)
 	poset, _, input := FakePoset("", nodes)
@@ -67,11 +69,8 @@ func TestConfirmBlockEvents(t *testing.T) {
 		// call confirmBlock again
 		gotBlock, cheaters := poset.confirmBlock(frame, atropos)
 
-		if !assertar.Empty(cheaters) {
-			break
-		}
-		if !assertar.Equal(block.Events, gotBlock.Events) {
-			break
-		}
+		require.Empty(cheaters)
+
+		require.Equal(block.Events, gotBlock.Events)
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -41,9 +42,7 @@ func benchStoreGetEvent(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetEvent(e.Hash()) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotNilf(b, store.GetEvent(e.Hash()), "invalid result")
 	}
 }
 
@@ -93,9 +92,7 @@ func benchStoreHasEvent(b *testing.B, store *Store, exists bool) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if store.HasEvent(h) != exists {
-			b.Fatal("invalid result")
-		}
+		require.Equalf(b, exists, store.HasEvent(h), "invalid result")
 	}
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -33,87 +33,71 @@ func TestEventHeaderDataSerialization(t *testing.T) {
 	}
 
 	t.Run("ok", func(t *testing.T) {
-		assertar := assert.New(t)
+		require := require.New(t)
 
 		for name, header0 := range ee {
 			buf, err := rlp.EncodeToBytes(&header0)
-			if !assertar.NoError(err) {
-				return
-			}
+			require.NoError(err)
 
 			var header1 EventHeaderData
 			err = rlp.DecodeBytes(buf, &header1)
-			if !assertar.NoError(err, name) {
-				return
-			}
+			require.NoError(err, name)
 
-			if !assert.EqualValues(t, header0, header1, name) {
-				return
-			}
+			require.EqualValues(header0, header1, name)
 		}
 	})
 
 	t.Run("err", func(t *testing.T) {
-		assertar := assert.New(t)
+		require := require.New(t)
 
 		for name, header0 := range ee {
 			bin, err := header0.MarshalBinary()
-			if !assertar.NoError(err, name) {
-				return
-			}
+			require.NoError(err, name)
 
 			n := rand.Intn(len(bin) - len(header0.Extra))
 			bin = bin[0:n]
 
 			buf, err := rlp.EncodeToBytes(bin)
-			if !assertar.NoError(err, name) {
-				return
-			}
+			require.NoError(err, name)
 
 			var header1 EventHeaderData
 			err = rlp.DecodeBytes(buf, &header1)
-			if !assertar.Error(err, name) {
-				return
-			}
+			require.Error(err, name)
 			//t.Log(err)
 		}
 	})
 }
 
 func BenchmarkEventHeaderData_EncodeRLP(b *testing.B) {
+	require := require.New(b)
 	header := FakeEvent().EventHeaderData
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		buf, err := rlp.EncodeToBytes(&header)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(err)
 		b.ReportMetric(float64(len(buf)), "size")
 	}
 }
 
 func BenchmarkEventHeaderData_DecodeRLP(b *testing.B) {
+	require := require.New(b)
 	header := FakeEvent().EventHeaderData
 
 	buf, err := rlp.EncodeToBytes(&header)
-	if err != nil {
-		b.Fatal(err)
-	}
+	require.NoError(err)
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		err = rlp.DecodeBytes(buf, &header)
-		if err != nil {
-			b.Fatal(err)
-		}
+		require.NoError(err)
 	}
 }
 
 func TestReadUintCompact(t *testing.T) {
-	assertar := assert.New(t)
+	require := require.New(t)
 
 	// canonical
 	for exp, bb := range map[uint64][]byte{
@@ -122,12 +106,8 @@ func TestReadUintCompact(t *testing.T) {
 		0x010000: []byte{0x00, 0x00, 0x01},
 	} {
 		got, err := readUintCompact(fast.NewBuffer(bb), len(bb))
-		if !assertar.NoError(err) {
-			return
-		}
-		if !assertar.Equal(exp, got, bb) {
-			return
-		}
+		require.NoError(err)
+		require.Equal(exp, got, bb)
 	}
 
 	// non canonical
@@ -137,12 +117,9 @@ func TestReadUintCompact(t *testing.T) {
 		[]byte{0x00, 0x00, 0x01, 0x00},
 	} {
 		_, err := readUintCompact(fast.NewBuffer(bb), len(bb))
-		if !assertar.Error(err) {
-			return
-		}
-		if !assertar.Equal(ErrNonCanonicalEncoding, err, bb) {
-			return
-		}
+		require.Error(err)
+
+		require.Equal(ErrNonCanonicalEncoding, err, bb)
 	}
 }
 

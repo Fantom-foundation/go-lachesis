@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -133,9 +134,8 @@ func TestRestore(t *testing.T) {
 		}
 	}
 
-	if !assertar.Equal(maxEpochBlocks*epochs, len(posets[EXPECTED].blocks)) {
-		return
-	}
+	require.Equal(t, maxEpochBlocks*epochs, len(posets[EXPECTED].blocks))
+
 	compareBlocks(assertar, posets[EXPECTED], posets[RESTORED])
 }
 

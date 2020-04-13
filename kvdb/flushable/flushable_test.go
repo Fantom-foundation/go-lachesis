@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"
@@ -21,6 +22,7 @@ import (
 
 func TestFlushable(t *testing.T) {
 	assertar := assert.New(t)
+	require := require.New(t)
 
 	tries := 60            // number of test iterations
 	opsPerIter := 0x140    // max number of put/delete ops per iteration
@@ -206,9 +208,7 @@ func TestFlushable(t *testing.T) {
 					}
 				}
 
-				if !assertar.NoError(it.Error()) {
-					return
-				}
+				require.NoError(it.Error())
 
 				assertar.Equal(len(expectPairs), got) // check that we've got the same num of pairs
 			}
@@ -263,8 +263,7 @@ func TestFlushable(t *testing.T) {
 }
 
 func TestFlushableIterator(t *testing.T) {
-	assertar := assert.New(t)
-
+	require := require.New(t)
 	disk := dbProducer("TestFlushableIterator")
 
 	leveldb := disk.OpenDb("1")
@@ -307,15 +306,12 @@ func TestFlushableIterator(t *testing.T) {
 	defer it.Release()
 
 	err := flushable2.Flush()
-	if !assertar.NoError(err) {
-		return
-	}
+	require.NoError(err)
 
 	for i := 0; it.Next(); i++ {
-		if !assertar.Equal(expected[i], it.Key()) ||
-			!assertar.Equal([]byte("in-order"), it.Value()) {
-			break
-		}
+		require.True(
+			bytes.Equal(expected[i], it.Key()) || bytes.Equal([]byte("in-order"), it.Value()),
+		)
 	}
 }
 

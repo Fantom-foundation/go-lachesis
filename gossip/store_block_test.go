@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -40,9 +41,7 @@ func benchStoreGetBlock(b *testing.B, store *Store) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		if store.GetBlock(block.Index) == nil {
-			b.Fatal("invalid result")
-		}
+		require.NotNilf(b, store.GetBlock(block.Index), "invalid result")
 	}
 }
 

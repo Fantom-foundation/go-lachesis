@@ -3,10 +3,13 @@ package inter
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/Fantom-foundation/go-lachesis/hash"
 )
 
 func TestEventsByParents(t *testing.T) {
+	require := require.New(t)
 	nodes := GenNodes(5)
 	events := GenRandEvents(nodes, 10, 3, nil)
 	var unordered Events
@@ -26,10 +29,7 @@ func TestEventsByParents(t *testing.T) {
 			if !ok {
 				continue
 			}
-			if pos > i {
-				t.Fatalf("parent %s is not before %s", p.String(), e.Hash().String())
-				return
-			}
+			require.LessOrEqualf(pos, i, "parent %s is not before %s", p.String(), e.Hash().String())
 		}
 	}
 }
