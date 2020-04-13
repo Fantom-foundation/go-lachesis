@@ -74,8 +74,7 @@ type Backend interface {
 	GetEVM(ctx context.Context, msg evmcore.Message, state *state.StateDB, header *evmcore.EvmHeader) (*vm.EVM, func() error, error)
 
 	// Transaction pool API
-	SendTx(ctx context.Context, signedTx *types.Transaction) error
-	SendTrustedTx(ctx context.Context, signedTx *types.Transaction) error
+	SendTx(ctx context.Context, signedTx *types.Transaction, flags ...bool) error
 	GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error)
 	GetPoolTransactions() (types.Transactions, error)
 	GetPoolTransaction(txHash common.Hash) *types.Transaction

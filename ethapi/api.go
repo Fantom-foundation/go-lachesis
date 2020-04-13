@@ -49,6 +49,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	lachesisparams "github.com/Fantom-foundation/go-lachesis/lachesis/params"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 const (
@@ -396,7 +397,7 @@ func (s *PrivateAccountAPI) SendTrustedTransaction(ctx context.Context, args Sen
 		log.Warn("Failed transaction send attempt", "from", args.From, "to", args.To, "value", args.Value.ToInt(), "err", err)
 		return common.Hash{}, err
 	}
-	return SubmitTrustedTransaction(ctx, s.b, signed)
+	return SubmitTransaction(ctx, s.b, signed, true)
 }
 
 // SignTransaction will create a transaction from the given arguments and
@@ -1531,8 +1532,10 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 }
 
 // SubmitTransaction is a helper function that submits tx to txPool and logs a message.
-func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
-	if err := b.SendTx(ctx, tx); err != nil {
+func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction, flags ...bool) (common.Hash, error) {
+	trusted := utils.ParseFlag(flags, 0, false)
+
+	if err := b.SendTx(ctx, tx, trusted); err != nil {
 		return common.Hash{}, err
 	}
 	if tx.To() == nil {
@@ -1545,25 +1548,6 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
 	} else {
 		log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
-	}
-	return tx.Hash(), nil
-}
-
-// SubmitTrustedTransaction is a helper function that submits trusted tx to txPool and logs a message.
-func SubmitTrustedTransaction(ctx context.Context, b Backend, tx *types.Transaction) (common.Hash, error) {
-	if err := b.SendTrustedTx(ctx, tx); err != nil {
-		return common.Hash{}, err
-	}
-	if tx.To() == nil {
-		signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number)
-		from, err := types.Sender(signer, tx)
-		if err != nil {
-			return common.Hash{}, err
-		}
-		addr := crypto.CreateAddress(from, tx.Nonce())
-		log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
-	} else {
-		log.Info("Submitted trusted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
 	}
 	return tx.Hash(), nil
 }

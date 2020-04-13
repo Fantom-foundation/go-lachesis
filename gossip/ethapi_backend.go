@@ -34,6 +34,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 var ErrNotImplemented = func(name string) error { return errors.New(name + " method is not implemented yet") }
@@ -325,24 +326,18 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *
 	return vm.NewEVM(context, state, config, vm.Config{}), vmError, nil
 }
 
-func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
-	err := b.svc.txpool.AddLocal(signedTx)
+func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction, flags ...bool) error {
+	trusted := utils.ParseFlag(flags, 0, false)
+
+	var err error
+	if trusted {
+		err = b.svc.txpool.AddTrusted(signedTx)
+	} else {
+		err = b.svc.txpool.AddLocal(signedTx)
+	}
 	if err == nil {
 		// NOTE: only sent txs tracing, see TxPool.addTxs() for all
 		tracing.StartTx(signedTx.Hash(), "EthAPIBackend.SendTx()")
-		// TODO: txLatency cleaning, possible memory leak
-		if metrics.Enabled {
-			txLatency.Start(signedTx.Hash())
-		}
-	}
-	return err
-}
-
-func (b *EthAPIBackend) SendTrustedTx(ctx context.Context, signedTx *types.Transaction) error {
-	err := b.svc.txpool.AddTrusted(signedTx)
-	if err == nil {
-		// NOTE: only sent txs tracing, see TxPool.addTxs() for all
-		tracing.StartTx(signedTx.Hash(), "EthAPIBackend.SendTrustedTx()")
 		// TODO: txLatency cleaning, possible memory leak
 		if metrics.Enabled {
 			txLatency.Start(signedTx.Hash())
