@@ -788,12 +788,15 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 
 // Mined broadcast loop
 func (pm *ProtocolManager) emittedBroadcastLoop() {
+	if pm.notifier == nil {
+		return
+	}
 	for {
 		select {
 		case emitted := <-pm.emittedEventsCh:
 			pm.BroadcastEvent(emitted, 0)
 		// Err() channel will be closed when unsubscribing.
-		case <-pm.txsSub.Err():
+		case <-pm.emittedEventsSub.Err():
 			return
 		}
 	}
@@ -801,6 +804,9 @@ func (pm *ProtocolManager) emittedBroadcastLoop() {
 
 // Progress broadcast loop
 func (pm *ProtocolManager) progressBroadcastLoop() {
+	if pm.notifier == nil {
+		return
+	}
 	// automatically stops if unsubscribe
 	prevProgress := pm.myProgress()
 	for {
@@ -816,13 +822,16 @@ func (pm *ProtocolManager) progressBroadcastLoop() {
 			}
 			prevProgress = pm.myProgress()
 		// Err() channel will be closed when unsubscribing.
-		case <-pm.txsSub.Err():
+		case <-pm.newPacksSub.Err():
 			return
 		}
 	}
 }
 
 func (pm *ProtocolManager) onNewEpochLoop() {
+	if pm.notifier == nil {
+		return
+	}
 	for {
 		select {
 		case myEpoch := <-pm.newEpochsCh:
@@ -848,7 +857,7 @@ func (pm *ProtocolManager) onNewEpochLoop() {
 			pm.buffer.Clear()
 			pm.downloader.OnNewEpoch(myEpoch, peerEpoch)
 		// Err() channel will be closed when unsubscribing.
-		case <-pm.txsSub.Err():
+		case <-pm.newEpochsSub.Err():
 			return
 		}
 	}
