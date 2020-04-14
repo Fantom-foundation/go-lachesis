@@ -218,3 +218,11 @@ The full demo doesn't spin up very fast. To avoid the full docker image building
 go test -v ./integration/...
 ```
 Adjust test duration, number of nodes and logs verbosity in the test source code.
+
+### Auto check updates
+Auto check is enabled by default. If the build version is not the latest release, a corresponding log message will be issued and the validator node will be finished or non-validator node will continue work with disabled transaction API.
+Pass the `--nocheckversion` flag to disable check updates.
+```shell
+$ lachesis --nocheckversion
+```
+For nightly build, the operation of the node will also continue with a corresponding log warning.

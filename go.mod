@@ -3,6 +3,7 @@ module github.com/Fantom-foundation/go-lachesis
 go 1.13
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/aristanetworks/goarista v0.0.0-20191023202215-f096da5361bb // indirect
 	github.com/beorn7/perks v1.0.1

@@ -24,7 +24,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
-	_ "github.com/Fantom-foundation/go-lachesis/version"
+	"github.com/Fantom-foundation/go-lachesis/version"
 )
 
 const (
@@ -106,6 +106,7 @@ func init() {
 		utils.EVMInterpreterFlag,
 		configFileFlag,
 		validatorFlag,
+		noCheckVersionFlag,
 	}
 
 	rpcFlags = []cli.Flag{
@@ -224,6 +225,12 @@ func lachesisMain(ctx *cli.Context) error {
 
 func makeFullNode(ctx *cli.Context) *node.Node {
 	cfg := makeAllConfigs(ctx)
+
+	if !cfg.Lachesis.NoCheckVersion {
+		ver := params.VersionWithCommit(gitCommit, gitDate)
+		status, msg, err := version.CheckRelease(nil, ver)
+		applyVersionCheck(&cfg, status, msg, err)
+	}
 
 	// check errlock file
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)

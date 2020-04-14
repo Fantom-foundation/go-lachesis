@@ -14,7 +14,7 @@ import (
 
 var (
 	versionCommand = cli.Command{
-		Action:    utils.MigrateFlags(version),
+		Action:    utils.MigrateFlags(buildVersion),
 		Name:      "version",
 		Usage:     "Print version numbers",
 		ArgsUsage: " ",
@@ -33,7 +33,7 @@ The output of this command is supposed to be machine-readable.
 	}
 )
 
-func version(ctx *cli.Context) error {
+func buildVersion(ctx *cli.Context) error {
 	fmt.Println(strings.Title(clientIdentifier))
 	fmt.Println("Version:", params.VersionWithMeta())
 	if gitCommit != "" {

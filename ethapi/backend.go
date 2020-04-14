@@ -202,3 +202,18 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 
 	return append(orig, double...)
 }
+
+// RemoveApiByNamespace - removes api from a slice by namespace
+func RemoveApiByNamespace(src []rpc.API, namespace string) []rpc.API {
+	removeApiIndx := 0
+	for i, api := range src {
+		if api.Namespace != namespace {
+			continue
+		}
+		removeApiIndx = i
+		break
+	}
+
+	src = append(src[:removeApiIndx], src[removeApiIndx+1:]...)
+	return src
+}

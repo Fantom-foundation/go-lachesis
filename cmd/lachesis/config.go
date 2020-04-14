@@ -240,6 +240,10 @@ func gossipConfigWithFlags(ctx *cli.Context, src gossip.Config) gossip.Config {
 		cfg.RPCGasCap = new(big.Int).SetUint64(ctx.GlobalUint64(utils.RPCGlobalGasCap.Name))
 	}
 
+	if ctx.GlobalIsSet(noCheckVersionFlag.Name) {
+		cfg.NoCheckVersion = ctx.GlobalBool(noCheckVersionFlag.Name)
+	}
+
 	return cfg
 }
 

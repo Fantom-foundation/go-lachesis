@@ -43,10 +43,16 @@ type (
 		// Type of the EVM interpreter ("" for default)
 		EVMInterpreter string // TODO custom interpreter
 
-		// RPCGasCap is the global gas cap for eth-call variants.
+		// RPCGasCap is the global gas cap for eth-call variants
 		RPCGasCap *big.Int `toml:",omitempty"`
 
 		ExtRPCEnabled bool
+
+		// NoCheckVersion disables build version check
+		NoCheckVersion bool
+
+		// DisablePrivateAccountAPI disables PrivateAccountAPI
+		DisablePrivateAccountAPI bool
 	}
 
 	// StoreConfig is a config for store db.

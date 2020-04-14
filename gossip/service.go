@@ -264,6 +264,10 @@ func (s *Service) Protocols() []p2p.Protocol {
 func (s *Service) APIs() []rpc.API {
 	apis := ethapi.GetAPIs(s.EthAPI)
 
+	if s.config.DisablePrivateAccountAPI {
+		apis = ethapi.RemoveApiByNamespace(apis, "personal")
+	}
+
 	apis = append(apis, []rpc.API{
 		{
 			Namespace: "eth",
