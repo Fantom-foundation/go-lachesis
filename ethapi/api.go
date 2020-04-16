@@ -1287,6 +1287,70 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Co
 	return nil
 }
 
+// GetBlockTPSByNumber returns the TPS in the block with the given block number.
+func (s *PublicTransactionPoolAPI) GetBlockTPSByNumber(ctx context.Context, blockNr rpc.BlockNumber) *hexutil.Uint {
+	// Get current block
+	block, _ := s.b.BlockByNumber(ctx, blockNr)
+	if block == nil {
+		return nil
+	}
+
+	// Get previous block
+	if block.Number.Cmp(big.NewInt(0)) <= 0 {
+		return nil
+	}
+	prevBlockNum := block.Number.Sub(block.Number, big.NewInt(1))
+	prevBlock, _ := s.b.BlockByNumber(ctx, rpc.BlockNumber(prevBlockNum.Int64()))
+	if prevBlock == nil {
+		return nil
+	}
+
+	log.Info("GetBlockTPS", "trxCount", len(block.Transactions), "period", block.Time.Time().Sub(prevBlock.Time.Time()).Seconds())
+
+	n := hexutil.Uint(float64(len(block.Transactions)) / block.Time.Time().Sub(prevBlock.Time.Time()).Seconds())
+	return &n
+}
+
+// GetEpochTPSByNumber returns the TPS in the block with the given block number.
+func (s *PublicTransactionPoolAPI) GetEpochTPSByNumber(ctx context.Context, epoch rpc.BlockNumber) *hexutil.Uint {
+	var (
+		minEventTime inter.Timestamp
+		maxEventTime inter.Timestamp
+		trxCount int
+	)
+
+	// Scan event for this epoch
+	s.b.ForEachEvent(ctx, epoch, func(event *inter.Event) bool {
+		if event == nil {
+			return false
+		}
+
+		// Detect min and max time for events in epoch
+		if maxEventTime == 0 || event.ClaimedTime > maxEventTime {
+			maxEventTime = event.ClaimedTime
+		}
+		if minEventTime == 0 || event.ClaimedTime < minEventTime {
+			minEventTime = event.ClaimedTime
+		}
+
+		// Calc transactions count in epoch
+		if event.Transactions != nil {
+			trxCount += len(event.Transactions)
+		}
+
+		return true
+	})
+
+	if minEventTime != 0 && maxEventTime != 0 {
+		// Calc and return TPS
+		n := hexutil.Uint(float64(trxCount) / float64(maxEventTime.Unix() - minEventTime.Unix()))
+		return &n
+	}
+
+	return nil
+}
+
+
 // GetTransactionByBlockNumberAndIndex returns the transaction for the given block number and index.
 func (s *PublicTransactionPoolAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) *RPCTransaction {
 	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {
