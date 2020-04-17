@@ -1,9 +1,7 @@
 package gossip
 
-import (
-	"github.com/tendermint/tendermint/abci/types"
-)
-
-func (s *Service) chainInfo() types.RequestInitChain {
-	return types.RequestInitChain{}
+func (svc *Service) initApp() {
+	req := svc.config.Net.ChainInfo()
+	_ = svc.abciApp.InitChain(req)
+	// TODO: check response
 }

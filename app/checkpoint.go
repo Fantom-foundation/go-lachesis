@@ -1,6 +1,7 @@
 package app
 
 import (
+	"reflect"
 	"sync"
 
 	"github.com/tendermint/tendermint/abci/types"
@@ -21,16 +22,15 @@ type Checkpoint struct {
 	*sync.RWMutex
 }
 
-// InitChain is a prototype of ABCIApplication.InitChain.
+// InitChain implements ABCIApplication.InitChain.
 // It should be Called once upon genesis.
-func (a *App) InitChain(current idx.Epoch, last idx.Block, req types.RequestInitChain) types.ResponseInitChain {
-	a.Bootstrap()
-
-	// NOTE: temporary sanity check
-	if a.checkpoint.BlockN != last || a.checkpoint.EpochN != current {
-		panic("invalid checkpoint")
+func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+	chain := a.config.Net.ChainInfo()
+	if !reflect.DeepEqual(req, chain) {
+		panic("incompatible chain")
 	}
 
+	a.Bootstrap()
 	return types.ResponseInitChain{}
 }
 

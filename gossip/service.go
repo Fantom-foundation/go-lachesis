@@ -149,10 +149,7 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 		IsEventAllowedIntoBlock: svc.isEventAllowedIntoBlock,
 	})
 
-	lastBlock, _ := svc.engine.LastBlock()
-	// TODO: check returned value
-	_ = svc.abciApp.InitChain(
-		svc.engine.GetEpoch(), lastBlock, svc.chainInfo())
+	svc.initApp()
 
 	// create server pool
 	trustedNodes := []string{}
