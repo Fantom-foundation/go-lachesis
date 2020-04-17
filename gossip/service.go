@@ -150,8 +150,9 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 	})
 
 	lastBlock, _ := svc.engine.LastBlock()
-	svc.abciApp.InitChain(
-		svc.engine.GetEpoch(), lastBlock)
+	// TODO: check returned value
+	_ = svc.abciApp.InitChain(
+		svc.engine.GetEpoch(), lastBlock, svc.chainInfo())
 
 	// create server pool
 	trustedNodes := []string{}
