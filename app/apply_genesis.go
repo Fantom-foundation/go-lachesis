@@ -52,6 +52,12 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 		Start:    net.Genesis.Time,
 		TotalFee: new(big.Int),
 	})
+	s.SetCheckpoint(Checkpoint{
+		BlockN:     0,
+		EpochN:     1,
+		EpochBlock: 0,
+		EpochStart: net.Genesis.Time,
+	})
 
 	s.FlushState()
 	return
@@ -96,7 +102,6 @@ func (s *Store) applyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, 
 		})
 	}
 	s.SetEpochValidators(1, validatorsArr)
-	s.SetLastVoting(0, net.Genesis.Time)
 
 	return
 }

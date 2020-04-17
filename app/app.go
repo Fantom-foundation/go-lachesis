@@ -22,8 +22,7 @@ type (
 		store  *Store
 		ctx    *blockContext
 
-		epoch idx.Epoch
-		block idx.Block
+		checkpoint Checkpoint
 
 		logger.Instance
 	}
@@ -48,13 +47,6 @@ func New(cfg Config, s *Store) *App {
 
 		Instance: logger.MakeInstance(),
 	}
-}
-
-// InitChain is a prototype of ABCIApplication.InitChain.
-// It should be Called once upon genesis.
-func (a *App) InitChain(current idx.Epoch, last idx.Block) {
-	a.setEpoch(current)
-	a.setLastBlock(last)
 }
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
@@ -148,7 +140,7 @@ func (a *App) EndBlock(
 
 	a.incLastBlock()
 	if sealEpoch {
-		a.store.SetLastVoting(block.Index, block.Time)
+		a.SetLastVoting(block.Index, block.Time)
 		a.incEpoch()
 	}
 
@@ -160,7 +152,7 @@ func (a *App) EndBlock(
 }
 
 func (a *App) shouldSealEpoch(block *inter.Block, cheaters inter.Cheaters) bool {
-	startBlock, startTime := a.store.GetLastVoting()
+	startBlock, startTime := a.GetLastVoting()
 	seal := (block.Index - startBlock) >= idx.Block(a.config.Net.Dag.MaxEpochBlocks)
 	seal = seal || (block.Time-startTime) >= inter.Timestamp(a.config.Net.Dag.MaxEpochDuration)
 	seal = seal || cheaters.Len() > 0
