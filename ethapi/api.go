@@ -1287,7 +1287,7 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Co
 	return nil
 }
 
-// GetBlockTPSByNumber returns the TPS in the block with the given block number.
+// GetBlockTPSByNumber returns the TPS*1000 in the block with the given block number.
 func (s *PublicTransactionPoolAPI) GetBlockTPSByNumber(ctx context.Context, blockNr rpc.BlockNumber) *hexutil.Uint {
 	// Get current block
 	block, _ := s.b.BlockByNumber(ctx, blockNr)
@@ -1307,11 +1307,11 @@ func (s *PublicTransactionPoolAPI) GetBlockTPSByNumber(ctx context.Context, bloc
 
 	log.Info("GetBlockTPS", "trxCount", len(block.Transactions), "period", block.Time.Time().Sub(prevBlock.Time.Time()).Seconds())
 
-	n := hexutil.Uint(float64(len(block.Transactions)) / block.Time.Time().Sub(prevBlock.Time.Time()).Seconds())
+	n := hexutil.Uint(float64(len(block.Transactions)) * 1000 / block.Time.Time().Sub(prevBlock.Time.Time()).Seconds())
 	return &n
 }
 
-// GetEpochTPSByNumber returns the TPS in the block with the given block number.
+// GetEpochTPSByNumber returns the TPS*1000 in the block with the given block number.
 func (s *PublicTransactionPoolAPI) GetEpochTPSByNumber(ctx context.Context, epoch rpc.BlockNumber) *hexutil.Uint {
 	var (
 		minEventTime inter.Timestamp
@@ -1343,7 +1343,7 @@ func (s *PublicTransactionPoolAPI) GetEpochTPSByNumber(ctx context.Context, epoc
 
 	if minEventTime != 0 && maxEventTime != 0 {
 		// Calc and return TPS
-		n := hexutil.Uint(float64(trxCount) / float64(maxEventTime.Unix() - minEventTime.Unix()))
+		n := hexutil.Uint(float64(trxCount) * 1000 / float64(maxEventTime.Unix() - minEventTime.Unix()))
 		return &n
 	}
 
