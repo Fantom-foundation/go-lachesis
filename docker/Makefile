@@ -5,9 +5,6 @@ TAG ?= "latest"
 .PHONY: lachesis
 lachesis: test_accs.json
 	cd ../ && \
-	rm -Rf ./build && \
-	mkdir ./build && \
-	cp -R ../go-ethereum ./build/ && \
 	docker build \
 	    --network=host \
 	    --build-arg GOPROXY=$(GOPROXY) \
@@ -17,9 +14,6 @@ lachesis: test_accs.json
 .PHONY: tx-storm
 tx-storm:
 	cd ../ && \
-	rm -Rf ./build && \
-	mkdir ./build && \
-	cp -R ../go-ethereum ./build/ && \
 	docker build \
 	    --network=host \
 	    --build-arg GOPROXY=$(GOPROXY) \

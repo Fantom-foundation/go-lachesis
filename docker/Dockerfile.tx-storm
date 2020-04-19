@@ -4,7 +4,6 @@ RUN apk add --no-cache make gcc musl-dev linux-headers git
 
 WORKDIR /go/go-lachesis
 COPY . .
-RUN cp -R /go/go-lachesis/build/go-ethereum /go/
 
 ARG GOPROXY=direct
 RUN go mod download
