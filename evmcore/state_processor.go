@@ -66,7 +66,7 @@ func (p *StateProcessor) Process(
 	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions {
-		receipt, fee, skip, err := p.ProcessTx(tx, i, gp, usedGas, block, statedb, cfg, strict)
+		receipt, fee, skip, err := p.ProcessTx(tx, uint(i), gp, usedGas, block, statedb, cfg, strict)
 		if !strict && (skip || err != nil) {
 			skipped = append(skipped, uint(i))
 			continue
@@ -87,12 +87,12 @@ func (p *StateProcessor) Process(
 // returns the amount of gas that was used by the tx.
 // If tx failed to execute due to insufficient gas it will return an error.
 func (p *StateProcessor) ProcessTx(
-	tx *types.Transaction, i int, gp *GasPool, usedGas *uint64,
+	tx *types.Transaction, i uint, gp *GasPool, usedGas *uint64,
 	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool,
 ) (
 	receipt *types.Receipt, fee *big.Int, skip bool, err error,
 ) {
-	statedb.Prepare(tx.Hash(), block.Hash, i)
+	statedb.Prepare(tx.Hash(), block.Hash, int(i))
 	receipt, _, fee, skip, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, block.Header(), tx, usedGas, cfg, strict)
 	return
 }

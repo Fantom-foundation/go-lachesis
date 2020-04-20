@@ -1,10 +1,7 @@
 package app
 
 import (
-	"reflect"
 	"sync"
-
-	"github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -20,18 +17,6 @@ type Checkpoint struct {
 	EpochStart inter.Timestamp
 
 	*sync.RWMutex
-}
-
-// InitChain implements ABCIApplication.InitChain.
-// It should be Called once upon genesis.
-func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
-	chain := a.config.Net.ChainInfo()
-	if !reflect.DeepEqual(req, chain) {
-		panic("incompatible chain")
-	}
-
-	a.Bootstrap()
-	return types.ResponseInitChain{}
 }
 
 // Bootstrap restores poset's state from store.

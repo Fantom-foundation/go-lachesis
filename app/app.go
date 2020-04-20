@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -36,6 +35,7 @@ type (
 		totalFee     *big.Int
 		receipts     types.Receipts
 		gp           *evmcore.GasPool
+		txN          uint
 	}
 )
 
@@ -63,27 +63,10 @@ func (a *App) BeginBlock(
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),
+		txN:          0,
 	}
 
 	a.ctx.gp.AddGas(evmBlock.GasLimit)
-}
-
-// DeliverTx is a prototype of ABCIApplication.DeliverTx
-func (a *App) DeliverTx(
-	tx *types.Transaction,
-	i int,
-) {
-	const strict = false
-	// Process txs
-	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, i, a.ctx.gp, &a.ctx.block.GasUsed, a.ctx.evmBlock, a.ctx.statedb, vm.Config{}, strict)
-	if !strict && (skip || err != nil) {
-		a.ctx.block.SkippedTxs = append(a.ctx.block.SkippedTxs, uint(i))
-		return
-	}
-
-	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
-	a.ctx.receipts = append(a.ctx.receipts, receipt)
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock

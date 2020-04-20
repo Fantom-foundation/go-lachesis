@@ -119,8 +119,12 @@ func (s *Service) applyNewState(
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	s.abciApp.BeginBlock(block, evmBlock, cheaters, stateHash)
 
-	for i, tx := range evmBlock.Transactions {
-		s.abciApp.DeliverTx(tx, i)
+	for _, tx := range evmBlock.Transactions {
+		req := s.deliverTxRequest(tx)
+		resp := s.abciApp.DeliverTx(req)
+		if resp.Log != "" {
+			s.Log.Info("tx processed", "log", resp.Log)
+		}
 	}
 
 	block, evmBlock, receipts, totalFee, sealEpoch := s.abciApp.EndBlock(cheaters, txPositions, s.blockParticipated)
