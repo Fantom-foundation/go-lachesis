@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -459,4 +460,40 @@ func testWallet(ctrl *gomock.Controller) accounts.Wallet {
 		AnyTimes()
 
 	return w
+}
+
+func TestRemoveApiByNamespace(t *testing.T) {
+	require := require.New(t)
+
+	testcases := []struct {
+		src      []rpc.API
+		todelete string
+		dstLen   int
+	}{
+		{
+			src:      []rpc.API{},
+			todelete: "empty",
+			dstLen:   0,
+		},
+		{
+			src:      []rpc.API{{Namespace: "111"}, {Namespace: "222"}},
+			todelete: "no-one",
+			dstLen:   2,
+		},
+		{
+			src:      []rpc.API{{Namespace: "all"}, {Namespace: "all"}},
+			todelete: "all",
+			dstLen:   0,
+		},
+		{
+			src:      []rpc.API{{Namespace: "111"}, {Namespace: "222"}, {Namespace: "333"}, {Namespace: "444"}},
+			todelete: "222",
+			dstLen:   3,
+		},
+	}
+
+	for i, tt := range testcases {
+		dst := RemoveApiByNamespace(tt.src, tt.todelete)
+		require.Equalf(tt.dstLen, len(dst), "case %d", i)
+	}
 }
