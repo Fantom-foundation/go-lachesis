@@ -214,7 +214,7 @@ func TestPublicTransactionPoolAPI_GetTransactionByBlockHashAndIndex(t *testing.T
 			Return(nil, nil).
 			Times(1)
 		res := api.GetTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
-		require.Empty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -234,7 +234,7 @@ func TestPublicTransactionPoolAPI_GetTransactionByBlockNumberAndIndex(t *testing
 			Return(nil, nil).
 			Times(1)
 		res := api.GetTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
-		require.Empty(t, res)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -565,5 +565,28 @@ func TestPublicTransactionPoolAPI_Sign(t *testing.T) {
 		res, err := api.Sign(addr, data)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
+	})
+}
+
+func TestPublicTransactionPoolAPI_GetBlockTPSByNumber(t *testing.T) {
+	ctx := context.TODO()
+	b := newTestBackend(t)
+
+	nonceLock := new(AddrLocker)
+
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+	require.NotPanics(t, func() {
+		api.GetBlockTPSByNumber(ctx, rpc.LatestBlockNumber)
+	})
+}
+func TestPublicTransactionPoolAPI_GetEpochTPSByNumber(t *testing.T) {
+	ctx := context.TODO()
+	b := newTestBackend(t)
+
+	nonceLock := new(AddrLocker)
+
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+	require.NotPanics(t, func() {
+		api.GetEpochTPSByNumber(ctx, rpc.LatestBlockNumber)
 	})
 }

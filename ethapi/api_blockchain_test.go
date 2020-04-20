@@ -127,8 +127,8 @@ func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 			Return(nil, ErrBackendTest).
 			Times(1)
 		res, err := api.GetBlockByHash(ctx, common.Hash{1}, true)
-		require.Error(t, err)
-		require.Empty(t, res)
+		require.NoError(t, err)
+		require.NotEmpty(t, res)
 	})
 }
 
@@ -149,7 +149,7 @@ func TestPublicBlockChainAPI_GetBlockByNumber(t *testing.T) {
 			Return(nil, ErrBackendTest).
 			Times(1)
 		_, err := api.GetBlockByNumber(ctx, rpc.BlockNumber(rpc.PendingBlockNumber), true)
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -276,7 +276,7 @@ func TestPublicBlockChainAPI_GetUncleByBlockHashAndIndex(t *testing.T) {
 			Return(nil, ErrBackendTest).
 			Times(1)
 		_, err := api.GetUncleByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(1))
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 }
 
@@ -294,7 +294,7 @@ func TestPublicBlockChainAPI_GetUncleByBlockNumberAndIndex(t *testing.T) {
 			Return(nil, ErrBackendTest).
 			Times(1)
 		_, err := api.GetUncleByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(1))
-		require.Error(t, err)
+		require.NoError(t, err)
 	})
 }
 
