@@ -127,7 +127,7 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	block, evmBlock, receipts, totalFee, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	block, evmBlock, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {
@@ -150,8 +150,12 @@ func (s *Service) applyNewState(
 	// calc appHash
 	appHash := block.TxHash
 
-	log.Info("New block", "index", block.Index, "atropos", block.Atropos, "fee", totalFee, "gasUsed",
-		evmBlock.GasUsed, "skipped_txs", len(block.SkippedTxs), "txs", len(evmBlock.Transactions), "t", time.Since(start))
+	log.Info("New block", "index", block.Index,
+		"atropos", block.Atropos,
+		"gasUsed", evmBlock.GasUsed,
+		"skipped_txs", len(block.SkippedTxs),
+		"txs", len(evmBlock.Transactions),
+		"t", time.Since(start))
 
 	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
 }

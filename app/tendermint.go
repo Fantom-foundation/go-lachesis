@@ -1,7 +1,6 @@
 package app
 
 import (
-	"math/big"
 	"reflect"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -64,7 +63,6 @@ func (a *App) EndBlock(
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
 	receipts eth.Receipts,
-	totalFee *big.Int,
 	sealEpoch bool,
 ) {
 	if a.ctx.block.Index != idx.Block(req.Height) {

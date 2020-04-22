@@ -83,7 +83,6 @@ func (a *App) endBlock() (
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
 	receipts types.Receipts,
-	totalFee *big.Int,
 	sealEpoch bool,
 ) {
 	var (
@@ -94,7 +93,6 @@ func (a *App) endBlock() (
 	block = a.ctx.block
 	evmBlock = a.ctx.evmBlock
 	receipts = a.ctx.receipts
-	totalFee = a.ctx.totalFee
 	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(receipts)
 
 	evmBlock.Transactions = filterSkippedTxs(block, evmBlock.Transactions)
@@ -118,7 +116,7 @@ func (a *App) endBlock() (
 	a.updateStakersPOI(block)
 
 	// Process SFC contract transactions
-	stats := a.updateEpochStats(epoch, block.Time, totalFee, sealEpoch)
+	stats := a.updateEpochStats(epoch, block.Time, a.ctx.totalFee, sealEpoch)
 	a.processSfc(epoch, block, receipts, a.ctx.cheaters, stats)
 	a.ctx.block.Root, err = a.ctx.statedb.Commit(true)
 	if err != nil {
