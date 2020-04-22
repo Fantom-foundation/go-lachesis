@@ -127,7 +127,7 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	block, evmBlock, receipts, totalFee, sealEpoch := s.abciApp.EndBlock(cheaters, txPositions, s.blockParticipated)
+	block, evmBlock, receipts, totalFee, sealEpoch := s.abciApp.EndBlock(txPositions, s.blockParticipated)
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {

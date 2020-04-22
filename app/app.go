@@ -31,6 +31,7 @@ type (
 		evmBlock     *evmcore.EvmBlock
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
+		cheaters     inter.Cheaters
 		sealEpoch    bool
 		totalFee     *big.Int
 		receipts     types.Receipts
@@ -60,6 +61,7 @@ func (a *App) BeginBlock(
 		evmBlock:     evmBlock,
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
+		cheaters:     cheaters,
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),
@@ -71,7 +73,6 @@ func (a *App) BeginBlock(
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
 func (a *App) EndBlock(
-	cheaters inter.Cheaters,
 	txPositions map[common.Hash]TxPosition,
 	blockParticipated map[idx.StakerID]bool,
 ) (
@@ -115,7 +116,7 @@ func (a *App) EndBlock(
 
 	// Process SFC contract transactions
 	stats := a.updateEpochStats(epoch, block.Time, totalFee, sealEpoch)
-	a.processSfc(epoch, block, receipts, cheaters, stats)
+	a.processSfc(epoch, block, receipts, a.ctx.cheaters, stats)
 	a.ctx.block.Root, err = a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)

@@ -21,7 +21,7 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	return types.ResponseInitChain{}
 }
 
-// DeliverTx is a prototype of ABCIApplication.DeliverTx
+// DeliverTx implements ABCIApplication.DeliverTx
 func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	const strict = false
 
@@ -47,8 +47,6 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	a.ctx.receipts = append(a.ctx.receipts, receipt)
 
 	return types.ResponseDeliverTx{
-		//Code                // uint32
-		//Log                 // string
 		Info:      "ok",
 		GasWanted: int64(tx.Gas()),
 		GasUsed:   int64(receipt.GasUsed),
