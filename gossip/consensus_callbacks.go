@@ -98,7 +98,14 @@ func (s *Service) applyNewState(
 	// s.engineMu is locked here
 
 	start := time.Now()
-	evmBlock, blockEvents := s.assembleEvmBlock(block)
+
+	evmBlock := &evmcore.EvmBlock{
+		EvmHeader: *evmcore.ToEvmHeader(block),
+	}
+
+	blockEvents, transactions := s.usedEvents(block)
+	unusedEventCount := len(block.Events) - len(blockEvents)
+	block.Events = block.Events[unusedEventCount:]
 
 	// memorize position of each tx, for indexing and origination scores
 	txPositions := make(map[common.Hash]app.TxPosition)
@@ -119,8 +126,8 @@ func (s *Service) applyNewState(
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	s.abciApp.BeginBlock(evmBlock, cheaters, stateHash, s.blockParticipated)
 
-	block.SkippedTxs = make([]uint, 0, len(evmBlock.Transactions))
-	for i, tx := range evmBlock.Transactions {
+	block.SkippedTxs = make([]uint, 0, len(transactions))
+	for i, tx := range transactions {
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
 		resp := s.abciApp.DeliverTx(req)
 		if resp.Info == "skipped" { // TODO: replce Info with Code
@@ -169,10 +176,10 @@ func (s *Service) applyNewState(
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
-func (s *Service) spillBlockEvents(block *inter.Block) (*inter.Block, inter.Events) {
-	fullEvents := make(inter.Events, len(block.Events))
+func (s *Service) spillBlockEvents(block *inter.Block) inter.Events {
+	events := make(inter.Events, len(block.Events))
 	if len(block.Events) == 0 {
-		return block, fullEvents
+		return events
 	}
 	gasPowerUsedSum := uint64(0)
 	// iterate in reversed order
@@ -182,39 +189,34 @@ func (s *Service) spillBlockEvents(block *inter.Block) (*inter.Block, inter.Even
 		if e == nil {
 			s.Log.Crit("Event not found", "event", id.String())
 		}
-		fullEvents[i] = e
+		events[i] = e
 		gasPowerUsedSum += e.GasPowerUsed
 		// stop if limit is exceeded, erase [:i] events
 		if gasPowerUsedSum > s.config.Net.Blocks.BlockGasHardLimit {
 			// spill
-			block.Events = block.Events[i+1:]
-			fullEvents = fullEvents[i+1:]
+			events = events[i+1:]
 			break
 		}
 	}
-	return block, fullEvents
+	return events
 }
 
-// assembleEvmBlock converts inter.Block to evmcore.EvmBlock
-func (s *Service) assembleEvmBlock(
-	block *inter.Block,
-) (*evmcore.EvmBlock, inter.Events) {
+// usedEvents and transactions of block for EVM
+func (s *Service) usedEvents(block *inter.Block) (
+	inter.Events, types.Transactions,
+) {
 	// s.engineMu is locked here
 	if len(block.SkippedTxs) != 0 {
 		log.Crit("Building with SkippedTxs isn't supported")
 	}
-	block, blockEvents := s.spillBlockEvents(block)
 
-	// Assemble block data
-	evmBlock := &evmcore.EvmBlock{
-		EvmHeader:    *evmcore.ToEvmHeader(block),
-		Transactions: make(types.Transactions, 0, len(block.Events)*10),
-	}
-	for _, e := range blockEvents {
-		evmBlock.Transactions = append(evmBlock.Transactions, e.Transactions...)
+	events := s.spillBlockEvents(block)
+	transactions := make(types.Transactions, 0, len(events)*10)
+	for _, e := range events {
+		transactions = append(transactions, e.Transactions...)
 	}
 
-	return evmBlock, blockEvents
+	return events, transactions
 }
 
 // onEpochSealed applies the new epoch sealing state

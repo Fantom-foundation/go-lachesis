@@ -72,6 +72,7 @@ func (a *App) BeginBlock(
 		totalFee:     big.NewInt(0),
 		txCount:      0,
 	}
+	a.ctx.evmBlock.GasUsed = 0
 	a.ctx.gp.AddGas(evmBlock.GasLimit)
 
 	a.updateValidationScores(epoch, info.Index, blockParticipated)
