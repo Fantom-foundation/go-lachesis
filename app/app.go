@@ -36,7 +36,7 @@ type (
 		totalFee     *big.Int
 		receipts     types.Receipts
 		gp           *evmcore.GasPool
-		txN          uint
+		txCount      uint
 	}
 )
 
@@ -72,16 +72,14 @@ func (a *App) BeginBlock(
 		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),
-		txN:          0,
+		txCount:      0,
 	}
 	a.ctx.gp.AddGas(evmBlock.GasLimit)
 
 }
 
-// EndBlock is a prototype of ABCIApplication.EndBlock
-func (a *App) EndBlock(
-	txPositions map[common.Hash]TxPosition,
-) (
+// endBlock is a prototype of ABCIApplication.EndBlock
+func (a *App) endBlock() (
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
 	receipts types.Receipts,
@@ -115,7 +113,7 @@ func (a *App) EndBlock(
 	}
 
 	// Process PoI/score changes
-	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
+	a.updateOriginationScores()
 	a.updateUsersPOI(block, evmBlock, receipts)
 	a.updateStakersPOI(block)
 

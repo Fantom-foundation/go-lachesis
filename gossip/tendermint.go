@@ -2,8 +2,10 @@ package gossip
 
 import (
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/tendermint/tendermint/abci/types"
+
+	"github.com/Fantom-foundation/go-lachesis/app"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
 func (s *Service) initApp() {
@@ -12,13 +14,19 @@ func (s *Service) initApp() {
 	// TODO: check the resp
 }
 
-func (s *Service) deliverTxRequest(tx *eth.Transaction) types.RequestDeliverTx {
-	buf, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		s.Log.Crit("Failed to encode rlp", "err", err)
+func deliverTxRequest(tx *eth.Transaction, originator idx.StakerID) types.RequestDeliverTx {
+	t := app.DagTx{
+		Transaction: tx,
+		Originator:  originator,
 	}
 
 	return types.RequestDeliverTx{
-		Tx: buf,
+		Tx: t.Bytes(),
+	}
+}
+
+func endBlockRequest(block idx.Block) types.RequestEndBlock {
+	return types.RequestEndBlock{
+		Height: int64(block),
 	}
 }
