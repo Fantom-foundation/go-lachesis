@@ -52,9 +52,16 @@ func New(cfg Config, s *Store) *App {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(
-	block *inter.Block, evmBlock *evmcore.EvmBlock, cheaters inter.Cheaters, stateHash common.Hash,
+	block *inter.Block,
+	evmBlock *evmcore.EvmBlock,
+	cheaters inter.Cheaters,
+	stateHash common.Hash,
+	blockParticipated map[idx.StakerID]bool,
 ) {
 	a.store.SetBlock(blockInfo(block))
+	epoch := a.GetEpoch()
+	a.updateValidationScores(epoch, block.Index, blockParticipated)
+
 	block.SkippedTxs = make([]uint, 0, len(evmBlock.Transactions))
 	a.ctx = &blockContext{
 		block:        block,
@@ -67,14 +74,13 @@ func (a *App) BeginBlock(
 		totalFee:     big.NewInt(0),
 		txN:          0,
 	}
-
 	a.ctx.gp.AddGas(evmBlock.GasLimit)
+
 }
 
 // EndBlock is a prototype of ABCIApplication.EndBlock
 func (a *App) EndBlock(
 	txPositions map[common.Hash]TxPosition,
-	blockParticipated map[idx.StakerID]bool,
 ) (
 	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
@@ -110,7 +116,6 @@ func (a *App) EndBlock(
 
 	// Process PoI/score changes
 	a.updateOriginationScores(epoch, evmBlock, receipts, txPositions)
-	a.updateValidationScores(epoch, block, blockParticipated)
 	a.updateUsersPOI(block, evmBlock, receipts)
 	a.updateStakersPOI(block)
 

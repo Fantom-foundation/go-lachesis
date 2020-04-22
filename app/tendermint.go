@@ -52,3 +52,15 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 		GasUsed:   int64(receipt.GasUsed),
 	}
 }
+
+/*
+// EndBlock implements ABCIApplication.EndBlock
+func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+	return types.ResponseEndBlock{
+		ValidatorUpdates: types.ValidatorUpdates{
+			types.ValidatorUpdate{},
+			types.ValidatorUpdate{},
+		},
+	}
+}
+*/

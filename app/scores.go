@@ -49,10 +49,10 @@ func (a *App) updateOriginationScores(
 // updateValidationScores calculates the validation scores
 func (a *App) updateValidationScores(
 	epoch idx.Epoch,
-	block *inter.Block,
+	blockN idx.Block,
 	blockParticipated map[idx.StakerID]bool,
 ) {
-	blockTimeDiff := block.Time - a.blockTime(block.Index-1)
+	blockTimeDiff := a.blockTime(blockN) - a.blockTime(blockN-1)
 
 	// Calc validation scores
 	for _, it := range a.store.GetActiveSfcStakers() {
@@ -77,9 +77,9 @@ func (a *App) updateValidationScores(
 
 		// Add score for previous blocks, but no more than FrameLatency prev blocks
 		a.store.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(blockTimeDiff)))
-		for i := idx.Block(1); i <= missedNum && i < block.Index; i++ {
-			curBlockTime := a.blockTime(block.Index - i)
-			prevBlockTime := a.blockTime(block.Index - i - 1)
+		for i := idx.Block(1); i <= missedNum && i < blockN; i++ {
+			curBlockTime := a.blockTime(blockN - i)
+			prevBlockTime := a.blockTime(blockN - i - 1)
 			timeDiff := curBlockTime - prevBlockTime
 			a.store.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(timeDiff)))
 		}
