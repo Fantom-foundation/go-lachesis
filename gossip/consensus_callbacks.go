@@ -104,7 +104,7 @@ func (s *Service) applyNewState(
 	txPositions := make(map[common.Hash]app.TxPosition)
 	for _, e := range blockEvents {
 		for i, tx := range e.Transactions {
-			// If tx was met in multiple events, then assign to first ordered event
+			// if tx was met in multiple events, then assign to first ordered event
 			if _, ok := txPositions[tx.Hash()]; ok {
 				continue
 			}
@@ -168,7 +168,7 @@ func (s *Service) spillBlockEvents(block *inter.Block) (*inter.Block, inter.Even
 	}
 	gasPowerUsedSum := uint64(0)
 	// iterate in reversed order
-	for i := len(block.Events) - 1; ; i-- {
+	for i := len(block.Events) - 1; i >= 0; i-- {
 		id := block.Events[i]
 		e := s.store.GetEvent(id)
 		if e == nil {
@@ -181,9 +181,6 @@ func (s *Service) spillBlockEvents(block *inter.Block) (*inter.Block, inter.Even
 			// spill
 			block.Events = block.Events[i+1:]
 			fullEvents = fullEvents[i+1:]
-			break
-		}
-		if i == 0 {
 			break
 		}
 	}
@@ -207,7 +204,6 @@ func (s *Service) assembleEvmBlock(
 	}
 	for _, e := range blockEvents {
 		evmBlock.Transactions = append(evmBlock.Transactions, e.Transactions...)
-		blockEvents = append(blockEvents, e)
 	}
 
 	return evmBlock, blockEvents
