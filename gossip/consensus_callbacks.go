@@ -117,17 +117,25 @@ func (s *Service) applyNewState(
 	}
 
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	s.abciApp.BeginBlock(block, evmBlock, cheaters, stateHash, s.blockParticipated)
+	s.abciApp.BeginBlock(evmBlock, cheaters, stateHash, s.blockParticipated)
 
-	for _, tx := range evmBlock.Transactions {
+	block.SkippedTxs = make([]uint, 0, len(evmBlock.Transactions))
+	for i, tx := range evmBlock.Transactions {
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
 		resp := s.abciApp.DeliverTx(req)
+		if resp.Info == "skipped" { // TODO: replce Info with Code
+			block.SkippedTxs = append(block.SkippedTxs, uint(i))
+		}
 		if resp.Log != "" {
 			s.Log.Info("tx processed", "log", resp.Log)
 		}
 	}
 
-	block, evmBlock, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	evmBlock, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
+	block.TxHash = evmBlock.TxHash
+	block.Root = evmBlock.Root
+	block.GasUsed = evmBlock.GasUsed
 
 	// memorize block position of each tx, for indexing and origination scores
 	for i, tx := range evmBlock.Transactions {

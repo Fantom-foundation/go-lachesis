@@ -52,7 +52,7 @@ func ToEvmHeader(block *inter.Block) *EvmHeader {
 	return &EvmHeader{
 		Hash:       common.Hash(block.Atropos),
 		ParentHash: common.Hash(block.PrevHash),
-		Root:       common.Hash(block.Root),
+		Root:       block.Root,
 		TxHash:     block.TxHash,
 		Number:     big.NewInt(int64(block.Index)),
 		Time:       block.Time,

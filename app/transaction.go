@@ -19,16 +19,17 @@ type DagTx struct {
 func (tx *DagTx) Bytes() []byte {
 	buf, err := rlp.EncodeToBytes(tx)
 	if err != nil {
-		log.Crit("Failed to encode rlp", "err", err)
+		log.Crit("Failed to encode DagTx", "err", err)
 	}
 	return buf
 }
 
 // BytesToDagTx converts bytes to tx.
-func BytesToDagTx(buf []byte) (tx *DagTx) {
+func BytesToDagTx(buf []byte) *DagTx {
+	tx := new(DagTx)
 	err := rlp.DecodeBytes(buf, tx)
 	if err != nil {
-		log.Crit("Failed to decode rlp", "err", err, "size", len(buf))
+		log.Crit("Failed to decode DagTx", "err", err, "size", len(buf))
 	}
 	return tx
 }

@@ -119,7 +119,7 @@ func (a *App) getRewardPerSec(epoch idx.Epoch) *big.Int {
 // processSfc applies the new SFC state
 func (a *App) processSfc(
 	epoch idx.Epoch,
-	block *inter.Block,
+	block *BlockInfo,
 	receipts types.Receipts,
 	cheaters inter.Cheaters,
 	stats *sfctype.EpochStats,

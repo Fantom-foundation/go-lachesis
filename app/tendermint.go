@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
-	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 
 // InitChain implements ABCIApplication.InitChain.
@@ -33,16 +32,16 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	tx := dagTx.Transaction
 
 	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.block.GasUsed, a.ctx.evmBlock, a.ctx.statedb, vm.Config{}, strict)
+		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.evmBlock.GasUsed, a.ctx.evmBlock, a.ctx.statedb, vm.Config{}, strict)
 	a.ctx.txCount++
 	if !strict && (skip || err != nil) {
-		a.ctx.block.SkippedTxs = append(a.ctx.block.SkippedTxs, a.ctx.txCount)
 		return types.ResponseDeliverTx{
 			Info:      "skipped",
 			GasWanted: int64(tx.Gas()),
 			GasUsed:   0,
 		}
 	}
+	a.ctx.evmBlock.Transactions = append(a.ctx.evmBlock.Transactions, tx)
 
 	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
 	a.ctx.receipts = append(a.ctx.receipts, receipt)
@@ -60,13 +59,12 @@ func (a *App) EndBlock(
 	req types.RequestEndBlock,
 ) (
 	// TODO: return only types.ResponseEndBlock
-	block *inter.Block,
 	evmBlock *evmcore.EvmBlock,
 	receipts eth.Receipts,
 	sealEpoch bool,
 ) {
-	if a.ctx.block.Index != idx.Block(req.Height) {
-		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
+	if a.ctx.info.Index != idx.Block(req.Height) {
+		a.Log.Crit("missed block", "current", a.ctx.info.Index, "got", req.Height)
 	}
 
 	return a.endBlock()

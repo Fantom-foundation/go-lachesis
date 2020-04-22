@@ -18,11 +18,11 @@ type BlockInfo struct {
 	Time       inter.Timestamp
 }
 
-func blockInfo(b *inter.Block) *BlockInfo {
+func blockInfo(b *evmcore.EvmHeader) *BlockInfo {
 	return &BlockInfo{
-		Index:      b.Index,
-		Hash:       b.Atropos,
-		ParentHash: b.PrevHash,
+		Index:      idx.Block(b.Number.Uint64()),
+		Hash:       hash.Event(b.Hash),
+		ParentHash: hash.Event(b.ParentHash),
 		Root:       b.Root,
 		Time:       b.Time,
 	}

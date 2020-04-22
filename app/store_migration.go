@@ -1,6 +1,7 @@
 package app
 
 import (
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
@@ -141,7 +142,8 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 				if err != nil {
 					return
 				}
-				info := blockInfo(block)
+
+				info := blockInfo(evmcore.ToEvmHeader(block))
 				s.set(dst, it.Key(), info)
 			}
 
