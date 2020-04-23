@@ -103,13 +103,13 @@ func (s *Service) applyNewState(
 		EvmHeader: *evmcore.ToEvmHeader(block),
 	}
 
-	blockEvents, transactions := s.usedEvents(block)
-	unusedEventCount := len(block.Events) - len(blockEvents)
-	block.Events = block.Events[unusedEventCount:]
+	events, transactions := s.usedEvents(block)
+	unusedCount := len(block.Events) - len(events)
+	block.Events = block.Events[unusedCount:]
 
 	// memorize position of each tx, for indexing and origination scores
 	txPositions := make(map[common.Hash]app.TxPosition)
-	for _, e := range blockEvents {
+	for _, e := range events {
 		for i, tx := range e.Transactions {
 			// if tx was met in multiple events, then assign to first ordered event
 			if _, ok := txPositions[tx.Hash()]; ok {
@@ -124,24 +124,28 @@ func (s *Service) applyNewState(
 	}
 
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	s.abciApp.BeginBlock(evmBlock, cheaters, stateHash, s.blockParticipated)
+	s.abciApp.BeginBlock(evmBlock.EvmHeader, cheaters, stateHash, s.blockParticipated)
 
 	block.SkippedTxs = make([]uint, 0, len(transactions))
 	for i, tx := range transactions {
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
 		resp := s.abciApp.DeliverTx(req)
+		evmBlock.GasUsed += uint64(resp.GasUsed)
 		if resp.Info == "skipped" { // TODO: replce Info with Code
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
+		} else {
+			evmBlock.Transactions = append(evmBlock.Transactions, tx)
 		}
 		if resp.Log != "" {
 			s.Log.Info("tx processed", "log", resp.Log)
 		}
 	}
 
-	evmBlock, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	root, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	evmBlock.Root = root
 	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
 	block.TxHash = evmBlock.TxHash
-	block.Root = evmBlock.Root
+	block.Root = root
 	block.GasUsed = evmBlock.GasUsed
 
 	// memorize block position of each tx, for indexing and origination scores

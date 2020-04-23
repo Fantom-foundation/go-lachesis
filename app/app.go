@@ -28,7 +28,8 @@ type (
 
 	blockContext struct {
 		info         *BlockInfo
-		evmBlock     *evmcore.EvmBlock
+		evmHeader    *evmcore.EvmHeader
+		txs          types.Transactions
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
 		cheaters     inter.Cheaters
@@ -52,18 +53,18 @@ func New(cfg Config, s *Store) *App {
 
 // BeginBlock is a prototype of ABCIApplication.BeginBlock
 func (a *App) BeginBlock(
-	evmBlock *evmcore.EvmBlock,
+	evmHeader evmcore.EvmHeader,
 	cheaters inter.Cheaters,
 	stateHash common.Hash,
 	blockParticipated map[idx.StakerID]bool,
 ) {
-	info := blockInfo(&evmBlock.EvmHeader)
+	info := blockInfo(&evmHeader)
 	a.store.SetBlock(info)
 	epoch := a.GetEpoch()
 
 	a.ctx = &blockContext{
 		info:         info,
-		evmBlock:     evmBlock,
+		evmHeader:    &evmHeader,
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		cheaters:     cheaters,
@@ -72,60 +73,55 @@ func (a *App) BeginBlock(
 		totalFee:     big.NewInt(0),
 		txCount:      0,
 	}
-	a.ctx.evmBlock.GasUsed = 0
-	a.ctx.gp.AddGas(evmBlock.GasLimit)
+	a.ctx.evmHeader.GasUsed = 0
+	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
 	a.updateValidationScores(epoch, info.Index, blockParticipated)
 }
 
 // endBlock is a prototype of ABCIApplication.EndBlock
 func (a *App) endBlock() (
-	evmBlock *evmcore.EvmBlock,
-	receipts types.Receipts,
-	sealEpoch bool,
+	common.Hash,
+	types.Receipts,
+	bool,
 ) {
-	var (
-		epoch = a.GetEpoch()
-		err   error
-	)
+	defer func() {
+		// free resources
+		a.ctx = nil
+		a.store.FlushState()
+	}()
 
-	info := a.ctx.info
-	evmBlock = a.ctx.evmBlock
-	receipts = a.ctx.receipts
-	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(receipts)
+	sealEpoch := a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
 
-	for _, r := range receipts {
+	for _, r := range a.ctx.receipts {
 		a.store.IndexLogs(r.Logs...)
 	}
 
-	if a.config.TxIndex && receipts.Len() > 0 {
-		a.store.SetReceipts(info.Index, receipts)
+	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
+		a.store.SetReceipts(a.ctx.info.Index, a.ctx.receipts)
 	}
 
 	// Process PoI/score changes
-	a.updateOriginationScores()
-	a.updateUsersPOI(info, evmBlock, receipts)
-	a.updateStakersPOI(info)
+	a.updateOriginationScores(sealEpoch)
+	a.updateUsersPOI(a.ctx.info, a.ctx.txs, a.ctx.receipts)
+	a.updateStakersPOI(a.ctx.info)
 
 	// Process SFC contract transactions
-	stats := a.updateEpochStats(epoch, info.Time, a.ctx.totalFee, sealEpoch)
-	a.processSfc(epoch, a.ctx.info, receipts, a.ctx.cheaters, stats)
-	evmBlock.Root, err = a.ctx.statedb.Commit(true)
+	epoch := a.GetEpoch()
+	stats := a.updateEpochStats(epoch, a.ctx.info.Time, a.ctx.totalFee, sealEpoch)
+	a.processSfc(epoch, a.ctx.info, a.ctx.receipts, a.ctx.cheaters, stats)
+	root, err := a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
 
 	a.incLastBlock()
 	if sealEpoch {
-		a.SetLastVoting(info.Index, info.Time)
+		a.SetLastVoting(a.ctx.info.Index, a.ctx.info.Time)
 		a.incEpoch()
 	}
 
-	// free resources
-	a.ctx = nil
-	a.store.FlushState()
-
-	return
+	return root, a.ctx.receipts, sealEpoch
 }
 
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {

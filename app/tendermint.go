@@ -5,11 +5,10 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 
+	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/tendermint/tendermint/abci/types"
-
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 )
 
 // InitChain implements ABCIApplication.InitChain.
@@ -32,7 +31,7 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	tx := dagTx.Transaction
 
 	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.evmBlock.GasUsed, a.ctx.evmBlock, a.ctx.statedb, vm.Config{}, strict)
+		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.evmHeader.GasUsed, a.ctx.evmHeader, a.ctx.statedb, vm.Config{}, strict)
 	a.ctx.txCount++
 	if !strict && (skip || err != nil) {
 		return types.ResponseDeliverTx{
@@ -41,10 +40,10 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 			GasUsed:   0,
 		}
 	}
-	a.ctx.evmBlock.Transactions = append(a.ctx.evmBlock.Transactions, tx)
 
-	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
+	a.ctx.txs = append(a.ctx.txs, tx)
 	a.ctx.receipts = append(a.ctx.receipts, receipt)
+	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
 	a.store.AddDirtyOriginationScore(dagTx.Originator, fee)
 
 	return types.ResponseDeliverTx{
@@ -59,7 +58,7 @@ func (a *App) EndBlock(
 	req types.RequestEndBlock,
 ) (
 	// TODO: return only types.ResponseEndBlock
-	evmBlock *evmcore.EvmBlock,
+	root common.Hash,
 	receipts eth.Receipts,
 	sealEpoch bool,
 ) {

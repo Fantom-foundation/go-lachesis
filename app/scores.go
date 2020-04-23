@@ -24,8 +24,8 @@ type BlocksMissed struct {
 }
 
 // updateOriginationScores calculates the origination scores
-func (a *App) updateOriginationScores() {
-	if !a.ctx.sealEpoch {
+func (a *App) updateOriginationScores(sealEpoch bool) {
+	if !sealEpoch {
 		return
 	}
 	a.store.DelAllActiveOriginationScores()

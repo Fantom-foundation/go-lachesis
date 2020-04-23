@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
@@ -18,12 +17,12 @@ func PoiPeriod(t inter.Timestamp, config *lachesis.EconomyConfig) uint64 {
 }
 
 // updateUsersPOI calculates the Proof Of Importance weights for users
-func (a *App) updateUsersPOI(block *BlockInfo, evmBlock *evmcore.EvmBlock, receipts types.Receipts) {
+func (a *App) updateUsersPOI(block *BlockInfo, txs types.Transactions, receipts types.Receipts) {
 	// User POI calculations
 	poiPeriod := PoiPeriod(block.Time, &a.config.Net.Economy)
 	a.store.AddPoiFee(poiPeriod, a.ctx.totalFee)
 
-	for i, tx := range evmBlock.Transactions {
+	for i, tx := range txs {
 		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
 
 		signer := types.NewEIP155Signer(a.config.Net.EvmChainConfig().ChainID)
