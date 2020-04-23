@@ -17,12 +17,12 @@ import (
 type (
 	// App is a prototype of Tendermint ABCI Application
 	App struct {
-		config Config
-		store  *Store
-		ctx    *blockContext
-
+		config     Config
+		store      *Store
+		ctx        *blockContext
 		checkpoint Checkpoint
 
+		Feed
 		logger.Instance
 	}
 

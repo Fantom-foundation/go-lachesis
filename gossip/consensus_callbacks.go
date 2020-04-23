@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -14,7 +13,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
@@ -256,16 +254,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	// TODO: legacy sanity check, remove it after few releases
-	legacySealEpoch := s.legacyShouldSealEpoch(block, decidedFrame, cheaters)
-
-	block, evmBlock, receipts, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
-
-	// TODO: legacy sanity check, remove it after few releases
-	legacySealEpoch = legacySealEpoch || sfctype.EpochIsForceSealed(receipts)
-	if legacySealEpoch != sealEpoch {
-		panic("SealEpoch is not compatible with legacy")
-	}
+	block, evmBlock, _, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)
@@ -278,18 +267,6 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 			s.store.SetTxPosition(tx.Hash(), &position)
 		}
 	}
-
-	var logs []*types.Log
-	for _, r := range receipts {
-		for _, l := range r.Logs {
-			logs = append(logs, l)
-		}
-	}
-
-	// Notify about new block and txs
-	s.feed.newBlock.Send(evmcore.ChainHeadNotify{Block: evmBlock})
-	s.feed.newTxs.Send(core.NewTxsEvent{Txs: evmBlock.Transactions})
-	s.feed.newLogs.Send(logs)
 
 	// Trace by which event this block was confirmed (only for API)
 	if s.config.DecisiveEventsIndex {

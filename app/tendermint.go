@@ -3,10 +3,12 @@ package app
 import (
 	"reflect"
 
+	"github.com/ethereum/go-ethereum/core"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/tendermint/tendermint/abci/types"
 
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
@@ -90,6 +92,21 @@ func (a *App) Commit() types.ResponseCommit {
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
+
+	// notify
+	var logs []*eth.Log
+	for _, r := range a.ctx.receipts {
+		for _, l := range r.Logs {
+			logs = append(logs, l)
+		}
+	}
+	a.Feed.newBlock.Send(evmcore.ChainHeadNotify{
+		Block: &evmcore.EvmBlock{
+			EvmHeader:    *a.ctx.header,
+			Transactions: a.ctx.txs,
+		}})
+	a.Feed.newTxs.Send(core.NewTxsEvent{Txs: a.ctx.txs})
+	a.Feed.newLogs.Send(logs)
 
 	// free resources
 	a.ctx = nil

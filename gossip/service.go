@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/node"
@@ -48,9 +47,10 @@ type ServiceFeed struct {
 	newEpoch        notify.Feed
 	newPack         notify.Feed
 	newEmittedEvent notify.Feed
-	newBlock        notify.Feed
-	newTxs          notify.Feed
-	newLogs         notify.Feed
+}
+
+func (f *ServiceFeed) Close() {
+	f.scope.Close()
 }
 
 func (f *ServiceFeed) SubscribeNewEpoch(ch chan<- idx.Epoch) notify.Subscription {
@@ -63,18 +63,6 @@ func (f *ServiceFeed) SubscribeNewPack(ch chan<- idx.Pack) notify.Subscription {
 
 func (f *ServiceFeed) SubscribeNewEmitted(ch chan<- *inter.Event) notify.Subscription {
 	return f.scope.Track(f.newEmittedEvent.Subscribe(ch))
-}
-
-func (f *ServiceFeed) SubscribeNewBlock(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
-	return f.scope.Track(f.newBlock.Subscribe(ch))
-}
-
-func (f *ServiceFeed) SubscribeNewTxs(ch chan<- core.NewTxsEvent) notify.Subscription {
-	return f.scope.Track(f.newTxs.Subscribe(ch))
-}
-
-func (f *ServiceFeed) SubscribeNewLogs(ch chan<- []*types.Log) notify.Subscription {
-	return f.scope.Track(f.newLogs.Subscribe(ch))
 }
 
 // Service implements go-ethereum/node.Service interface.
@@ -306,6 +294,8 @@ func (s *Service) Start(srv *p2p.Server) error {
 		}(s.Topic)
 	}
 
+	s.abciApp.Start()
+
 	s.pm.Start(srv.MaxPeers)
 
 	s.serverPool.start(srv, s.Topic)
@@ -323,7 +313,8 @@ func (s *Service) Stop() error {
 	s.emitter.StopEventEmission()
 	s.pm.Stop()
 	s.wg.Wait()
-	s.feed.scope.Close()
+	s.feed.Close()
+	s.abciApp.Stop()
 
 	// flush the state at exit, after all the routines stopped
 	s.engineMu.Lock()
