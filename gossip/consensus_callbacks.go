@@ -126,6 +126,7 @@ func (s *Service) applyNewState(
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	s.abciApp.BeginBlock(evmBlock.EvmHeader, cheaters, stateHash, s.blockParticipated)
 
+	evmBlock.Transactions = make(types.Transactions, 0, len(transactions))
 	block.SkippedTxs = make([]uint, 0, len(transactions))
 	for i, tx := range transactions {
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)

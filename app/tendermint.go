@@ -31,7 +31,7 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	tx := dagTx.Transaction
 
 	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.evmHeader.GasUsed, a.ctx.evmHeader, a.ctx.statedb, vm.Config{}, strict)
+		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.header.GasUsed, a.ctx.header, a.ctx.statedb, vm.Config{}, strict)
 	a.ctx.txCount++
 	if !strict && (skip || err != nil) {
 		return types.ResponseDeliverTx{
@@ -62,8 +62,8 @@ func (a *App) EndBlock(
 	receipts eth.Receipts,
 	sealEpoch bool,
 ) {
-	if a.ctx.info.Index != idx.Block(req.Height) {
-		a.Log.Crit("missed block", "current", a.ctx.info.Index, "got", req.Height)
+	if a.ctx.block.Index != idx.Block(req.Height) {
+		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
 	}
 
 	return a.endBlock()

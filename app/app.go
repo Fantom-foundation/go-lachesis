@@ -27,8 +27,8 @@ type (
 	}
 
 	blockContext struct {
-		info         *BlockInfo
-		evmHeader    *evmcore.EvmHeader
+		block        *BlockInfo
+		header       *evmcore.EvmHeader
 		txs          types.Transactions
 		statedb      *state.StateDB
 		evmProcessor *evmcore.StateProcessor
@@ -63,8 +63,8 @@ func (a *App) BeginBlock(
 	epoch := a.GetEpoch()
 
 	a.ctx = &blockContext{
-		info:         info,
-		evmHeader:    &evmHeader,
+		block:        info,
+		header:       &evmHeader,
 		statedb:      a.store.StateDB(stateHash),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		cheaters:     cheaters,
@@ -73,7 +73,7 @@ func (a *App) BeginBlock(
 		totalFee:     big.NewInt(0),
 		txCount:      0,
 	}
-	a.ctx.evmHeader.GasUsed = 0
+	a.ctx.header.GasUsed = 0
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
 	a.updateValidationScores(epoch, info.Index, blockParticipated)
@@ -98,18 +98,18 @@ func (a *App) endBlock() (
 	}
 
 	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
-		a.store.SetReceipts(a.ctx.info.Index, a.ctx.receipts)
+		a.store.SetReceipts(a.ctx.block.Index, a.ctx.receipts)
 	}
 
 	// Process PoI/score changes
 	a.updateOriginationScores(sealEpoch)
-	a.updateUsersPOI(a.ctx.info, a.ctx.txs, a.ctx.receipts)
-	a.updateStakersPOI(a.ctx.info)
+	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
+	a.updateStakersPOI(a.ctx.block)
 
 	// Process SFC contract transactions
 	epoch := a.GetEpoch()
-	stats := a.updateEpochStats(epoch, a.ctx.info.Time, a.ctx.totalFee, sealEpoch)
-	a.processSfc(epoch, a.ctx.info, a.ctx.receipts, a.ctx.cheaters, stats)
+	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
+	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
 	root, err := a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
@@ -117,7 +117,7 @@ func (a *App) endBlock() (
 
 	a.incLastBlock()
 	if sealEpoch {
-		a.SetLastVoting(a.ctx.info.Index, a.ctx.info.Time)
+		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
 		a.incEpoch()
 	}
 
