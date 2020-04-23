@@ -161,7 +161,7 @@ Passphrase: {{.InputLine "foobar"}}
 func TestUnlockFlagWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--nocheckversion",
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a")
 
 	cli.Expect(`
@@ -230,7 +230,7 @@ func TestUnlockFlagPasswordFile(t *testing.T) {
 func TestUnlockFlagPasswordFileWrongPassword(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
 	cli := exec(t,
-		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
+		"--datadir", datadir, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--nocheckversion",
 		"--password", "testdata/wrong-passwords.txt", "--unlock", "0,2")
 
 	cli.Expect(`
@@ -279,7 +279,7 @@ In order to avoid this warning, you need to remove the following duplicate key f
 func TestUnlockFlagAmbiguousWrongPassword(t *testing.T) {
 	store := filepath.Join("testdata", "dupes")
 	cli := exec(t,
-		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0",
+		"--keystore", store, "--nat", "none", "--nodiscover", "--maxpeers", "0", "--port", "0", "--nocheckversion",
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a")
 
 	// Helper for the expect template, returns absolute keystore path.

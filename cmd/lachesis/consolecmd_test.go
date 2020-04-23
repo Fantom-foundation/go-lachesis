@@ -64,7 +64,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 		ipc = filepath.Join(ws, "lachesis.ipc")
 	}
 	cli := exec(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--nocheckversion",
 		"--ipcpath", ipc)
 
 	waitForEndpoint(t, ipc, 10*time.Second)
@@ -77,7 +77,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 func TestHTTPAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 	cli := exec(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--nocheckversion",
 		"--rpc", "--rpcport", port)
 
 	endpoint := "http://127.0.0.1:" + port
@@ -92,7 +92,7 @@ func TestWSAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 
 	cli := exec(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--nocheckversion",
 		"--ws", "--wsport", port)
 
 	endpoint := "ws://127.0.0.1:" + port
