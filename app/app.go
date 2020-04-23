@@ -10,7 +10,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 )
 
@@ -78,38 +77,6 @@ func (a *App) BeginBlock(
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
 	a.updateValidationScores(epoch, info.Index, blockParticipated)
-}
-
-// endBlock is a prototype of ABCIApplication.EndBlock
-func (a *App) endBlock() (types.Receipts, bool) {
-
-	sealEpoch := a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
-
-	for _, r := range a.ctx.receipts {
-		a.store.IndexLogs(r.Logs...)
-	}
-
-	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
-		a.store.SetReceipts(a.ctx.block.Index, a.ctx.receipts)
-	}
-
-	// Process PoI/score changes
-	a.updateOriginationScores(sealEpoch)
-	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
-	a.updateStakersPOI(a.ctx.block)
-
-	// Process SFC contract transactions
-	epoch := a.GetEpoch()
-	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
-	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
-
-	a.incLastBlock()
-	if sealEpoch {
-		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
-		a.incEpoch()
-	}
-
-	return a.ctx.receipts, sealEpoch
 }
 
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {

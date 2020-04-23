@@ -16,17 +16,14 @@ import (
 )
 
 type EvmStateReader struct {
-	// *ServiceFeed
 	engineMu *sync.RWMutex
 	engine   Consensus
-
-	store *Store
-	app   *app.App
+	store    *Store
+	app      *app.App
 }
 
 func (s *Service) GetEvmStateReader() *EvmStateReader {
 	return &EvmStateReader{
-		// ServiceFeed: &s.feed,
 		engineMu: s.engineMu,
 		engine:   s.engine,
 		store:    s.store,

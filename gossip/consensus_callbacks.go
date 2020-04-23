@@ -88,7 +88,6 @@ func (s *Service) applyNewState(
 ) (
 	*inter.Block,
 	*evmcore.EvmBlock,
-	types.Receipts,
 	map[common.Hash]app.TxPosition,
 	common.Hash,
 	bool,
@@ -142,7 +141,7 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	_, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	_, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
 	commit := s.abciApp.Commit()
 	evmBlock.Root = common.BytesToHash(commit.Data)
 	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
@@ -178,7 +177,7 @@ func (s *Service) applyNewState(
 		"txs", len(evmBlock.Transactions),
 		"t", time.Since(start))
 
-	return block, evmBlock, receipts, txPositions, appHash, sealEpoch
+	return block, evmBlock, txPositions, appHash, sealEpoch
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
@@ -254,7 +253,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, evmBlock, _, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
+	block, evmBlock, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)

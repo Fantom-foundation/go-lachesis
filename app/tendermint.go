@@ -10,6 +10,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 )
 
 const (
@@ -62,27 +63,39 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 
 // EndBlock signals the end of a block, returns changes to the validator set.
 // It implements ABCIApplication.EndBlock.
-func (a *App) EndBlock(
-	req types.RequestEndBlock,
-) (
-	resp types.ResponseEndBlock,
-	receipts eth.Receipts,
-	sealEpoch bool,
-) {
+func (a *App) EndBlock(req types.RequestEndBlock) (types.ResponseEndBlock, bool) {
 	if a.ctx.block.Index != idx.Block(req.Height) {
 		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
 	}
 
-	resp = types.ResponseEndBlock{
-		ConsensusParamUpdates: &types.ConsensusParams{},
-		ValidatorUpdates: types.ValidatorUpdates{
-			types.ValidatorUpdate{},
-			types.ValidatorUpdate{},
-		},
+	sealEpoch := a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
+
+	for _, r := range a.ctx.receipts {
+		a.store.IndexLogs(r.Logs...)
 	}
 
-	receipts, sealEpoch = a.endBlock()
-	return
+	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
+		a.store.SetReceipts(a.ctx.block.Index, a.ctx.receipts)
+	}
+
+	// Process PoI/score changes
+	a.updateOriginationScores(sealEpoch)
+	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
+	a.updateStakersPOI(a.ctx.block)
+
+	// Process SFC contract transactions
+	epoch := a.GetEpoch()
+	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
+	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
+
+	a.incLastBlock()
+	if sealEpoch {
+		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
+		a.incEpoch()
+	}
+
+	// TODO: replace sealEpoch with response validator set changes.
+	return types.ResponseEndBlock{}, sealEpoch
 }
 
 // Commit the state and return the application Merkle root hash.
