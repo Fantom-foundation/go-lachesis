@@ -127,6 +127,7 @@ func (s *Service) applyNewState(
 	s.abciApp.BeginBlock(evmBlock.EvmHeader, cheaters, stateHash, s.blockParticipated)
 
 	evmBlock.Transactions = make(types.Transactions, 0, len(transactions))
+	gasUsed := make([]uint64, 0, len(transactions))
 	block.SkippedTxs = make([]uint, 0, len(transactions))
 	for i, tx := range transactions {
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
@@ -136,6 +137,7 @@ func (s *Service) applyNewState(
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
 		} else {
 			evmBlock.Transactions = append(evmBlock.Transactions, tx)
+			gasUsed = append(gasUsed, uint64(resp.GasUsed))
 		}
 		if resp.Log != "" {
 			s.Log.Info("tx processed", "log", resp.Log)
@@ -161,7 +163,7 @@ func (s *Service) applyNewState(
 
 	epoch := s.engine.GetEpoch()
 
-	s.incGasPowerRefund(epoch, evmBlock, receipts, txPositions, sealEpoch)
+	s.incGasPowerRefund(epoch, evmBlock, gasUsed, txPositions, sealEpoch)
 
 	// Process new epoch
 	if sealEpoch {

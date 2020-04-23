@@ -2,7 +2,6 @@ package gossip
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
@@ -14,15 +13,16 @@ const (
 )
 
 // incGasPowerRefund calculates the origination gas power refund
-func (s *Service) incGasPowerRefund(epoch idx.Epoch, evmBlock *evmcore.EvmBlock, receipts types.Receipts, txPositions map[common.Hash]app.TxPosition, sealEpoch bool) {
+func (s *Service) incGasPowerRefund(epoch idx.Epoch, evmBlock *evmcore.EvmBlock, gasUsed []uint64, txPositions map[common.Hash]app.TxPosition, sealEpoch bool) {
 	// Calc origination scores
 	for i, tx := range evmBlock.Transactions {
-		txEventPos := txPositions[receipts[i].TxHash]
+		txHash := tx.Hash()
+		txEventPos := txPositions[txHash]
 
-		if tx.Gas() < receipts[i].GasUsed {
-			s.Log.Crit("Transaction gas used is higher than tx gas limit", "tx", receipts[i].TxHash)
+		if tx.Gas() < gasUsed[i] {
+			s.Log.Crit("Transaction gas used is higher than tx gas limit", "tx", txHash)
 		}
-		notUsedGas := tx.Gas() - receipts[i].GasUsed
+		notUsedGas := tx.Gas() - gasUsed[i]
 		if notUsedGas >= minGasPowerRefund { // do not refund if refunding is more costly than refunded value
 			s.store.IncGasPowerRefund(epoch, txEventPos.Creator, notUsedGas)
 		}
