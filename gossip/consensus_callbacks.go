@@ -132,7 +132,7 @@ func (s *Service) applyNewState(
 		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
 		resp := s.abciApp.DeliverTx(req)
 		evmBlock.GasUsed += uint64(resp.GasUsed)
-		if resp.Info == "skipped" { // TODO: replce Info with Code
+		if resp.Code != txIsFullyValid {
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
 		} else {
 			evmBlock.Transactions = append(evmBlock.Transactions, tx)
@@ -142,11 +142,12 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	root, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
-	evmBlock.Root = root
+	_, receipts, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	commit := s.abciApp.Commit()
+	evmBlock.Root = common.BytesToHash(commit.Data)
 	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
 	block.TxHash = evmBlock.TxHash
-	block.Root = root
+	block.Root = evmBlock.Root
 	block.GasUsed = evmBlock.GasUsed
 
 	// memorize block position of each tx, for indexing and origination scores

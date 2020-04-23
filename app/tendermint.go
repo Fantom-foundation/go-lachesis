@@ -3,16 +3,19 @@ package app
 import (
 	"reflect"
 
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-
-	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/tendermint/tendermint/abci/types"
+
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+)
+
+const (
+	txIsSkipped = 1
 )
 
 // InitChain implements ABCIApplication.InitChain.
-// It should be Called once upon genesis.
+// It should be called once upon genesis.
 func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	chain := a.config.Net.ChainInfo()
 	if !reflect.DeepEqual(req, chain) {
@@ -23,7 +26,8 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	return types.ResponseInitChain{}
 }
 
-// DeliverTx implements ABCIApplication.DeliverTx
+// DeliverTx for full processing.
+// It implements ABCIApplication.DeliverTx.
 func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	const strict = false
 
@@ -35,6 +39,7 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	a.ctx.txCount++
 	if !strict && (skip || err != nil) {
 		return types.ResponseDeliverTx{
+			Code:      txIsSkipped,
 			Info:      "skipped",
 			GasWanted: int64(tx.Gas()),
 			GasUsed:   0,
@@ -53,12 +58,12 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	}
 }
 
-// EndBlock implements ABCIApplication.EndBlock
+// EndBlock signals the end of a block, returns changes to the validator set.
+// It implements ABCIApplication.EndBlock.
 func (a *App) EndBlock(
 	req types.RequestEndBlock,
 ) (
-	// TODO: return only types.ResponseEndBlock
-	root common.Hash,
+	resp types.ResponseEndBlock,
 	receipts eth.Receipts,
 	sealEpoch bool,
 ) {
@@ -66,13 +71,31 @@ func (a *App) EndBlock(
 		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
 	}
 
-	return a.endBlock()
-	/*
-		return types.ResponseEndBlock{
-			ValidatorUpdates: types.ValidatorUpdates{
-				types.ValidatorUpdate{},
-				types.ValidatorUpdate{},
-			},
-		}
-	*/
+	resp = types.ResponseEndBlock{
+		ConsensusParamUpdates: &types.ConsensusParams{},
+		ValidatorUpdates: types.ValidatorUpdates{
+			types.ValidatorUpdate{},
+			types.ValidatorUpdate{},
+		},
+	}
+
+	receipts, sealEpoch = a.endBlock()
+	return
+}
+
+// Commit the state and return the application Merkle root hash.
+// It implements ABCIApplication.Commit.
+func (a *App) Commit() types.ResponseCommit {
+	root, err := a.ctx.statedb.Commit(true)
+	if err != nil {
+		a.Log.Crit("Failed to commit state", "err", err)
+	}
+
+	// free resources
+	a.ctx = nil
+	a.store.FlushState()
+
+	return types.ResponseCommit{
+		Data: root.Bytes(),
+	}
 }

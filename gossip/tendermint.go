@@ -8,6 +8,10 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
+const (
+	txIsFullyValid = 0
+)
+
 func (s *Service) initApp() {
 	req := s.config.Net.ChainInfo()
 	_ = s.abciApp.InitChain(req)

@@ -51,7 +51,8 @@ func New(cfg Config, s *Store) *App {
 	}
 }
 
-// BeginBlock is a prototype of ABCIApplication.BeginBlock
+// BeginBlock signals the beginning of a block.
+// It implements ABCIApplication.BeginBlock (prototype).
 func (a *App) BeginBlock(
 	evmHeader evmcore.EvmHeader,
 	cheaters inter.Cheaters,
@@ -80,16 +81,7 @@ func (a *App) BeginBlock(
 }
 
 // endBlock is a prototype of ABCIApplication.EndBlock
-func (a *App) endBlock() (
-	common.Hash,
-	types.Receipts,
-	bool,
-) {
-	defer func() {
-		// free resources
-		a.ctx = nil
-		a.store.FlushState()
-	}()
+func (a *App) endBlock() (types.Receipts, bool) {
 
 	sealEpoch := a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
 
@@ -110,10 +102,6 @@ func (a *App) endBlock() (
 	epoch := a.GetEpoch()
 	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
 	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
-	root, err := a.ctx.statedb.Commit(true)
-	if err != nil {
-		a.Log.Crit("Failed to commit state", "err", err)
-	}
 
 	a.incLastBlock()
 	if sealEpoch {
@@ -121,7 +109,7 @@ func (a *App) endBlock() (
 		a.incEpoch()
 	}
 
-	return root, a.ctx.receipts, sealEpoch
+	return a.ctx.receipts, sealEpoch
 }
 
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {
