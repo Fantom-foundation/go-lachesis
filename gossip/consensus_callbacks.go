@@ -120,22 +120,27 @@ func (s *Service) applyNewState(
 		}
 	}
 
+	epoch := s.engine.GetEpoch()
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	s.abciApp.BeginBlock(evmBlock.EvmHeader, cheaters, stateHash, s.blockParticipated)
 
 	evmBlock.Transactions = make(types.Transactions, 0, len(transactions))
-	gasUsed := make([]uint64, 0, len(transactions))
 	block.SkippedTxs = make([]uint, 0, len(transactions))
 	for i, tx := range transactions {
-		req := deliverTxRequest(tx, txPositions[tx.Hash()].Creator)
+		originator := txPositions[tx.Hash()].Creator
+		req := deliverTxRequest(tx, originator)
 		resp := s.abciApp.DeliverTx(req)
 		evmBlock.GasUsed += uint64(resp.GasUsed)
+
 		if resp.Code != txIsFullyValid {
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
-		} else {
-			evmBlock.Transactions = append(evmBlock.Transactions, tx)
-			gasUsed = append(gasUsed, uint64(resp.GasUsed))
+			continue
 		}
+
+		evmBlock.Transactions = append(evmBlock.Transactions, tx)
+		notUsedGas := resp.GasWanted - resp.GasUsed
+		s.store.IncGasPowerRefund(epoch, originator, notUsedGas)
+
 		if resp.Log != "" {
 			s.Log.Info("tx processed", "log", resp.Log)
 		}
@@ -143,6 +148,7 @@ func (s *Service) applyNewState(
 
 	_, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
 	commit := s.abciApp.Commit()
+
 	evmBlock.Root = common.BytesToHash(commit.Data)
 	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
 	block.TxHash = evmBlock.TxHash
@@ -158,12 +164,10 @@ func (s *Service) applyNewState(
 		txPositions[tx.Hash()] = position
 	}
 
-	epoch := s.engine.GetEpoch()
-
-	s.incGasPowerRefund(epoch, evmBlock, gasUsed, txPositions, sealEpoch)
-
-	// Process new epoch
+	// process new epoch
 	if sealEpoch {
+		// prune not needed gas power records
+		s.store.DelGasPowerRefunds(epoch - 1)
 		s.onEpochSealed(block, cheaters)
 	}
 
@@ -172,7 +176,7 @@ func (s *Service) applyNewState(
 
 	log.Info("New block", "index", block.Index,
 		"atropos", block.Atropos,
-		"gasUsed", evmBlock.GasUsed,
+		"gasUsed", block.GasUsed,
 		"skipped_txs", len(block.SkippedTxs),
 		"txs", len(evmBlock.Transactions),
 		"t", time.Since(start))
