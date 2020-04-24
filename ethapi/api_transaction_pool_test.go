@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -570,23 +571,92 @@ func TestPublicTransactionPoolAPI_Sign(t *testing.T) {
 
 func TestPublicTransactionPoolAPI_GetBlockTPSByNumber(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	b := newTestBackend(t, false)
+
+	b.EXPECT().BlockByNumber(gomock.Any(), rpc.BlockNumber(1)).
+		Return(&evmcore.EvmBlock{
+		EvmHeader:    evmcore.EvmHeader{
+			Number:     big.NewInt(1),
+			Hash:       common.Hash{},
+			ParentHash: common.Hash{},
+			Root:       common.Hash{},
+			TxHash:     common.Hash{},
+			Time:       inter.Timestamp(1),
+			Coinbase:   common.Address{},
+			GasLimit:   0,
+			GasUsed:    0,
+		},
+		Transactions: nil,
+	}, nil).Times(1)
+	b.EXPECT().BlockByNumber(gomock.Any(), rpc.BlockNumber(2)).
+		Return(&evmcore.EvmBlock{
+			EvmHeader:    evmcore.EvmHeader{
+				Number:     big.NewInt(2),
+				Hash:       common.Hash{},
+				ParentHash: common.Hash{},
+				Root:       common.Hash{},
+				TxHash:     common.Hash{},
+				Time:       inter.Timestamp(2),
+				Coinbase:   common.Address{},
+				GasLimit:   0,
+				GasUsed:    0,
+			},
+			Transactions: types.Transactions{
+				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+			},
+		}, nil).Times(1)
 
 	nonceLock := new(AddrLocker)
 
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 	require.NotPanics(t, func() {
-		api.GetBlockTPSByNumber(ctx, rpc.LatestBlockNumber)
+		res := api.GetBlockTPSByNumber(ctx, 2)
+		require.NotNil(t, res)
+		require.Equal(t, hexutil.Uint(1000), *res)
 	})
 }
 func TestPublicTransactionPoolAPI_GetEpochTPSByNumber(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	b := newTestBackend(t, false)
+
+	b.EXPECT().ForEachEvent(gomock.Any(),gomock.Any(),gomock.Any()).Do(
+		func(ctx context.Context, epoch rpc.BlockNumber, onEvent func(*inter.Event) bool) error{
+			events := []*inter.Event{
+				{
+					EventHeader:  inter.EventHeader{
+						EventHeaderData: inter.EventHeaderData{
+							ClaimedTime:   inter.Timestamp(1),
+						},
+					},
+					Transactions: types.Transactions{
+						types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+					},
+				},
+				{
+					EventHeader:  inter.EventHeader{
+						EventHeaderData: inter.EventHeaderData{
+							ClaimedTime:   inter.Timestamp(2),
+						},
+					},
+					Transactions: types.Transactions{
+						types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+					},
+				},
+			}
+
+			for _, ev := range events {
+				onEvent(ev)
+			}
+
+			return nil
+		})
 
 	nonceLock := new(AddrLocker)
 
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 	require.NotPanics(t, func() {
-		api.GetEpochTPSByNumber(ctx, rpc.LatestBlockNumber)
+		res := api.GetEpochTPSByNumber(ctx, rpc.LatestBlockNumber)
+		require.NotNil(t, res)
+		require.Equal(t, hexutil.Uint(2000), *res)
 	})
 }

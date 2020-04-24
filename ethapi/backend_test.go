@@ -58,11 +58,13 @@ func mockAmBackend(t *testing.T) *AmBackend {
 	return b
 }
 
-func newTestBackend(t *testing.T) *MockBackend {
+func newTestBackend(t *testing.T, flags ...bool) *MockBackend {
 	ctrl := gomock.NewController(t)
 	b := NewMockBackend(ctrl)
 
-	initTestBackend(t, b)
+	if len(flags) < 1 || flags[0] == true {
+		initTestBackend(t, b)
+	}
 	return b
 }
 
