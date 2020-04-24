@@ -5,26 +5,28 @@
 package ethapi
 
 import (
-	context "context"
-	evmcore "github.com/Fantom-foundation/go-lachesis/evmcore"
-	hash "github.com/Fantom-foundation/go-lachesis/hash"
-	inter "github.com/Fantom-foundation/go-lachesis/inter"
-	idx "github.com/Fantom-foundation/go-lachesis/inter/idx"
-	pos "github.com/Fantom-foundation/go-lachesis/inter/pos"
-	sfctype "github.com/Fantom-foundation/go-lachesis/inter/sfctype"
-	accounts "github.com/ethereum/go-ethereum/accounts"
-	common "github.com/ethereum/go-ethereum/common"
-	state "github.com/ethereum/go-ethereum/core/state"
-	types "github.com/ethereum/go-ethereum/core/types"
-	vm "github.com/ethereum/go-ethereum/core/vm"
-	ethdb "github.com/ethereum/go-ethereum/ethdb"
-	event "github.com/ethereum/go-ethereum/event"
-	params "github.com/ethereum/go-ethereum/params"
-	rpc "github.com/ethereum/go-ethereum/rpc"
-	gomock "github.com/golang/mock/gomock"
-	big "math/big"
-	reflect "reflect"
-	time "time"
+	"context"
+	"math/big"
+	"reflect"
+	"time"
+
+	"github.com/ethereum/go-ethereum/accounts"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/golang/mock/gomock"
+
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
+	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 )
 
 // MockBackend is a mock of Backend interface
