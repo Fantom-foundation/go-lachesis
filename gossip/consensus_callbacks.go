@@ -87,7 +87,6 @@ func (s *Service) applyNewState(
 	cheaters inter.Cheaters,
 ) (
 	*inter.Block,
-	*evmcore.EvmBlock,
 	map[common.Hash]app.TxPosition,
 	common.Hash,
 	bool,
@@ -96,23 +95,19 @@ func (s *Service) applyNewState(
 
 	start := time.Now()
 
-	evmBlock := &evmcore.EvmBlock{
-		EvmHeader: *evmcore.ToEvmHeader(block),
-	}
-
-	events, transactions := s.usedEvents(block)
+	events, allTxs := s.usedEvents(block)
 	unusedCount := len(block.Events) - len(events)
 	block.Events = block.Events[unusedCount:]
 
 	// memorize position of each tx, for indexing and origination scores
-	txPositions := make(map[common.Hash]app.TxPosition)
+	allTxsPosition := make(map[common.Hash]app.TxPosition)
 	for _, e := range events {
 		for i, tx := range e.Transactions {
 			// if tx was met in multiple events, then assign to first ordered event
-			if _, ok := txPositions[tx.Hash()]; ok {
+			if _, ok := allTxsPosition[tx.Hash()]; ok {
 				continue
 			}
-			txPositions[tx.Hash()] = app.TxPosition{
+			allTxsPosition[tx.Hash()] = app.TxPosition{
 				Event:       e.Hash(),
 				Creator:     e.Creator,
 				EventOffset: uint32(i),
@@ -122,22 +117,24 @@ func (s *Service) applyNewState(
 
 	epoch := s.engine.GetEpoch()
 	stateHash := s.store.GetBlock(block.Index - 1).Root
-	s.abciApp.BeginBlock(evmBlock.EvmHeader, cheaters, stateHash, s.blockParticipated)
+	evmHeader := evmcore.ToEvmHeader(block)
 
-	evmBlock.Transactions = make(types.Transactions, 0, len(transactions))
-	block.SkippedTxs = make([]uint, 0, len(transactions))
-	for i, tx := range transactions {
-		originator := txPositions[tx.Hash()].Creator
+	s.abciApp.BeginBlock(*evmHeader, cheaters, stateHash, s.blockParticipated)
+
+	okTxs := make(types.Transactions, 0, len(allTxs))
+	block.SkippedTxs = make([]uint, 0, len(allTxs))
+	for i, tx := range allTxs {
+		originator := allTxsPosition[tx.Hash()].Creator
 		req := deliverTxRequest(tx, originator)
 		resp := s.abciApp.DeliverTx(req)
-		evmBlock.GasUsed += uint64(resp.GasUsed)
+		evmHeader.GasUsed += uint64(resp.GasUsed)
 
 		if resp.Code != txIsFullyValid {
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
 			continue
 		}
 
-		evmBlock.Transactions = append(evmBlock.Transactions, tx)
+		okTxs = append(okTxs, tx)
 		notUsedGas := resp.GasWanted - resp.GasUsed
 		s.store.IncGasPowerRefund(epoch, originator, notUsedGas)
 
@@ -149,19 +146,18 @@ func (s *Service) applyNewState(
 	_, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
 	commit := s.abciApp.Commit()
 
-	evmBlock.Root = common.BytesToHash(commit.Data)
-	evmBlock.TxHash = types.DeriveSha(evmBlock.Transactions)
-	block.TxHash = evmBlock.TxHash
-	block.Root = evmBlock.Root
-	block.GasUsed = evmBlock.GasUsed
+	block.Root = common.BytesToHash(commit.Data)
+	block.TxHash = types.DeriveSha(okTxs)
+	block.GasUsed = evmHeader.GasUsed
 
-	// memorize block position of each tx, for indexing and origination scores
-	for i, tx := range evmBlock.Transactions {
+	// memorize block position of each valid tx, for indexing and origination scores
+	okTxsPosition := make(map[common.Hash]app.TxPosition, len(okTxs))
+	for i, tx := range okTxs {
 		// not skipped txs only
-		position := txPositions[tx.Hash()]
+		position := allTxsPosition[tx.Hash()]
 		position.Block = block.Index
 		position.BlockOffset = uint32(i)
-		txPositions[tx.Hash()] = position
+		okTxsPosition[tx.Hash()] = position
 	}
 
 	// process new epoch
@@ -178,10 +174,10 @@ func (s *Service) applyNewState(
 		"atropos", block.Atropos,
 		"gasUsed", block.GasUsed,
 		"skipped_txs", len(block.SkippedTxs),
-		"txs", len(evmBlock.Transactions),
+		"txs", len(okTxs),
 		"t", time.Since(start))
 
-	return block, evmBlock, txPositions, appHash, sealEpoch
+	return block, okTxsPosition, appHash, sealEpoch
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
@@ -257,17 +253,15 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, evmBlock, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
+	block, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)
 
-	// Build index for not skipped txs
+	// Build index for txs
 	if s.config.TxIndex {
-		for _, tx := range evmBlock.Transactions {
-			// not skipped txs only
-			position := txPositions[tx.Hash()]
-			s.store.SetTxPosition(tx.Hash(), &position)
+		for tx, pos := range txPositions {
+			s.store.SetTxPosition(tx, &pos)
 		}
 	}
 
@@ -277,10 +271,10 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	}
 
 	// trace confirmed transactions
-	confirmTxnsMeter.Inc(int64(evmBlock.Transactions.Len()))
-	for _, tx := range evmBlock.Transactions {
-		tracing.FinishTx(tx.Hash(), "Service.onNewBlock()")
-		if latency, err := txLatency.Finish(tx.Hash()); err == nil {
+	confirmTxnsMeter.Inc(int64(len(txPositions)))
+	for tx := range txPositions {
+		tracing.FinishTx(tx, "Service.onNewBlock()")
+		if latency, err := txLatency.Finish(tx); err == nil {
 			txTtfMeter.Update(latency.Milliseconds())
 		}
 	}
