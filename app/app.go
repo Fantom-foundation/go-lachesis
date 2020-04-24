@@ -50,12 +50,10 @@ func New(cfg Config, s *Store) *App {
 	}
 }
 
-// BeginBlock signals the beginning of a block.
-// It implements ABCIApplication.BeginBlock (prototype).
-func (a *App) BeginBlock(
+func (a *App) beginBlock(
 	evmHeader evmcore.EvmHeader,
-	cheaters inter.Cheaters,
 	stateHash common.Hash,
+	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
 ) {
 	info := blockInfo(&evmHeader)

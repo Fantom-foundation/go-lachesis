@@ -119,7 +119,7 @@ func (s *Service) applyNewState(
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	evmHeader := evmcore.ToEvmHeader(block)
 
-	s.abciApp.BeginBlock(*evmHeader, cheaters, stateHash, s.blockParticipated)
+	s.abciApp.BeginBlock(beginBlockRequest(cheaters, stateHash), *evmHeader, s.blockParticipated)
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
