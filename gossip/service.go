@@ -47,6 +47,7 @@ type ServiceFeed struct {
 	newEpoch        notify.Feed
 	newPack         notify.Feed
 	newEmittedEvent notify.Feed
+	newBlock        notify.Feed
 }
 
 func (f *ServiceFeed) Close() {
@@ -63,6 +64,10 @@ func (f *ServiceFeed) SubscribeNewPack(ch chan<- idx.Pack) notify.Subscription {
 
 func (f *ServiceFeed) SubscribeNewEmitted(ch chan<- *inter.Event) notify.Subscription {
 	return f.scope.Track(f.newEmittedEvent.Subscribe(ch))
+}
+
+func (f *ServiceFeed) SubscribeNewBlock(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
+	return f.scope.Track(f.newBlock.Subscribe(ch))
 }
 
 // Service implements go-ethereum/node.Service interface.

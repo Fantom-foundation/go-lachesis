@@ -52,21 +52,25 @@ func New(cfg Config, s *Store) *App {
 
 func (a *App) beginBlock(
 	evmHeader evmcore.EvmHeader,
-	stateHash common.Hash,
+	stateRoot common.Hash,
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
 ) {
-	info := blockInfo(&evmHeader)
-	a.store.SetBlock(info)
+	block := blockInfo(&evmHeader)
 	epoch := a.GetEpoch()
 
+	prev := a.store.GetBlock(block.Index - 1)
+	if prev.Root != stateRoot {
+		//panic("inconsistent state db")
+	}
+
 	a.ctx = &blockContext{
-		block:        info,
+		block:        block,
 		header:       &evmHeader,
-		statedb:      a.store.StateDB(stateHash),
+		statedb:      a.store.StateDB(stateRoot),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		cheaters:     cheaters,
-		sealEpoch:    a.shouldSealEpoch(info, cheaters),
+		sealEpoch:    a.shouldSealEpoch(block, cheaters),
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),
 		txCount:      0,
@@ -74,7 +78,7 @@ func (a *App) beginBlock(
 	a.ctx.header.GasUsed = 0
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
-	a.updateValidationScores(epoch, info.Index, blockParticipated)
+	a.updateValidationScores(epoch, block.Index, blockParticipated)
 }
 
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {
@@ -88,5 +92,9 @@ func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {
 
 // blockTime by block number
 func (a *App) blockTime(n idx.Block) inter.Timestamp {
+	if a.ctx.block.Index == n {
+		return a.ctx.block.Time
+	}
+
 	return a.store.GetBlock(n).Time
 }

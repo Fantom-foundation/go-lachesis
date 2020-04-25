@@ -12,7 +12,6 @@ import (
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
@@ -209,8 +208,4 @@ func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) notify.Subscr
 
 func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) notify.Subscription {
 	return b.app.Feed.SubscribeNewTxs(ch)
-}
-
-func (b *EthAPIBackend) SubscribeNewBlockEvent(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
-	return b.app.Feed.SubscribeNewBlock(ch)
 }

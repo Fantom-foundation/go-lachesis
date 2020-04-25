@@ -1,11 +1,14 @@
 package gossip
 
 import (
+	"math"
+
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
@@ -20,18 +23,34 @@ func (s *Service) initApp() {
 	// TODO: check the resp
 }
 
-func beginBlockRequest(cheaters inter.Cheaters, stateHash common.Hash) types.RequestBeginBlock {
-	req := types.RequestBeginBlock{
-		Header: types.Header{
-			LastCommitHash: stateHash.Bytes(),
-		},
-		ByzantineValidators: make([]types.Evidence, len(cheaters)),
-	}
-
+func beginBlockRequest(
+	cheaters inter.Cheaters,
+	stateHash common.Hash,
+	block *evmcore.EvmHeader,
+) types.RequestBeginBlock {
+	byzantines := make([]types.Evidence, len(cheaters))
 	for i, stakerID := range cheaters {
-		req.ByzantineValidators[i] = types.Evidence{
+		byzantines[i] = types.Evidence{
 			Height: int64(stakerID),
 		}
+	}
+
+	req := types.RequestBeginBlock{
+		Hash: block.Hash.Bytes(),
+		Header: types.Header{
+			Height:        block.Number.Int64(),
+			Time:          block.Time.Time(),
+			ConsensusHash: block.Hash.Bytes(),
+			LastBlockId: types.BlockID{
+				Hash: block.ParentHash.Bytes(),
+			},
+			LastCommitHash: stateHash.Bytes(),
+		},
+		ByzantineValidators: byzantines,
+	}
+
+	if block.GasLimit != math.MaxUint64 {
+		panic("we need to pass GasLimit throuth request")
 	}
 
 	return req

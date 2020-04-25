@@ -1,6 +1,8 @@
 package app
 
 import (
+	"math"
+	"math/big"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -35,29 +37,15 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 // It implements ABCIApplication.BeginBlock (prototype).
 func (a *App) BeginBlock(
 	req types.RequestBeginBlock,
-	evmHeader evmcore.EvmHeader,
 	blockParticipated map[idx.StakerID]bool,
 ) types.ResponseBeginBlock {
-	cheaters := extractCheaters(req)
+	evmHeader := extractEvmHeader(req)
 	stateRoot := extractStateRoot(req)
+	cheaters := extractCheaters(req)
+
 	a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
+
 	return types.ResponseBeginBlock{}
-	/*
-		INFO [04-25|00:09:52.603] New event                                id=327:8271:17410d  parents=7 by=29 frame=806:n txs=0 t=841.932µs
-		INFO [04-25|00:09:52.604] New event                                id=327:8270:d1966b  parents=7 by=25 frame=806:n txs=0 t=1.077515ms
-		INFO [04-25|00:09:52.605] New event                                id=327:8270:e08b56  parents=7 by=3  frame=806:n txs=0 t=631.612µs
-		INFO [04-25|00:09:52.606] New event                                id=327:8271:161b7a  parents=7 by=21 frame=806:n txs=0 t=666.152µs
-		INFO [04-25|00:09:52.607] New event                                id=327:8271:0ea083  parents=7 by=20 frame=806:n txs=0 t=649.753µs
-		INFO [04-25|00:09:52.608] New event                                id=327:8270:eb571d  parents=7 by=14 frame=806:n txs=0 t=688.922µs
-		INFO [04-25|00:09:52.609] New event                                id=327:8271:2787af  parents=7 by=15 frame=806:n txs=0 t=1.009614ms
-		INFO [04-25|00:09:52.653] New block                                index=40625 atropos=327:8257:5a0dbe gasUsed=0 skipped_txs=1 txs=0 t=39.431757ms
-		INFO [04-25|00:09:52.732] Allocated cache and file handles         database=222/poset-epoch-328-ldb  cache=64.00MiB handles=16
-		INFO [04-25|00:09:52.745] Allocated cache and file handles         database=222/gossip-epoch-328-ldb cache=64.00MiB handles=16
-		INFO [04-25|00:09:52.814] New event                                id=327:8272:cc109a  parents=7 by=3  frame=807:y txs=0 t=204.614082ms
-		WARN [04-25|00:09:53.391] Incoming event rejected                  event=328:1:70a872 creator=5 err="event has wrong GasPowerLeft"
-		WARN [04-25|00:09:54.163] Events request error                     peer=41459d863ead95a4 err="shutting down"
-		WARN [04-25|00:09:55.380] Events request error                     peer=41459d863ead95a4 err="shutting down"
-	*/
 }
 
 // DeliverTx for full processing.
@@ -137,6 +125,9 @@ func (a *App) Commit() types.ResponseCommit {
 		a.Log.Crit("Failed to commit state", "err", err)
 	}
 
+	a.ctx.block.Root = root
+	a.store.SetBlock(a.ctx.block)
+
 	// notify
 	var logs []*eth.Log
 	for _, r := range a.ctx.receipts {
@@ -144,11 +135,7 @@ func (a *App) Commit() types.ResponseCommit {
 			logs = append(logs, l)
 		}
 	}
-	a.Feed.newBlock.Send(evmcore.ChainHeadNotify{
-		Block: &evmcore.EvmBlock{
-			EvmHeader:    *a.ctx.header,
-			Transactions: a.ctx.txs,
-		}})
+
 	a.Feed.newTxs.Send(core.NewTxsEvent{Txs: a.ctx.txs})
 	a.Feed.newLogs.Send(logs)
 
@@ -158,6 +145,16 @@ func (a *App) Commit() types.ResponseCommit {
 
 	return types.ResponseCommit{
 		Data: root.Bytes(),
+	}
+}
+
+func extractEvmHeader(req types.RequestBeginBlock) evmcore.EvmHeader {
+	return evmcore.EvmHeader{
+		Number:     big.NewInt(req.Header.Height),
+		Time:       inter.TimeToStamp(req.Header.Time),
+		Hash:       common.BytesToHash(req.Header.ConsensusHash),
+		ParentHash: common.BytesToHash(req.Header.LastBlockId.Hash),
+		GasLimit:   math.MaxUint64,
 	}
 }
 
@@ -171,5 +168,6 @@ func extractCheaters(req types.RequestBeginBlock) inter.Cheaters {
 }
 
 func extractStateRoot(req types.RequestBeginBlock) common.Hash {
-	return common.BytesToHash(req.Header.LastCommitHash)
+	return common.BytesToHash(
+		req.Header.LastCommitHash)
 }

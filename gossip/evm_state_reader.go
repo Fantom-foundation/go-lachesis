@@ -16,6 +16,7 @@ import (
 )
 
 type EvmStateReader struct {
+	feed     *ServiceFeed
 	engineMu *sync.RWMutex
 	engine   Consensus
 	store    *Store
@@ -24,6 +25,7 @@ type EvmStateReader struct {
 
 func (s *Service) GetEvmStateReader() *EvmStateReader {
 	return &EvmStateReader{
+		feed:     &s.feed,
 		engineMu: s.engineMu,
 		engine:   s.engine,
 		store:    s.store,
@@ -32,7 +34,7 @@ func (s *Service) GetEvmStateReader() *EvmStateReader {
 }
 
 func (r *EvmStateReader) SubscribeNewBlock(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
-	return r.app.SubscribeNewBlock(ch)
+	return r.feed.SubscribeNewBlock(ch)
 }
 
 func (r *EvmStateReader) CurrentBlock() *evmcore.EvmBlock {

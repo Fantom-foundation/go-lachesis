@@ -116,10 +116,10 @@ func (s *Service) applyNewState(
 	}
 
 	epoch := s.engine.GetEpoch()
-	stateHash := s.store.GetBlock(block.Index - 1).Root
+	stateRoot := s.store.GetBlock(block.Index - 1).Root
 	evmHeader := evmcore.ToEvmHeader(block)
 
-	s.abciApp.BeginBlock(beginBlockRequest(cheaters, stateHash), *evmHeader, s.blockParticipated)
+	s.abciApp.BeginBlock(beginBlockRequest(cheaters, stateRoot, evmHeader), s.blockParticipated)
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
@@ -146,9 +146,17 @@ func (s *Service) applyNewState(
 	_, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
 	commit := s.abciApp.Commit()
 
-	block.Root = common.BytesToHash(commit.Data)
-	block.TxHash = types.DeriveSha(okTxs)
+	evmHeader.Root = common.BytesToHash(commit.Data)
+	evmHeader.TxHash = types.DeriveSha(okTxs)
+	block.Root = evmHeader.Root
+	block.TxHash = evmHeader.TxHash
 	block.GasUsed = evmHeader.GasUsed
+
+	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
+		Block: &evmcore.EvmBlock{
+			EvmHeader:    *evmHeader,
+			Transactions: okTxs,
+		}})
 
 	// memorize block position of each valid tx, for indexing and origination scores
 	okTxsPosition := make(map[common.Hash]app.TxPosition, len(okTxs))
