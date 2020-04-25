@@ -1,6 +1,8 @@
 package poset
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
@@ -90,6 +92,8 @@ func (p *Poset) Prepare(e *inter.Event) *inter.Event {
 // checks consensus-related fields: Frame, IsRoot, MedianTimestamp, PrevEpochHash
 func (p *Poset) checkAndSaveEvent(e *inter.Event) error {
 	if e.Seq <= 1 && e.PrevEpochHash != p.PrevEpoch.Hash() {
+		fmt.Printf("e.Epoch: %d\ne.PrevEpochHash: %v\np.PrevEpoch.Hash(): %v\n", e.Epoch, e.PrevEpochHash, p.PrevEpoch.Hash())
+		panic("HERE")
 		return ErrWrongEpochHash
 	}
 	if e.Seq > 1 && e.PrevEpochHash != hash.Zero {

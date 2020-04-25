@@ -29,7 +29,6 @@ type Store struct {
 	table  struct {
 		Version    kvdb.KeyValueStore `table:"_"`
 		Checkpoint kvdb.KeyValueStore `table:"c"`
-		Genesis    kvdb.KeyValueStore `table:"G"`
 		Blocks     kvdb.KeyValueStore `table:"b"`
 		// general economy tables
 		EpochStats kvdb.KeyValueStore `table:"E"`

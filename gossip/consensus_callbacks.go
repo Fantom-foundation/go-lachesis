@@ -119,7 +119,8 @@ func (s *Service) applyNewState(
 	stateRoot := s.store.GetBlock(block.Index - 1).Root
 	evmHeader := evmcore.ToEvmHeader(block)
 
-	s.abciApp.BeginBlock(beginBlockRequest(cheaters, stateRoot, evmHeader), s.blockParticipated)
+	s.abciApp.BeginBlock(
+		beginBlockRequest(cheaters, stateRoot, evmHeader), s.blockParticipated)
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))

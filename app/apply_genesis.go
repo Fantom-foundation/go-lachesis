@@ -13,19 +13,20 @@ import (
 )
 
 // ApplyGenesis writes initial state.
-func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isNew bool, err error) {
+func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew bool, err error) {
 	s.migrate()
 
-	stored := s.getGenesisState()
+	stored := s.GetBlock(0)
 
 	if stored != nil {
-		block, err = calcGenesisBlock(net)
+		isNew = false
+		stateRoot, err = calcGenesis(net)
 		if err != nil {
 			return
 		}
 
-		if block.Root != *stored {
-			err = fmt.Errorf("database contains incompatible state hash (have %s, new %s)", *stored, block.Root)
+		if stateRoot != stored.Root {
+			err = fmt.Errorf("database contains incompatible state hash (have %s, new %s)", stored.Root, stateRoot)
 		}
 
 		return
@@ -33,16 +34,16 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 
 	// if we'here, then it's first time genesis is applied
 	isNew = true
-	s.SetBlock(&BlockInfo{
-		Index: 0,
-		Time:  net.Genesis.Time,
-	})
-	block, err = s.applyGenesis(net)
+	stateRoot, err = s.applyGenesis(net)
 	if err != nil {
 		return
 	}
-	s.setGenesisState(block.Root)
 
+	block := evmcore.GenesisBlock(net, stateRoot)
+	info := blockInfo(&block.EvmHeader)
+	s.SetBlock(info)
+
+	// init stats
 	s.SetEpochStats(0, &sfctype.EpochStats{
 		Start:    net.Genesis.Time,
 		End:      net.Genesis.Time,
@@ -58,26 +59,6 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (block *evmcore.EvmBlock, isN
 		EpochBlock: 0,
 		EpochStart: net.Genesis.Time,
 	})
-
-	s.FlushState()
-	return
-}
-
-// calcGenesisBlock calcs hash of genesis state.
-func calcGenesisBlock(net *lachesis.Config) (*evmcore.EvmBlock, error) {
-	s := NewMemStore()
-	defer s.Close()
-
-	s.Log.SetHandler(log.DiscardHandler())
-
-	return s.applyGenesis(net)
-}
-
-func (s *Store) applyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, err error) {
-	evmBlock, err = evmcore.ApplyGenesis(s.table.Evm, net)
-	if err != nil {
-		return
-	}
 
 	// calc total pre-minted supply
 	totalSupply := big.NewInt(0)
@@ -103,28 +84,25 @@ func (s *Store) applyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, 
 	}
 	s.SetEpochValidators(1, validatorsArr)
 
+	s.FlushState()
 	return
 }
 
-func (s *Store) setGenesisState(root common.Hash) {
-	key := []byte("genesis")
+// calcGenesis calcs hash of genesis state.
+func calcGenesis(net *lachesis.Config) (common.Hash, error) {
+	s := NewMemStore()
+	defer s.Close()
 
-	if err := s.table.Genesis.Put(key, root.Bytes()); err != nil {
-		s.Log.Crit("Failed to put key-value", "err", err)
-	}
+	s.Log.SetHandler(log.DiscardHandler())
+
+	return s.applyGenesis(net)
 }
 
-func (s *Store) getGenesisState() *common.Hash {
-	key := []byte("genesis")
-
-	buf, err := s.table.Genesis.Get(key)
+func (s *Store) applyGenesis(net *lachesis.Config) (stateRoot common.Hash, err error) {
+	stateRoot, err = evmcore.ApplyGenesis(s.table.Evm, net)
 	if err != nil {
-		s.Log.Crit("Failed to get key-value", "err", err)
-	}
-	if buf == nil {
-		return nil
+		return
 	}
 
-	root := common.BytesToHash(buf)
-	return &root
+	return
 }

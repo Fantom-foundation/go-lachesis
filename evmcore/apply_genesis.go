@@ -17,28 +17,26 @@
 package evmcore
 
 import (
-	"math"
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 // ApplyGenesis writes or updates the genesis block in db.
-func ApplyGenesis(db ethdb.Database, net *lachesis.Config) (*EvmBlock, error) {
+func ApplyGenesis(db ethdb.Database, net *lachesis.Config) (stateRoot common.Hash, err error) {
 	if net == nil {
-		return nil, ErrNoGenesis
+		err = ErrNoGenesis
+		return
 	}
 
 	// state
-	statedb, err := state.New(common.Hash{}, state.NewDatabase(db))
+	var statedb *state.StateDB
+	statedb, err = state.New(common.Hash{}, state.NewDatabase(db))
 	if err != nil {
-		return nil, err
+		return
 	}
 	for addr, account := range net.Genesis.Alloc.Accounts {
 		statedb.AddBalance(addr, account.Balance)
@@ -49,42 +47,24 @@ func ApplyGenesis(db ethdb.Database, net *lachesis.Config) (*EvmBlock, error) {
 		}
 	}
 
-	// initial block
-	root, err := statedb.Commit(true)
+	stateRoot, err = statedb.Commit(true)
 	if err != nil {
-		return nil, err
+		return
 	}
-	block := genesisBlock(net, root)
 
 	err = statedb.Database().TrieDB().Cap(0)
 	if err != nil {
-		return nil, err
+		return
 	}
 
-	return block, nil
-}
-
-// genesisBlock makes genesis block with pretty hash.
-func genesisBlock(net *lachesis.Config, root common.Hash) *EvmBlock {
-
-	block := &EvmBlock{
-		EvmHeader: EvmHeader{
-			Number:   big.NewInt(0),
-			Time:     net.Genesis.Time,
-			GasLimit: math.MaxUint64,
-			Root:     root,
-			TxHash:   inter.EmptyTxHash,
-		},
-	}
-
-	return block
+	return
 }
 
 // MustApplyGenesis writes the genesis block and state to db, panicking on error.
-func MustApplyGenesis(net *lachesis.Config, db ethdb.Database) *EvmBlock {
-	block, err := ApplyGenesis(db, net)
+func MustApplyGenesis(net *lachesis.Config, db ethdb.Database) common.Hash {
+	stateRoot, err := ApplyGenesis(db, net)
 	if err != nil {
 		log.Crit("ApplyGenesis", "err", err)
 	}
-	return block
+	return stateRoot
 }

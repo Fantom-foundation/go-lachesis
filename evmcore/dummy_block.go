@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 type (
@@ -117,4 +118,19 @@ func (b *EvmBlock) EthBlock() *types.Block {
 		return nil
 	}
 	return types.NewBlock(b.EvmHeader.EthHeader(), b.Transactions, nil, nil)
+}
+
+// GenesisBlock makes genesis block with pretty hash.
+func GenesisBlock(net *lachesis.Config, stateRoot common.Hash) *EvmBlock {
+	block := &EvmBlock{
+		EvmHeader: EvmHeader{
+			Number:   big.NewInt(0),
+			Time:     net.Genesis.Time,
+			GasLimit: math.MaxUint64,
+			Root:     stateRoot,
+			TxHash:   inter.EmptyTxHash,
+		},
+	}
+
+	return block
 }

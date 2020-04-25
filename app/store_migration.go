@@ -1,10 +1,10 @@
 package app
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -91,32 +91,6 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 				EpochStart: b.Time,
 			})
 
-			return
-
-		}).
-		Next("app-main genesis", func() (err error) {
-			defer func() {
-				if err == nil {
-					s.Log.Warn("app-main genesis migration has been applied")
-				}
-			}()
-
-			key := []byte("genesis")
-			genesis := table.New(s.mainDb, []byte("G")) // table.Genesis
-			ok, err := genesis.Has(key)
-			if err != nil || ok {
-				return
-			}
-
-			// NOTE: cross db dependency
-			consensus := dbs.GetDb("gossip-main")
-			blocks := table.New(consensus, []byte("b")) // table.Blocks
-			b, _ := s.get(blocks, idx.Block(0).Bytes(), &inter.Block{}).(*inter.Block)
-			if b == nil {
-				return
-			}
-
-			err = genesis.Put(key, b.Root.Bytes())
 			return
 
 		}).
