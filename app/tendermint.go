@@ -35,13 +35,11 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 
 // BeginBlock signals the beginning of a block.
 // It implements ABCIApplication.BeginBlock (prototype).
-func (a *App) BeginBlock(
-	req types.RequestBeginBlock,
-	blockParticipated map[idx.StakerID]bool,
-) types.ResponseBeginBlock {
+func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	evmHeader := extractEvmHeader(req)
 	stateRoot := extractStateRoot(req)
 	cheaters := extractCheaters(req)
+	blockParticipated := extractParticipated(req)
 
 	a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
 
@@ -170,4 +168,13 @@ func extractCheaters(req types.RequestBeginBlock) inter.Cheaters {
 func extractStateRoot(req types.RequestBeginBlock) common.Hash {
 	return common.BytesToHash(
 		req.Header.LastCommitHash)
+}
+
+func extractParticipated(req types.RequestBeginBlock) map[idx.StakerID]bool {
+	res := make(map[idx.StakerID]bool, len(req.LastCommitInfo.Votes))
+	for _, v := range req.LastCommitInfo.Votes {
+		staker := idx.BytesToStakerID(v.Validator.Address)
+		res[staker] = true
+	}
+	return res
 }

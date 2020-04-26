@@ -27,12 +27,26 @@ func beginBlockRequest(
 	cheaters inter.Cheaters,
 	stateHash common.Hash,
 	block *evmcore.EvmHeader,
+	participated map[idx.StakerID]bool,
 ) types.RequestBeginBlock {
+
 	byzantines := make([]types.Evidence, len(cheaters))
 	for i, stakerID := range cheaters {
 		byzantines[i] = types.Evidence{
 			Height: int64(stakerID),
 		}
+	}
+
+	votes := make([]types.VoteInfo, 0, len(participated))
+	for staker, ok := range participated {
+		if !ok {
+			continue
+		}
+		votes = append(votes, types.VoteInfo{
+			Validator: types.Validator{
+				Address: staker.Bytes(),
+			},
+		})
 	}
 
 	req := types.RequestBeginBlock{
@@ -45,6 +59,9 @@ func beginBlockRequest(
 				Hash: block.ParentHash.Bytes(),
 			},
 			LastCommitHash: stateHash.Bytes(),
+		},
+		LastCommitInfo: types.LastCommitInfo{
+			Votes: votes,
 		},
 		ByzantineValidators: byzantines,
 	}
