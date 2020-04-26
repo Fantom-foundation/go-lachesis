@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	tendermint "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
@@ -83,6 +84,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 
 // applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
 func (s *Service) applyNewState(
+	abci tendermint.Application,
 	block *inter.Block,
 	cheaters inter.Cheaters,
 ) (
@@ -119,7 +121,7 @@ func (s *Service) applyNewState(
 	stateRoot := s.store.GetBlock(block.Index - 1).Root
 	evmHeader := evmcore.ToEvmHeader(block)
 
-	s.abciApp.BeginBlock(
+	abci.BeginBlock(
 		beginBlockRequest(cheaters, stateRoot, evmHeader, s.blockParticipated))
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
@@ -127,7 +129,7 @@ func (s *Service) applyNewState(
 	for i, tx := range allTxs {
 		originator := allTxsPosition[tx.Hash()].Creator
 		req := deliverTxRequest(tx, originator)
-		resp := s.abciApp.DeliverTx(req)
+		resp := abci.DeliverTx(req)
 		evmHeader.GasUsed += uint64(resp.GasUsed)
 
 		if resp.Code != txIsFullyValid {
@@ -145,7 +147,7 @@ func (s *Service) applyNewState(
 	}
 
 	var sealEpoch bool
-	resp := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	resp := abci.EndBlock(endBlockRequest(block.Index))
 	for _, appEvent := range resp.Events {
 		switch appEvent.Type {
 		case "epoch sealed":
@@ -153,7 +155,7 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	commit := s.abciApp.Commit()
+	commit := abci.Commit()
 	evmHeader.Root = common.BytesToHash(commit.Data)
 	evmHeader.TxHash = types.DeriveSha(okTxs)
 	block.Root = evmHeader.Root
@@ -269,7 +271,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, txPositions, newAppHash, sealEpoch := s.applyNewState(block, cheaters)
+	block, txPositions, newAppHash, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)

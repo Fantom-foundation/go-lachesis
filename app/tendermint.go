@@ -33,6 +33,12 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	return types.ResponseInitChain{}
 }
 
+// CheckTx validates a tx for the mempool.
+// It implements ABCIApplication.CheckTx.
+func (a *App) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
+	return types.ResponseCheckTx{}
+}
+
 // BeginBlock signals the beginning of a block.
 // It implements ABCIApplication.BeginBlock.
 func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
@@ -182,4 +188,22 @@ func extractParticipated(req types.RequestBeginBlock) map[idx.StakerID]bool {
 		res[staker] = true
 	}
 	return res
+}
+
+// Info returns application info.
+// It implements ABCIApplication.Info.
+func (a *App) Info(types.RequestInfo) types.ResponseInfo {
+	return types.ResponseInfo{}
+}
+
+// SetOption sets application option.
+// It implements ABCIApplication.SetOption.
+func (a *App) SetOption(types.RequestSetOption) types.ResponseSetOption {
+	return types.ResponseSetOption{}
+}
+
+// Query for state.
+// It implements ABCIApplication.Query.
+func (a *App) Query(types.RequestQuery) types.ResponseQuery {
+	return types.ResponseQuery{}
 }
