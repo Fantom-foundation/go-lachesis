@@ -144,9 +144,16 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	_, sealEpoch := s.abciApp.EndBlock(endBlockRequest(block.Index))
-	commit := s.abciApp.Commit()
+	var sealEpoch bool
+	resp := s.abciApp.EndBlock(endBlockRequest(block.Index))
+	for _, appEvent := range resp.Events {
+		switch appEvent.Type {
+		case "epoch sealed":
+			sealEpoch = true
+		}
+	}
 
+	commit := s.abciApp.Commit()
 	evmHeader.Root = common.BytesToHash(commit.Data)
 	evmHeader.TxHash = types.DeriveSha(okTxs)
 	block.Root = evmHeader.Root

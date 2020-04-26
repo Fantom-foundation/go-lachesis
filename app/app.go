@@ -61,7 +61,7 @@ func (a *App) beginBlock(
 
 	prev := a.store.GetBlock(block.Index - 1)
 	if prev.Root != stateRoot {
-		//panic("inconsistent state db")
+		panic("inconsistent state db")
 	}
 
 	a.ctx = &blockContext{

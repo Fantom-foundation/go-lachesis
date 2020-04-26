@@ -34,7 +34,7 @@ func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 }
 
 // BeginBlock signals the beginning of a block.
-// It implements ABCIApplication.BeginBlock (prototype).
+// It implements ABCIApplication.BeginBlock.
 func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	evmHeader := extractEvmHeader(req)
 	stateRoot := extractStateRoot(req)
@@ -80,7 +80,7 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 
 // EndBlock signals the end of a block, returns changes to the validator set.
 // It implements ABCIApplication.EndBlock.
-func (a *App) EndBlock(req types.RequestEndBlock) (types.ResponseEndBlock, bool) {
+func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	if a.ctx.block.Index != idx.Block(req.Height) {
 		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
 	}
@@ -111,8 +111,13 @@ func (a *App) EndBlock(req types.RequestEndBlock) (types.ResponseEndBlock, bool)
 		a.incEpoch()
 	}
 
-	// TODO: replace sealEpoch with response validator set changes.
-	return types.ResponseEndBlock{}, sealEpoch
+	res := types.ResponseEndBlock{}
+	if sealEpoch {
+		res.Events = []types.Event{
+			{Type: "epoch sealed"},
+		}
+	}
+	return res
 }
 
 // Commit the state and return the application Merkle root hash.
