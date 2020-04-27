@@ -1287,6 +1287,67 @@ func (s *PublicTransactionPoolAPI) GetBlockTransactionCountByHash(ctx context.Co
 	return nil
 }
 
+// GetBlockTPS returns the TPS*1000 in the block with the given block number.
+func (s *PublicTransactionPoolAPI) GetBlockTPS(ctx context.Context, blockN rpc.BlockNumber) *hexutil.Uint {
+	if blockN == 0 {
+		return nil
+	}
+
+	block, err := s.b.BlockByNumber(ctx, blockN)
+	if block == nil || err != nil {
+		return nil
+	}
+
+	prevN := big.NewInt(0).Sub(block.Number, big.NewInt(1))
+	prev, err := s.b.BlockByNumber(ctx, rpc.BlockNumber(prevN.Int64()))
+	if prev == nil || err != nil {
+		return nil
+	}
+
+	n := hexutil.Uint(uint64(len(block.Transactions)) * 1000 / uint64(block.Time-prev.Time))
+	return &n
+}
+
+// GetEpochTPS returns the TPS*1000 in the block with the given block number.
+func (s *PublicTransactionPoolAPI) GetEpochTPS(ctx context.Context, epoch rpc.BlockNumber) *hexutil.Uint {
+	var (
+		minEventTime = inter.Timestamp(math.MaxUint64)
+		maxEventTime = inter.Timestamp(0)
+		trxCount     = uint64(0)
+	)
+
+	s.b.ForEachEvent(ctx, epoch+1, func(event *inter.Event) bool {
+		if event == nil {
+			return false
+		}
+		if maxEventTime == 0 || maxEventTime > event.ClaimedTime {
+			maxEventTime = event.ClaimedTime
+		}
+		return true
+	})
+
+	s.b.ForEachEvent(ctx, epoch, func(event *inter.Event) bool {
+		if event == nil {
+			return false
+		}
+		if maxEventTime < event.ClaimedTime {
+			maxEventTime = event.ClaimedTime
+		}
+		if minEventTime > event.ClaimedTime {
+			minEventTime = event.ClaimedTime
+		}
+		trxCount += uint64(len(event.Transactions))
+		return true
+	})
+
+	if minEventTime < maxEventTime {
+		n := hexutil.Uint(trxCount * 1000 / uint64(maxEventTime-minEventTime))
+		return &n
+	}
+
+	return nil
+}
+
 // GetTransactionByBlockNumberAndIndex returns the transaction for the given block number and index.
 func (s *PublicTransactionPoolAPI) GetTransactionByBlockNumberAndIndex(ctx context.Context, blockNr rpc.BlockNumber, index hexutil.Uint) *RPCTransaction {
 	if block, _ := s.b.BlockByNumber(ctx, blockNr); block != nil {

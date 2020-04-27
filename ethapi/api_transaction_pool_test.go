@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -42,7 +43,8 @@ func TestPublicTransactionPoolAPI_FillTransaction(t *testing.T) {
 
 func TestPublicTransactionPoolAPI_GetBlockTransactionCountByHash(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
@@ -65,20 +67,26 @@ func TestPublicTransactionPoolAPI_GetBlockTransactionCountByHash(t *testing.T) {
 				},
 			}, nil).
 			Times(1)
-		_ = api.GetBlockTransactionCountByHash(ctx, common.Hash{1})
+
+		res := api.GetBlockTransactionCountByHash(ctx, common.Hash{1})
+		require.NotNil(t, res)
+		require.Equal(t, hexutil.Uint(1), *res)
 	})
 
 	require.NotPanics(t, func() {
 		b.EXPECT().GetBlock(gomock.Any(), gomock.Any()).
 			Return(nil, nil).
 			Times(1)
-		_ = api.GetBlockTransactionCountByHash(ctx, common.Hash{1})
+
+		res := api.GetBlockTransactionCountByHash(ctx, common.Hash{1})
+		require.Nil(t, res)
 	})
 }
 
 func TestPublicTransactionPoolAPI_GetBlockTransactionCountByNumber(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
@@ -101,18 +109,21 @@ func TestPublicTransactionPoolAPI_GetBlockTransactionCountByNumber(t *testing.T)
 				},
 			}, nil).
 			Times(1)
-		_ = api.GetBlockTransactionCountByNumber(ctx, rpc.BlockNumber(1))
+		res := api.GetBlockTransactionCountByNumber(ctx, rpc.BlockNumber(1))
+		require.NotNil(t, res)
 	})
 	require.NotPanics(t, func() {
 		b.EXPECT().BlockByNumber(gomock.Any(), gomock.Any()).
 			Return(nil, nil).
 			Times(1)
-		_ = api.GetBlockTransactionCountByNumber(ctx, rpc.BlockNumber(1))
+		res := api.GetBlockTransactionCountByNumber(ctx, rpc.BlockNumber(1))
+		require.Nil(t, res)
 	})
 }
 func TestPublicTransactionPoolAPI_GetRawTransactionByBlockHashAndIndex(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
@@ -134,43 +145,77 @@ func TestPublicTransactionPoolAPI_GetRawTransactionByBlockHashAndIndex(t *testin
 					types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 				},
 			}, nil).
-			Times(2)
-		_ = api.GetRawTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
+			Times(1)
+		res := api.GetRawTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
+		require.NotNil(t, res)
 	})
 
 	require.NotPanics(t, func() {
 		b.EXPECT().GetBlock(gomock.Any(), gomock.Any()).
 			Return(nil, nil).
 			Times(1)
-		_ = api.GetRawTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
+		res := api.GetRawTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
+		require.Nil(t, res)
 	})
 }
 
 func TestPublicTransactionPoolAPI_GetRawTransactionByBlockNumberAndIndex(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 	require.NotPanics(t, func() {
-		_ = api.GetRawTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
+		b.EXPECT().BlockByNumber(gomock.Any(), gomock.Any()).
+			Return(&evmcore.EvmBlock{
+				EvmHeader: evmcore.EvmHeader{
+					Number:     big.NewInt(1),
+					Hash:       common.Hash{2},
+					ParentHash: common.Hash{3},
+					Root:       common.Hash{4},
+					TxHash:     common.Hash{5},
+					Time:       6,
+					Coinbase:   common.Address{7},
+					GasLimit:   8,
+					GasUsed:    9,
+				},
+				Transactions: types.Transactions{
+					types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				},
+			}, nil).
+			Times(1)
+		res := api.GetRawTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
+		require.NotNil(t, res)
 	})
 
 	require.NotPanics(t, func() {
 		b.EXPECT().BlockByNumber(gomock.Any(), gomock.Any()).
 			Return(nil, nil).
 			Times(1)
-		_ = api.GetRawTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
+		res := api.GetRawTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
+		require.Nil(t, res)
 	})
 }
 func TestPublicTransactionPoolAPI_GetRawTransactionByHash(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 
 	require.NotPanics(t, func() {
+		b.EXPECT().GetTransaction(ctx, gomock.Any()).
+			Return(
+				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				uint64(1), uint64(1), nil,
+			).
+			Times(1)
+		b.EXPECT().GetPoolTransaction(gomock.Any()).Return(
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		).
+			Times(1)
 		res, err := api.GetRawTransactionByHash(ctx, common.Hash{1})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
@@ -180,13 +225,17 @@ func TestPublicTransactionPoolAPI_GetRawTransactionByHash(t *testing.T) {
 		b.EXPECT().GetTransaction(ctx, gomock.Any()).
 			Return(nil, uint64(0), uint64(0), nil).
 			Times(1)
+		b.EXPECT().GetPoolTransaction(gomock.Any()).Return(
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		).
+			Times(1)
 		res, err := api.GetRawTransactionByHash(ctx, common.Hash{1})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().GetTransaction(gomock.Any(), gomock.Any()).
+		b.EXPECT().GetTransaction(ctx, gomock.Any()).
 			Return(nil, uint64(0), uint64(0), ErrBackendTest).
 			Times(1)
 		b.EXPECT().GetPoolTransaction(gomock.Any()).
@@ -200,11 +249,31 @@ func TestPublicTransactionPoolAPI_GetRawTransactionByHash(t *testing.T) {
 
 func TestPublicTransactionPoolAPI_GetTransactionByBlockHashAndIndex(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 	require.NotPanics(t, func() {
+		b.EXPECT().GetBlock(ctx, gomock.Any()).
+			Return(&evmcore.EvmBlock{
+				EvmHeader: evmcore.EvmHeader{
+					Number:     big.NewInt(1),
+					Hash:       common.Hash{2},
+					ParentHash: common.Hash{3},
+					Root:       common.Hash{4},
+					TxHash:     common.Hash{5},
+					Time:       6,
+					Coinbase:   common.Address{7},
+					GasLimit:   8,
+					GasUsed:    9,
+				},
+				Transactions: types.Transactions{
+					types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				},
+			}, nil).
+			Times(1)
+
 		res := api.GetTransactionByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(0))
 		require.NotEmpty(t, res)
 	})
@@ -220,11 +289,32 @@ func TestPublicTransactionPoolAPI_GetTransactionByBlockHashAndIndex(t *testing.T
 
 func TestPublicTransactionPoolAPI_GetTransactionByBlockNumberAndIndex(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
+
 	require.NotPanics(t, func() {
+		b.EXPECT().BlockByNumber(ctx, gomock.Any()).
+			Return(&evmcore.EvmBlock{
+				EvmHeader: evmcore.EvmHeader{
+					Number:     big.NewInt(1),
+					Hash:       common.Hash{2},
+					ParentHash: common.Hash{3},
+					Root:       common.Hash{4},
+					TxHash:     common.Hash{5},
+					Time:       6,
+					Coinbase:   common.Address{7},
+					GasLimit:   8,
+					GasUsed:    9,
+				},
+				Transactions: types.Transactions{
+					types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				},
+			}, nil).
+			Times(1)
+
 		res := api.GetTransactionByBlockNumberAndIndex(ctx, rpc.BlockNumber(1), hexutil.Uint(0))
 		require.NotEmpty(t, res)
 	})
@@ -240,7 +330,8 @@ func TestPublicTransactionPoolAPI_GetTransactionByBlockNumberAndIndex(t *testing
 
 func TestPublicTransactionPoolAPI_GetTransactionByHash(t *testing.T) {
 	ctx := context.TODO()
-	b := newTestBackend(t)
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
 
 	b.EXPECT().HeaderByNumber(ctx, gomock.Any()).
 		Return(&evmcore.EvmHeader{
@@ -251,6 +342,17 @@ func TestPublicTransactionPoolAPI_GetTransactionByHash(t *testing.T) {
 	nonceLock := new(AddrLocker)
 	api := NewPublicTransactionPoolAPI(b, nonceLock)
 	require.NotPanics(t, func() {
+		b.EXPECT().GetTransaction(ctx, gomock.Any()).
+			Return(
+				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+				uint64(1), uint64(1), nil,
+			).
+			Times(1)
+		b.EXPECT().GetPoolTransaction(gomock.Any()).Return(
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		).
+			Times(1)
+
 		res, err := api.GetTransactionByHash(ctx, common.Hash{1})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
@@ -260,6 +362,10 @@ func TestPublicTransactionPoolAPI_GetTransactionByHash(t *testing.T) {
 		b.EXPECT().GetTransaction(ctx, gomock.Any()).
 			Return(nil, uint64(0), uint64(0), nil).
 			Times(1)
+		b.EXPECT().GetPoolTransaction(gomock.Any()).Return(
+			types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+		).
+			Times(1)
 		res, err := api.GetTransactionByHash(ctx, common.Hash{1})
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
@@ -268,6 +374,10 @@ func TestPublicTransactionPoolAPI_GetTransactionByHash(t *testing.T) {
 	require.NotPanics(t, func() {
 		b.EXPECT().GetTransaction(ctx, gomock.Any()).
 			Return(nil, uint64(0), uint64(0), ErrBackendTest).
+			Times(1)
+		b.EXPECT().GetPoolTransaction(gomock.Any()).Return(
+			nil,
+		).
 			Times(1)
 		res, err := api.GetTransactionByHash(ctx, common.Hash{1})
 		require.Error(t, err)
@@ -565,5 +675,103 @@ func TestPublicTransactionPoolAPI_Sign(t *testing.T) {
 		res, err := api.Sign(addr, data)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
+	})
+}
+
+func TestPublicTransactionPoolAPI_GetBlockTPS(t *testing.T) {
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
+
+	b.EXPECT().BlockByNumber(gomock.Any(), rpc.BlockNumber(1)).
+		Return(&evmcore.EvmBlock{
+			EvmHeader: evmcore.EvmHeader{
+				Number:     big.NewInt(1),
+				Hash:       common.Hash{},
+				ParentHash: common.Hash{},
+				Root:       common.Hash{},
+				TxHash:     common.Hash{},
+				Time:       inter.Timestamp(1),
+				Coinbase:   common.Address{},
+				GasLimit:   0,
+				GasUsed:    0,
+			},
+			Transactions: nil,
+		}, nil).Times(1)
+	b.EXPECT().BlockByNumber(gomock.Any(), rpc.BlockNumber(2)).
+		Return(&evmcore.EvmBlock{
+			EvmHeader: evmcore.EvmHeader{
+				Number:     big.NewInt(2),
+				Hash:       common.Hash{},
+				ParentHash: common.Hash{},
+				Root:       common.Hash{},
+				TxHash:     common.Hash{},
+				Time:       inter.Timestamp(2),
+				Coinbase:   common.Address{},
+				GasLimit:   0,
+				GasUsed:    0,
+			},
+			Transactions: types.Transactions{
+				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+			},
+		}, nil).Times(1)
+
+	nonceLock := new(AddrLocker)
+
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+	require.NotPanics(t, func() {
+		res := api.GetBlockTPS(ctx, 2)
+		require.NotNil(t, res)
+		require.Equal(t, hexutil.Uint(1000), *res)
+	})
+}
+
+func TestPublicTransactionPoolAPI_GetEpochTPS(t *testing.T) {
+	ctx := context.TODO()
+	ctrl := gomock.NewController(t)
+	b := NewMockBackend(ctrl)
+
+	b.EXPECT().ForEachEvent(ctx, rpc.BlockNumber(1), gomock.Any()).Do(
+		func(ctx context.Context, epoch rpc.BlockNumber, onEvent func(*inter.Event) bool) error {
+			events := []*inter.Event{
+				{
+					EventHeader: inter.EventHeader{
+						EventHeaderData: inter.EventHeaderData{
+							ClaimedTime: inter.Timestamp(1),
+						},
+					},
+					Transactions: types.Transactions{
+						types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+					},
+				},
+				{
+					EventHeader: inter.EventHeader{
+						EventHeaderData: inter.EventHeaderData{
+							ClaimedTime: inter.Timestamp(2),
+						},
+					},
+					Transactions: types.Transactions{
+						types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
+					},
+				},
+			}
+
+			for _, ev := range events {
+				onEvent(ev)
+			}
+
+			return nil
+		})
+
+	b.EXPECT().ForEachEvent(ctx, rpc.BlockNumber(2), gomock.Any()).
+		Times(1)
+
+	nonceLock := new(AddrLocker)
+	api := NewPublicTransactionPoolAPI(b, nonceLock)
+
+	require.NotPanics(t, func() {
+		res := api.GetEpochTPS(ctx, rpc.BlockNumber(1))
+		require.NotNil(t, res)
+		require.Equal(t, hexutil.Uint(2000), *res)
 	})
 }

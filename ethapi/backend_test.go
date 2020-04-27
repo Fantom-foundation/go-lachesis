@@ -62,8 +62,8 @@ func mockAmBackend(t *testing.T) *AmBackend {
 func newTestBackend(t *testing.T) *MockBackend {
 	ctrl := gomock.NewController(t)
 	b := NewMockBackend(ctrl)
-
 	initTestBackend(t, b)
+
 	return b
 }
 
@@ -105,7 +105,7 @@ func initTestBackend(t *testing.T, b *MockBackend) {
 				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 			},
 		}, nil).
-		Times(1)
+		AnyTimes()
 
 	b.EXPECT().BlockByNumber(gomock.Any(), gomock.Any()).
 		Return(&evmcore.EvmBlock{
@@ -124,7 +124,9 @@ func initTestBackend(t *testing.T, b *MockBackend) {
 				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 			},
 		}, nil).
-		Times(1)
+		AnyTimes()
+
+	b.EXPECT().ForEachEvent(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
 	b.EXPECT().TxPoolContent().
 		Return(

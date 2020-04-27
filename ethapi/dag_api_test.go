@@ -20,6 +20,7 @@ func TestPublicDAGChainAPI_CurrentEpoch(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 }
+
 func TestPublicDAGChainAPI_GetConsensusTime(t *testing.T) {
 	ctx := context.TODO()
 	b := newTestBackend(t)
@@ -31,6 +32,7 @@ func TestPublicDAGChainAPI_GetConsensusTime(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 }
+
 func TestPublicDAGChainAPI_GetEpochStats(t *testing.T) {
 	ctx := context.TODO()
 	b := newTestBackend(t)
@@ -42,6 +44,7 @@ func TestPublicDAGChainAPI_GetEpochStats(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 }
+
 func TestPublicDAGChainAPI_GetEvent(t *testing.T) {
 	ctx := context.TODO()
 	b := newTestBackend(t)
@@ -64,6 +67,7 @@ func TestPublicDAGChainAPI_GetEventHeader(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 }
+
 func TestPublicDAGChainAPI_GetHeads(t *testing.T) {
 	ctx := context.TODO()
 	b := newTestBackend(t)
