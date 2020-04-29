@@ -42,7 +42,9 @@ func init() {
 	app.Action = generatorMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 
-	app.Commands = []cli.Command{}
+	app.Commands = []cli.Command{
+		bigTx,
+	}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
 	app.Flags = append(app.Flags, flags...)
