@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -29,6 +30,7 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 					s.Log.Warn("dedicated app-main database migration has been applied")
 				}
 			}()
+
 			// NOTE: cross db dependency
 			consensus := dbs.GetDb("gossip-main")
 			engine := dbs.GetDb("poset-main")
@@ -81,33 +83,16 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			if b == nil {
 				return
 			}
-			s.SetLastVoting(b.Index, b.Time)
+
+			s.SetCheckpoint(Checkpoint{
+				BlockN:     cp.LastBlockN,
+				EpochN:     cp.LastAtropos.Epoch(),
+				EpochBlock: b.Index,
+				EpochStart: b.Time,
+			})
 
 			return
-		}).
-		Next("app-main genesis", func() (err error) {
-			defer func() {
-				if err == nil {
-					s.Log.Warn("app-main genesis migration has been applied")
-				}
-			}()
-			key := []byte("genesis")
-			genesis := table.New(s.mainDb, []byte("G")) // table.Genesis
-			ok, err := genesis.Has(key)
-			if err != nil || ok {
-				return
-			}
 
-			// NOTE: cross db dependency
-			consensus := dbs.GetDb("gossip-main")
-			blocks := table.New(consensus, []byte("b")) // table.Blocks
-			b, _ := s.get(blocks, idx.Block(0).Bytes(), &inter.Block{}).(*inter.Block)
-			if b == nil {
-				return
-			}
-
-			err = genesis.Put(key, b.Root.Bytes())
-			return
 		}).
 		Next("app's own blocks", func() (err error) {
 			defer func() {
@@ -115,6 +100,7 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 					s.Log.Warn("app's own blocks migration has been applied")
 				}
 			}()
+
 			// NOTE: cross db dependency
 			consensus := dbs.GetDb("gossip-main")
 
@@ -130,12 +116,14 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 				if err != nil {
 					return
 				}
-				info := blockInfo(block)
+
+				info := blockInfo(evmcore.ToEvmHeader(block))
 				s.set(dst, it.Key(), info)
 			}
 
 			err = it.Error()
 			return
+
 		})
 }
 

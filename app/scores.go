@@ -3,10 +3,6 @@ package app
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -28,31 +24,21 @@ type BlocksMissed struct {
 }
 
 // updateOriginationScores calculates the origination scores
-func (a *App) updateOriginationScores(
-	epoch idx.Epoch,
-	evmBlock *evmcore.EvmBlock,
-	receipts types.Receipts,
-	txPositions map[common.Hash]TxPosition,
-) {
-	for i, tx := range evmBlock.Transactions {
-		txEventPos := txPositions[receipts[i].TxHash]
-		txFee := new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice())
-		a.store.AddDirtyOriginationScore(txEventPos.Creator, txFee)
+func (a *App) updateOriginationScores(sealEpoch bool) {
+	if !sealEpoch {
+		return
 	}
-
-	if a.ctx.sealEpoch {
-		a.store.DelAllActiveOriginationScores()
-		a.store.MoveDirtyOriginationScoresToActive()
-	}
+	a.store.DelAllActiveOriginationScores()
+	a.store.MoveDirtyOriginationScoresToActive()
 }
 
 // updateValidationScores calculates the validation scores
 func (a *App) updateValidationScores(
 	epoch idx.Epoch,
-	block *inter.Block,
+	blockN idx.Block,
 	blockParticipated map[idx.StakerID]bool,
 ) {
-	blockTimeDiff := block.Time - a.blockTime(block.Index-1)
+	blockTimeDiff := a.blockTime(blockN) - a.blockTime(blockN-1)
 
 	// Calc validation scores
 	for _, it := range a.store.GetActiveSfcStakers() {
@@ -77,9 +63,9 @@ func (a *App) updateValidationScores(
 
 		// Add score for previous blocks, but no more than FrameLatency prev blocks
 		a.store.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(blockTimeDiff)))
-		for i := idx.Block(1); i <= missedNum && i < block.Index; i++ {
-			curBlockTime := a.blockTime(block.Index - i)
-			prevBlockTime := a.blockTime(block.Index - i - 1)
+		for i := idx.Block(1); i <= missedNum && i < blockN; i++ {
+			curBlockTime := a.blockTime(blockN - i)
+			prevBlockTime := a.blockTime(blockN - i - 1)
 			timeDiff := curBlockTime - prevBlockTime
 			a.store.AddDirtyValidationScore(it.StakerID, new(big.Int).SetUint64(uint64(timeDiff)))
 		}

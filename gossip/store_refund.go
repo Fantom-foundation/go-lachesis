@@ -5,6 +5,10 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
+const (
+	minGasPowerRefund = 800
+)
+
 // SetGasPowerRefund stores amount of gas power to refund
 func (s *Store) SetGasPowerRefund(epoch idx.Epoch, stakerID idx.StakerID, refund uint64) {
 	key := append(epoch.Bytes(), stakerID.Bytes()...)
@@ -45,12 +49,17 @@ func (s *Store) GetGasPowerRefunds(epoch idx.Epoch) map[idx.StakerID]uint64 {
 }
 
 // IncGasPowerRefund increments amount of gas power to refund
-func (s *Store) IncGasPowerRefund(epoch idx.Epoch, stakerID idx.StakerID, diff uint64) {
-	if diff == 0 {
+func (s *Store) IncGasPowerRefund(epoch idx.Epoch, stakerID idx.StakerID, diff int64) {
+	if diff < 0 {
+		s.Log.Crit("Transaction gas used is higher than tx gas limit")
+	}
+	if diff < minGasPowerRefund {
+		// do not refund if refunding is more costly than refunded value
 		return
 	}
+
 	refund := s.GetGasPowerRefund(epoch, stakerID)
-	refund += diff
+	refund += uint64(diff)
 	s.SetGasPowerRefund(epoch, stakerID, refund)
 }
 

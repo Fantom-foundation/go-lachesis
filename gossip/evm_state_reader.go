@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
@@ -15,22 +16,25 @@ import (
 )
 
 type EvmStateReader struct {
-	*ServiceFeed
+	feed     *ServiceFeed
 	engineMu *sync.RWMutex
 	engine   Consensus
-
-	store *Store
-	app   *app.App
+	store    *Store
+	app      *app.App
 }
 
 func (s *Service) GetEvmStateReader() *EvmStateReader {
 	return &EvmStateReader{
-		ServiceFeed: &s.feed,
-		engineMu:    s.engineMu,
-		engine:      s.engine,
-		store:       s.store,
-		app:         s.abciApp,
+		feed:     &s.feed,
+		engineMu: s.engineMu,
+		engine:   s.engine,
+		store:    s.store,
+		app:      s.abciApp,
 	}
+}
+
+func (r *EvmStateReader) SubscribeNewBlock(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
+	return r.feed.SubscribeNewBlock(ch)
 }
 
 func (r *EvmStateReader) CurrentBlock() *evmcore.EvmBlock {

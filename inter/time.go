@@ -25,6 +25,10 @@ func FromUnix(t int64) Timestamp {
 	return Timestamp(int64(t) * int64(time.Second))
 }
 
+func TimeToStamp(t time.Time) Timestamp {
+	return Timestamp(t.UnixNano())
+}
+
 // Unix returns t as a Unix time, the number of seconds elapsed
 // since January 1, 1970 UTC. The result does not depend on the
 // location associated with t.

@@ -6,7 +6,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -25,41 +24,43 @@ func (e *GenesisMismatchError) Error() string {
 }
 
 // ApplyGenesis writes initial state.
-func (s *Store) ApplyGenesis(net *lachesis.Config, state *evmcore.EvmBlock) (genesisAtropos hash.Event, genesisState common.Hash, new bool, err error) {
+func (s *Store) ApplyGenesis(
+	net *lachesis.Config, stateRoot common.Hash,
+) (
+	atropos hash.Event, appState common.Hash, isNew bool, err error,
+) {
 	s.migrate()
 
-	storedGenesis := s.GetBlock(0)
-	if storedGenesis != nil {
-		newHash := calcGenesisHash(net, state)
-		if storedGenesis.Atropos != newHash {
-			return genesisAtropos, genesisState, true, &GenesisMismatchError{storedGenesis.Atropos, newHash}
+	stored := s.GetBlock(0)
+	if stored != nil {
+		isNew = false
+		atropos = calcGenesisHash(net, stateRoot)
+		if stored.Atropos != atropos {
+			err = &GenesisMismatchError{stored.Atropos, atropos}
+			return
 		}
-
-		genesisAtropos = storedGenesis.Atropos
-		genesisState = common.Hash(genesisAtropos)
-		return genesisAtropos, genesisState, false, nil
+		appState = common.Hash(atropos) // is not state.Root because legacy
+		return
 	}
 	// if we'here, then it's first time genesis is applied
-	genesisAtropos, genesisState, err = s.applyGenesis(net, state)
-	if err != nil {
-		return genesisAtropos, genesisState, true, err
-	}
-
-	return genesisAtropos, genesisState, true, err
+	isNew = true
+	atropos = s.applyGenesis(net, stateRoot)
+	appState = common.Hash(atropos) // is not state.Root because legacy
+	return
 }
 
-// calcGenesisHash calcs hash of genesis state.
-func calcGenesisHash(net *lachesis.Config, state *evmcore.EvmBlock) hash.Event {
+// calcGenesisHash calcs hash of genesis atropos.
+func calcGenesisHash(net *lachesis.Config, stateRoot common.Hash) hash.Event {
 	s := NewMemStore()
 	defer s.Close()
 
 	s.Log.SetHandler(log.DiscardHandler())
 
-	h, _, _ := s.applyGenesis(net, state)
-	return h
+	atropos := s.applyGenesis(net, stateRoot)
+	return atropos
 }
 
-func (s *Store) applyGenesis(net *lachesis.Config, state *evmcore.EvmBlock) (genesisAtropos hash.Event, genesisState common.Hash, err error) {
+func (s *Store) applyGenesis(net *lachesis.Config, stateRoot common.Hash) (atropos hash.Event) {
 	prettyHash := func(net *lachesis.Config) hash.Event {
 		e := inter.NewEvent()
 		// for nice-looking ID
@@ -72,19 +73,18 @@ func (s *Store) applyGenesis(net *lachesis.Config, state *evmcore.EvmBlock) (gen
 
 		return e.CalcHash()
 	}
-	genesisAtropos = prettyHash(net)
-	genesisState = common.Hash(genesisAtropos)
+	atropos = prettyHash(net)
 
 	block := inter.NewBlock(0,
 		net.Genesis.Time,
-		genesisAtropos,
+		atropos,
 		hash.Event{},
-		hash.Events{genesisAtropos},
+		hash.Events{atropos},
 	)
+	block.Root = stateRoot
 
-	block.Root = state.Root
 	s.SetBlock(block)
-	s.SetBlockIndex(genesisAtropos, block.Index)
+	s.SetBlockIndex(atropos, block.Index)
 
-	return genesisAtropos, genesisState, nil
+	return atropos
 }

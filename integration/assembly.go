@@ -30,22 +30,22 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*
 
 	// write genesis
 
-	state, _, err := adb.ApplyGenesis(&gossipCfg.Net)
+	stateRoot, _, err := adb.ApplyGenesis(&gossipCfg.Net)
 	if err != nil {
 		utils.Fatalf("Failed to write App genesis state: %v", err)
 	}
 
-	genesisAtropos, genesisState, isNew, err := gdb.ApplyGenesis(&gossipCfg.Net, state)
+	atropos, appHash, isNew, err := gdb.ApplyGenesis(&gossipCfg.Net, stateRoot)
 	if err != nil {
 		utils.Fatalf("Failed to write Gossip genesis state: %v", err)
 	}
 
-	err = cdb.ApplyGenesis(&gossipCfg.Net.Genesis, genesisAtropos, genesisState)
+	err = cdb.ApplyGenesis(&gossipCfg.Net.Genesis, atropos, appHash)
 	if err != nil {
 		utils.Fatalf("Failed to write Poset genesis state: %v", err)
 	}
 
-	err = dbs.Flush(genesisAtropos.Bytes())
+	err = dbs.Flush(atropos.Bytes())
 	if err != nil {
 		utils.Fatalf("Failed to flush genesis state: %v", err)
 	}

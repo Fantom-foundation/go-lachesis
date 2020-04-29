@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
-	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -346,18 +345,6 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction,
 	return err
 }
 
-func (b *EthAPIBackend) SubscribeLogsEvent(ch chan<- []*types.Log) notify.Subscription {
-	return b.svc.feed.SubscribeNewLogs(ch)
-}
-
-func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) notify.Subscription {
-	return b.svc.feed.SubscribeNewTxs(ch)
-}
-
-func (b *EthAPIBackend) SubscribeNewBlockEvent(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
-	return b.svc.feed.SubscribeNewBlock(ch)
-}
-
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 	pending, err := b.svc.txpool.Pending()
 	if err != nil {
@@ -414,6 +401,10 @@ func (b *EthAPIBackend) SubscribeNewTxsNotify(ch chan<- evmcore.NewTxsNotify) no
 	return b.svc.txpool.SubscribeNewTxsNotify(ch)
 }
 
+func (b *EthAPIBackend) SubscribeNewBlockEvent(ch chan<- evmcore.ChainHeadNotify) notify.Subscription {
+	return b.svc.feed.SubscribeNewBlock(ch)
+}
+
 // Progress returns current synchronization status of this node
 func (b *EthAPIBackend) Progress() ethapi.PeerProgress {
 	p2pProgress := b.svc.pm.myProgress()
@@ -456,8 +447,6 @@ func (b *EthAPIBackend) RPCGasCap() *big.Int {
 func (b *EthAPIBackend) CurrentEpoch(ctx context.Context) idx.Epoch {
 	return b.svc.engine.GetEpoch()
 }
-
-
 
 // GetRewardWeights returns staker's reward weights.
 func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.StakerID) (*big.Int, *big.Int, error) {

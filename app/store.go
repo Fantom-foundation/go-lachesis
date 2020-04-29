@@ -27,10 +27,9 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
-		Version kvdb.KeyValueStore `table:"_"`
-
-		Genesis kvdb.KeyValueStore `table:"G"`
-		Blocks  kvdb.KeyValueStore `table:"b"`
+		Version    kvdb.KeyValueStore `table:"_"`
+		Checkpoint kvdb.KeyValueStore `table:"c"`
+		Blocks     kvdb.KeyValueStore `table:"b"`
 		// general economy tables
 		EpochStats kvdb.KeyValueStore `table:"E"`
 
@@ -52,7 +51,6 @@ type Store struct {
 		TotalPoiFee         kvdb.KeyValueStore `table:"U"`
 
 		// SFC-related economy tables
-		Voting       kvdb.KeyValueStore `table:"0"`
 		Validators   kvdb.KeyValueStore `table:"1"`
 		Stakers      kvdb.KeyValueStore `table:"2"`
 		Delegators   kvdb.KeyValueStore `table:"3"`

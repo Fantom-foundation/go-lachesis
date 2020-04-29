@@ -1,8 +1,6 @@
 package app
 
 import (
-	"sync/atomic"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
@@ -20,11 +18,11 @@ type BlockInfo struct {
 	Time       inter.Timestamp
 }
 
-func blockInfo(b *inter.Block) *BlockInfo {
+func blockInfo(b *evmcore.EvmHeader) *BlockInfo {
 	return &BlockInfo{
-		Index:      b.Index,
-		Hash:       b.Atropos,
-		ParentHash: b.PrevHash,
+		Index:      idx.Block(b.Number.Uint64()),
+		Hash:       hash.Event(b.Hash),
+		ParentHash: hash.Event(b.ParentHash),
 		Root:       b.Root,
 		Time:       b.Time,
 	}
@@ -37,15 +35,6 @@ func (a *App) BlockChain() evmcore.DummyChain {
 
 // LastBlock returns last block info.
 func (a *App) LastBlock() *BlockInfo {
-	n := atomic.LoadUint64((*uint64)(&a.block))
+	n := a.lastBlock()
 	return a.store.GetBlock(idx.Block(n))
-}
-
-func (a *App) setLastBlock(n idx.Block) {
-	atomic.StoreUint64((*uint64)(&a.block), uint64(n))
-}
-
-func (a *App) incLastBlock() idx.Block {
-	n := atomic.AddUint64((*uint64)(&a.block), 1)
-	return idx.Block(n)
 }

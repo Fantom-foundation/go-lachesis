@@ -54,29 +54,30 @@ func NewStateProcessor(config *params.ChainConfig, bc DummyChain) *StateProcesso
 func (p *StateProcessor) Process(
 	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool,
 ) (
-	types.Receipts, []*types.Log, uint64, *big.Int, []uint, error,
+	receipts types.Receipts,
+	logs []*types.Log,
+	usedGas uint64,
+	totalFee *big.Int,
+	skipped []uint,
+	_ error,
 ) {
-	var (
-		receipts types.Receipts
-		usedGas  = new(uint64)
-		allLogs  []*types.Log
-		gp       = new(GasPool).AddGas(block.GasLimit)
-		skipped  = make([]uint, 0, len(block.Transactions))
-		totalFee = new(big.Int)
-	)
+	totalFee = new(big.Int)
+	skipped = make([]uint, 0, len(block.Transactions))
+	gp := new(GasPool).AddGas(block.GasLimit)
+
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions {
-		receipt, fee, skip, err := p.ProcessTx(tx, i, gp, usedGas, block, statedb, cfg, strict)
+		receipt, fee, skip, err := p.ProcessTx(tx, uint(i), gp, &usedGas, block.Header(), statedb, cfg, strict)
 		if !strict && (skip || err != nil) {
 			skipped = append(skipped, uint(i))
 			continue
 		}
 		totalFee.Add(totalFee, fee)
 		receipts = append(receipts, receipt)
-		allLogs = append(allLogs, receipt.Logs...)
+		logs = append(logs, receipt.Logs...)
 	}
 
-	return receipts, allLogs, *usedGas, totalFee, skipped, nil
+	return
 }
 
 // ProcessTx processes the state changes according to the Ethereum rules by running
@@ -87,13 +88,13 @@ func (p *StateProcessor) Process(
 // returns the amount of gas that was used by the tx.
 // If tx failed to execute due to insufficient gas it will return an error.
 func (p *StateProcessor) ProcessTx(
-	tx *types.Transaction, i int, gp *GasPool, usedGas *uint64,
-	block *EvmBlock, statedb *state.StateDB, cfg vm.Config, strict bool,
+	tx *types.Transaction, i uint, gp *GasPool, usedGas *uint64,
+	block *EvmHeader, statedb *state.StateDB, cfg vm.Config, strict bool,
 ) (
 	receipt *types.Receipt, fee *big.Int, skip bool, err error,
 ) {
-	statedb.Prepare(tx.Hash(), block.Hash, i)
-	receipt, _, fee, skip, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, block.Header(), tx, usedGas, cfg, strict)
+	statedb.Prepare(tx.Hash(), block.Hash, int(i))
+	receipt, _, fee, skip, err = ApplyTransaction(p.config, p.bc, nil, gp, statedb, block, tx, usedGas, cfg, strict)
 	return
 }
 
