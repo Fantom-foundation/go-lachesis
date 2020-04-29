@@ -1143,8 +1143,8 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.currentState = statedb
 	pool.pendingNonces = newTxNoncer(statedb)
 	pool.currentMaxGas = newHead.GasLimit
-	if pool.currentMaxGas > lachesisparams.MaxGasPowerUsed/2 {
-		pool.currentMaxGas = lachesisparams.MaxGasPowerUsed / 2
+	if pool.currentMaxGas > lachesisparams.MaxGasPowerUsed {
+		pool.currentMaxGas = lachesisparams.MaxGasPowerUsed
 	}
 
 	// Inject any transactions discarded due to reorgs
