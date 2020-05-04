@@ -15,7 +15,7 @@ func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config) *goss
 	gossipCfg := gossip.DefaultConfig(network)
 	appCfg := app.DefaultConfig(network)
 
-	engine, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg, &appCfg)
+	engine, _, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg, &appCfg)
 	abci := MakeABCI(network, adb)
 
 	coinbase := SetAccountKey(

@@ -17,8 +17,8 @@ import (
 )
 
 // MakeEngine makes consensus engine from config.
-func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*poset.Poset, *app.Store, *gossip.Store) {
-	dbs := flushable.NewSyncedPool(DBProducer(dataDir))
+func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*poset.Poset, *flushable.SyncedPool, *app.Store, *gossip.Store) {
+	dbs := flushable.NewSyncedPool(dbProducer(dataDir))
 
 	adb := app.NewStore(dbs, appCfg.StoreConfig)
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
@@ -59,7 +59,7 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*
 	// create consensus
 	engine := poset.New(gossipCfg.Net.Dag, cdb, gdb)
 
-	return engine, adb, gdb
+	return engine, dbs, adb, gdb
 }
 
 // MakeABCI makes ABCI-application.

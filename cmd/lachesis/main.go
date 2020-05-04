@@ -241,7 +241,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 
 	stack := makeConfigNode(ctx, &cfg.Node)
 
-	engine, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis, &cfg.App)
+	engine, _, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis, &cfg.App)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
 	abci := integration.MakeABCI(cfg.Lachesis.Net, adb)
