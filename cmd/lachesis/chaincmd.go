@@ -16,15 +16,9 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/version"
 )
 
-const (
-	// statsReportLimit is the time limit during import and export after which we
-	// always print out progress. This avoids the user wondering what's going on.
-	statsReportLimit = 8 * time.Second
-
-	importBatchSize = 2500
-
-	importFlushBatch = 300
-)
+// statsReportLimit is the time limit during import and export after which we
+// always print out progress. This avoids the user wondering what's going on.
+const statsReportLimit = 8 * time.Second
 
 var (
 	importCommand = cli.Command{
@@ -68,7 +62,7 @@ be gzipped.`,
 	}
 )
 
-func makeFNode(ctx *cli.Context, gossipCreate bool) (config, *node.Node, gossip.Consensus, kvdb.KeyValueStore, *gossip.Store) {
+func makeDependencies(ctx *cli.Context) (*node.Node, gossip.Consensus, kvdb.KeyValueStore) {
 	cfg := makeAllConfigs(ctx)
 
 	if !cfg.Lachesis.NoCheckVersion {
@@ -82,26 +76,30 @@ func makeFNode(ctx *cli.Context, gossipCreate bool) (config, *node.Node, gossip.
 	errlock.Check()
 
 	stack := makeConfigNode(ctx, &cfg.Node)
-	defer stack.Close()
 
 	engine, dbs, adb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis, &cfg.App)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
-	if gossipCreate {
-		abci := integration.MakeABCI(cfg.Lachesis.Net, adb)
+	abci := integration.MakeABCI(cfg.Lachesis.Net, adb)
 
-		// Create and register a gossip network service. This is done through the definition
-		// of a node.ServiceConstructor that will instantiate a node.Service. The reason for
-		// the factory method approach is to support service restarts without relying on the
-		// individual implementations' support for such operations.
-		gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-			return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine, abci)
+	var hookedEngine = &gossip.HookedEngine{}
+	hookedEngine.SetEngine(engine)
+	// Create and register a gossip network service. This is done through the definition
+	// of a node.ServiceConstructor that will instantiate a node.Service. The reason for
+	// the factory method approach is to support service restarts without relying on the
+	// individual implementations' support for such operations.
+	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
+		service, err := gossip.NewService(ctx, &cfg.Lachesis, gdb, engine, abci)
+		if err != nil {
+			return nil, err
 		}
-
-		if err := stack.Register(gossipService); err != nil {
-			utils.Fatalf("Failed to register the service: %v", err)
-		}
+		hookedEngine.SetProcessEventFunc(service.GetProcessEventFunc())
+		return service, nil
 	}
 
-	return cfg, stack, engine, dbs.GetDb("gossip-main"), gdb
+	if err := stack.Register(gossipService); err != nil {
+		utils.Fatalf("Failed to register the service: %v", err)
+	}
+
+	return stack, hookedEngine, dbs.GetDb("gossip-main")
 }

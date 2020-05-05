@@ -338,3 +338,8 @@ func (s *Service) Stop() error {
 func (s *Service) AccountManager() *accounts.Manager {
 	return s.node.AccountManager
 }
+
+// GetProcessEventFunc returns process event function
+func (s *Service) GetProcessEventFunc() func(realEngine Consensus, e *inter.Event) error {
+	return s.processEvent
+}

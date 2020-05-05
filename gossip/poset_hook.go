@@ -96,3 +96,11 @@ func (hook *HookedEngine) Bootstrap(callbacks inter.ConsensusCallbacks) {
 	}
 	hook.engine.Bootstrap(callbacks)
 }
+
+func (hook *HookedEngine) SetEngine(engine Consensus) {
+	hook.engine = engine
+}
+
+func (hook *HookedEngine) SetProcessEventFunc(processEvent func(realEngine Consensus, e *inter.Event) error) {
+	hook.processEvent = processEvent
+}

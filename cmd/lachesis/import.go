@@ -19,15 +19,16 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
 func importChain(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
-	_, stack, engine, db, gdb := makeFNode(ctx, true)
+
+	stack, engine, db := makeDependencies(ctx)
 	utils.StartNode(stack)
+	defer stack.Stop()
 
 	// Start periodically gathering memory profiles
 	var peakMemAlloc, peakMemSys uint64
@@ -48,12 +49,12 @@ func importChain(ctx *cli.Context) error {
 	start := time.Now()
 
 	if len(ctx.Args()) == 1 {
-		if err := ImportChain(engine, gdb, ctx.Args().First()); err != nil {
+		if err := ImportChain(engine, ctx.Args().First()); err != nil {
 			log.Error("Import error", "err", err)
 		}
 	} else {
 		for _, arg := range ctx.Args() {
-			if err := ImportChain(engine, gdb, arg); err != nil {
+			if err := ImportChain(engine, arg); err != nil {
 				log.Error("Import error", "file", arg, "err", err)
 			}
 		}
@@ -84,7 +85,6 @@ func importChain(ctx *cli.Context) error {
 	fmt.Printf("GC pause:      %v\n\n", time.Duration(mem.PauseTotalNs))
 
 	if ctx.GlobalBool(utils.NoCompactionFlag.Name) {
-		stack.Stop()
 		return nil
 	}
 
@@ -126,13 +126,13 @@ func importChain(ctx *cli.Context) error {
 	}
 
 	log.Warn("Import was made for "+networkMsgFlag+" network, imported events apply only to this network", "hint", hint)
-	stack.Stop()
+
 	return nil
 }
 
-func ImportChain(engine gossip.Consensus, gdb *gossip.Store, fn string) error {
+func ImportChain(engine gossip.Consensus, fn string) error {
 	// Watch for Ctrl-C while the import is running.
-	// If a signal is received, the import will stop at the next batch.
+	// If a signal is received, the import will stop.
 	interrupt := make(chan os.Signal, 1)
 	stop := make(chan struct{})
 	signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
@@ -169,101 +169,22 @@ func ImportChain(engine gossip.Consensus, gdb *gossip.Store, fn string) error {
 		}
 	}
 	stream := rlp.NewStream(reader, 0)
-	// Run actual the import.
-	for batch := 0; ; batch++ {
-		// Load a batch of RLP events.
+	for {
 		if checkInterrupt() {
 			return fmt.Errorf("interrupted")
 		}
-		eventsBatch := make(inter.Events, 0, importBatchSize)
-		i := 0
-		for ; i < importBatchSize; i++ {
-			var e inter.Event
-			if err = stream.Decode(&e); err == io.EOF {
-				break
-			} else if err != nil {
-				return fmt.Errorf("at event decode error: %v", err)
-			}
-			eventsBatch = append(eventsBatch, &e)
-		}
-		if len(eventsBatch) == 0 {
+		var e inter.Event
+		if err = stream.Decode(&e); err == io.EOF {
 			break
 		}
-		// Import the batch.
+
 		if checkInterrupt() {
 			return fmt.Errorf("interrupted")
 		}
-
-		missing := missingEvents(gdb, eventsBatch)
-		if len(missing) == 0 {
-			log.Info(
-				"Skipping batch as all events present", "batch", batch,
-				"first", eventsBatch[0].Hash(), "last", eventsBatch[len(eventsBatch)-1].Hash())
-			continue
+		if err := engine.ProcessEvent(&e); err != nil {
+			return fmt.Errorf("insert event error: %v", err)
 		}
-		if err := insertEvents(engine, gdb, missing); err != nil {
-			return fmt.Errorf("insert events error: %v", err)
-		}
-		log.Debug(
-			"events batch inserted", "batch", batch,
-			"first", eventsBatch[0].Hash(), "last", eventsBatch[len(eventsBatch)-1].Hash())
-	}
-	return nil
-}
-
-func missingEvents(gdb *gossip.Store, events []*inter.Event) []*inter.Event {
-	var missingEvents []*inter.Event
-	for _, event := range events {
-		if gdb.HasEvent(event.Hash()) {
-			log.Debug("event exist", "event", event)
-			continue
-		}
-		missingEvents = append(missingEvents, event)
-	}
-	return missingEvents
-}
-
-func insertEvents(engine gossip.Consensus, gdb *gossip.Store, events []*inter.Event) error {
-	if len(events) == 0 {
-		return nil
-	}
-	var (
-		current     int
-		newEpoch    idx.Epoch
-		sealedEpoch idx.Epoch
-	)
-	for _, event := range events {
-		if newEpoch < event.Epoch {
-			sealedEpoch = newEpoch
-			newEpoch = event.Epoch
-		}
-		if current == importFlushBatch {
-			current = 0
-			err := gdb.Commit(nil, true)
-			if err != nil {
-				return err
-			}
-		}
-		current++
-		if gdb.HasEventHeader(event.Hash()) {
-			continue
-		}
-
-		ev := engine.Prepare(event)
-		if ev == nil {
-			continue
-		}
-		gdb.SetEvent(ev)
-		err := engine.ProcessEvent(ev)
-		if err != nil {
-			gdb.DeleteEvent(ev.Epoch, ev.Hash())
-			return err
-		}
-		gdb.EpochDbs.Del(uint64(sealedEpoch))
-	}
-	err := gdb.Commit(nil, true)
-	if err != nil {
-		return err
+		log.Debug("event inserted", "event", e.Hash())
 	}
 	return nil
 }

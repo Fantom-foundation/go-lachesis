@@ -12,10 +12,15 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
+	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
+	"github.com/Fantom-foundation/go-lachesis/version"
 )
 
 func exportChain(ctx *cli.Context) error {
@@ -23,7 +28,19 @@ func exportChain(ctx *cli.Context) error {
 		utils.Fatalf("This command requires an argument.")
 	}
 
-	_, _, _, _, gdb := makeFNode(ctx, false)
+	cfg := makeAllConfigs(ctx)
+
+	if !cfg.Lachesis.NoCheckVersion {
+		ver := params.VersionWithCommit(gitCommit, gitDate)
+		status, msg, err := version.CheckRelease(nil, ver)
+		applyVersionCheck(&cfg, status, msg, err)
+	}
+
+	// check errlock file
+	errlock.SetDefaultDatadir(cfg.Node.DataDir)
+	errlock.Check()
+
+	_, gdb := makeDBs(cfg.Node.DataDir, &cfg.Lachesis)
 	defer gdb.Close()
 
 	start := time.Now()
@@ -37,6 +54,14 @@ func exportChain(ctx *cli.Context) error {
 	}
 	fmt.Printf("Export done in %v\n", time.Since(start))
 	return nil
+}
+
+func makeDBs(dataDir string, gossipCfg *gossip.Config) (*flushable.SyncedPool, *gossip.Store) {
+	dbs := flushable.NewSyncedPool(integration.DBProducer(dataDir))
+
+	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
+	gdb.SetName("gossip-db")
+	return dbs, gdb
 }
 
 // ExportChain exports a events into the specified file, truncating any data
@@ -70,41 +95,26 @@ func Export(gdb *gossip.Store, w io.Writer) error {
 	log.Info("Exporting batch of events")
 	var err error
 	start, reported := time.Now(), time.Now()
-
-	var (
-		events    inter.Events
-		prevEvent *inter.Event
-	)
 	gdb.ForEachEventWithoutEpoch(func(event *inter.Event) bool {
 		if event == nil {
 			err = errors.New("export failed, event not found")
 			return false
 		}
-		if prevEvent == nil {
-			prevEvent = event
+		err := event.EncodeRLP(w)
+		if err != nil {
+			err = fmt.Errorf("export failed, error: %v", err)
+			return false
 		}
-		if len(event.Parents) == 0 && prevEvent.Epoch != event.Epoch {
-			for _, event := range events {
-				log.Debug("exported", "event", event.String())
-				err := event.EncodeRLP(w)
-				if err != nil {
-					err = fmt.Errorf("export failed, error: %v", err)
-					return false
-				}
-				if time.Since(reported) >= statsReportLimit {
-					log.Info("Exporting events", "exported", event.String(), "elapsed", common.PrettyDuration(time.Since(start)))
-					reported = time.Now()
-				}
-			}
-			events = inter.Events{}
+		log.Debug("exported", "event", event.String())
+
+		if time.Since(reported) >= statsReportLimit {
+			log.Info("Exporting events", "exported", event.String(), "elapsed", common.PrettyDuration(time.Since(start)))
+			reported = time.Now()
 		}
-		events = append(events, event)
-		prevEvent = event
 		return true
 	})
 	if err != nil {
 		return err
 	}
-	events = inter.Events{}
 	return nil
 }

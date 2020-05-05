@@ -18,7 +18,7 @@ import (
 
 // MakeEngine makes consensus engine from config.
 func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.Config) (*poset.Poset, *flushable.SyncedPool, *app.Store, *gossip.Store) {
-	dbs := flushable.NewSyncedPool(dbProducer(dataDir))
+	dbs := flushable.NewSyncedPool(DBProducer(dataDir))
 
 	adb := app.NewStore(dbs, appCfg.StoreConfig)
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
