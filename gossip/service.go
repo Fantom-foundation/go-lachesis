@@ -284,7 +284,7 @@ func (s *Service) APIs() []rpc.API {
 // Start method invoked when the node is ready to start the service.
 func (s *Service) Start(srv *p2p.Server) error {
 	// Start the RPC service
-	s.netRPCService = ethapi.NewPublicNetAPI(srv, s.config.Net.NetworkID)
+	s.netRPCService = ethapi.NewPublicNetAPI(srv, s.EthAPI, s.config.Net.NetworkID)
 
 	var genesis common.Hash
 	genesis = s.engine.GetGenesisHash()

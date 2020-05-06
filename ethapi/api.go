@@ -1901,12 +1901,13 @@ func (api *PrivateDebugAPI) SetHead(number hexutil.Uint64) error {
 // PublicNetAPI offers network related RPC methods
 type PublicNetAPI struct {
 	net            *p2p.Server
+	backend        Backend
 	networkVersion uint64
 }
 
 // NewPublicNetAPI creates a new net API instance.
-func NewPublicNetAPI(net *p2p.Server, networkVersion uint64) *PublicNetAPI {
-	return &PublicNetAPI{net, networkVersion}
+func NewPublicNetAPI(net *p2p.Server, backend Backend, networkVersion uint64) *PublicNetAPI {
+	return &PublicNetAPI{net, backend, networkVersion}
 }
 
 // Listening returns an indication if the node is listening for network connections.
@@ -1917,6 +1918,19 @@ func (s *PublicNetAPI) Listening() bool {
 // PeerCount returns the number of connected peers
 func (s *PublicNetAPI) PeerCount() hexutil.Uint {
 	return hexutil.Uint(s.net.PeerCount())
+}
+
+func (s *PublicNetAPI) GetPeersEventsCount() (map[string]PeerInfo, error) {
+	var resp map[string]PeerInfo
+	peersInfo := s.backend.PeersInfo()
+	if len(peersInfo) == 0 {
+		return nil, errors.New("peers not connected")
+	}
+	resp = make(map[string]PeerInfo)
+	for id, info := range peersInfo {
+		resp[id] = info
+	}
+	return resp, nil
 }
 
 // Version returns the current ethereum protocol version.
