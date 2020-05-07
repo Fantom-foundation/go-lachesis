@@ -1921,16 +1921,11 @@ func (s *PublicNetAPI) PeerCount() hexutil.Uint {
 }
 
 func (s *PublicNetAPI) GetPeersEventsCount() (map[string]PeerInfo, error) {
-	var resp map[string]PeerInfo
 	peersInfo := s.backend.PeersInfo()
 	if len(peersInfo) == 0 {
 		return nil, errors.New("peers not connected")
 	}
-	resp = make(map[string]PeerInfo)
-	for id, info := range peersInfo {
-		resp[id] = info
-	}
-	return resp, nil
+	return peersInfo, nil
 }
 
 // Version returns the current ethereum protocol version.

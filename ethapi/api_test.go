@@ -569,3 +569,50 @@ func TestSendTxArgs_toTransaction(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 }
+
+func TestPublicNetAPI_GetPeersEventsCount(t *testing.T) {
+	require := require.New(t)
+	b := newTestBackend(t)
+	t.Run("peers info full", func(t *testing.T) {
+		wantResp := map[string]PeerInfo{
+			"11test11": {
+				NumOfReceivedEvents: 345,
+				NumOfSentEvents:     234,
+			},
+			"12test12": {
+				NumOfReceivedEvents: 567,
+				NumOfSentEvents:     409,
+			},
+		}
+		s := &PublicNetAPI{
+			backend: b,
+		}
+
+		b.EXPECT().PeersInfo().Return(map[string]PeerInfo{
+			"11test11": {
+				NumOfReceivedEvents: 345,
+				NumOfSentEvents:     234,
+			},
+			"12test12": {
+				NumOfReceivedEvents: 567,
+				NumOfSentEvents:     409,
+			},
+		})
+
+		got, err := s.GetPeersEventsCount()
+		require.NoError(err)
+		require.Equal(wantResp, got)
+	})
+
+	t.Run("peers info empty", func(t *testing.T) {
+		s := &PublicNetAPI{
+			backend: b,
+		}
+
+		b.EXPECT().PeersInfo().Return(map[string]PeerInfo{})
+
+		got, err := s.GetPeersEventsCount()
+		require.EqualError(err, "peers not connected")
+		require.Empty(got)
+	})
+}
