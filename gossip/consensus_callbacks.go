@@ -270,6 +270,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	// s.engineMu is locked here
 
 	confirmBlocksMeter.Inc(1)
+	epochGauge.Update(int64(block.Atropos.Epoch()))
 
 	block, txPositions, newAppHash, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
 
@@ -298,6 +299,23 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	}
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
+
+	/*
+	if s.EthAPI == nil {
+		s.Log.Error("Metric get info", "name", "stakes", "err", "EthAPI absent")
+	}
+	stakers, err := s.EthAPI.GetStakers(context.TODO())
+	if err == nil {
+		stakersCountGauge.Update(int64(len(stakers)))
+		stakesSum := int64(0)
+		for _, s := range stakers {
+			stakesSum += s.Staker.StakeAmount.Int64()
+		}
+		stakersStakeGauge.Update(stakesSum)
+	} else {
+		s.Log.Error("Metric get info", "name", "stakes", "err", err.Error())
+	}
+	 */
 
 	return newAppHash, sealEpoch
 }
