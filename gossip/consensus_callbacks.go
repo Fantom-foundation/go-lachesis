@@ -269,8 +269,7 @@ func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Fra
 func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
 	// s.engineMu is locked here
 
-	confirmBlocksMeter.Inc(1)
-	epochGauge.Update(int64(block.Atropos.Epoch()))
+	s.updateMetrics(block)
 
 	block, txPositions, newAppHash, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
 
@@ -300,24 +299,34 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
-	/*
-	if s.EthAPI == nil {
-		s.Log.Error("Metric get info", "name", "stakes", "err", "EthAPI absent")
-	}
-	stakers, err := s.EthAPI.GetStakers(context.TODO())
-	if err == nil {
-		stakersCountGauge.Update(int64(len(stakers)))
-		stakesSum := int64(0)
-		for _, s := range stakers {
-			stakesSum += s.Staker.StakeAmount.Int64()
-		}
-		stakersStakeGauge.Update(stakesSum)
-	} else {
-		s.Log.Error("Metric get info", "name", "stakes", "err", err.Error())
-	}
-	 */
-
 	return newAppHash, sealEpoch
+}
+
+func (s *Service) updateMetrics(block *inter.Block) {
+	// lachesis_confirm:blocks
+	confirmBlocksMeter.Inc(1)
+
+	// lachesis_epoch
+	epochGauge.Update(int64(block.Atropos.Epoch()))
+
+	// lachesis_stakers
+	// lachesis_stakers:stake
+	if s.EthAPI == nil {
+		s.emitter.Log.Error("Metric get info", "name", "stakes", "err", "EthAPI absent")
+	}
+
+	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
+	s.EthAPI.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+		it.Staker.IsValidator = s.EthAPI.svc.engine.GetValidators().Exists(it.StakerID)
+		stakers = append(stakers, it)
+	})
+
+	stakersCountGauge.Update(int64(len(stakers)))
+	stakesSum := int64(0)
+	for _, s := range stakers {
+		stakesSum += s.Staker.StakeAmount.Int64()
+	}
+	stakersStakeGauge.Update(stakesSum)
 }
 
 // selectValidatorsGroup is a callback type to select new validators group

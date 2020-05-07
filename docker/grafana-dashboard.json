@@ -256,7 +256,7 @@
           "overrides": [],
           "values": false
         },
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto"
       },
@@ -313,19 +313,19 @@
                 }
               ]
             },
-            "unit": "lengthft"
+            "unit": "locale"
           },
           "overrides": [],
           "values": false
         },
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "horizontal"
       },
       "pluginVersion": "6.7.3",
       "targets": [
         {
-          "expr": "lachesis_stakers:stake{job=\"node0\"}",
+          "expr": "lachesis_stakers:stake{job=\"node0\"}/1000000000",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -368,5 +368,5 @@
   "variables": {
     "list": []
   },
-  "version": 7
+  "version": 8
 }
