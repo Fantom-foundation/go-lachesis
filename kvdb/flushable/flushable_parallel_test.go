@@ -56,9 +56,7 @@ func TestFlushableParallel(t *testing.T) {
 		for !stopped {
 			// iterate over tableImmutable and check its content
 			it := tableImmutable.NewIterator()
-
 			defer it.Release()
-
 			i := uint64(0)
 			for ; it.Next(); i++ {
 				assertar.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
@@ -124,11 +122,11 @@ func TestFlushableParallelCh(t *testing.T) {
 		_ = tableImmutable.Put(bigendian.Int64ToBytes(i), bigendian.Int64ToBytes(i))
 	}
 
-	loop_chan := make(chan bool)
+	loopChan := make(chan bool)
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 
-	go func(ch chan bool) {
+	go func() {
 
 		assertar := assert.New(t)
 
@@ -152,16 +150,16 @@ func TestFlushableParallelCh(t *testing.T) {
 				}
 				assertar.Equal(testPairsNum, i)
 
-			case _, ok := <-ch:
+			case _, ok := <-loopChan:
 				if !ok {
 					break loop
 				}
 			}
 		}
 		wg.Done()
-	}(loop_chan)
+	}()
 
-	go func(ch chan bool) {
+	go func() {
 		r := rand.New(rand.NewSource(0))
 	loop:
 		for {
@@ -173,18 +171,18 @@ func TestFlushableParallelCh(t *testing.T) {
 				_ = tableMutable2.Put(bigendian.Int64ToBytes(r.Uint64() % testPairsNum)[:7], bigendian.Int64ToBytes(r.Uint64()))
 
 				if r.Int63n(10) == 0 {
-					_ = flushableDb.Flush() // flush with 1% chance
+					_ = flushableDb.Flush() // flush with 10% chance
 				}
-			case _, ok := <-ch:
+			case _, ok := <-loopChan:
 				if !ok {
 					break loop
 				}
 			}
 		}
 		wg.Done()
-	}(loop_chan)
+	}()
 
 	time.Sleep(testDuration)
-	close(loop_chan)
+	close(loopChan)
 	wg.Wait()
 }
