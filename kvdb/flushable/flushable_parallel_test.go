@@ -127,43 +127,37 @@ func TestFlushableParallelCh(t *testing.T) {
 	wg.Add(2)
 
 	go func() {
-
+		defer wg.Done()
 		assertar := assert.New(t)
 
-	loop:
 		for {
 			select {
-
 			default:
-
 				// iterate over tableImmutable and check its content
 				it := tableImmutable.NewIterator()
-
 				defer it.Release()
 
 				i := uint64(0)
 				for ; it.Next(); i++ {
 					assertar.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
 					assertar.Equal(bigendian.Int64ToBytes(i), it.Value(), i)
-
 					assertar.NoError(it.Error(), i)
 				}
 				assertar.Equal(testPairsNum, i)
 
 			case _, ok := <-loopChan:
 				if !ok {
-					break loop
+					return
 				}
 			}
 		}
-		wg.Done()
 	}()
 
 	go func() {
+		defer wg.Done()
 		r := rand.New(rand.NewSource(0))
-	loop:
-		for {
 
+		for {
 			select {
 			default:
 				// try to spoil data in tableImmutable by updating other tables
@@ -175,11 +169,10 @@ func TestFlushableParallelCh(t *testing.T) {
 				}
 			case _, ok := <-loopChan:
 				if !ok {
-					break loop
+					return
 				}
 			}
 		}
-		wg.Done()
 	}()
 
 	time.Sleep(testDuration)
