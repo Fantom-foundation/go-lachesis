@@ -2,8 +2,15 @@
 cd $(dirname $0)
 . ./_params.sh
 
+echo '--- ${NETWORK} ---' | NETWORK=${NETWORK} envsubst
+
+
+
+
+exit
+
 docker run --rm \
     -p 3000:3000 \
-    --net=lachesis \
+    --net=${NETWORK} \
     --name=grafana \
-    grafana/grafana
+    grafana/grafana-lachesis

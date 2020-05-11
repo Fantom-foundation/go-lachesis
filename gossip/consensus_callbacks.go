@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/Fantom-foundation/go-lachesis/utils"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -302,31 +303,62 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	return newAppHash, sealEpoch
 }
 
+var lastEpoch = idx.Epoch(0)
+
 func (s *Service) updateMetrics(block *inter.Block) {
 	// lachesis_confirm:blocks
 	confirmBlocksMeter.Inc(1)
 
-	// lachesis_epoch
-	epochGauge.Update(int64(block.Atropos.Epoch()))
+	epoch := s.abciApp.GetEpoch()
+	if epoch > 0 {
+		// lachesis_epoch
+		epochGauge.Update(int64(epoch))
+
+		// lachesis_epoch:time
+		epochStat := s.abciApp.GetEpochStats(epoch-1)
+		if epochStat != nil {
+			epochTimeGauge.Update(int64(time.Since(epochStat.End.Time()).Seconds()))
+			if epochStat.TotalFee != nil {
+				epochFeeGauge.Update(epochStat.TotalFee.Int64())
+			}
+		}
+	}
 
 	// lachesis_stakers
 	// lachesis_stakers:stake
-	if s.EthAPI == nil {
-		s.emitter.Log.Error("Metric get info", "name", "stakes", "err", "EthAPI absent")
-	}
-
-	stakers := make([]sfctype.SfcStakerAndID, 0, 200)
+	valueSum := int64(0)
+	count := int64(0)
+	countValidators := int64(0)
 	s.EthAPI.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
-		it.Staker.IsValidator = s.EthAPI.svc.engine.GetValidators().Exists(it.StakerID)
-		stakers = append(stakers, it)
+		valueSum += it.Staker.StakeAmount.Int64()
+		count++
+		if it.Staker.IsValidator {
+			countValidators++
+		}
 	})
+	stakersCountGauge.Update(count)
+	stakersStakeGauge.Update(valueSum)
+	validatorsCountGauge.Update(countValidators)
 
-	stakersCountGauge.Update(int64(len(stakers)))
-	stakesSum := int64(0)
-	for _, s := range stakers {
-		stakesSum += s.Staker.StakeAmount.Int64()
+	// lachesis_uptime
+	appUptimeGauge.Update(int64(utils.Uptime().Seconds()))
+
+	// lachesis_delegators
+	// lachesis_delegators:amount
+	valueSum = 0
+	count = 0
+	s.EthAPI.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
+		count++
+		valueSum += it.Delegator.Amount.Int64()
+	})
+	delegatorsCountGauge.Update(count)
+	delegatorsAmountGauge.Update(valueSum)
+
+	// lachesis_total_supply
+	totalSupply := s.abciApp.GetTotalSupply()
+	if totalSupply != nil {
+		totalSupplyGauge.Update(totalSupply.Int64())
 	}
-	stakersStakeGauge.Update(stakesSum)
 }
 
 // selectValidatorsGroup is a callback type to select new validators group
