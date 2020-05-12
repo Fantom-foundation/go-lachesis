@@ -17,3 +17,12 @@ TEST_ACCS_COUNT=100000
 
 PROMETHEUS_URL=http://prometheus:9090/
 PROMETHEUS_JOB=node0
+
+TARGET_HOST=node0:19090
+ALERTMANAGER_HOST=alertmanager:9093
+
+SMTP_HOST=localhost:25
+SMTP_FROM=alert@lachesis.net
+SMTP_AUTH_USER=
+SMTP_AUTH_PASS=
+EMAIL_ADMIN=admin@sample.com

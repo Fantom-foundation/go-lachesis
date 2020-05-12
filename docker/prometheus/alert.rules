@@ -1,0 +1,11 @@
+groups:
+- name: example
+  rules:
+  - alert: high_load
+    expr: node_load1 > 0.0
+    for: 1s
+    labels:
+      severity: page
+    annotations:
+      summary: "Instance {{ $labels.instance }} under high load"
+      description: "{{ $labels.instance }} of job {{ $labels.job }} is under high load."
