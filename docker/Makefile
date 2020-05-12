@@ -19,11 +19,14 @@ tx-storm:
 	    --build-arg GOPROXY=$(GOPROXY) \
 	    -f docker/Dockerfile.tx-storm -t "tx-storm:$(TAG)" .
 
+.PHONY: grafana
 grafana:
-	./grafana/configs-generate.sh && \
+	cd ../ && \
+	./docker/grafana/configs-generate.sh && \
 	docker build \
-		--network==host \
-		-f Dockerfile.grafana -t "grafana-lachesis:${TAG}"
+	    --network==host \
+	    --build-arg GOPROXY=$(GOPROXY) \
+	    -f docker/Dockerfile.grafana -t "grafana-lachesis:${TAG}" .
 
 test_accs.json:
 	./_test_accs.sh

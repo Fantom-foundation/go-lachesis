@@ -21,6 +21,15 @@ After startup go to http://localhost:9000 and sign in using your Sentry-account 
 Logs are grouped and colored (info - blue, warn - yellow, error - red).
 Each log includes: environment info, message about an error, code line (in case of an error).
 
+## Grafana
+
+For run grafana:
+* Run `./prometheus-on.sh`;
+* Modify ./_params.sh file values `PROMETHEUS_URL` (default: `http://prometheus:9090/`) and `PROMETHEUS_JOB` (default: `node0`);
+* Run `make grafana`;
+* Run `./grafana-on.sh`;
+* Use `http://locahost:3000/` like entry point for browser or nginx upstream location; 
+* Use login `admin` with password `admin` for first enter to grafana;
 
 ## Stake transfer example
 

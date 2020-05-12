@@ -1,11 +1,6 @@
 # config file version
 apiVersion: 1
 
-# list of datasources that should be deleted from the database
-deleteDatasources:
-  - name: Graphite
-    orgId: 1
-
 # list of datasources to insert/update depending
 # what's available in the database
 datasources:
@@ -14,25 +9,21 @@ datasources:
   # <string, required> datasource type. Required
   type: prometheus
   # <string, required> access mode. proxy or direct (Server or Browser in the UI). Required
-  access: Server
+  access: proxy
   # <int> org id. will default to orgId 1 if not specified
-  orgId: 1
+  orgId:
   # <string> custom UID which can be used to reference this datasource in other parts of the configuration, if not specified will be generated automatically
   uid:
   # <string> url
   url: ${PROMETHEUS_URL}
-  # <string> Deprecated, use secureJsonData.password
-  password:
   # <string> database user, if used
   user:
   # <string> database name, if used
   database:
   # <bool> enable/disable basic auth
-  basicAuth:
+  basicAuth: false
   # <string> basic auth username
   basicAuthUser:
-  # <string> Deprecated, use secureJsonData.basicAuthPassword
-  basicAuthPassword:
   # <bool> enable/disable with credentials headers
   withCredentials:
   # <bool> mark as default datasource. Max one per org
@@ -40,17 +31,17 @@ datasources:
   # <map> fields that will be converted to json and stored in jsonData
   jsonData:
      graphiteVersion: "1.1"
-     tlsAuth: true
-     tlsAuthWithCACert: true
+     tlsAuth: false
+     tlsAuthWithCACert: false
   # <string> json object of data that will be encrypted.
   secureJsonData:
-    tlsCACert: "..."
-    tlsClientCert: "..."
-    tlsClientKey: "..."
+    tlsCACert:
+    tlsClientCert:
+    tlsClientKey:
     # <string> database password, if used
     password:
     # <string> basic auth password
     basicAuthPassword:
   version: 1
   # <bool> allow users to edit datasources from the UI.
-  editable: yes
+  editable: true

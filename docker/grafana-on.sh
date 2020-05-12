@@ -2,15 +2,11 @@
 cd $(dirname $0)
 . ./_params.sh
 
-echo '--- ${NETWORK} ---' | NETWORK=${NETWORK} envsubst
+docker volume create grafana-data
 
-
-
-
-exit
-
-docker run --rm \
+docker run -d --rm \
     -p 3000:3000 \
     --net=${NETWORK} \
     --name=grafana \
-    grafana/grafana-lachesis
+    --mount source=grafana-data,target=/var/lib/grafana \
+    grafana-lachesis
