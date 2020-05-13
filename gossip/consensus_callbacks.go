@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/utils"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -15,7 +14,9 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 // processEvent extends the engine.ProcessEvent with gossip-specific actions on each event processing
