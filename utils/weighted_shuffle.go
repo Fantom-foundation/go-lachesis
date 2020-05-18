@@ -96,16 +96,28 @@ func WeightedPermutation(size int, weights []pos.Stake, seed common.Hash) []int 
 		return make([]int, 0)
 	}
 
-	tree := weightedShuffleTree{
-		weights: weights,
-		nodes:   make([]weightedShuffleNode, len(weights)),
-		seed:    seed,
+	wt := make([]uint64, 0)
+	for _, v := range weights {
+		wt = append(wt, uint64(v))
 	}
-	tree.build(0)
+	roulette := NewRouletteSA(wt)
 
-	permutation := make([]int, size)
-	for i := 0; i < size; i++ {
-		permutation[i] = tree.retrieve(0)
+	//
+	//tree := weightedShuffleTree{
+	//	weights: weights,
+	//	nodes:   make([]weightedShuffleNode, len(weights)),
+	//	seed:    seed,
+	//}
+	//tree.build(0)
+
+	//permutation := make([]int, size)
+	//for i := 0; i < size; i++ {
+	//	permutation[i] = tree.retrieve(0)
+	//}
+	permutatiom := roulette.NSelection(size)
+	result := make([]int, 0)
+	for _, v := range permutatiom {
+		result = append(result, int(v))
 	}
-	return permutation
+	return result
 }
