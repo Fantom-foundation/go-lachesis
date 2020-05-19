@@ -76,15 +76,12 @@ func GetMax(w []uint64) uint64 {
 // returns index of the selected item
 func (rw *RouletteSA) Selection(fMax uint64) uint {
 	n := len(rw.Weights)
-	//rand.Seed(time.Now().UnixNano())
 	for {
 		// Select randomly one of the individuals
 		rand.Seed(time.Now().UnixNano())
 		i := rand.Intn(n)
 		// The selection is accepted with probability fitness(i) / fMax
-		rf := rand.Float64()
-		//fmt.Printf("[%v] [%v] [%v]\n", i, rf, float64(rw.Weights[i])/float64(fMax))
-		if rf < float64(rw.Weights[i])/float64(fMax) {
+		if rand.Float64() < float64(rw.Weights[i])/float64(fMax) {
 			return uint(i)
 		}
 	}
