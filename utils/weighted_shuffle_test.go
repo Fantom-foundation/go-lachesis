@@ -27,37 +27,6 @@ func getTestWeightsEqual(num int) []pos.Stake {
 	return weights
 }
 
-// Test average distribution of the shuffle
-func Test_Permutation_distribution(t *testing.T) {
-	weightsArr := getTestWeightsIncreasing(30)
-
-	weightHits := make(map[int]int) // weight -> number of occurrences
-	for roundSeed := 0; roundSeed < 3000; roundSeed++ {
-		seed := hashOf(common.Hash{}, uint32(roundSeed))
-		perm := WeightedPermutation(len(weightsArr)/10, weightsArr, seed)
-		for _, p := range perm {
-			weight := weightsArr[p]
-			weightFactor := int(weight / 1000)
-
-			_, ok := weightHits[weightFactor]
-			if !ok {
-				weightHits[weightFactor] = 0
-			}
-			weightHits[weightFactor]++
-		}
-	}
-
-	assertar := assert.New(t)
-	for weightFactor, hits := range weightHits {
-		//fmt.Printf("Test_RandomElection_distribution: %d \n", hits/weightFactor)
-		assertar.Equal((hits/weightFactor) > 20-8, true)
-		assertar.Equal((hits/weightFactor) < 20+8, true)
-		if t.Failed() {
-			return
-		}
-	}
-}
-
 // test that WeightedPermutation provides a correct permaition
 func testCorrectPermutation(t *testing.T, weightsArr []pos.Stake) {
 	assertar := assert.New(t)

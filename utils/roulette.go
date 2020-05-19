@@ -12,21 +12,21 @@ type RouletteSA struct {
 	seed      int64
 }
 
-func NewRouletteSA(w []uint64) *RouletteSA {
-	if len(w) <= 0 {
+func NewRouletteSA(weigths []uint64) *RouletteSA {
+	if len(weigths) <= 0 {
 		panic("the size must be positive")
 	}
 
-	max := GetMax(w)
-	var avg uint64 = w[0]
-	for _, v := range w[1:] {
-		avg = +v
-		avg = avg >> 1
+	max := GetMax(weigths)
+	var averave uint64 = weigths[0]
+	for _, v := range weigths[1:] {
+		averave = +v
+		averave = averave >> 1
 	}
 	return &RouletteSA{
-		Weights:   w,
+		Weights:   weigths,
 		MaxWeight: max,
-		seed:      int64(avg),
+		seed:      int64(averave),
 	}
 }
 
