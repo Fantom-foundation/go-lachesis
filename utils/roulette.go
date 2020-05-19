@@ -2,7 +2,6 @@ package utils
 
 import (
 	"math/rand"
-	"time"
 )
 
 // This file contains an implementation of the following paper
@@ -10,6 +9,7 @@ import (
 type RouletteSA struct {
 	Weights   []uint64
 	MaxWeight uint64
+	seed      int64
 }
 
 func NewRouletteSA(w []uint64) *RouletteSA {
@@ -18,9 +18,15 @@ func NewRouletteSA(w []uint64) *RouletteSA {
 	}
 
 	max := GetMax(w)
+	var avg uint64 = w[0]
+	for _, v := range w[1:] {
+		avg = +v
+		avg = avg >> 1
+	}
 	return &RouletteSA{
 		Weights:   w,
 		MaxWeight: max,
+		seed:      int64(avg),
 	}
 }
 
@@ -33,12 +39,13 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 	if len(rw.Weights) == 0 {
 		return make([]uint, 0)
 	}
-	//tmpWeights := rw.Weights
-
 	selected := make(map[uint]bool)
 	max := rw.MaxWeight
 
 	selection := make([]uint, size)
+
+	rand.Seed(rw.seed)
+
 	for i := 0; i < size; i++ {
 		// select a next one
 		for {
@@ -76,9 +83,9 @@ func GetMax(w []uint64) uint64 {
 // returns index of the selected item
 func (rw *RouletteSA) Selection(fMax uint64) uint {
 	n := len(rw.Weights)
+	//rand.Seed( rw.seed )
 	for {
 		// Select randomly one of the individuals
-		rand.Seed(time.Now().UnixNano())
 		i := rand.Intn(n)
 		// The selection is accepted with probability fitness(i) / fMax
 		if rand.Float64() < float64(rw.Weights[i])/float64(fMax) {

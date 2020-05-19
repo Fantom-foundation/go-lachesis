@@ -92,8 +92,8 @@ func Test_Permutation_determinism(t *testing.T) {
 
 	assertar := assert.New(t)
 
-	assertar.Equal([]int{1, 2, 3, 4, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 0)))
-	assertar.Equal([]int{1, 0, 2, 4, 3}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 1)))
-	assertar.Equal([]int{2, 4, 3, 0, 1}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 3)))
-	assertar.Equal([]int{3, 4}, WeightedPermutation(len(weightsArr)/2, weightsArr, hashOf(common.Hash{}, 4)))
+	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 0)))
+	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 1)))
+	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 3)))
+	assertar.Equal([]int{2, 3}, WeightedPermutation(len(weightsArr)/2, weightsArr, hashOf(common.Hash{}, 4)))
 }
