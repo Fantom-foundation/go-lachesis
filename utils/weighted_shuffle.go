@@ -3,7 +3,6 @@ package utils
 import (
 	"crypto/sha256"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
@@ -88,6 +87,7 @@ func (t *weightedShuffleTree) retrieve(i int) int {
 // Returns first {size} entries of {weights} permutation.
 // Call with {size} == len(weights) to get the whole permutation.
 func WeightedPermutation(size int, weights []pos.Stake, seed common.Hash) []int {
+
 	if len(weights) < size {
 		panic("the permutation size must be less or equal to weights size")
 	}

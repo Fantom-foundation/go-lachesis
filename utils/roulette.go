@@ -2,6 +2,7 @@ package utils
 
 import (
 	"math/rand"
+	"sync"
 )
 
 // This file contains an implementation of the following paper
@@ -10,6 +11,7 @@ type RouletteSA struct {
 	Weights   []uint64
 	MaxWeight uint64
 	seed      int64
+	mu        sync.Mutex
 }
 
 func NewRouletteSA(weigths []uint64) *RouletteSA {
@@ -18,21 +20,25 @@ func NewRouletteSA(weigths []uint64) *RouletteSA {
 	}
 
 	max := GetMax(weigths)
-	var averave uint64 = weigths[0]
+	var average uint64 = weigths[0]
 	for _, v := range weigths[1:] {
-		averave = +v
-		averave = averave >> 1
+		average = +v
+		average = average >> 1
 	}
 	return &RouletteSA{
 		Weights:   weigths,
 		MaxWeight: max,
-		seed:      int64(averave),
+		seed:      int64(average),
+		mu:        sync.Mutex{},
 	}
 }
 
 // NSelection randomly chooses a sample from the array of weights
 // Returns first {size} entries of {weights} permutation.
 func (rw *RouletteSA) NSelection(size int) []uint {
+	rw.mu.Lock()
+	defer rw.mu.Unlock()
+
 	if len(rw.Weights) < size {
 		panic("the permutation size must be less or equal to weights size")
 	}
@@ -57,7 +63,6 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 			}
 		}
 	}
-
 	return selection
 }
 
@@ -83,7 +88,7 @@ func GetMax(w []uint64) uint64 {
 // returns index of the selected item
 func (rw *RouletteSA) Selection(fMax uint64) uint {
 	n := len(rw.Weights)
-	//rand.Seed( rw.seed )
+
 	for {
 		// Select randomly one of the individuals
 		i := rand.Intn(n)

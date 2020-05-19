@@ -3,6 +3,7 @@ package utils
 import (
 	"crypto/sha256"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"sync"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -65,4 +66,30 @@ func Test_Permutation_determinism(t *testing.T) {
 	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 1)))
 	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 3)))
 	assertar.Equal([]int{2, 3}, WeightedPermutation(len(weightsArr)/2, weightsArr, hashOf(common.Hash{}, 4)))
+}
+
+func Test_Permutation_determinism_concurency(t *testing.T) {
+
+	assertar := assert.New(t)
+
+	weights := getTestWeightsIncreasing(10)
+	permutation := WeightedPermutation(len(weights), weights, hashOf(common.Hash{}, 0))
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		var tmpWeights = make([]pos.Stake, len(weights))
+		copy(tmpWeights, weights)
+
+		var tmpPermutation = make([]int, len(permutation))
+		copy(tmpPermutation, permutation)
+
+		go func(w []pos.Stake, perm []int) {
+			defer wg.Done()
+
+			p := WeightedPermutation(len(weights), weights, hashOf(common.Hash{}, 0))
+			assertar.Equal(p, permutation)
+		}(tmpWeights, tmpPermutation)
+	}
+	wg.Wait()
 }
