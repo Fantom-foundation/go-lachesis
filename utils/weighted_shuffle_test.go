@@ -87,8 +87,8 @@ func Test_Permutation_determinism_concurency(t *testing.T) {
 		go func(w []pos.Stake, perm []int) {
 			defer wg.Done()
 
-			p := WeightedPermutation(len(weights), weights, hashOf(common.Hash{}, 0))
-			assertar.Equal(p, permutation)
+			p := WeightedPermutation(len(tmpWeights), tmpWeights, hashOf(common.Hash{}, 0))
+			assertar.Equal(p, tmpPermutation)
 		}(tmpWeights, tmpPermutation)
 	}
 	wg.Wait()
