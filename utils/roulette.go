@@ -1,50 +1,36 @@
 package utils
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 )
 
-// This file contains an implementation of the following paper
-// Roulette-wheel selection via stochastic acceptance (Adam Liposki, Dorota Lipowska - 2011)
-type RouletteSA struct {
-	Weights   []uint64
-	MaxWeight uint64
+// rouletteSA implements the following paper:
+// "Roulette-wheel selection via stochastic acceptance (Adam Liposki, Dorota Lipowska - 2011)"
+type rouletteSA struct {
+	weights   []pos.Stake
+	maxWeight pos.Stake
 	deterministicRand
 }
 
-func NewRouletteSA(weigths []uint64, seed common.Hash) *RouletteSA {
-	if len(weigths) <= 0 {
-		panic("the size must be positive")
-	}
-
-	res := &RouletteSA{
-		Weights:   weigths,
-		MaxWeight: maxOf(weigths),
-	}
-	res.seed = seed
-
-	return res
-}
-
-// NSelection randomly chooses a sample from the array of weights
+// NSelection randomly chooses a sample from the array of weights.
 // Returns first {size} entries of {weights} permutation.
-func (rw *RouletteSA) NSelection(size int) []uint {
-	if len(rw.Weights) < size {
+func (rw *rouletteSA) NSelection(size int) []int {
+	if len(rw.weights) < size {
 		panic("the permutation size must be less or equal to weights size")
 	}
-	if len(rw.Weights) == 0 {
-		return make([]uint, 0)
+	if len(rw.weights) == 0 {
+		return make([]int, 0)
 	}
 
-	selected := make(map[uint]bool)
-	max := rw.MaxWeight
+	selected := make(map[int]bool)
+	max := rw.maxWeight
 
-	selection := make([]uint, size)
+	selection := make([]int, size)
 
 	for i := 0; i < size; i++ {
 		// select a next one
 		for {
-			curSelection := rw.Selection(max)
+			curSelection := rw.selectOne(max)
 			if _, ok := selected[curSelection]; !ok {
 				selection[i] = curSelection
 				selected[curSelection] = true
@@ -55,14 +41,29 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 	return selection
 }
 
-// GetMax computes the largest value in an array
-func maxOf(w []uint64) uint64 {
-	if len(w) < 2 {
-		if len(w) == 1 {
-			return w[0]
+// selectOne item randomly from the weighted items.
+// Param f_max is the maximum weight of the population.
+// Returns index of the selected item.
+func (rw *rouletteSA) selectOne(fMax pos.Stake) int {
+	for {
+		// select randomly one of the individuals
+		i := int(uint(rw.rand64()) % uint(len(rw.weights)))
+		// the selection is accepted with probability fitness(i) / fMax
+		randWeight := pos.Stake(rw.rand64()) % fMax
+		if randWeight < rw.weights[i] {
+			return i
 		}
+	}
+}
+
+func maxOf(w []pos.Stake) pos.Stake {
+	if len(w) == 1 {
+		return w[0]
+	}
+	if len(w) < 2 {
 		return 0
 	}
+
 	max := w[0]
 	for _, v := range w[1:] {
 		if max < v {
@@ -70,29 +71,4 @@ func maxOf(w []uint64) uint64 {
 		}
 	}
 	return max
-}
-
-// Selection selects a single item randomly from the weighted items.
-// param f_max is the maximum weight of the population
-// returns index of the selected item
-func (rw *RouletteSA) Selection(fMax uint64) uint {
-	for {
-		// select randomly one of the individuals
-		i := uint(rw.rand64()) % uint(len(rw.Weights))
-		// the selection is accepted with probability fitness(i) / fMax
-		if (rw.rand64() % fMax) < rw.Weights[i] {
-			return uint(i)
-		}
-	}
-}
-
-// Counter
-func (rw *RouletteSA) Counter(nSelect int, fMax uint64) []uint {
-	n := len(rw.Weights)
-	var counter = make([]uint, n)
-	for i := 0; i < nSelect; i++ {
-		index := rw.Selection(fMax)
-		counter[index]++
-	}
-	return counter
 }

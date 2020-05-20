@@ -63,17 +63,13 @@ func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []in
 		return make([]int, 0)
 	}
 
-	wt := make([]uint64, len(weights))
-	for i, v := range weights {
-		wt[i] = uint64(v)
+	roulette := &rouletteSA{
+		weights:   weights,
+		maxWeight: maxOf(weights),
 	}
+	roulette.seed = seed
 
-	roulette := NewRouletteSA(wt, seed)
-	permutation := roulette.NSelection(size)
+	result := roulette.NSelection(size)
 
-	result := make([]int, len(permutation))
-	for i, v := range permutation {
-		result[i] = int(v)
-	}
 	return result
 }
