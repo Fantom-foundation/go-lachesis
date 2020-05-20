@@ -50,6 +50,25 @@ func testPermutationConcurency(f permutator, t *testing.T) {
 	wg.Wait()
 }
 
+func benchmarkPermutation(f permutator, b *testing.B) {
+	dd := []struct {
+		weights []pos.Stake
+		seed    common.Hash
+	}{
+		{getTestWeightsIncreasing(1), hashOf(common.Hash{}, 0)},
+		{getTestWeightsIncreasing(19), hashOf(common.Hash{}, 99)},
+		{getTestWeightsIncreasing(10), hashOf(common.Hash{}, 10)},
+		{getTestWeightsIncreasing(12), hashOf(common.Hash{}, 20)},
+		{getTestWeightsIncreasing(13), hashOf(common.Hash{}, 30)},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		d := dd[i%len(dd)]
+		_ = f(len(d.weights), d.weights, d.seed)
+	}
+}
+
 func getTestWeightsIncreasing(num int) []pos.Stake {
 	weights := make([]pos.Stake, num)
 	for i := 0; i < num; i++ {

@@ -7,6 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Benchmark_StochasticPermutation(b *testing.B) {
+	benchmarkPermutation(StochasticPermutation, b)
+}
+
 func Test_StochasticPermutation_correctness(t *testing.T) {
 	testCorrectPermutation(StochasticPermutation, t, getTestWeightsIncreasing(1))
 	testCorrectPermutation(StochasticPermutation, t, getTestWeightsIncreasing(30))

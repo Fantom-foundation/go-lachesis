@@ -7,6 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Benchmark_WeightedPermutation(b *testing.B) {
+	benchmarkPermutation(WeightedPermutation, b)
+}
+
 // Test average distribution of the shuffle
 func Test_WeightedPermutation_distribution(t *testing.T) {
 	require := require.New(t)
