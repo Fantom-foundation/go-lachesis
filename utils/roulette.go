@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"sync"
-
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -11,7 +9,6 @@ import (
 type RouletteSA struct {
 	Weights   []uint64
 	MaxWeight uint64
-	mu        sync.Mutex
 	deterministicRand
 }
 
@@ -32,15 +29,13 @@ func NewRouletteSA(weigths []uint64, seed common.Hash) *RouletteSA {
 // NSelection randomly chooses a sample from the array of weights
 // Returns first {size} entries of {weights} permutation.
 func (rw *RouletteSA) NSelection(size int) []uint {
-	rw.mu.Lock()
-	defer rw.mu.Unlock()
-
 	if len(rw.Weights) < size {
 		panic("the permutation size must be less or equal to weights size")
 	}
 	if len(rw.Weights) == 0 {
 		return make([]uint, 0)
 	}
+
 	selected := make(map[uint]bool)
 	max := rw.MaxWeight
 
