@@ -10,7 +10,7 @@ import (
 type RouletteSA struct {
 	Weights   []uint64
 	MaxWeight uint64
-	seed      int64
+	rand      *rand.Rand
 	mu        sync.Mutex
 }
 
@@ -28,7 +28,7 @@ func NewRouletteSA(weigths []uint64) *RouletteSA {
 	return &RouletteSA{
 		Weights:   weigths,
 		MaxWeight: max,
-		seed:      int64(average),
+		rand:      rand.New(rand.NewSource(int64(average))),
 		mu:        sync.Mutex{},
 	}
 }
@@ -49,8 +49,6 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 	max := rw.MaxWeight
 
 	selection := make([]uint, size)
-
-	rand.Seed(rw.seed)
 
 	for i := 0; i < size; i++ {
 		// select a next one
@@ -91,9 +89,9 @@ func (rw *RouletteSA) Selection(fMax uint64) uint {
 
 	for {
 		// Select randomly one of the individuals
-		i := rand.Intn(n)
+		i := rw.rand.Intn(n)
 		// The selection is accepted with probability fitness(i) / fMax
-		if rand.Float64() < float64(rw.Weights[i])/float64(fMax) {
+		if rw.rand.Float64() < float64(rw.Weights[i])/float64(fMax) {
 			return uint(i)
 		}
 	}
