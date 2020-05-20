@@ -1,10 +1,31 @@
 package utils
 
 import (
+	"crypto/sha256"
+
 	"github.com/ethereum/go-ethereum/common"
 
+	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 )
+
+type deterministicRand struct {
+	seed      common.Hash
+	seedIndex int
+}
+
+func (r *deterministicRand) rand64() uint64 {
+	if r.seedIndex == 32 {
+		hasher := sha256.New() // use sha2 instead of sha3 for speed
+		hasher.Write(r.seed.Bytes())
+		r.seed = common.BytesToHash(hasher.Sum(nil))
+		r.seedIndex = 0
+	}
+	// use not used parts of old seed, instead of calculating new one
+	res := littleendian.BytesToInt64(r.seed[r.seedIndex : r.seedIndex+8])
+	r.seedIndex += 8
+	return res
+}
 
 // WeightedPermutation builds weighted random permutation
 // Returns first {size} entries of {weights} permutation.
@@ -20,8 +41,8 @@ func WeightedPermutation(size int, weights []pos.Stake, seed common.Hash) []int 
 	tree := weightedShuffleTree{
 		weights: weights,
 		nodes:   make([]weightedShuffleNode, len(weights)),
-		seed:    seed,
 	}
+	tree.seed = seed
 	tree.build(0)
 
 	permutation := make([]int, size)
@@ -47,7 +68,7 @@ func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []in
 		wt[i] = uint64(v)
 	}
 
-	roulette := NewRouletteSA(wt)
+	roulette := NewRouletteSA(wt, seed)
 	permutation := roulette.NSelection(size)
 
 	result := make([]int, len(permutation))

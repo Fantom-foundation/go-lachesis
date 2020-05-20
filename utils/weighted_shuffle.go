@@ -1,11 +1,6 @@
 package utils
 
 import (
-	"crypto/sha256"
-
-	"github.com/ethereum/go-ethereum/common"
-
-	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 )
 
@@ -16,11 +11,9 @@ type weightedShuffleNode struct {
 }
 
 type weightedShuffleTree struct {
-	seed      common.Hash
-	seedIndex int
-
 	weights []pos.Stake
 	nodes   []weightedShuffleNode
+	deterministicRand
 }
 
 func (t *weightedShuffleTree) leftIndex(i int) int {
@@ -49,19 +42,6 @@ func (t *weightedShuffleTree) build(i int) pos.Stake {
 		rightWeight: rightW,
 	}
 	return thisW + leftW + rightW
-}
-
-func (t *weightedShuffleTree) rand64() uint64 {
-	if t.seedIndex == 32 {
-		hasher := sha256.New() // use sha2 instead of sha3 for speed
-		hasher.Write(t.seed.Bytes())
-		t.seed = common.BytesToHash(hasher.Sum(nil))
-		t.seedIndex = 0
-	}
-	// use not used parts of old seed, instead of calculating new one
-	res := littleendian.BytesToInt64(t.seed[t.seedIndex : t.seedIndex+8])
-	t.seedIndex += 8
-	return res
 }
 
 func (t *weightedShuffleTree) retrieve(i int) int {
