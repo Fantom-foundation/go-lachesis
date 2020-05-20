@@ -1,8 +1,7 @@
 package utils
 
 import (
-	"math/rand"
-	"sync"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 // This file contains an implementation of the following paper
@@ -10,47 +9,37 @@ import (
 type RouletteSA struct {
 	Weights   []uint64
 	MaxWeight uint64
-	seed      int64
-	mu        sync.Mutex
+	deterministicRand
 }
 
-func NewRouletteSA(weigths []uint64) *RouletteSA {
+func NewRouletteSA(weigths []uint64, seed common.Hash) *RouletteSA {
 	if len(weigths) <= 0 {
 		panic("the size must be positive")
 	}
 
-	max := GetMax(weigths)
-	var average uint64 = weigths[0]
-	for _, v := range weigths[1:] {
-		average = +v
-		average = average >> 1
-	}
-	return &RouletteSA{
+	res := &RouletteSA{
 		Weights:   weigths,
-		MaxWeight: max,
-		seed:      int64(average),
-		mu:        sync.Mutex{},
+		MaxWeight: maxOf(weigths),
 	}
+	res.seed = seed
+
+	return res
 }
 
 // NSelection randomly chooses a sample from the array of weights
 // Returns first {size} entries of {weights} permutation.
 func (rw *RouletteSA) NSelection(size int) []uint {
-	rw.mu.Lock()
-	defer rw.mu.Unlock()
-
 	if len(rw.Weights) < size {
 		panic("the permutation size must be less or equal to weights size")
 	}
 	if len(rw.Weights) == 0 {
 		return make([]uint, 0)
 	}
+
 	selected := make(map[uint]bool)
 	max := rw.MaxWeight
 
 	selection := make([]uint, size)
-
-	rand.Seed(rw.seed)
 
 	for i := 0; i < size; i++ {
 		// select a next one
@@ -67,7 +56,7 @@ func (rw *RouletteSA) NSelection(size int) []uint {
 }
 
 // GetMax computes the largest value in an array
-func GetMax(w []uint64) uint64 {
+func maxOf(w []uint64) uint64 {
 	if len(w) < 2 {
 		if len(w) == 1 {
 			return w[0]
@@ -87,13 +76,11 @@ func GetMax(w []uint64) uint64 {
 // param f_max is the maximum weight of the population
 // returns index of the selected item
 func (rw *RouletteSA) Selection(fMax uint64) uint {
-	n := len(rw.Weights)
-
 	for {
-		// Select randomly one of the individuals
-		i := rand.Intn(n)
-		// The selection is accepted with probability fitness(i) / fMax
-		if rand.Float64() < float64(rw.Weights[i])/float64(fMax) {
+		// select randomly one of the individuals
+		i := uint(rw.rand64()) % uint(len(rw.Weights))
+		// the selection is accepted with probability fitness(i) / fMax
+		if (rw.rand64() % fMax) < rw.Weights[i] {
 			return uint(i)
 		}
 	}
