@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
@@ -16,22 +16,22 @@ type permutator func(size int, weights []pos.Stake, seed common.Hash) []int
 
 // test that WeightedPermutation provides a correct permutaition
 func testCorrectPermutation(f permutator, t *testing.T, weightsArr []pos.Stake) {
-	assertar := assert.New(t)
+	require := require.New(t)
 
 	perm := f(len(weightsArr), weightsArr, common.Hash{})
-	assertar.Equal(len(weightsArr), len(perm))
+	require.Equal(len(weightsArr), len(perm))
 
 	met := make(map[int]bool)
 	for _, p := range perm {
-		assertar.True(p >= 0)
-		assertar.True(p < len(weightsArr))
-		assertar.False(met[p])
+		require.True(p >= 0)
+		require.True(p < len(weightsArr))
+		require.False(met[p])
 		met[p] = true
 	}
 }
 
 func testPermutationConcurency(f permutator, t *testing.T) {
-	assertar := assert.New(t)
+	require := require.New(t)
 
 	weights := getTestWeightsIncreasing(10)
 	expect := f(len(weights), weights, hashOf(common.Hash{}, 0))
@@ -43,7 +43,7 @@ func testPermutationConcurency(f permutator, t *testing.T) {
 			defer wg.Done()
 
 			got := f(len(weights), weights, hashOf(common.Hash{}, 0))
-			assertar.Equal(got, expect)
+			require.Equal(got, expect)
 		}()
 	}
 
