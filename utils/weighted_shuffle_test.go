@@ -2,14 +2,16 @@ package utils
 
 import (
 	"crypto/sha256"
-	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
+	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 )
+
+type permutator func(size int, weights []pos.Stake, seed common.Hash) []int
 
 func getTestWeightsIncreasing(num int) []pos.Stake {
 	weights := make([]pos.Stake, num)
@@ -27,11 +29,42 @@ func getTestWeightsEqual(num int) []pos.Stake {
 	return weights
 }
 
-// test that WeightedPermutation provides a correct permaition
-func testCorrectPermutation(t *testing.T, weightsArr []pos.Stake) {
+// Test average distribution of the shuffle
+func Test_WeightedPermutation_distribution(t *testing.T) {
+	weightsArr := getTestWeightsIncreasing(30)
+
+	weightHits := make(map[int]int) // weight -> number of occurrences
+	for roundSeed := 0; roundSeed < 3000; roundSeed++ {
+		seed := hashOf(common.Hash{}, uint32(roundSeed))
+		perm := WeightedPermutation(len(weightsArr)/10, weightsArr, seed)
+		for _, p := range perm {
+			weight := weightsArr[p]
+			weightFactor := int(weight / 1000)
+
+			_, ok := weightHits[weightFactor]
+			if !ok {
+				weightHits[weightFactor] = 0
+			}
+			weightHits[weightFactor]++
+		}
+	}
+
+	assertar := assert.New(t)
+	for weightFactor, hits := range weightHits {
+		//fmt.Printf("Test_RandomElection_distribution: %d \n", hits/weightFactor)
+		assertar.Equal((hits/weightFactor) > 20-8, true)
+		assertar.Equal((hits/weightFactor) < 20+8, true)
+		if t.Failed() {
+			return
+		}
+	}
+}
+
+// test that WeightedPermutation provides a correct permutaition
+func testCorrectPermutation(f permutator, t *testing.T, weightsArr []pos.Stake) {
 	assertar := assert.New(t)
 
-	perm := WeightedPermutation(len(weightsArr), weightsArr, common.Hash{})
+	perm := f(len(weightsArr), weightsArr, common.Hash{})
 	assertar.Equal(len(weightsArr), len(perm))
 
 	met := make(map[int]bool)
@@ -43,10 +76,10 @@ func testCorrectPermutation(t *testing.T, weightsArr []pos.Stake) {
 	}
 }
 
-func Test_Permutation_correctness(t *testing.T) {
-	testCorrectPermutation(t, getTestWeightsIncreasing(1))
-	testCorrectPermutation(t, getTestWeightsIncreasing(30))
-	testCorrectPermutation(t, getTestWeightsEqual(1000))
+func Test_WeightedPermutation_correctness(t *testing.T) {
+	testCorrectPermutation(WeightedPermutation, t, getTestWeightsIncreasing(1))
+	testCorrectPermutation(WeightedPermutation, t, getTestWeightsIncreasing(30))
+	testCorrectPermutation(WeightedPermutation, t, getTestWeightsEqual(1000))
 }
 
 func hashOf(a common.Hash, b uint32) common.Hash {
@@ -56,39 +89,14 @@ func hashOf(a common.Hash, b uint32) common.Hash {
 	return common.BytesToHash(hasher.Sum(nil))
 }
 
-func Test_Permutation_determinism(t *testing.T) {
+func Test_WeightedPermutation_determinism(t *testing.T) {
 	weightsArr := getTestWeightsIncreasing(5)
 
 	assertar := assert.New(t)
 
-	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 0)))
-	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 1)))
-	assertar.Equal([]int{2, 3, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 3)))
-	assertar.Equal([]int{2, 3}, WeightedPermutation(len(weightsArr)/2, weightsArr, hashOf(common.Hash{}, 4)))
+	assertar.Equal([]int{3, 2, 4, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 0)))
+	assertar.Equal([]int{0, 4, 2, 1, 3}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 1)))
+	assertar.Equal([]int{3, 4, 2, 1, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 2)))
+	assertar.Equal([]int{4, 2, 1, 3, 0}, WeightedPermutation(len(weightsArr), weightsArr, hashOf(common.Hash{}, 3)))
+	assertar.Equal([]int{1, 4}, WeightedPermutation(len(weightsArr)/2, weightsArr, hashOf(common.Hash{}, 4)))
 }
-
-//func Test_Permutation_determinism_concurency(t *testing.T) {
-//
-//	assertar := assert.New(t)
-//
-//	weights := getTestWeightsIncreasing(10)
-//	permutation := WeightedPermutation(len(weights), weights, hashOf(common.Hash{}, 0))
-//	wg := sync.WaitGroup{}
-//
-//	for i := 0; i < 100; i++ {
-//		wg.Add(1)
-//		var tmpWeights = make([]pos.Stake, len(weights))
-//		copy(tmpWeights, weights)
-//
-//		var tmpPermutation = make([]int, len(permutation))
-//		copy(tmpPermutation, permutation)
-//
-//		go func(w []pos.Stake, perm []int) {
-//			defer wg.Done()
-//
-//			p := WeightedPermutation(len(tmpWeights), tmpWeights, hashOf(common.Hash{}, 0))
-//			assertar.Equal(p, tmpPermutation)
-//		}(tmpWeights, tmpPermutation)
-//	}
-//	wg.Wait()
-//}

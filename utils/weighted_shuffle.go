@@ -2,10 +2,11 @@ package utils
 
 import (
 	"crypto/sha256"
-	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/Fantom-foundation/go-lachesis/common/littleendian"
+	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 )
 
 type weightedShuffleNode struct {
@@ -81,43 +82,4 @@ func (t *weightedShuffleTree) retrieve(i int) int {
 		t.nodes[i].rightWeight -= t.weights[chosen]
 		return chosen
 	}
-}
-
-// WeightedPermutation builds weighted random permutation
-// Returns first {size} entries of {weights} permutation.
-// Call with {size} == len(weights) to get the whole permutation.
-func WeightedPermutation(size int, weights []pos.Stake, seed common.Hash) []int {
-
-	if len(weights) < size {
-		panic("the permutation size must be less or equal to weights size")
-	}
-
-	if len(weights) == 0 {
-		return make([]int, 0)
-	}
-
-	wt := make([]uint64, 0)
-	for _, v := range weights {
-		wt = append(wt, uint64(v))
-	}
-	roulette := NewRouletteSA(wt)
-
-	//
-	//tree := weightedShuffleTree{
-	//	weights: weights,
-	//	nodes:   make([]weightedShuffleNode, len(weights)),
-	//	seed:    seed,
-	//}
-	//tree.build(0)
-
-	//permutation := make([]int, size)
-	//for i := 0; i < size; i++ {
-	//	permutation[i] = tree.retrieve(0)
-	//}
-	permutatiom := roulette.NSelection(size)
-	result := make([]int, 0)
-	for _, v := range permutatiom {
-		result = append(result, int(v))
-	}
-	return result
 }
