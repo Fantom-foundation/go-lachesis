@@ -332,3 +332,7 @@ func (s *Service) Stop() error {
 func (s *Service) AccountManager() *accounts.Manager {
 	return s.node.AccountManager
 }
+
+func (s *Service) ImportEvent(e *inter.Event) error {
+	return s.engine.ProcessEvent(e)
+}

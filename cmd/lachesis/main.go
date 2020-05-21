@@ -163,6 +163,9 @@ func init() {
 		// See misccmd.go:
 		versionCommand,
 		licenseCommand,
+		// See chaincmd.go
+		importCommand,
+		exportCommand,
 	}
 	sort.Sort(cli.CommandsByName(App.Commands))
 
@@ -225,11 +228,14 @@ func lachesisMain(ctx *cli.Context) error {
 
 func makeFullNode(ctx *cli.Context) *node.Node {
 	cfg := makeAllConfigs(ctx)
+	return makeNode(ctx, &cfg)
+}
 
+func makeNode(ctx *cli.Context, cfg *config) *node.Node {
 	if !cfg.Lachesis.NoCheckVersion {
 		ver := params.VersionWithCommit(gitCommit, gitDate)
 		status, msg, err := version.CheckRelease(nil, ver)
-		applyVersionCheck(&cfg, status, msg, err)
+		applyVersionCheck(cfg, status, msg, err)
 	}
 
 	// check errlock file
