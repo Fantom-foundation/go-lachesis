@@ -7,73 +7,75 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 )
 
-type sender struct {
-	url      string
-	input    <-chan *Transaction
-	blocks   chan big.Int
-	OnSendTx func(*Transaction)
+type Sender struct {
+	url    string
+	input  chan *Transaction
+	blocks chan big.Int
 
 	done chan struct{}
 	work sync.WaitGroup
-	sync.Mutex
 
 	logger.Instance
 }
 
-func newSender(url string) *sender {
-	return &sender{
+func NewSender(url string) *Sender {
+	s := &Sender{
 		url:    url,
+		input:  make(chan *Transaction, 1),
 		blocks: make(chan big.Int, 1),
+		done:   make(chan struct{}),
 
 		Instance: logger.MakeInstance(),
 	}
-}
 
-func (s *sender) Start(c <-chan *Transaction) {
-	s.Lock()
-	defer s.Unlock()
-
-	if s.done != nil {
-		return
-	}
-
-	s.input = c
-	s.done = make(chan struct{})
 	s.work.Add(1)
 	go s.background()
 
-	s.Log.Info("Started")
+	return s
 }
 
-func (s *sender) Stop() {
-	s.Lock()
-	defer s.Unlock()
-
+func (s *Sender) Close() {
 	if s.done == nil {
 		return
 	}
-
 	close(s.done)
-	s.work.Wait()
 	s.done = nil
 
-	s.Log.Info("Stopped")
+	s.work.Wait()
+	close(s.input)
+	s.input = nil
 }
 
-func (s *sender) background() {
+func (s *Sender) Send(tx *Transaction) {
+	s.input <- tx
+}
+
+func (s *Sender) Notify(bnum big.Int) {
+	select {
+	case s.blocks <- bnum:
+	default:
+	}
+}
+
+func (s *Sender) background() {
 	defer s.work.Done()
+	defer s.Log.Info("Stopped")
 
 	var (
 		client *ethclient.Client
 		err    error
 		tx     *Transaction
 		info   string
+		sbscr  ethereum.Subscription
+		blocks = make(chan *types.Header, 1)
 	)
 
 	for {
@@ -97,6 +99,22 @@ func (s *sender) background() {
 					return
 				}
 			}
+
+			sbscr, err = c.SubscribeNewHead(context.Background(), blocks)
+			if err != nil {
+				sbscr = nil
+				client.Close()
+				client = nil
+				s.Log.Error("Subscribe to", "url", s.url, "err", err)
+				select {
+				case <-time.After(time.Second):
+					continue connecting
+				case <-s.done:
+					return
+				}
+			}
+			defer sbscr.Unsubscribe()
+
 		}
 
 	sending:
@@ -106,7 +124,6 @@ func (s *sender) background() {
 			cancel()
 			if err == nil {
 				s.Log.Info("Tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
-				s.OnSendTx(tx)
 				break sending
 			}
 
@@ -131,12 +148,5 @@ func (s *sender) background() {
 			}
 		}
 
-	}
-}
-
-func (s *sender) Notify(bnum big.Int) {
-	select {
-	case s.blocks <- bnum:
-	default:
 	}
 }

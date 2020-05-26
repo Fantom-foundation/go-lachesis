@@ -3,6 +3,8 @@ package main
 import (
 	"math/big"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -15,15 +17,14 @@ type Transaction struct {
 	Info *meta.Info
 }
 
-type generator struct {
+type Generator struct {
+	tps     uint
 	chainId uint
 
 	accs   []*Acc
 	offset uint
 
 	position uint
-
-	output chan<- *Transaction
 
 	work sync.WaitGroup
 	done chan struct{}
@@ -32,37 +33,38 @@ type generator struct {
 	logger.Instance
 }
 
-func newTxGenerator(num, accs, offset uint, chainId uint) *generator {
-	g := &generator{
-		chainId: chainId,
+func NewTxGenerator(cfg *Config) *Generator {
+	g := &Generator{
+		chainId: cfg.ChainId,
 
-		accs:   make([]*Acc, accs),
-		offset: offset,
+		accs:   make([]*Acc, cfg.Accs.Count),
+		offset: cfg.Accs.Offset,
 
 		Instance: logger.MakeInstance(),
 	}
 
-	g.Log.Info("Will use", "accounts", accs, "from", g.offset, "to", accs+g.offset)
+	g.Log.Info("Will use", "accounts", len(g.accs), "from", g.offset, "to", uint(len(g.accs))+g.offset)
 	return g
 }
 
-func (g *generator) Start(c chan<- *Transaction) {
+func (g *Generator) Start() (output chan *Transaction) {
 	g.Lock()
 	defer g.Unlock()
 
 	if g.done != nil {
 		return
 	}
-
-	g.output = c
 	g.done = make(chan struct{})
+
+	output = make(chan *Transaction, 100)
 	g.work.Add(1)
-	go g.background()
+	go g.background(output)
 
 	g.Log.Info("started")
+	return
 }
 
-func (g *generator) Stop() {
+func (g *Generator) Stop() {
 	g.Lock()
 	defer g.Unlock()
 
@@ -77,28 +79,53 @@ func (g *generator) Stop() {
 	g.Log.Info("stopped")
 }
 
-func (g *generator) background() {
+func (g *Generator) GetTPS() uint {
+	tps := atomic.LoadUint32(&g.tps)
+	return uint(tps)
+}
+
+func (g *Generator) SetTPS(tps uint) {
+	atomic.StoreUint32(&g.tps, uint32(tps))
+}
+
+func (g *Generator) background(output chan<- *Transaction) {
 	defer g.work.Done()
+	defer close(output)
 
 	for {
-		select {
-		case <-g.done:
-			return
-		default:
+		start := time.Now()
+
+		for count := g.GetTPS(); count > 0; count-- {
 			tx := g.Yield()
-			g.send(tx)
+			select {
+			case output <- tx:
+				break
+			case <-g.done:
+				return
+			}
 		}
+
+		spent := time.Since(start)
+		if spent < time.Second {
+			select {
+			case <-time.After(time.Second - spent):
+				break
+			case <-g.done:
+				return
+			}
+		}
+
 	}
 }
 
-func (g *generator) Yield() *Transaction {
+func (g *Generator) Yield() *Transaction {
 	tx := g.generate(g.position)
 	g.position++
 
 	return tx
 }
 
-func (g *generator) generate(position uint) *Transaction {
+func (g *Generator) generate(position uint) *Transaction {
 	var count = uint(len(g.accs))
 
 	a := position % count
@@ -128,17 +155,4 @@ func (g *generator) generate(position uint) *Transaction {
 
 	g.Log.Info("Regular tx", "from", a, "to", b, "amount", amount, "nonce", nonce)
 	return tx
-}
-
-func (g *generator) send(tx *Transaction) {
-	if g.output == nil {
-		return
-	}
-
-	select {
-	case g.output <- tx:
-		break
-	case <-g.done:
-		break
-	}
 }
