@@ -34,7 +34,7 @@ func DefaultConfig() *Config {
 			Count  uint
 			Offset uint
 		}{
-			Count:  100000,
+			Count:  50000,
 			Offset: 1000,
 		},
 	}
