@@ -127,26 +127,20 @@ func (s *Sender) background() {
 		err = client.SendTransaction(ctx, tx.Raw)
 		cancel()
 		if err == nil {
-			s.Log.Info("Tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
+			s.Log.Info("tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
 			tx = nil
 			continue
 		}
 
 		switch err.Error() {
-		case fmt.Sprintf("known transaction: %x", tx.Raw.Hash()):
-			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-			tx = nil
-			continue
-		case evmcore.ErrNonceTooLow.Error():
-			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-			tx = nil
-			continue
-		case evmcore.ErrReplaceUnderpriced.Error():
-			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+		case fmt.Sprintf("known transaction: %x", tx.Raw.Hash()),
+			evmcore.ErrNonceTooLow.Error(),
+			evmcore.ErrReplaceUnderpriced.Error():
+			s.Log.Warn("tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
 			tx = nil
 			continue
 		default:
-			s.Log.Error("Tx sending err", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			s.Log.Error("tx sending err", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
 			s.delay()
 			continue
 		}
@@ -155,33 +149,35 @@ func (s *Sender) background() {
 
 func (s *Sender) connect() *ethclient.Client {
 	client, err := ethclient.Dial(s.url)
-	s.Log.Error("Connect to", "url", s.url, "err", err)
 	if err != nil {
+		s.Log.Error("connect to", "url", s.url, "err", err)
 		s.delay()
 		return nil
 	}
+	s.Log.Info("connect to", "url", s.url)
 	return client
 }
 
 func (s *Sender) subscribe(client *ethclient.Client) ethereum.Subscription {
 	sbscr, err := client.SubscribeNewHead(context.Background(), s.headers)
-	s.Log.Error("Subscribe to", "url", s.url, "err", err)
 	if err != nil {
+		s.Log.Error("subscribe to", "url", s.url, "err", err)
 		s.delay()
 		return nil
 	}
+	s.Log.Info("subscribe to", "url", s.url)
 	return sbscr
 }
 
-func (s *Sender) countTxs(client *ethclient.Client, b *types.Header) error {
+func (s *Sender) countTxs(client *ethclient.Client, h *types.Header) error {
+	b := evmcore.ConvertFromEthHeader(h)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	txs, err := client.TransactionCount(ctx, b.Hash())
+	txs, err := client.TransactionCount(ctx, b.Hash)
 	cancel()
 	if err != nil {
-		s.Log.Error("New block", "number", b.Number, "block", b.Hash(), "err", err)
+		s.Log.Error("new block", "number", b.Number, "block", b.Hash, "err", err)
 		return err
 	}
-	s.Log.Info("New block", "number", b.Number, "hash", b.Hash(), "txs", txs)
 
 	s.output <- Block{
 		Number:  b.Number,
