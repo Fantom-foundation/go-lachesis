@@ -127,7 +127,7 @@ func (s *Sender) background() {
 		err = client.SendTransaction(ctx, tx.Raw)
 		cancel()
 		if err == nil {
-			s.Log.Info("tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
+			s.Log.Debug("tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
 			tx = nil
 			continue
 		}

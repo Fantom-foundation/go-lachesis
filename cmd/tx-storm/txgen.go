@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -41,7 +42,6 @@ func NewTxGenerator(cfg *Config) *Generator {
 		Instance: logger.MakeInstance(),
 	}
 
-	g.Log.Info("Will use", "accounts", len(g.accs), "from", g.offset, "to", uint(len(g.accs))+g.offset)
 	return g
 }
 
@@ -59,6 +59,7 @@ func (g *Generator) Start() (output chan *Transaction) {
 	go g.background(output)
 
 	g.Log.Info("started")
+	g.Log.Info("will use", "accounts", len(g.accs), "from", g.offset, "to", uint(len(g.accs))+g.offset)
 	return
 }
 
@@ -77,13 +78,14 @@ func (g *Generator) Stop() {
 	g.Log.Info("stopped")
 }
 
-func (g *Generator) GetTPS() uint {
+func (g *Generator) GetTPS() float64 {
 	tps := atomic.LoadUint32(&g.tps)
-	return uint(tps)
+	return float64(tps)
 }
 
-func (g *Generator) SetTPS(tps uint) {
-	atomic.StoreUint32(&g.tps, uint32(tps))
+func (g *Generator) SetTPS(tps float64) {
+	x := uint32(math.Ceil(tps))
+	atomic.StoreUint32(&g.tps, x)
 }
 
 func (g *Generator) background(output chan<- *Transaction) {
@@ -142,7 +144,7 @@ func (g *Generator) generate(position uint) *Transaction {
 	}
 	b += g.offset
 
-	nonce := position/count + 1
+	nonce := position / count
 	amount := big.NewInt(1e6)
 
 	tx := &Transaction{

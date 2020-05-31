@@ -10,7 +10,7 @@ import (
 
 // Nodes pool.
 type Nodes struct {
-	tps    chan uint
+	tps    chan float64
 	conns  []*Sender
 	blocks chan Block
 	done   chan struct{}
@@ -19,7 +19,7 @@ type Nodes struct {
 
 func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 	n := &Nodes{
-		tps:      make(chan uint, 1),
+		tps:      make(chan float64, 1),
 		blocks:   make(chan Block, 1),
 		done:     make(chan struct{}),
 		Instance: logger.MakeInstance(),
@@ -34,11 +34,11 @@ func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 	return n
 }
 
-func (n *Nodes) TPS() <-chan uint {
+func (n *Nodes) TPS() <-chan float64 {
 	return n.tps
 }
 
-func (n *Nodes) notifyTPS(tps uint) {
+func (n *Nodes) notifyTPS(tps float64) {
 	select {
 	case n.tps <- tps:
 		break
@@ -56,15 +56,13 @@ func (n *Nodes) measureTPS() {
 			continue
 		}
 
-		var tps uint
-		dur := uint(time.Since(start).Seconds())
-		if dur > 0 {
-			tps = b.TxCount / dur
-		}
+		dur := time.Since(start).Seconds()
+		tps := float64(b.TxCount) / dur
 
 		start = time.Now()
 		lastBlock = b.Number
 		n.notifyTPS(tps)
+		n.Log.Info("TPS", "value", tps, "block", b.Number)
 	}
 }
 
