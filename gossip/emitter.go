@@ -250,12 +250,10 @@ func (em *Emitter) isMyTxTurn(txHash common.Hash, sender common.Address, account
 	return validatorsArr[turns[roundIndex]] == me
 }
 
-func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Transactions, flags ...bool) *inter.Event {
+func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Transactions, trusted bool) *inter.Event {
 	if poolTxs == nil || len(poolTxs) == 0 {
 		return e
 	}
-
-	trusted := utils.ParseFlag(flags, 0, false)
 
 	maxGasUsed := em.maxGasPowerToUse(e)
 
@@ -331,16 +329,7 @@ func (em *Emitter) findBestParents(epoch idx.Epoch, myStakerID idx.StakerID) (*h
 }
 
 // createEvent is not safe for concurrent use.
-func (em *Emitter) createEvent(txs ...map[common.Address]types.Transactions) *inter.Event {
-	var poolTxs map[common.Address]types.Transactions
-	var trustedTxs map[common.Address]types.Transactions
-	if len(txs) > 0 {
-		poolTxs = txs[0]
-	}
-	if len(txs) > 1 {
-		trustedTxs = txs[1]
-	}
-
+func (em *Emitter) createEvent(poolTxs, trustedTxs map[common.Address]types.Transactions) *inter.Event {
 	if em.myStakerID == 0 {
 		// not a validator
 		return nil
@@ -428,7 +417,7 @@ func (em *Emitter) createEvent(txs ...map[common.Address]types.Transactions) *in
 	event.GasPowerLeft = *availableGasPower.Sub(event.GasPowerUsed)
 
 	// Add txs
-	event = em.addTxs(event, poolTxs)
+	event = em.addTxs(event, poolTxs, false)
 	event = em.addTxs(event, trustedTxs, true)
 
 	if !em.isAllowedToEmit(event, selfParentHeader) {
