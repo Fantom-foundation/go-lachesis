@@ -18,12 +18,11 @@ type Transaction struct {
 }
 
 type Generator struct {
-	tps     uint
+	tps     uint32
 	chainId uint
 
-	accs   []*Acc
-	offset uint
-
+	accs     []*Acc
+	offset   uint
 	position uint
 
 	work sync.WaitGroup
@@ -35,10 +34,9 @@ type Generator struct {
 
 func NewTxGenerator(cfg *Config) *Generator {
 	g := &Generator{
-		chainId: cfg.ChainId,
-
-		accs:   make([]*Acc, cfg.Accs.Count),
-		offset: cfg.Accs.Offset,
+		chainId: uint(cfg.ChainId),
+		accs:    make([]*Acc, cfg.Accs.Count),
+		offset:  cfg.Accs.Offset,
 
 		Instance: logger.MakeInstance(),
 	}
@@ -114,7 +112,6 @@ func (g *Generator) background(output chan<- *Transaction) {
 				return
 			}
 		}
-
 	}
 }
 
@@ -145,7 +142,7 @@ func (g *Generator) generate(position uint) *Transaction {
 	}
 	b += g.offset
 
-	nonce := position / count
+	nonce := position/count + 1
 	amount := big.NewInt(1e6)
 
 	tx := &Transaction{
@@ -153,6 +150,6 @@ func (g *Generator) generate(position uint) *Transaction {
 		Info: meta.NewInfo(a, b),
 	}
 
-	g.Log.Info("Regular tx", "from", a, "to", b, "amount", amount, "nonce", nonce)
+	// g.Log.Info("regular tx", "from", a, "to", b, "amount", amount, "nonce", nonce)
 	return tx
 }

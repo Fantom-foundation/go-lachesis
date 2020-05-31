@@ -16,9 +16,10 @@ import (
 )
 
 type Sender struct {
-	url    string
-	input  chan *Transaction
-	blocks chan big.Int
+	url     string
+	input   chan *Transaction
+	headers chan *types.Header
+	output  chan Block
 
 	done chan struct{}
 	work sync.WaitGroup
@@ -26,12 +27,18 @@ type Sender struct {
 	logger.Instance
 }
 
+type Block struct {
+	Number  *big.Int
+	TxCount uint
+}
+
 func NewSender(url string) *Sender {
 	s := &Sender{
-		url:    url,
-		input:  make(chan *Transaction, 1),
-		blocks: make(chan big.Int, 1),
-		done:   make(chan struct{}),
+		url:     url,
+		input:   make(chan *Transaction, 1),
+		headers: make(chan *types.Header, 1),
+		output:  make(chan Block, 1),
+		done:    make(chan struct{}),
 
 		Instance: logger.MakeInstance(),
 	}
@@ -50,24 +57,22 @@ func (s *Sender) Close() {
 	s.done = nil
 
 	s.work.Wait()
+	close(s.output)
 	close(s.input)
-	s.input = nil
 }
 
 func (s *Sender) Send(tx *Transaction) {
 	s.input <- tx
 }
 
-func (s *Sender) Notify(bnum big.Int) {
-	select {
-	case s.blocks <- bnum:
-	default:
-	}
+func (s *Sender) Blocks() <-chan Block {
+	return s.output
 }
 
 func (s *Sender) background() {
 	defer s.work.Done()
-	defer s.Log.Info("Stopped")
+	s.Log.Info("started")
+	defer s.Log.Info("stopped")
 
 	var (
 		client *ethclient.Client
@@ -75,78 +80,121 @@ func (s *Sender) background() {
 		tx     *Transaction
 		info   string
 		sbscr  ethereum.Subscription
-		blocks = make(chan *types.Header, 1)
 	)
 
+	disconnect := func() {
+		if sbscr != nil {
+			sbscr.Unsubscribe()
+			sbscr = nil
+		}
+		if client != nil {
+			client.Close()
+			client = nil
+			s.Log.Error("Disonnect from", "url", s.url)
+		}
+	}
+	defer disconnect()
+
 	for {
-		select {
-		case tx = <-s.input:
-			info = tx.Info.String()
-		case <-s.done:
-			return
+
+		for tx == nil {
+			select {
+			case tx = <-s.input:
+				info = tx.Info.String()
+			case b := <-s.headers:
+				err = s.countTxs(client, b)
+				if err != nil {
+					disconnect()
+				}
+			case <-s.done:
+				return
+			}
 		}
 
-	connecting:
 		for client == nil {
-			client, err = ethclient.Dial(s.url)
-			if err != nil {
-				client = nil
-				s.Log.Error("Connect to", "url", s.url, "err", err)
-				select {
-				case <-time.After(time.Second):
-					continue connecting
-				case <-s.done:
-					return
-				}
-			}
-
-			sbscr, err = c.SubscribeNewHead(context.Background(), blocks)
-			if err != nil {
-				sbscr = nil
-				client.Close()
-				client = nil
-				s.Log.Error("Subscribe to", "url", s.url, "err", err)
-				select {
-				case <-time.After(time.Second):
-					continue connecting
-				case <-s.done:
-					return
-				}
-			}
-			defer sbscr.Unsubscribe()
-
+			client = s.connect()
 		}
 
-	sending:
-		for {
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			err = client.SendTransaction(ctx, tx.Raw)
-			cancel()
-			if err == nil {
-				s.Log.Info("Tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
-				break sending
-			}
-
-			switch err.Error() {
-			case fmt.Sprintf("known transaction: %x", tx.Raw.Hash()):
-				s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-				break sending
-			case evmcore.ErrNonceTooLow.Error():
-				s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-				break sending
-			case evmcore.ErrReplaceUnderpriced.Error():
-				s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-				break sending
-			default:
-				s.Log.Error("Tx sending err", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
-				select {
-				case <-s.blocks:
-					s.Log.Error("Try to send tx again", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
-				case <-s.done:
-					return
-				}
+		if sbscr == nil {
+			sbscr = s.subscribe(client)
+			if sbscr == nil {
+				disconnect()
+				continue
 			}
 		}
 
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		err = client.SendTransaction(ctx, tx.Raw)
+		cancel()
+		if err == nil {
+			s.Log.Info("Tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
+			tx = nil
+			continue
+		}
+
+		switch err.Error() {
+		case fmt.Sprintf("known transaction: %x", tx.Raw.Hash()):
+			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			tx = nil
+			continue
+		case evmcore.ErrNonceTooLow.Error():
+			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			tx = nil
+			continue
+		case evmcore.ErrReplaceUnderpriced.Error():
+			s.Log.Info("Tx sending skip", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			tx = nil
+			continue
+		default:
+			s.Log.Error("Tx sending err", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			s.delay()
+			continue
+		}
+	}
+}
+
+func (s *Sender) connect() *ethclient.Client {
+	client, err := ethclient.Dial(s.url)
+	s.Log.Error("Connect to", "url", s.url, "err", err)
+	if err != nil {
+		s.delay()
+		return nil
+	}
+	return client
+}
+
+func (s *Sender) subscribe(client *ethclient.Client) ethereum.Subscription {
+	sbscr, err := client.SubscribeNewHead(context.Background(), s.headers)
+	s.Log.Error("Subscribe to", "url", s.url, "err", err)
+	if err != nil {
+		s.delay()
+		return nil
+	}
+	return sbscr
+}
+
+func (s *Sender) countTxs(client *ethclient.Client, b *types.Header) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	txs, err := client.TransactionCount(ctx, b.Hash())
+	cancel()
+	if err != nil {
+		s.Log.Error("New block", "number", b.Number, "block", b.Hash(), "err", err)
+		return err
+	}
+	s.Log.Info("New block", "number", b.Number, "hash", b.Hash(), "txs", txs)
+
+	s.output <- Block{
+		Number:  b.Number,
+		TxCount: txs,
+	}
+	return nil
+}
+
+func (s *Sender) delay() {
+	select {
+	case <-time.After(2 * time.Second):
+		return
+	case <-s.done:
+		return
 	}
 }

@@ -5,6 +5,7 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/utils/toml"
 )
 
@@ -15,7 +16,7 @@ var ConfigFileFlag = cli.StringFlag{
 }
 
 type Config struct {
-	ChainId uint     // chain id for sign transactions
+	ChainId uint64   // chain id for sign transactions
 	URLs    []string // WS nodes API URL
 	Accs    struct {
 		Count  uint // count of predefined fake accounts
@@ -23,8 +24,24 @@ type Config struct {
 	}
 }
 
-func openConfig(ctx *cli.Context) *Config {
-	cfg := &Config{}
+func DefaultConfig() *Config {
+	return &Config{
+		ChainId: lachesis.FakeNetworkID,
+		URLs: []string{
+			"ws://127.0.0.1:4500",
+		},
+		Accs: struct {
+			Count  uint
+			Offset uint
+		}{
+			Count:  100000,
+			Offset: 1000,
+		},
+	}
+}
+
+func OpenConfig(ctx *cli.Context) *Config {
+	cfg := DefaultConfig()
 	f := ctx.GlobalString(ConfigFileFlag.Name)
 	err := cfg.Load(f)
 	if err != nil {
