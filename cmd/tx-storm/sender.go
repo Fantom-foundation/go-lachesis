@@ -90,7 +90,7 @@ func (s *Sender) background() {
 		if client != nil {
 			client.Close()
 			client = nil
-			s.Log.Error("Disonnect from", "url", s.url)
+			s.Log.Error("disonnect from", "url", s.url)
 		}
 	}
 	defer disconnect()
@@ -131,7 +131,6 @@ func (s *Sender) background() {
 			tx = nil
 			continue
 		}
-
 		switch err.Error() {
 		case fmt.Sprintf("known transaction: %x", tx.Raw.Hash()),
 			evmcore.ErrNonceTooLow.Error(),
@@ -141,6 +140,7 @@ func (s *Sender) background() {
 			continue
 		default:
 			s.Log.Error("tx sending err", "info", info, "amount", tx.Raw.Value(), "cause", err, "nonce", tx.Raw.Nonce())
+			disconnect()
 			s.delay()
 			continue
 		}
