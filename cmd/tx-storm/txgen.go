@@ -58,7 +58,6 @@ func (g *Generator) Start() (output chan *Transaction) {
 	g.work.Add(1)
 	go g.background(output)
 
-	g.Log.Info("started")
 	g.Log.Info("will use", "accounts", len(g.accs), "from", g.offset, "to", uint(len(g.accs))+g.offset)
 	return
 }
@@ -74,8 +73,6 @@ func (g *Generator) Stop() {
 	close(g.done)
 	g.work.Wait()
 	g.done = nil
-
-	g.Log.Info("stopped")
 }
 
 func (g *Generator) GetTPS() float64 {
@@ -92,27 +89,34 @@ func (g *Generator) background(output chan<- *Transaction) {
 	defer g.work.Done()
 	defer close(output)
 
+	g.Log.Info("started")
+	defer g.Log.Info("stopped")
+
 	for {
 		start := time.Now()
 
-		for count := g.GetTPS(); count > 0; count-- {
+		tps := g.GetTPS()
+		for count := tps; count > 0; count-- {
 			tx := g.Yield()
 			select {
 			case output <- tx:
-				break
+				continue
 			case <-g.done:
 				return
 			}
 		}
 
 		spent := time.Since(start)
-		if spent < time.Second {
-			select {
-			case <-time.After(time.Second - spent):
-				break
-			case <-g.done:
-				return
-			}
+		if spent >= time.Second {
+			g.Log.Warn("exceeded performance", "tps", tps)
+			continue
+		}
+
+		select {
+		case <-time.After(time.Second - spent):
+			continue
+		case <-g.done:
+			return
 		}
 	}
 }
