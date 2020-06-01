@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"sort"
-	"sync"
 	"syscall"
 
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -68,19 +67,13 @@ func generatorMain(ctx *cli.Context) error {
 	txs := generator.Start()
 
 	nodes := NewNodes(cfg, txs)
-
-	var work sync.WaitGroup
-	work.Add(1)
 	go func() {
-		defer work.Done()
 		for tps := range nodes.TPS() {
 			generator.SetTPS(tps + 10.0*float64(nodes.Count()))
 		}
 	}()
 
 	waitForSignal()
-	work.Wait()
-
 	return nil
 }
 
