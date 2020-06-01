@@ -16,7 +16,7 @@ func TestGenerator(t *testing.T) {
 			Offset: 100,
 		},
 	}
-	g := NewTxGenerator(cfg)
+	g := NewTxGenerator(cfg, 1, 1)
 	for i := 0; i < 2*len(g.accs); i++ {
 		tx := g.Yield()
 		t.Log(tx.Info.String(), tx.Raw.Nonce(), tx.Raw.Value())

@@ -35,6 +35,10 @@ func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 	return n
 }
 
+func (n *Nodes) Count() int {
+	return len(n.conns)
+}
+
 func (n *Nodes) TPS() <-chan float64 {
 	return n.tps
 }

@@ -22,9 +22,10 @@ type Generator struct {
 	tps     uint32
 	chainId uint
 
-	accs     []*Acc
-	offset   uint
-	position uint
+	instances uint
+	accs      []*Acc
+	offset    uint
+	position  uint
 
 	work sync.WaitGroup
 	done chan struct{}
@@ -33,11 +34,14 @@ type Generator struct {
 	logger.Instance
 }
 
-func NewTxGenerator(cfg *Config) *Generator {
+func NewTxGenerator(cfg *Config, num, ofTotal uint) *Generator {
+	accs := cfg.Accs.Count / ofTotal
+	offset := cfg.Accs.Offset + accs*(num-1)
 	g := &Generator{
-		chainId: uint(cfg.ChainId),
-		accs:    make([]*Acc, cfg.Accs.Count),
-		offset:  cfg.Accs.Offset,
+		chainId:   uint(cfg.ChainId),
+		instances: ofTotal,
+		accs:      make([]*Acc, accs),
+		offset:    offset,
 
 		Instance: logger.MakeInstance(),
 	}
@@ -75,13 +79,13 @@ func (g *Generator) Stop() {
 	g.done = nil
 }
 
-func (g *Generator) GetTPS() float64 {
+func (g *Generator) getTPS() float64 {
 	tps := atomic.LoadUint32(&g.tps)
 	return float64(tps)
 }
 
 func (g *Generator) SetTPS(tps float64) {
-	x := uint32(math.Ceil(tps))
+	x := uint32(math.Ceil(tps / float64(g.instances)))
 	atomic.StoreUint32(&g.tps, x)
 }
 
@@ -93,22 +97,31 @@ func (g *Generator) background(output chan<- *Transaction) {
 	defer g.Log.Info("stopped")
 
 	for {
-		start := time.Now()
+		begin := time.Now()
+		var (
+			generating time.Duration
+			sending    time.Duration
+		)
 
-		tps := g.GetTPS()
+		tps := g.getTPS()
 		for count := tps; count > 0; count-- {
+			begin := time.Now()
 			tx := g.Yield()
+			generating += time.Since(begin)
+
+			begin = time.Now()
 			select {
 			case output <- tx:
+				sending += time.Since(begin)
 				continue
 			case <-g.done:
 				return
 			}
 		}
 
-		spent := time.Since(start)
+		spent := time.Since(begin)
 		if spent >= time.Second {
-			g.Log.Warn("exceeded performance", "tps", tps)
+			g.Log.Warn("exceeded performance", "tps", tps, "generating", generating, "sending", sending)
 			continue
 		}
 

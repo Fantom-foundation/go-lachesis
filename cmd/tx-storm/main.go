@@ -60,11 +60,11 @@ func generatorMain(ctx *cli.Context) error {
 	SetupPrometheus(ctx)
 
 	cfg := OpenConfig(ctx)
-	// num, ofTotal := getNumber(ctx)
+	num, ofTotal := getNumber(ctx)
 
-	generator := NewTxGenerator(cfg)
+	generator := NewTxGenerator(cfg, num, ofTotal)
 	defer generator.Stop()
-	generator.SetName("TxGen")
+	generator.SetName(fmt.Sprintf("TxGen-%d", num))
 	txs := generator.Start()
 
 	nodes := NewNodes(cfg, txs)
@@ -74,7 +74,7 @@ func generatorMain(ctx *cli.Context) error {
 	go func() {
 		defer work.Done()
 		for tps := range nodes.TPS() {
-			generator.SetTPS(tps + 10.0)
+			generator.SetTPS(tps + 10.0*float64(nodes.Count()))
 		}
 	}()
 
