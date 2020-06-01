@@ -74,7 +74,7 @@ func generatorMain(ctx *cli.Context) error {
 	go func() {
 		defer work.Done()
 		for tps := range nodes.TPS() {
-			generator.SetTPS(tps + 1.0)
+			generator.SetTPS(tps + 10.0)
 		}
 	}()
 

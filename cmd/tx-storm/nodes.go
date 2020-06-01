@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/logger"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 // Nodes pool.
@@ -49,6 +50,7 @@ func (n *Nodes) notifyTPS(tps float64) {
 func (n *Nodes) measureTPS() {
 	var (
 		lastBlock *big.Int
+		smooth    = utils.NewRingBuff(10)
 		start     = time.Unix(1, 0)
 	)
 	for b := range n.blocks {
@@ -58,11 +60,13 @@ func (n *Nodes) measureTPS() {
 
 		dur := time.Since(start).Seconds()
 		tps := float64(b.TxCount) / dur
+		smooth.Push(tps)
 
 		start = time.Now()
 		lastBlock = b.Number
-		n.notifyTPS(tps)
-		n.Log.Info("TPS", "value", tps, "block", b.Number)
+		avg := smooth.Avg()
+		n.notifyTPS(avg)
+		n.Log.Info("TPS", "block", b.Number, "value", tps, "avg", avg)
 	}
 }
 
