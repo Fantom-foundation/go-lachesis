@@ -25,8 +25,12 @@ func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 		done:     make(chan struct{}),
 		Instance: logger.MakeInstance(),
 	}
+
+	was := make(map[string]struct{}, len(cfg.URLs))
 	for _, url := range cfg.URLs {
-		n.add(url)
+		_, double := was[url]
+		n.add(url, !double)
+		was[url] = struct{}{}
 	}
 
 	n.notifyTPS(0)
@@ -62,9 +66,13 @@ func (n *Nodes) measureTPS() {
 			continue
 		}
 
+		txCountGotMeter.Inc(int64(b.TxCount))
+
 		dur := time.Since(start).Seconds()
 		tps := float64(b.TxCount) / dur
 		smooth.Push(tps)
+
+		txTpsMeter.Update(int64(tps))
 
 		start = time.Now()
 		lastBlock = b.Number
@@ -74,8 +82,8 @@ func (n *Nodes) measureTPS() {
 	}
 }
 
-func (n *Nodes) add(url string) {
-	c := NewSender(url)
+func (n *Nodes) add(url string, is1st bool) {
+	c := NewSender(url, is1st)
 	c.SetName(fmt.Sprintf("Node-%d", len(n.conns)))
 	n.conns = append(n.conns, c)
 

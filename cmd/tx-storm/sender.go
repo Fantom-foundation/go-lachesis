@@ -16,10 +16,11 @@ import (
 )
 
 type Sender struct {
-	url     string
-	input   chan *Transaction
-	headers chan *types.Header
-	output  chan Block
+	url            string
+	input          chan *Transaction
+	listenToBlocks bool
+	headers        chan *types.Header
+	output         chan Block
 
 	done chan struct{}
 	work sync.WaitGroup
@@ -32,13 +33,14 @@ type Block struct {
 	TxCount uint
 }
 
-func NewSender(url string) *Sender {
+func NewSender(url string, listenToBlocks bool) *Sender {
 	s := &Sender{
-		url:     url,
-		input:   make(chan *Transaction, 1),
-		headers: make(chan *types.Header, 1),
-		output:  make(chan Block, 1),
-		done:    make(chan struct{}),
+		url:            url,
+		input:          make(chan *Transaction, 1),
+		listenToBlocks: listenToBlocks,
+		headers:        make(chan *types.Header, 1),
+		output:         make(chan Block, 1),
+		done:           make(chan struct{}),
 
 		Instance: logger.MakeInstance(),
 	}
@@ -115,7 +117,7 @@ func (s *Sender) background() {
 			client = s.connect()
 		}
 
-		if sbscr == nil {
+		if s.listenToBlocks && sbscr == nil {
 			sbscr = s.subscribe(client)
 			if sbscr == nil {
 				disconnect()
@@ -127,6 +129,7 @@ func (s *Sender) background() {
 		err = client.SendTransaction(ctx, tx.Raw)
 		cancel()
 		if err == nil {
+			txCountSentMeter.Inc(1)
 			s.Log.Debug("tx sending ok", "info", info, "amount", tx.Raw.Value(), "nonce", tx.Raw.Nonce())
 			tx = nil
 			continue
