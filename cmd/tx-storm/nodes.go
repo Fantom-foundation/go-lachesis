@@ -101,11 +101,12 @@ func (n *Nodes) stop() {
 }
 
 func (n *Nodes) background(input <-chan *Transaction) {
+	if len(n.conns) < 1 {
+		panic("no connections")
+	}
+
 	i := 0
 	for tx := range input {
-		if i >= len(n.conns) {
-			continue
-		}
 		c := n.conns[i]
 		c.Send(tx)
 		i = (i + 1) % len(n.conns)

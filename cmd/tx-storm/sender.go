@@ -36,7 +36,7 @@ type Block struct {
 func NewSender(url string, listenToBlocks bool) *Sender {
 	s := &Sender{
 		url:            url,
-		input:          make(chan *Transaction, 1),
+		input:          make(chan *Transaction, 10),
 		listenToBlocks: listenToBlocks,
 		headers:        make(chan *types.Header, 1),
 		output:         make(chan Block, 1),

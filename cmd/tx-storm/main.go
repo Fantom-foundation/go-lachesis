@@ -69,7 +69,7 @@ func generatorMain(ctx *cli.Context) error {
 	nodes := NewNodes(cfg, txs)
 	go func() {
 		for tps := range nodes.TPS() {
-			generator.SetTPS(tps + 10.0*float64(nodes.Count()))
+			generator.SetTPS(tps + 50.0*float64(nodes.Count()))
 		}
 	}()
 
