@@ -26,7 +26,7 @@ const (
 func TestConsoleWelcome(t *testing.T) {
 	// Start a lachesis console, make sure it's cleaned up and terminate the console
 	cli := exec(t,
-		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
+		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none", "--nocheckversion",
 		"console")
 
 	// Gather all the infos the welcome message needs to contain

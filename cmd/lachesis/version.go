@@ -42,5 +42,5 @@ func applyVersionCheck(
 
 	cfg.Lachesis.DisablePrivateAccountAPI = true
 	log.Warn(msg, "hint", hint)
-	log.Warn("PrivateAccountAPI is disabled on outdated node.")
+	log.Warn("PrivateAccountAPI is disabled on outdated node")
 }
