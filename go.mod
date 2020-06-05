@@ -48,7 +48,7 @@ require (
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/status-im/keycard-go v0.0.0-20190424133014-d95853db0f48
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.6.1
 	github.com/syndtr/goleveldb v1.0.1-0.20190923125748-758128399b1d
 	github.com/tendermint/tendermint v0.33.3
 	github.com/tyler-smith/go-bip39 v1.0.2
