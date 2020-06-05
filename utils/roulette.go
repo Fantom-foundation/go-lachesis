@@ -22,38 +22,25 @@ func (rw *rouletteSA) NSelection(size int) []int {
 		return make([]int, 0)
 	}
 
-	selected := make(map[int]bool)
-	max := rw.maxWeight
-
 	selection := make([]int, size)
+	keep := make([]int, len(rw.weights))
+	keepSize := len(rw.weights)
+	for i := 0; i < len(rw.weights); i++ {
+		keep[i] = i
+	}
 
 	for i := 0; i < size; i++ {
 		// select a next one
-		for {
-			curSelection := rw.selectOne(max)
-			if _, ok := selected[curSelection]; !ok {
-				selection[i] = curSelection
-				selected[curSelection] = true
-				break
-			}
+		curSelection := int(uint(rw.rand64()) % uint(keepSize))
+		selection[i] = keep[curSelection]
+
+		last := keepSize - 1
+		if curSelection < last {
+			keep[curSelection], keep[last] = keep[last], keep[curSelection]
 		}
+		keepSize--
 	}
 	return selection
-}
-
-// selectOne item randomly from the weighted items.
-// Param f_max is the maximum weight of the population.
-// Returns index of the selected item.
-func (rw *rouletteSA) selectOne(fMax pos.Stake) int {
-	for {
-		// select randomly one of the individuals
-		i := int(uint(rw.rand64()) % uint(len(rw.weights)))
-		// the selection is accepted with probability fitness(i) / fMax
-		randWeight := pos.Stake(rw.rand64()) % fMax
-		if randWeight < rw.weights[i] {
-			return i
-		}
-	}
 }
 
 func maxOf(w []pos.Stake) pos.Stake {
