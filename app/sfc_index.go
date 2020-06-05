@@ -2,6 +2,7 @@ package app
 
 import (
 	"math/big"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -315,7 +316,11 @@ func (a *App) processSfc(
 
 			gotMissed := a.store.GetBlocksMissed(it.StakerID)
 			badMissed := a.config.Net.Economy.OfflinePenaltyThreshold
-			if gotMissed.Num >= badMissed.BlocksNum && gotMissed.Period >= inter.Timestamp(badMissed.Period) {
+			tz, _ := time.LoadLocation("UTC")
+			if gotMissed.Num >= badMissed.BlocksNum &&
+				(block.Time.Unix() < time.Date(2020, time.February, 01, 0, 0, 0, 0, tz).Unix() && // TODO: set hardfork date
+					gotMissed.Period >= inter.Timestamp(badMissed.Period) ||
+					gotMissed.Period >= 3*inter.Timestamp(badMissed.Period)) {
 				// write into DB
 				it.Staker.Status |= sfctype.OfflineBit
 				a.store.SetSfcStaker(it.StakerID, it.Staker)
