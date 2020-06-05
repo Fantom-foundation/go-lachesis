@@ -221,7 +221,7 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 
 	// create new event, but send it from new peer
 	{
-		emitted := svc.emitter.createEvent(nil)
+		emitted := svc.emitter.createEvent(nil, nil)
 		assertar.NotNil(emitted)
 		assertar.NoError(p2p.Send(newPeer.app, NewEventHashesMsg, []hash.Event{emitted.Hash()})) // announce
 		// now PM should request it
