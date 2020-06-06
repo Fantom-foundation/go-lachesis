@@ -1,0 +1,7 @@
+ChainId = 4003
+
+URLs = [
+    "ws://node0:18546",
+    "ws://node1:18546",
+    "ws://node2:18546",
+]

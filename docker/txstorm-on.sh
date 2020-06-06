@@ -10,12 +10,13 @@ do
     NODE=node$i
     NAME=txgen$i
 
+    j=$(($i+1))
     docker run -d --rm \
 	--net=${NETWORK} --name=${NAME} \
 	--cpus=${LIMIT_CPU} --blkio-weight=${LIMIT_IO} \
 	tx-storm:${TAG} \
-	--num=$i/$N --rate=10 \
-	--accs-start=${TEST_ACCS_START} --accs-count=${TEST_ACCS_COUNT} \
+	--config /config.toml \
+	--num=$j/$N --rate=10 \
 	--metrics --verbosity 5 \
 	http://${NODE}:18545
 
