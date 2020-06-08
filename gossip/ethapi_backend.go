@@ -443,6 +443,18 @@ func (b *EthAPIBackend) RPCGasCap() *big.Int {
 	return b.svc.config.RPCGasCap
 }
 
+func (b *EthAPIBackend) PeersInfo() map[string]ethapi.PeerInfo {
+	var peersInfo = make(map[string]ethapi.PeerInfo)
+	for _, p := range b.svc.pm.peers.List() {
+		info := p.Info()
+		peersInfo[p.id] = ethapi.PeerInfo{
+			NumOfReceivedEvents: info.NumOfReceivedEvents,
+			NumOfSentEvents:     info.NumOfSentEvents,
+		}
+	}
+	return peersInfo
+}
+
 // CurrentEpoch returns current epoch number.
 func (b *EthAPIBackend) CurrentEpoch(ctx context.Context) idx.Epoch {
 	return b.svc.engine.GetEpoch()

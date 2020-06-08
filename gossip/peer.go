@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -47,9 +49,11 @@ const (
 // PeerInfo represents a short summary of the sub-protocol metadata known
 // about a connected peer.
 type PeerInfo struct {
-	Version     int       `json:"version"` // protocol version negotiated
-	Epoch       idx.Epoch `json:"epoch"`
-	NumOfBlocks idx.Block `json:"blocks"`
+	Version             int            `json:"version"` // protocol version negotiated
+	Epoch               idx.Epoch      `json:"epoch"`
+	NumOfBlocks         idx.Block      `json:"blocks"`
+	NumOfReceivedEvents hexutil.Uint64 `json:"received_events"` // number of events received for peer
+	NumOfSentEvents     hexutil.Uint64 `json:"sent_events"`     // number of events sent by peer
 }
 
 type peer struct {
@@ -70,6 +74,9 @@ type peer struct {
 	progress PeerProgress
 
 	poolEntry *poolEntry
+
+	numOfReceivedEvents uint64
+	numOfSentEvents     uint64
 
 	sync.RWMutex
 }
@@ -155,10 +162,14 @@ func (p *peer) close() {
 
 // Info gathers and returns a collection of metadata known about a peer.
 func (p *peer) Info() *PeerInfo {
+	numOfSentEvents := hexutil.Uint64(atomic.LoadUint64(&p.numOfSentEvents))
+	numOfReceivedEvents := hexutil.Uint64(atomic.LoadUint64(&p.numOfReceivedEvents))
 	return &PeerInfo{
-		Version:     p.version,
-		Epoch:       p.progress.Epoch,
-		NumOfBlocks: p.progress.NumOfBlocks,
+		Version:             p.version,
+		Epoch:               p.progress.Epoch,
+		NumOfBlocks:         p.progress.NumOfBlocks,
+		NumOfSentEvents:     numOfSentEvents,
+		NumOfReceivedEvents: numOfReceivedEvents,
 	}
 }
 
@@ -170,6 +181,7 @@ func (p *peer) MarkEvent(hash hash.Event) {
 		p.knownEvents.Pop()
 	}
 	p.knownEvents.Add(hash)
+	atomic.AddUint64(&p.numOfReceivedEvents, 1)
 }
 
 // MarkTransaction marks a transaction as known for the peer, ensuring that it
@@ -222,6 +234,7 @@ func (p *peer) SendNewEventHashes(hashes []hash.Event) error {
 	for p.knownEvents.Cardinality() >= maxKnownEvents {
 		p.knownEvents.Pop()
 	}
+
 	return p2p.Send(p.rw, NewEventHashesMsg, hashes)
 }
 
@@ -252,6 +265,8 @@ func (p *peer) SendEvents(events inter.Events) error {
 			p.knownEvents.Pop()
 		}
 	}
+	atomic.AddUint64(&p.numOfSentEvents, uint64(len(events)))
+
 	return p2p.Send(p.rw, EventsMsg, events)
 }
 
@@ -263,6 +278,8 @@ func (p *peer) SendEventsRLP(events []rlp.RawValue, ids []hash.Event) error {
 			p.knownEvents.Pop()
 		}
 	}
+	atomic.AddUint64(&p.numOfSentEvents, uint64(len(ids)))
+
 	return p2p.Send(p.rw, EventsMsg, events)
 }
 

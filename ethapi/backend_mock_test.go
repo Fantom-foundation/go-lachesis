@@ -5,28 +5,26 @@
 package ethapi
 
 import (
-	"context"
-	"math/big"
-	"reflect"
-	"time"
-
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/golang/mock/gomock"
-
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
-	"github.com/Fantom-foundation/go-lachesis/hash"
-	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/pos"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	context "context"
+	evmcore "github.com/Fantom-foundation/go-lachesis/evmcore"
+	hash "github.com/Fantom-foundation/go-lachesis/hash"
+	inter "github.com/Fantom-foundation/go-lachesis/inter"
+	idx "github.com/Fantom-foundation/go-lachesis/inter/idx"
+	pos "github.com/Fantom-foundation/go-lachesis/inter/pos"
+	sfctype "github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	accounts "github.com/ethereum/go-ethereum/accounts"
+	common "github.com/ethereum/go-ethereum/common"
+	state "github.com/ethereum/go-ethereum/core/state"
+	types "github.com/ethereum/go-ethereum/core/types"
+	vm "github.com/ethereum/go-ethereum/core/vm"
+	ethdb "github.com/ethereum/go-ethereum/ethdb"
+	event "github.com/ethereum/go-ethereum/event"
+	params "github.com/ethereum/go-ethereum/params"
+	rpc "github.com/ethereum/go-ethereum/rpc"
+	gomock "github.com/golang/mock/gomock"
+	big "math/big"
+	reflect "reflect"
+	time "time"
 )
 
 // MockBackend is a mock of Backend interface
@@ -149,6 +147,20 @@ func (m *MockBackend) RPCGasCap() *big.Int {
 func (mr *MockBackendMockRecorder) RPCGasCap() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RPCGasCap", reflect.TypeOf((*MockBackend)(nil).RPCGasCap))
+}
+
+// PeersInfo mocks base method
+func (m *MockBackend) PeersInfo() map[string]PeerInfo {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "PeersInfo")
+	ret0, _ := ret[0].(map[string]PeerInfo)
+	return ret0
+}
+
+// PeersInfo indicates an expected call of PeersInfo
+func (mr *MockBackendMockRecorder) PeersInfo() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PeersInfo", reflect.TypeOf((*MockBackend)(nil).PeersInfo))
 }
 
 // HeaderByNumber mocks base method
