@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -121,10 +122,16 @@ func importFile(srv *gossip.Service, fn string) error {
 			break
 		}
 
-		if err = srv.ImportEvent(&e); err != nil {
+		err = srv.ImportEvent(&e)
+		switch err {
+		case nil:
+			log.Debug("event inserted", "event", e.Hash())
+		case epochcheck.ErrNotRelevant:
+			log.Debug("event skipped", "event", e.Hash())
+		default:
 			return err
 		}
-		log.Debug("event inserted", "event", e.Hash())
+
 	}
 
 	return nil
