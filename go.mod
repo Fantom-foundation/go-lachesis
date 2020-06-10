@@ -33,7 +33,6 @@ require (
 	github.com/mattn/go-colorable v0.1.6
 	github.com/mattn/go-isatty v0.0.12
 	github.com/mattn/go-runewidth v0.0.6 // indirect
-	github.com/minio/sha256-simd v0.1.1
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.2 // indirect
 	github.com/onsi/ginkgo v1.10.3 // indirect
