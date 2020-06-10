@@ -10,6 +10,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -38,9 +39,14 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	s.store.SetEvent(e)
 	if realEngine != nil {
 		err := realEngine.ProcessEvent(e)
-		if err != nil { // TODO make it possible to write only on success
+		switch err {
+		case nil:
+			break
+		case epochcheck.ErrNotRelevant:
+			// skip alredy existed
+			break
+		default:
 			s.store.DeleteEvent(e.Epoch, e.Hash())
-			return err
 		}
 	}
 	_ = s.occurredTxs.CollectNotConfirmedTxs(e.Transactions)

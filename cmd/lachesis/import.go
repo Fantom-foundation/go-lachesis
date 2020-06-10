@@ -16,7 +16,9 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
+	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 
@@ -93,6 +95,21 @@ func importFile(srv *gossip.Service, fn string) error {
 	}
 
 	stream := rlp.NewStream(reader, 0)
+
+	var h common.Hash
+	if err = stream.Decode(&h); err == io.EOF {
+		return nil
+	}
+
+	genesis := srv.GetEvmStateReader().GetDagBlock(hash.Event{}, 0)
+	if genesis == nil {
+		return fmt.Errorf("cann't init db")
+	}
+	if genesis.Hash != h {
+		log.Warn("Incompatible genesis event", "current", genesis.Hash.String(), "want", h.String())
+		return fmt.Errorf("incompatible genesis event")
+	}
+
 	for {
 		select {
 		case <-interrupt:
@@ -105,10 +122,16 @@ func importFile(srv *gossip.Service, fn string) error {
 			break
 		}
 
-		if err = srv.ImportEvent(&e); err != nil {
+		err = srv.ImportEvent(&e)
+		switch err {
+		case nil:
+			log.Debug("event inserted", "event", e.Hash())
+		case epochcheck.ErrNotRelevant:
+			log.Debug("event skipped", "event", e.Hash())
+		default:
 			return err
 		}
-		log.Debug("event inserted", "event", e.Hash())
+
 	}
 
 	return nil
