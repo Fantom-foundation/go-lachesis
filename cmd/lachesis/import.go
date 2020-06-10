@@ -17,6 +17,7 @@ import (
 	"gopkg.in/urfave/cli.v1"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
+	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 
@@ -93,6 +94,21 @@ func importFile(srv *gossip.Service, fn string) error {
 	}
 
 	stream := rlp.NewStream(reader, 0)
+
+	var h common.Hash
+	if err = stream.Decode(&h); err == io.EOF {
+		return nil
+	}
+
+	genesis := srv.GetEvmStateReader().GetDagBlock(hash.Event{}, 0)
+	if genesis == nil {
+		return fmt.Errorf("cann't init db")
+	}
+	if genesis.Hash != h {
+		log.Warn("Incompatible genesis event", "current", genesis.Hash.String(), "want", h.String())
+		return fmt.Errorf("incompatible genesis event")
+	}
+
 	for {
 		select {
 		case <-interrupt:

@@ -13,8 +13,10 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -92,11 +94,22 @@ func makeGossipStore(dataDir string, gossipCfg *gossip.Config) *gossip.Store {
 }
 
 // exportTo writer the active chain.
-func exportTo(w io.Writer, gdb *gossip.Store, from, to idx.Epoch) error {
+func exportTo(w io.Writer, gdb *gossip.Store, from, to idx.Epoch) (err error) {
 	log.Info("Exporting batch of events")
 	start, reported := time.Now(), time.Now()
 
-	var err error
+	b0 := gdb.GetBlock(0)
+	if b0 == nil {
+		log.Warn("No events found")
+		return nil
+	}
+
+	genesis := evmcore.ToEvmHeader(b0)
+	err = rlp.Encode(w, genesis.Hash)
+	if err != nil {
+		return
+	}
+
 	gdb.ForEachEvents(func(event *inter.Event) bool {
 		if event == nil {
 			err = errors.New("export failed, event not found")
@@ -110,7 +123,7 @@ func exportTo(w io.Writer, gdb *gossip.Store, from, to idx.Epoch) error {
 			return (event.Epoch - to) < 1
 		}
 
-		err := event.EncodeRLP(w)
+		err := rlp.Encode(w, event)
 		if err != nil {
 			err = fmt.Errorf("export failed, error: %v", err)
 			return false
@@ -124,5 +137,5 @@ func exportTo(w io.Writer, gdb *gossip.Store, from, to idx.Epoch) error {
 		return true
 	})
 
-	return err
+	return
 }
