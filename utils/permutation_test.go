@@ -65,7 +65,8 @@ func benchmarkPermutation(f permutator, b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		d := dd[i%len(dd)]
-		_ = f(len(d.weights), d.weights, d.seed)
+		avg_needed_size := len(d.weights) / 2
+		_ = f(avg_needed_size, d.weights, d.seed)
 	}
 }
 
