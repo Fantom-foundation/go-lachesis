@@ -64,8 +64,7 @@ func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []in
 	}
 
 	roulette := &rouletteSA{
-		weights:   weights,
-		maxWeight: maxOf(weights),
+		weights: weights,
 	}
 	roulette.seed = seed
 
