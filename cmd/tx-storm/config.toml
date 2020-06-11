@@ -1,7 +1,0 @@
-ChainId = 4067
-
-URLs = [
-    "ws://node0:4500",
-    "ws://node1:4501",
-    "ws://node2:4502",
-]

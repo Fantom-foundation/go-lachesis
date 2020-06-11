@@ -8,6 +8,35 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
+var BlockChainIDFlag = cli.IntFlag{
+	Name:  "chain-id",
+	Usage: "chain id for sign transactions",
+	Value: 4003,	// Chain id for fakenet
+}
+
+func getChainId(ctx *cli.Context) (chainid uint) {
+	chainid = uint(ctx.GlobalInt(BlockChainIDFlag.Name))
+	return
+}
+
+var AccsStartFlag = cli.IntFlag{
+	Name:  "accs-start",
+	Usage: "offset of predefined fake accounts",
+	Value: 1000,
+}
+
+var AccsCountFlag = cli.IntFlag{
+	Name:  "accs-count",
+	Usage: "count of predefined fake accounts",
+	Value: 100000,
+}
+
+func getTestAccs(ctx *cli.Context) (start, count uint) {
+	start = uint(ctx.GlobalInt(AccsStartFlag.Name))
+	count = uint(ctx.GlobalInt(AccsCountFlag.Name))
+	return
+}
+
 var TxnsRateFlag = cli.IntFlag{
 	Name:  "rate",
 	Usage: "transactions per second (max sum of all instances)",
@@ -20,7 +49,6 @@ func getTxnsRate(ctx *cli.Context) uint {
 var NumberFlag = cli.StringFlag{
 	Name:  "num",
 	Usage: "'N/X' - it is a N-th generator of X",
-	Value: "1/1",
 }
 
 func getNumber(ctx *cli.Context) (num, total uint) {
@@ -45,7 +73,7 @@ func parseNumber(s string) (num, total uint, err error) {
 	if err != nil {
 		return
 	}
-	num = uint(i64)
+	num = uint(i64) - 1
 
 	i64, err = strconv.ParseUint(parts[1], 10, 64)
 	if err != nil {
@@ -53,7 +81,7 @@ func parseNumber(s string) (num, total uint, err error) {
 	}
 	total = uint(i64)
 
-	if 1 > num || num > total {
+	if num >= total {
 		err = fmt.Errorf("key-num should be in range from 1 to total : <key-num>/<total>")
 	}
 
