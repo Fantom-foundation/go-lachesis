@@ -53,7 +53,7 @@ func WeightedPermutation(size int, weights []pos.Stake, seed common.Hash) []int 
 }
 
 // StochasticPermutation builds weighted random permutation
-// Returns first {size} entries of {weights} permutation.
+// Returns first {1} entries of {weights} permutation.
 // Call with {size} == len(weights) to get the whole permutation.
 func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []int {
 	if len(weights) < size {
@@ -63,13 +63,13 @@ func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []in
 		return make([]int, 0)
 	}
 
-	roulette := &rouletteSA{
-		weights:   weights,
-		maxWeight: maxOf(weights),
+	r := deterministicRand{
+		seed:      seed,
+		seedIndex: 0,
 	}
-	roulette.seed = seed
 
-	result := roulette.NSelection(size)
+	var result [1]int
+	result[0] = int(uint(r.rand64()) % uint(len(weights)))
 
-	return result
+	return result[0:1]
 }
