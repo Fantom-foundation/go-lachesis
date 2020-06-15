@@ -126,6 +126,9 @@ func (a *App) processSfc(
 ) {
 	// process SFC contract logs
 
+	totalLockedAmount := a.store.GetTotalLocked()
+	defer a.store.SetTotalLocked(totalLockedAmount)
+
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
 			if l.Address != sfc.ContractAddress {
@@ -405,6 +408,11 @@ func (a *App) processSfc(
 		a.setState(sfc.ContractAddress, epochPos.StakeTotalAmount(), utils.BigTo256(totalStake))
 		a.setState(sfc.ContractAddress, epochPos.DelegationsTotalAmount(), utils.BigTo256(totalDelegated))
 		a.setState(sfc.ContractAddress, epochPos.TotalSupply(), utils.BigTo256(totalSupply))
+
+		if epoch >= idx.Epoch(utils.H256toU64(a.getState(sfc.ContractAddress, sfcpos.FirstLockedUpEpoch()))) {
+			a.setState(sfc.ContractAddress, epochPos.TotalLockedAmount(), utils.BigTo256(totalLockedAmount))
+		}
+
 		a.setState(sfc.ContractAddress, sfcpos.CurrentSealedEpoch(), utils.U64to256(uint64(epoch)))
 
 		// Add balance for SFC to pay rewards
@@ -418,6 +426,11 @@ func (a *App) processSfc(
 // setState is a short notation of
 func (a *App) setState(addr common.Address, key, value common.Hash) {
 	a.ctx.statedb.SetState(addr, key, value)
+}
+
+// getState is a short notation of
+func (a *App) getState(addr common.Address, key common.Hash) common.Hash {
+	return a.ctx.statedb.GetState(addr, key)
 }
 
 func (a *App) updateEpochStats(
