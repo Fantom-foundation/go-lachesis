@@ -248,6 +248,35 @@ func (a *App) processSfc(
 				a.delAllStakerData(stakerID)
 			}
 
+			// Locking stake
+			if l.Topics[0] == sfcpos.Topics.LockingStake && len(l.Topics) > 1 && len(l.Data) >= 64 {
+				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
+				fromEpoch := new(big.Int).SetBytes(l.Data[0:32])
+				endTime := new(big.Int).SetBytes(l.Data[32:64])
+
+				staker := a.store.GetSfcStaker(stakerID)
+				if staker == nil {
+					a.Log.Warn("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
+				// TODO: inc TotalLockedAmount
+			}
+
+			// Locking delegation
+			if l.Topics[0] == sfcpos.Topics.LockingDelegation && len(l.Topics) > 3 && len(l.Data) >= 64 {
+				address := common.BytesToAddress(l.Topics[1][12:])
+				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[2][:]).Uint64())
+				fromEpoch := new(big.Int).SetBytes(l.Data[0:32])
+				endTime := new(big.Int).SetBytes(l.Data[32:64])
+
+				delegator := a.store.GetSfcDelegator(address)
+				if delegator == nil {
+					a.Log.Warn("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
+				// TODO: inc TotalLockedAmount
+			}
+
 			// Delete delegators
 			if l.Topics[0] == sfcpos.Topics.WithdrawnDelegation && len(l.Topics) > 1 {
 				address := common.BytesToAddress(l.Topics[1][12:])

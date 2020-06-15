@@ -31,6 +31,8 @@ var (
 		DeactivatedDelegation         common.Hash
 		UpdatedStake                  common.Hash
 		UpdatedDelegation             common.Hash
+		LockingStake                  common.Hash
+		LockingDelegation             common.Hash
 	}{
 		CreatedStake:                  hash.Of([]byte("CreatedStake(uint256,address,uint256)")),
 		IncreasedStake:                hash.Of([]byte("IncreasedStake(uint256,uint256,uint256)")),
@@ -47,6 +49,8 @@ var (
 		DeactivatedDelegation:         hash.Of([]byte("DeactivatedDelegation(address,uint256)")),
 		UpdatedStake:                  hash.Of([]byte("UpdatedStake(uint256,uint256,uint256)")),
 		UpdatedDelegation:             hash.Of([]byte("UpdatedDelegation(address,uint256,uint256,uint256)")),
+		LockingStake:                  hash.Of([]byte("LockingStake(uint256,uint256,uint256)")),
+		LockingDelegation:             hash.Of([]byte("LockingDelegation(address,uint256,uint256,uint256)")),
 	}
 )
 
@@ -160,6 +164,10 @@ func (p *EpochSnapshotPos) DelegationsTotalAmount() common.Hash {
 
 func (p *EpochSnapshotPos) TotalSupply() common.Hash {
 	return p.Field(9)
+}
+
+func (p *EpochSnapshotPos) TotalLockedAmount() common.Hash {
+	return p.Field(10)
 }
 
 // ValidatorMerit
