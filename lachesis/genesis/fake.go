@@ -20,7 +20,7 @@ func FakeAccounts(from, count int, balance *big.Int, stake *big.Int) VAccounts {
 			Balance:    balance,
 			PrivateKey: key,
 		}
-		stakerID := idx.StakerID(i + 1)
+		stakerID := idx.StakerID(i - from + 1)
 		validators = append(validators, pos.GenesisValidator{
 			ID:      stakerID,
 			Address: addr,
