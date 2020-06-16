@@ -7,135 +7,165 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/state"
 	eth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/stretchr/testify/require"
 
-	// "github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/abci/types"
-
-	"github.com/Fantom-foundation/go-lachesis/crypto"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
-	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 func Test(t *testing.T) {
-	//require := require.New(t)
+	require := require.New(t)
 
-	accs := []common.Address{
-		crypto.PubkeyToAddress(crypto.FakeKey(1).PublicKey),
-		crypto.PubkeyToAddress(crypto.FakeKey(2).PublicKey),
-		crypto.PubkeyToAddress(crypto.FakeKey(3).PublicKey),
-	}
+	env := newTestEnv(3)
+	defer env.Close()
 
-	a, s := initTestApp(len(accs))
-	defer s.Close()
-	defer a.Close()
+	b0 := utils.ToFtm(1e10)
 
-	gasPrice := utils.ToFtm(1e8)
-	gasLimit := uint64(1e18)
-	state := s.GetHeader(common.Hash{}, 0).Root
+	require.Equal(b0, env.State().GetBalance(env.Address(0)))
+	require.Equal(b0, env.State().GetBalance(env.Address(1)))
+	require.Equal(b0, env.State().GetBalance(env.Address(2)))
 
-	txs := eth.Transactions{
-		eth.NewTransaction(0, accs[1], utils.ToFtm(1e19), gasLimit, gasPrice, nil),
-	}
+	env.ApplyBlock(
+		env.Tx(0, env.Staker(0), env.Address(1), utils.ToFtm(100)),
+	)
+	env.ApplyBlock(
+		env.Tx(0, env.Staker(1), env.Address(2), utils.ToFtm(100)),
+	)
+	env.ApplyBlock(
+		env.Tx(0, env.Staker(2), env.Address(0), utils.ToFtm(100)),
+	)
 
-	state = applyTxs(a, 1, state, txs)
-	// TODO: check SFC
+	gas := big.NewInt(0).Mul(big.NewInt(21000), env.GasPrice)
+	b1 := big.NewInt(0).Sub(b0, gas)
+	require.Equal(b1, env.State().GetBalance(env.Address(0)))
+	require.Equal(b1, env.State().GetBalance(env.Address(1)))
+	require.Equal(b1, env.State().GetBalance(env.Address(2)))
+
 }
 
-func applyTxs(a *App, n idx.Block, state common.Hash, txs eth.Transactions) common.Hash {
-	prev := a.store.GetHeader(common.Hash{}, uint64(n-1))
+/*
+ * test env:
+ */
 
-	block := &evmcore.EvmHeader{
-		Hash:       common.Hash(hash.FakeEvent()),
-		ParentHash: prev.ParentHash,
-		Root:       state,
-		Number:     big.NewInt(int64(n)),
-		Time:       inter.TimeToStamp(time.Now()),
-		GasLimit:   math.MaxUint64,
-	}
+type testEnv struct {
+	App   *App
+	Store *Store
 
-	applyBlock(a, state, block, map[idx.StakerID]bool{
-		1: true,
-		2: true,
-	})
+	GasPrice *big.Int
 
-	for _, t := range txs {
-		tx := &DagTx{
-			Transaction: t,
-			Originator:  idx.StakerID(1),
-		}
-		a.DeliverTx(types.RequestDeliverTx{
-			Tx: tx.Bytes(),
-		})
-	}
+	vaccs  genesis.VAccounts
+	signer eth.Signer
 
-	a.EndBlock(types.RequestEndBlock{
-		Height: int64(n),
-	})
-
-	state = common.BytesToHash(a.Commit().Data)
-	return state
+	lastBlock   idx.Block
+	lastState   common.Hash
+	originators []idx.StakerID
 }
 
-func applyBlock(a *App,
-	state common.Hash,
-	block *evmcore.EvmHeader,
-	participated map[idx.StakerID]bool,
-) {
-
-	votes := make([]types.VoteInfo, 0, len(participated))
-	for staker, ok := range participated {
-		if !ok {
-			continue
-		}
-		votes = append(votes, types.VoteInfo{
-			Validator: types.Validator{
-				Address: staker.Bytes(),
-			},
-		})
-	}
-
-	req := types.RequestBeginBlock{
-		Hash: block.Hash.Bytes(),
-		Header: types.Header{
-			Height:        block.Number.Int64(),
-			Time:          block.Time.Time(),
-			ConsensusHash: block.Hash.Bytes(),
-			LastBlockId: types.BlockID{
-				Hash: block.ParentHash.Bytes(),
-			},
-			LastCommitHash: state.Bytes(),
-		},
-		LastCommitInfo: types.LastCommitInfo{
-			Votes: votes,
-		},
-		ByzantineValidators: make([]types.Evidence, 0),
-	}
-
-	_ = a.BeginBlock(req)
-}
-
-func initTestApp(validators int) (*App, *Store) {
-	s := NewMemStore()
-
+func newTestEnv(validators int) *testEnv {
 	vaccs := genesis.FakeAccounts(1, validators, utils.ToFtm(1e10), utils.ToFtm(3175000))
 	cfg := Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
 	cfg.Net.Dag.MaxEpochBlocks = 3
+
+	s := NewMemStore()
 	_, _, err := s.ApplyGenesis(&cfg.Net)
 	if err != nil {
 		panic(err)
 	}
 
 	a := New(cfg, s)
-	_ = a.InitChain(
-		cfg.Net.ChainInfo())
+	_ = a.InitChain(cfg.Net.ChainInfo())
 
-	return a, s
+	originators := make([]idx.StakerID, len(vaccs.Validators))
+	for i := range originators {
+		originators[i] = idx.StakerID(i)
+	}
+
+	return &testEnv{
+		App:   a,
+		Store: s,
+
+		GasPrice: params.MinGasPrice,
+
+		vaccs:  vaccs,
+		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
+
+		lastBlock:   0,
+		lastState:   s.GetBlock(0).Root,
+		originators: originators,
+	}
+}
+
+func (e *testEnv) Close() {
+	e.App.Close()
+	e.Store.Close()
+}
+
+func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) {
+	env.lastBlock++
+
+	evmHeader := evmcore.EvmHeader{
+		Number:   big.NewInt(int64(env.lastBlock)),
+		Root:     env.lastState,
+		Time:     inter.TimeToStamp(time.Now()),
+		GasLimit: math.MaxUint64,
+	}
+
+	blockParticipated := make(map[idx.StakerID]bool)
+	for _, p := range env.originators {
+		blockParticipated[p] = true
+	}
+
+	env.App.beginBlock(evmHeader, env.lastState, inter.Cheaters{}, blockParticipated)
+
+	for i, tx := range txs {
+		originator := env.originators[i%len(env.originators)]
+		receipt, err := env.App.deliverTx(tx, originator)
+		if err != nil {
+			panic(err)
+		}
+		evmHeader.GasUsed += uint64(receipt.GasUsed)
+	}
+
+	env.App.endBlock(env.lastBlock)
+
+	env.lastState = env.App.commit()
+}
+
+func (env *testEnv) Tx(nonce uint64, from idx.StakerID, to common.Address, amount *big.Int) *eth.Transaction {
+	var (
+		gasLimit = uint64(21000)
+	)
+
+	sender := env.vaccs.Validators[int(from-1)].Address
+	key := env.vaccs.Accounts[sender].PrivateKey
+
+	tx := eth.NewTransaction(nonce, to, amount, gasLimit, env.GasPrice, nil)
+	tx, err := eth.SignTx(tx, env.signer, key)
+	if err != nil {
+		panic(err)
+	}
+
+	return tx
+}
+
+func (env *testEnv) Staker(n int) idx.StakerID {
+	return idx.StakerID(n + 1)
+}
+
+func (env *testEnv) Address(n int) common.Address {
+	// 	to := crypto.PubkeyToAddress(crypto.FakeKey(0).PublicKey)
+	return env.vaccs.Validators[n].Address
+}
+
+func (env *testEnv) State() *state.StateDB {
+	return env.Store.StateDB(env.lastState)
 }

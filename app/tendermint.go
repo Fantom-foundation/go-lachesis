@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"reflect"
@@ -55,15 +56,11 @@ func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 // DeliverTx for full processing.
 // It implements ABCIApplication.DeliverTx.
 func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
-	const strict = false
-
 	dagTx := BytesToDagTx(req.Tx)
 	tx := dagTx.Transaction
 
-	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.header.GasUsed, a.ctx.header, a.ctx.statedb, vm.Config{}, strict)
-	a.ctx.txCount++
-	if !strict && (skip || err != nil) {
+	receipt, err := a.deliverTx(tx, dagTx.Originator)
+	if err != nil {
 		return types.ResponseDeliverTx{
 			Code:      txIsSkipped,
 			Info:      "skipped",
@@ -72,11 +69,6 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 		}
 	}
 
-	a.ctx.txs = append(a.ctx.txs, tx)
-	a.ctx.receipts = append(a.ctx.receipts, receipt)
-	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
-	a.store.AddDirtyOriginationScore(dagTx.Originator, fee)
-
 	return types.ResponseDeliverTx{
 		Info:      "ok",
 		GasWanted: int64(tx.Gas()),
@@ -84,14 +76,48 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	}
 }
 
+func (a *App) deliverTx(tx *eth.Transaction, originator idx.StakerID) (*eth.Receipt, error) {
+	const strict = false
+	receipt, fee, skip, err := a.ctx.evmProcessor.
+		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.header.GasUsed, a.ctx.header, a.ctx.statedb, vm.Config{}, strict)
+	a.ctx.txCount++
+	if !strict && err != nil {
+		return nil, err
+	}
+	if !strict && skip {
+		return nil, fmt.Errorf("skipped")
+	}
+
+	a.ctx.txs = append(a.ctx.txs, tx)
+	a.ctx.receipts = append(a.ctx.receipts, receipt)
+	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
+	a.store.AddDirtyOriginationScore(originator, fee)
+
+	return receipt, nil
+}
+
 // EndBlock signals the end of a block, returns changes to the validator set.
 // It implements ABCIApplication.EndBlock.
 func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	if a.ctx.block.Index != idx.Block(req.Height) {
-		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", req.Height)
+	n := idx.Block(req.Height)
+
+	sealEpoch := a.endBlock(n)
+
+	res := types.ResponseEndBlock{}
+	if sealEpoch {
+		res.Events = []types.Event{
+			{Type: "epoch sealed"},
+		}
+	}
+	return res
+}
+
+func (a *App) endBlock(n idx.Block) (sealEpoch bool) {
+	if a.ctx.block.Index != n {
+		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", n)
 	}
 
-	sealEpoch := a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
+	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
 
 	for _, r := range a.ctx.receipts {
 		a.store.IndexLogs(r.Logs...)
@@ -117,18 +143,19 @@ func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 		a.incEpoch()
 	}
 
-	res := types.ResponseEndBlock{}
-	if sealEpoch {
-		res.Events = []types.Event{
-			{Type: "epoch sealed"},
-		}
-	}
-	return res
+	return sealEpoch
 }
 
 // Commit the state and return the application Merkle root hash.
 // It implements ABCIApplication.Commit.
 func (a *App) Commit() types.ResponseCommit {
+	root := a.commit()
+	return types.ResponseCommit{
+		Data: root.Bytes(),
+	}
+}
+
+func (a *App) commit() common.Hash {
 	root, err := a.ctx.statedb.Commit(true)
 	if err != nil {
 		a.Log.Crit("Failed to commit state", "err", err)
@@ -152,9 +179,7 @@ func (a *App) Commit() types.ResponseCommit {
 	a.ctx = nil
 	a.store.FlushState()
 
-	return types.ResponseCommit{
-		Data: root.Bytes(),
-	}
+	return root
 }
 
 func extractEvmHeader(req types.RequestBeginBlock) evmcore.EvmHeader {
