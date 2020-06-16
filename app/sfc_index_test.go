@@ -21,32 +21,46 @@ import (
 )
 
 func Test(t *testing.T) {
-	require := require.New(t)
-
 	env := newTestEnv(3)
 	defer env.Close()
 
-	b0 := utils.ToFtm(1e10)
+	t.Run("Transfer", func(t *testing.T) {
+		require := require.New(t)
 
-	require.Equal(b0, env.State().GetBalance(env.Address(0)))
-	require.Equal(b0, env.State().GetBalance(env.Address(1)))
-	require.Equal(b0, env.State().GetBalance(env.Address(2)))
+		b0 := utils.ToFtm(1e10)
+		require.Equal(b0, env.State().GetBalance(env.Address(0)))
+		require.Equal(b0, env.State().GetBalance(env.Address(1)))
+		require.Equal(b0, env.State().GetBalance(env.Address(2)))
 
-	env.ApplyBlock(
-		env.Tx(0, env.Staker(0), env.Address(1), utils.ToFtm(100)),
-	)
-	env.ApplyBlock(
-		env.Tx(0, env.Staker(1), env.Address(2), utils.ToFtm(100)),
-	)
-	env.ApplyBlock(
-		env.Tx(0, env.Staker(2), env.Address(0), utils.ToFtm(100)),
-	)
+		env.ApplyBlock(
+			env.Tx(0, env.Staker(0), env.Address(1), utils.ToFtm(100)),
+		)
+		env.ApplyBlock(
+			env.Tx(0, env.Staker(1), env.Address(2), utils.ToFtm(100)),
+		)
+		env.ApplyBlock(
+			env.Tx(0, env.Staker(2), env.Address(0), utils.ToFtm(100)),
+		)
 
-	gas := big.NewInt(0).Mul(big.NewInt(21000), env.GasPrice)
-	b1 := big.NewInt(0).Sub(b0, gas)
-	require.Equal(b1, env.State().GetBalance(env.Address(0)))
-	require.Equal(b1, env.State().GetBalance(env.Address(1)))
-	require.Equal(b1, env.State().GetBalance(env.Address(2)))
+		gas := big.NewInt(0).Mul(big.NewInt(21000), env.GasPrice)
+		b1 := big.NewInt(0).Sub(b0, gas)
+		require.Equal(b1, env.State().GetBalance(env.Address(0)))
+		require.Equal(b1, env.State().GetBalance(env.Address(1)))
+		require.Equal(b1, env.State().GetBalance(env.Address(2)))
+	})
+
+	t.Run("SFC deploy", func(t *testing.T) {
+		require := require.New(t)
+
+		r := env.ApplyBlock(
+			env.Contract(1, env.Staker(0), utils.ToFtm(0), MainContractBinV2),
+		)
+
+		t.Logf("%+v", r[0])
+
+		require.NotNil(r[0])
+
+	})
 
 }
 
@@ -109,7 +123,7 @@ func (e *testEnv) Close() {
 	e.Store.Close()
 }
 
-func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) {
+func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) eth.Receipts {
 	env.lastBlock++
 
 	evmHeader := evmcore.EvmHeader{
@@ -126,18 +140,22 @@ func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) {
 
 	env.App.beginBlock(evmHeader, env.lastState, inter.Cheaters{}, blockParticipated)
 
+	receipts := make(eth.Receipts, len(txs))
 	for i, tx := range txs {
 		originator := env.originators[i%len(env.originators)]
 		receipt, err := env.App.deliverTx(tx, originator)
 		if err != nil {
 			panic(err)
 		}
+		receipts[i] = receipt
 		evmHeader.GasUsed += uint64(receipt.GasUsed)
 	}
 
 	env.App.endBlock(env.lastBlock)
 
 	env.lastState = env.App.commit()
+
+	return receipts
 }
 
 func (env *testEnv) Tx(nonce uint64, from idx.StakerID, to common.Address, amount *big.Int) *eth.Transaction {
@@ -149,6 +167,23 @@ func (env *testEnv) Tx(nonce uint64, from idx.StakerID, to common.Address, amoun
 	key := env.vaccs.Accounts[sender].PrivateKey
 
 	tx := eth.NewTransaction(nonce, to, amount, gasLimit, env.GasPrice, nil)
+	tx, err := eth.SignTx(tx, env.signer, key)
+	if err != nil {
+		panic(err)
+	}
+
+	return tx
+}
+
+func (env *testEnv) Contract(nonce uint64, from idx.StakerID, amount *big.Int, data []byte) *eth.Transaction {
+	var (
+		gasLimit = uint64(2500000)
+	)
+
+	sender := env.vaccs.Validators[int(from-1)].Address
+	key := env.vaccs.Accounts[sender].PrivateKey
+
+	tx := eth.NewContractCreation(nonce, amount, gasLimit, env.GasPrice, data)
 	tx, err := eth.SignTx(tx, env.signer, key)
 	if err != nil {
 		panic(err)
