@@ -1,9 +1,12 @@
 package app
 
-/*
-docker run --rm -v $PWD:/tmp  ethereum/solc:0.5.12 -o /tmp/build --optimize --optimize-runs=2000 --bin --abi --bin-runtime --allow-paths /tmp/contracts --overwrite /tmp/contracts/sfc/Staker.sol
-go run go-ethereum/cmd/abigen --bin=./build/Stakers.bin --abi=./build/Stakers.abi --pkg=contract --out=contracts/contract.go
-*/
+//go:generate mkdir -p solc
+//go:generate bash -c "cd ../.. && docker run --rm -v $(pwd)/fantom-sfc:/src -v $(pwd)/go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
+//go:generate bash -c "cd ../.. && docker run --rm -v $(pwd)/fantom-sfc:/src -v $(pwd)/go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/upgradeability/UpgradeabilityProxy.sol"
+//go:generate mkdir -p newsfc sfcproxy
+//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=newsfc --type=Contract --out=newsfc/contract.go
+//go:generate abigen --bin=./solc/UpgradeabilityProxy.bin --abi=./solc/UpgradeabilityProxy.abi --pkg=sfcproxy --type=Contract --out=sfcproxy/contract.go
+//go:generate rm -fr ./solc
 
 import (
 	"context"
@@ -14,7 +17,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -26,6 +31,11 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 	"github.com/Fantom-foundation/go-lachesis/utils"
+)
+
+const (
+	gasLimit     = uint64(21000)
+	startBalance = 1e18
 )
 
 type testEnv struct {
@@ -45,11 +55,11 @@ type testEnv struct {
 }
 
 func newTestEnv(validators int) *testEnv {
-	vaccs := genesis.FakeAccounts(1, validators, utils.ToFtm(1e18), utils.ToFtm(3175000))
+	vaccs := genesis.FakeAccounts(1, validators, utils.ToFtm(startBalance), utils.ToFtm(3175000))
 	cfg := Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
-	cfg.Net.Dag.MaxEpochBlocks = 1
+	cfg.Net.Dag.MaxEpochBlocks = 3
 
 	s := NewMemStore()
 	_, _, err := s.ApplyGenesis(&cfg.Net)
@@ -111,8 +121,18 @@ func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) eth.Receipts {
 		if err != nil {
 			panic(err)
 		}
+		if receipt.Status != eth.ReceiptStatusSuccessful {
+			panic("tx failed")
+		}
 		receipts[i] = receipt
+
 		evmHeader.GasUsed += uint64(receipt.GasUsed)
+
+		sender, err := eth.Sender(env.signer, tx)
+		if err != nil {
+			panic(err)
+		}
+		env.incNonce(sender)
 	}
 
 	env.App.endBlock(env.lastBlock)
@@ -123,8 +143,6 @@ func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) eth.Receipts {
 }
 
 func (env *testEnv) Tx(from int, to int, amount *big.Int) *eth.Transaction {
-	const gasLimit = uint64(21000)
-
 	nonce, _ := env.PendingNonceAt(nil, env.Address(from))
 	key := env.privateKey(from)
 	receiver := env.Address(to)
@@ -137,12 +155,11 @@ func (env *testEnv) Tx(from int, to int, amount *big.Int) *eth.Transaction {
 	return tx
 }
 
-func (env *testEnv) Contract(from int, amount *big.Int, data []byte) *eth.Transaction {
-	const gasLimit = uint64(250000000)
-
+func (env *testEnv) Contract(from int, amount *big.Int, hex string) *eth.Transaction {
+	data := hexutil.MustDecode(hex)
 	nonce, _ := env.PendingNonceAt(nil, env.Address(from))
 	key := env.privateKey(from)
-	tx := eth.NewContractCreation(nonce, amount, gasLimit, env.GasPrice, data)
+	tx := eth.NewContractCreation(nonce, amount, gasLimit*10000, env.GasPrice, data)
 	tx, err := eth.SignTx(tx, env.signer, key)
 	if err != nil {
 		panic(err)
@@ -165,13 +182,30 @@ func (env *testEnv) Address(n int) common.Address {
 	return env.vaccs.Validators[n].Address
 }
 
+func (env *testEnv) transactor(n int) *bind.TransactOpts {
+	key := env.privateKey(n)
+	t := bind.NewKeyedTransactor(key)
+	nonce, _ := env.PendingNonceAt(nil, env.Address(n))
+	t.Nonce = big.NewInt(int64(nonce))
+	return t
+}
+
+func (env *testEnv) caller() *bind.CallOpts {
+	return &bind.CallOpts{}
+}
+
 func (env *testEnv) State() *state.StateDB {
 	return env.Store.StateDB(env.lastState)
+}
+
+func (env *testEnv) incNonce(account common.Address) {
+	env.nonces[account] += 1
 }
 
 /*
  * bind.ContractCaller interface
  */
+
 var (
 	errBlockNumberUnsupported = errors.New("simulatedBackend cannot access blocks other than the latest block")
 )
@@ -240,14 +274,13 @@ func (env *testEnv) callContract(
 
 // PendingCodeAt returns the code of the given account in the pending state.
 func (env *testEnv) PendingCodeAt(ctx context.Context, account common.Address) ([]byte, error) {
-	panic("not implemented yet")
-	return nil, nil
+	code := env.State().GetCode(account)
+	return code, nil
 }
 
 // PendingNonceAt retrieves the current pending nonce associated with an account.
 func (env *testEnv) PendingNonceAt(ctx context.Context, account common.Address) (uint64, error) {
 	nonce := env.nonces[account]
-	env.nonces[account] = nonce + 1
 	return nonce, nil
 }
 
@@ -263,18 +296,24 @@ func (env *testEnv) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 // transactions may be added or removed by miners, but it should provide a basis
 // for setting a reasonable default.
 func (env *testEnv) EstimateGas(ctx context.Context, call ethereum.CallMsg) (gas uint64, err error) {
-	return uint64(2500000), nil
+	if call.To == nil {
+		gas = gasLimit * 10000
+	} else {
+		gas = gasLimit * 10
+	}
+	return
 }
 
 // SendTransaction injects the transaction into the pending pool for execution.
 func (env *testEnv) SendTransaction(ctx context.Context, tx *eth.Transaction) error {
-	env.ApplyBlock(tx)
+	// do nothing to avoid executing by transactor, only generating needed
 	return nil
 }
 
 /*
  *  bind.ContractFilterer interface
  */
+
 // FilterLogs executes a log filter operation, blocking during execution and
 // returning all the results in one batch.
 func (env *testEnv) FilterLogs(ctx context.Context, query ethereum.FilterQuery) ([]eth.Log, error) {

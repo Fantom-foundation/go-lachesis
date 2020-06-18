@@ -4,12 +4,11 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Fantom-foundation/go-lachesis/app/contract"
+	"github.com/Fantom-foundation/go-lachesis/app/newsfc"
+	"github.com/Fantom-foundation/go-lachesis/app/sfcproxy"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
@@ -17,47 +16,63 @@ func Test(t *testing.T) {
 	env := newTestEnv(3)
 	defer env.Close()
 
-	t.Run("Transfer", func(t *testing.T) {
+	t.Run("Old SFC work", func(t *testing.T) {
 		require := require.New(t)
 
-		b0 := utils.ToFtm(1e18)
+		b0 := utils.ToFtm(startBalance)
 		require.Equal(b0, env.State().GetBalance(env.Address(0)))
 		require.Equal(b0, env.State().GetBalance(env.Address(1)))
 		require.Equal(b0, env.State().GetBalance(env.Address(2)))
 
-		env.ApplyBlock(
-			env.Tx(0, 1, utils.ToFtm(100)),
-		)
-		env.ApplyBlock(
-			env.Tx(1, 2, utils.ToFtm(100)),
-		)
-		env.ApplyBlock(
-			env.Tx(2, 0, utils.ToFtm(100)),
-		)
+		const N = 2
+		for i := 0; i < N; i++ {
+			env.ApplyBlock(
+				env.Tx(0, 1, utils.ToFtm(100)),
+			)
+			env.ApplyBlock(
+				env.Tx(1, 2, utils.ToFtm(100)),
+			)
+			env.ApplyBlock(
+				env.Tx(2, 0, utils.ToFtm(100)),
+			)
+		}
 
-		gas := big.NewInt(0).Mul(big.NewInt(21000), env.GasPrice)
+		gas := big.NewInt(0).Mul(big.NewInt(int64(N*gasLimit)), env.GasPrice)
 		b1 := big.NewInt(0).Sub(b0, gas)
 		require.Equal(b1, env.State().GetBalance(env.Address(0)))
 		require.Equal(b1, env.State().GetBalance(env.Address(1)))
 		require.Equal(b1, env.State().GetBalance(env.Address(2)))
-
 	})
 
-	t.Run("SFC deploy", func(t *testing.T) {
+	t.Run("Upgrade SFC", func(t *testing.T) {
 		require := require.New(t)
 
-		mainContractBinV2 := hexutil.MustDecode(contract.StoreBin)
 		r := env.ApplyBlock(
-			env.Contract(0, utils.ToFtm(0), mainContractBinV2),
+			env.Contract(1, utils.ToFtm(0), newsfc.ContractBin),
 		)
-		require.Equal(r[0].Status, eth.ReceiptStatusSuccessful, "tx failed")
+		newImpl := r[0].ContractAddress
 
-		contract2, err := contract.NewStore(r[0].ContractAddress, env)
+		sfcFace, err := sfcproxy.NewContract(sfc.ContractAddress, env)
 		require.NoError(err)
 
-		epoch, err := contract2.StoreCaller.CurrentEpoch(&bind.CallOpts{})
+		admin := env.transactor(0)
+		tx, err := sfcFace.ContractTransactor.UpgradeTo(admin, newImpl)
 		require.NoError(err)
-		t.Logf("Epoch: %d", epoch.Uint64())
+		env.ApplyBlock(tx)
 
+		impl, err := sfcFace.Implementation(env.caller())
+		require.NoError(err)
+		require.Equal(newImpl, impl, "SFC-proxy: implementation address")
+	})
+
+	t.Run("Read SFC state", func(t *testing.T) {
+		require := require.New(t)
+
+		newSfc, err := newsfc.NewContract(sfc.ContractAddress, env)
+		require.NoError(err)
+
+		epoch, err := newSfc.ContractCaller.CurrentEpoch(env.caller())
+		require.NoError(err)
+		require.Equal(uint64(4), epoch.Uint64(), "current epoch")
 	})
 }
