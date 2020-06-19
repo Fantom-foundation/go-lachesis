@@ -43,8 +43,12 @@ import (
 )
 
 const (
-	gasLimit     = uint64(21000)
-	startBalance = 1e18
+	gasLimit      = uint64(21000)
+	startBalance  = 1e18
+	epochDuration = time.Hour
+
+	sameEpoch = time.Hour / 1000
+	nextEpoch = time.Hour
 )
 
 type testEnv struct {
@@ -56,9 +60,10 @@ type testEnv struct {
 	vaccs  genesis.VAccounts
 	signer eth.Signer
 
-	lastBlock   idx.Block
-	lastState   common.Hash
-	originators []idx.StakerID
+	lastBlock     idx.Block
+	lastBlockTime time.Time
+	lastState     common.Hash
+	originators   []idx.StakerID
 
 	nonces map[common.Address]uint64
 }
@@ -68,7 +73,7 @@ func newTestEnv(validators int) *testEnv {
 	cfg := Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
-	cfg.Net.Dag.MaxEpochBlocks = 3
+	cfg.Net.Dag.MaxEpochDuration = epochDuration
 
 	s := NewMemStore()
 	_, _, err := s.ApplyGenesis(&cfg.Net)
@@ -93,9 +98,10 @@ func newTestEnv(validators int) *testEnv {
 		vaccs:  vaccs,
 		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
 
-		lastBlock:   0,
-		lastState:   s.GetBlock(0).Root,
-		originators: originators,
+		lastBlock:     0,
+		lastBlockTime: cfg.Net.Genesis.Time.Time(),
+		lastState:     s.GetBlock(0).Root,
+		originators:   originators,
 
 		nonces: make(map[common.Address]uint64),
 	}
@@ -106,13 +112,14 @@ func (e *testEnv) Close() {
 	e.Store.Close()
 }
 
-func (env *testEnv) ApplyBlock(txs ...*eth.Transaction) eth.Receipts {
+func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth.Receipts {
 	env.lastBlock++
+	env.lastBlockTime = env.lastBlockTime.Add(spent)
 
 	evmHeader := evmcore.EvmHeader{
 		Number:   big.NewInt(int64(env.lastBlock)),
 		Root:     env.lastState,
-		Time:     inter.TimeToStamp(time.Now()),
+		Time:     inter.TimeToStamp(env.lastBlockTime),
 		GasLimit: math.MaxUint64,
 	}
 
