@@ -1,29 +1,24 @@
 package app
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 )
 
 const (
 	txIsSkipped = 1
 )
 
-// InitChain implements ABCIApplication.InitChain.
-// It should be called once upon genesis.
+// InitChain should be called once upon genesis.
+// Wraps Bootstrap() to implement ABCIApplication.InitChain.
 func (a *App) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	chain := a.config.Net.ChainInfo()
 	if !reflect.DeepEqual(req, chain) {
@@ -41,7 +36,7 @@ func (a *App) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 }
 
 // BeginBlock signals the beginning of a block.
-// It implements ABCIApplication.BeginBlock.
+// Wraps beginBlock() to implement ABCIApplication.BeginBlock.
 func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	evmHeader := extractEvmHeader(req)
 	stateRoot := extractStateRoot(req)
@@ -54,7 +49,7 @@ func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 }
 
 // DeliverTx for full processing.
-// It implements ABCIApplication.DeliverTx.
+// Wraps deliverTx() to implement ABCIApplication.DeliverTx.
 func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	dagTx := BytesToDagTx(req.Tx)
 	tx := dagTx.Transaction
@@ -76,28 +71,8 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 	}
 }
 
-func (a *App) deliverTx(tx *eth.Transaction, originator idx.StakerID) (*eth.Receipt, error) {
-	const strict = false
-	receipt, fee, skip, err := a.ctx.evmProcessor.
-		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.header.GasUsed, a.ctx.header, a.ctx.statedb, vm.Config{}, strict)
-	a.ctx.txCount++
-	if !strict && err != nil {
-		return nil, err
-	}
-	if !strict && skip {
-		return nil, fmt.Errorf("skipped")
-	}
-
-	a.ctx.txs = append(a.ctx.txs, tx)
-	a.ctx.receipts = append(a.ctx.receipts, receipt)
-	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
-	a.store.AddDirtyOriginationScore(originator, fee)
-
-	return receipt, nil
-}
-
 // EndBlock signals the end of a block, returns changes to the validator set.
-// It implements ABCIApplication.EndBlock.
+// Wraps endBlock() to implement ABCIApplication.EndBlock.
 func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	n := idx.Block(req.Height)
 
@@ -112,74 +87,13 @@ func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return res
 }
 
-func (a *App) endBlock(n idx.Block) (sealEpoch bool) {
-	if a.ctx.block.Index != n {
-		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", n)
-	}
-
-	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
-
-	for _, r := range a.ctx.receipts {
-		a.store.IndexLogs(r.Logs...)
-	}
-
-	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
-		a.store.SetReceipts(a.ctx.block.Index, a.ctx.receipts)
-	}
-
-	// Process PoI/score changes
-	a.updateOriginationScores(sealEpoch)
-	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
-	a.updateStakersPOI(a.ctx.block)
-
-	// Process SFC contract transactions
-	epoch := a.GetEpoch()
-	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
-	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
-
-	a.incLastBlock()
-	if sealEpoch {
-		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
-		a.incEpoch()
-	}
-
-	return sealEpoch
-}
-
 // Commit the state and return the application Merkle root hash.
-// It implements ABCIApplication.Commit.
+// Wraps commit() to implement ABCIApplication.Commit.
 func (a *App) Commit() types.ResponseCommit {
 	root := a.commit()
 	return types.ResponseCommit{
 		Data: root.Bytes(),
 	}
-}
-
-func (a *App) commit() common.Hash {
-	root, err := a.ctx.statedb.Commit(true)
-	if err != nil {
-		a.Log.Crit("Failed to commit state", "err", err)
-	}
-
-	a.ctx.block.Root = root
-	a.store.SetBlock(a.ctx.block)
-
-	// notify
-	var logs []*eth.Log
-	for _, r := range a.ctx.receipts {
-		for _, l := range r.Logs {
-			logs = append(logs, l)
-		}
-	}
-
-	a.Feed.newTxs.Send(core.NewTxsEvent{Txs: a.ctx.txs})
-	a.Feed.newLogs.Send(logs)
-
-	// free resources
-	a.ctx = nil
-	a.store.FlushState()
-
-	return root
 }
 
 func extractEvmHeader(req types.RequestBeginBlock) evmcore.EvmHeader {
