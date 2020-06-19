@@ -1,11 +1,20 @@
 package app
 
 //go:generate mkdir -p solc
-//go:generate bash -c "cd ../.. && docker run --rm -v $(pwd)/fantom-sfc:/src -v $(pwd)/go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
-//go:generate bash -c "cd ../.. && docker run --rm -v $(pwd)/fantom-sfc:/src -v $(pwd)/go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/upgradeability/UpgradeabilityProxy.sol"
-//go:generate mkdir -p newsfc sfcproxy
-//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=newsfc --type=Contract --out=newsfc/contract.go
+// NOTE: assumed that SFC-repo is in the same dir than lachesis-repo
+// 1.0.0 (genesis)
+//go:generate bash -c "cd ../../fantom-sfc && git checkout 1.0.0 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/upgradeability/UpgradeabilityProxy.sol"
+//go:generate mkdir -p sfcproxy
 //go:generate abigen --bin=./solc/UpgradeabilityProxy.bin --abi=./solc/UpgradeabilityProxy.abi --pkg=sfcproxy --type=Contract --out=sfcproxy/contract.go
+// 1.1.0-rc1
+//go:generate bash -c "cd ../../fantom-sfc && git checkout 1.1.0-rc1 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
+//go:generate mkdir -p sfc110
+//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc110 --type=Contract --out=sfc110/contract.go
+// newmodel_exp
+//go:generate bash -c "cd ../../fantom-sfc && git checkout newmodel_exp && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/app:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
+//go:generate mkdir -p sfc200
+//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc200 --type=Contract --out=sfc200/contract.go
+// clean
 //go:generate rm -fr ./solc
 
 import (
