@@ -33,6 +33,7 @@ import (
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 
+	"github.com/Fantom-foundation/go-lachesis/crypto"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -57,7 +58,6 @@ type testEnv struct {
 
 	GasPrice *big.Int
 
-	vaccs  genesis.VAccounts
 	signer eth.Signer
 
 	lastBlock     idx.Block
@@ -95,7 +95,6 @@ func newTestEnv(validators int) *testEnv {
 
 		GasPrice: params.MinGasPrice,
 
-		vaccs:  vaccs,
 		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
 
 		lastBlock:     0,
@@ -185,20 +184,17 @@ func (env *testEnv) Contract(from int, amount *big.Int, hex string) *eth.Transac
 }
 
 func (env *testEnv) privateKey(n int) *ecdsa.PrivateKey {
-	acc := env.vaccs.Validators[n].Address
-	key := env.vaccs.Accounts[acc].PrivateKey
+	key := crypto.FakeKey(n)
 	return key
 }
 
-func (env *testEnv) Staker(n int) idx.StakerID {
-	return idx.StakerID(n + 1)
-}
-
 func (env *testEnv) Address(n int) common.Address {
-	return env.vaccs.Validators[n].Address
+	key := crypto.FakeKey(n)
+	addr := crypto.PubkeyToAddress(key.PublicKey)
+	return addr
 }
 
-func (env *testEnv) transactor(n int) *bind.TransactOpts {
+func (env *testEnv) Payer(n int) *bind.TransactOpts {
 	key := env.privateKey(n)
 	t := bind.NewKeyedTransactor(key)
 	nonce, _ := env.PendingNonceAt(nil, env.Address(n))
@@ -206,7 +202,7 @@ func (env *testEnv) transactor(n int) *bind.TransactOpts {
 	return t
 }
 
-func (env *testEnv) caller() *bind.CallOpts {
+func (env *testEnv) ReadOnly() *bind.CallOpts {
 	return &bind.CallOpts{}
 }
 
