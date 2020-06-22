@@ -86,7 +86,7 @@ func newTestEnv(validators int) *testEnv {
 
 	originators := make([]idx.StakerID, len(vaccs.Validators))
 	for i := range originators {
-		originators[i] = idx.StakerID(i)
+		originators[i] = idx.StakerID(i + 1)
 	}
 
 	return &testEnv{
@@ -157,7 +157,7 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 	return receipts
 }
 
-func (env *testEnv) Tx(from int, to int, amount *big.Int) *eth.Transaction {
+func (env *testEnv) Transfer(from int, to int, amount *big.Int) *eth.Transaction {
 	nonce, _ := env.PendingNonceAt(nil, env.Address(from))
 	key := env.privateKey(from)
 	receiver := env.Address(to)
@@ -194,11 +194,15 @@ func (env *testEnv) Address(n int) common.Address {
 	return addr
 }
 
-func (env *testEnv) Payer(n int) *bind.TransactOpts {
+func (env *testEnv) Payer(n int, amounts ...*big.Int) *bind.TransactOpts {
 	key := env.privateKey(n)
 	t := bind.NewKeyedTransactor(key)
 	nonce, _ := env.PendingNonceAt(nil, env.Address(n))
 	t.Nonce = big.NewInt(int64(nonce))
+	t.Value = big.NewInt(0)
+	for _, amount := range amounts {
+		t.Value.Add(t.Value, amount)
+	}
 	return t
 }
 
