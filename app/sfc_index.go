@@ -268,7 +268,7 @@ func (a *App) processSfc(
 				fromEpoch := idx.Epoch(new(big.Int).SetBytes(l.Data[0:32]).Uint64())
 				endTime := inter.Timestamp(new(big.Int).SetBytes(l.Data[32:64]).Uint64())
 
-				if fromEpoch <= epoch {
+				if fromEpoch != epoch {
 					a.Log.Crit("Internal SFC index isn't synced with SFC contract")
 					continue
 				}
