@@ -44,9 +44,11 @@ import (
 )
 
 const (
-	gasLimit      = uint64(21000)
-	startBalance  = 1e18
-	epochDuration = time.Hour
+	gasLimit       = uint64(21000)
+	genesisStakers = 3
+	genesisBalance = 1e18
+	genesisStake   = 2 * 4e6
+	epochDuration  = time.Hour
 
 	sameEpoch = time.Hour / 1000
 	nextEpoch = time.Hour
@@ -63,13 +65,13 @@ type testEnv struct {
 	lastBlock     idx.Block
 	lastBlockTime time.Time
 	lastState     common.Hash
-	originators   []idx.StakerID
+	validators    []idx.StakerID
 
 	nonces map[common.Address]uint64
 }
 
-func newTestEnv(validators int) *testEnv {
-	vaccs := genesis.FakeAccounts(1, validators, utils.ToFtm(startBalance), utils.ToFtm(3175000))
+func newTestEnv() *testEnv {
+	vaccs := genesis.FakeAccounts(1, genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
 	cfg := Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
@@ -84,9 +86,9 @@ func newTestEnv(validators int) *testEnv {
 	a := New(cfg, s)
 	_ = a.InitChain(cfg.Net.ChainInfo())
 
-	originators := make([]idx.StakerID, len(vaccs.Validators))
-	for i := range originators {
-		originators[i] = idx.StakerID(i + 1)
+	validators := make([]idx.StakerID, len(vaccs.Validators))
+	for i := range validators {
+		validators[i] = idx.StakerID(i + 1)
 	}
 
 	return &testEnv{
@@ -100,7 +102,7 @@ func newTestEnv(validators int) *testEnv {
 		lastBlock:     0,
 		lastBlockTime: cfg.Net.Genesis.Time.Time(),
 		lastState:     s.GetBlock(0).Root,
-		originators:   originators,
+		validators:    validators,
 
 		nonces: make(map[common.Address]uint64),
 	}
@@ -109,6 +111,25 @@ func newTestEnv(validators int) *testEnv {
 func (e *testEnv) Close() {
 	e.App.Close()
 	e.Store.Close()
+}
+
+func (env *testEnv) AddValidator(v idx.StakerID) {
+	for _, already := range env.validators {
+		if v == already {
+			return
+		}
+	}
+	env.validators = append(env.validators, v)
+}
+
+func (env *testEnv) DelValidator(v idx.StakerID) {
+	for i := 0; i < len(env.validators); i++ {
+		if env.validators[i] != v {
+			continue
+		}
+		env.validators = append(env.validators[:i], env.validators[i+1:]...)
+		return
+	}
 }
 
 func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth.Receipts {
@@ -123,7 +144,7 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 	}
 
 	blockParticipated := make(map[idx.StakerID]bool)
-	for _, p := range env.originators {
+	for _, p := range env.validators {
 		blockParticipated[p] = true
 	}
 
@@ -131,7 +152,7 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 
 	receipts := make(eth.Receipts, len(txs))
 	for i, tx := range txs {
-		originator := env.originators[i%len(env.originators)]
+		originator := env.validators[i%len(env.validators)]
 		receipt, err := env.App.deliverTx(tx, originator)
 		if err != nil {
 			panic(err)
