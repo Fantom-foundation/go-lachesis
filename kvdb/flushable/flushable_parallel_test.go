@@ -2,8 +2,8 @@ package flushable
 
 import (
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -44,16 +44,42 @@ func TestFlushableParallel(t *testing.T) {
 		}
 	}
 
+	itt := tableImmutable.NewIterator()
+
+	i := uint64(0)
+	for ; itt.Next(); i++ {}
+	itt.Release()
+	require.Equal(t, testPairsNum, i)
+
 	stopped := false
 
 	wg := sync.WaitGroup{}
-	wg.Add(2)
+
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
+
+		for !stopped {
+			for j := uint64(0); j < testPairsNum; j++ {
+				_ = tableMutable1.Put(bigendian.Int64ToBytes(j), bigendian.Int64ToBytes(j))
+				_ = tableMutable2.Put(bigendian.Int64ToBytes(j)[:7], bigendian.Int64ToBytes(j))
+				if j % 900 == 0 {
+					_ = flushableDb.Flush()
+				}
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
 		assertar := assert.New(t)
 		for !stopped {
 			// iterate over tableImmutable and check its content
 			it := tableImmutable.NewIterator()
 			defer it.Release()
+
 			i := uint64(0)
 			for ; it.Next(); i++ {
 				assertar.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
@@ -64,21 +90,6 @@ func TestFlushableParallel(t *testing.T) {
 			assertar.Equal(testPairsNum, i)
 		}
 
-		wg.Done()
-	}()
-
-	go func() {
-		r := rand.New(rand.NewSource(0))
-		for !stopped {
-			// try to spoil data in tableImmutable by updating other tables
-			_ = tableMutable1.Put(bigendian.Int64ToBytes(r.Uint64()%testPairsNum), bigendian.Int64ToBytes(r.Uint64()))
-			_ = tableMutable2.Put(bigendian.Int64ToBytes(r.Uint64() % testPairsNum)[:7], bigendian.Int64ToBytes(r.Uint64()))
-			if r.Int63n(100) == 0 {
-				_ = flushableDb.Flush() // flush with 1% chance
-			}
-		}
-
-		wg.Done()
 	}()
 
 	time.Sleep(testDuration)
