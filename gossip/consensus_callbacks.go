@@ -95,8 +95,8 @@ func (s *Service) applyNewState(
 	cheaters inter.Cheaters,
 ) (
 	*inter.Block,
-	map[common.Hash]app.TxPosition,
-	common.Hash,
+	map[common.Hash]*app.TxPosition,
+	types.Transactions,
 	bool,
 ) {
 	// s.engineMu is locked here
@@ -108,14 +108,14 @@ func (s *Service) applyNewState(
 	block.Events = block.Events[unusedCount:]
 
 	// memorize position of each tx, for indexing and origination scores
-	allTxsPosition := make(map[common.Hash]app.TxPosition)
+	txsPositions := make(map[common.Hash]*app.TxPosition)
 	for _, e := range events {
 		for i, tx := range e.Transactions {
 			// if tx was met in multiple events, then assign to first ordered event
-			if _, ok := allTxsPosition[tx.Hash()]; ok {
+			if _, ok := txsPositions[tx.Hash()]; ok {
 				continue
 			}
-			allTxsPosition[tx.Hash()] = app.TxPosition{
+			txsPositions[tx.Hash()] = &app.TxPosition{
 				Event:       e.Hash(),
 				Creator:     e.Creator,
 				EventOffset: uint32(i),
@@ -125,25 +125,24 @@ func (s *Service) applyNewState(
 
 	epoch := s.engine.GetEpoch()
 	stateRoot := s.store.GetBlock(block.Index - 1).Root
-	evmHeader := evmcore.ToEvmHeader(block)
 
 	abci.BeginBlock(
-		beginBlockRequest(cheaters, stateRoot, evmHeader, s.blockParticipated))
+		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
 	for i, tx := range allTxs {
-		originator := allTxsPosition[tx.Hash()].Creator
+		originator := txsPositions[tx.Hash()].Creator
 		req := deliverTxRequest(tx, originator)
 		resp := abci.DeliverTx(req)
-		evmHeader.GasUsed += uint64(resp.GasUsed)
+		block.GasUsed += uint64(resp.GasUsed)
 
 		if resp.Code != txIsFullyValid {
 			block.SkippedTxs = append(block.SkippedTxs, uint(i))
 			continue
 		}
-
 		okTxs = append(okTxs, tx)
+		txsPositions[tx.Hash()].Block = block.Index
 		notUsedGas := resp.GasWanted - resp.GasUsed
 		s.store.IncGasPowerRefund(epoch, originator, notUsedGas)
 
@@ -162,27 +161,8 @@ func (s *Service) applyNewState(
 	}
 
 	commit := abci.Commit()
-	evmHeader.Root = common.BytesToHash(commit.Data)
-	evmHeader.TxHash = types.DeriveSha(okTxs)
-	block.Root = evmHeader.Root
-	block.TxHash = evmHeader.TxHash
-	block.GasUsed = evmHeader.GasUsed
-
-	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
-		Block: &evmcore.EvmBlock{
-			EvmHeader:    *evmHeader,
-			Transactions: okTxs,
-		}})
-
-	// memorize block position of each valid tx, for indexing and origination scores
-	okTxsPosition := make(map[common.Hash]app.TxPosition, len(okTxs))
-	for i, tx := range okTxs {
-		// not skipped txs only
-		position := allTxsPosition[tx.Hash()]
-		position.Block = block.Index
-		position.BlockOffset = uint32(i)
-		okTxsPosition[tx.Hash()] = position
-	}
+	block.Root = common.BytesToHash(commit.Data)
+	block.TxHash = types.DeriveSha(okTxs)
 
 	// process new epoch
 	if sealEpoch {
@@ -191,17 +171,15 @@ func (s *Service) applyNewState(
 		s.onEpochSealed(block, cheaters)
 	}
 
-	// calc appHash
-	appHash := block.TxHash
-
-	log.Info("New block", "index", block.Index,
+	log.Info("New block",
+		"index", block.Index,
 		"atropos", block.Atropos,
 		"gasUsed", block.GasUsed,
 		"skipped_txs", len(block.SkippedTxs),
 		"txs", len(okTxs),
 		"t", time.Since(start))
 
-	return block, okTxsPosition, appHash, sealEpoch
+	return block, txsPositions, okTxs, sealEpoch
 }
 
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
@@ -277,15 +255,23 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	confirmBlocksMeter.Inc(1)
 
-	block, txPositions, newAppHash, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
+	block, txsPositions, okTxs, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
+	newAppHash = block.TxHash
 
 	s.store.SetBlock(block)
 	s.store.SetBlockIndex(block.Atropos, block.Index)
 
 	// Build index for txs
 	if s.config.TxIndex {
-		for tx, pos := range txPositions {
-			s.store.SetTxPosition(tx, &pos)
+		var i uint32
+		for txHash, txPos := range txsPositions {
+			if txPos.Block <= 0 {
+				continue
+			}
+			// not skipped txs only
+			txPos.BlockOffset = i
+			i++
+			s.store.SetTxPosition(txHash, txPos)
 		}
 	}
 
@@ -294,9 +280,16 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 		s.store.SetBlockDecidedBy(block.Index, s.currentEvent)
 	}
 
+	evmHeader := evmcore.ToEvmHeader(block)
+	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
+		Block: &evmcore.EvmBlock{
+			EvmHeader:    *evmHeader,
+			Transactions: okTxs,
+		}})
+
 	// trace confirmed transactions
-	confirmTxnsMeter.Inc(int64(len(txPositions)))
-	for tx := range txPositions {
+	confirmTxnsMeter.Inc(int64(len(txsPositions)))
+	for tx := range txsPositions {
 		tracing.FinishTx(tx, "Service.onNewBlock()")
 		if latency, err := txLatency.Finish(tx); err == nil {
 			txTtfMeter.Update(latency.Milliseconds())
@@ -305,7 +298,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
-	return newAppHash, sealEpoch
+	return
 }
 
 // selectValidatorsGroup is a callback type to select new validators group
