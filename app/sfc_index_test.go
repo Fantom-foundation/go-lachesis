@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/app/sfc110"
-	"github.com/Fantom-foundation/go-lachesis/app/sfc200"
+	"github.com/Fantom-foundation/go-lachesis/app/sfc201"
 	"github.com/Fantom-foundation/go-lachesis/app/sfcproxy"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
@@ -38,7 +38,7 @@ func TestSFC(t *testing.T) {
 
 	var (
 		sfc1 *sfc110.Contract
-		sfc2 *sfc200.Contract
+		sfc2 *sfc201.Contract
 	)
 
 	_ = true &&
@@ -99,7 +99,7 @@ func TestSFC(t *testing.T) {
 			require := require.New(t)
 
 			r := env.ApplyBlock(nextEpoch,
-				env.Contract(1, utils.ToFtm(0), sfc200.ContractBin),
+				env.Contract(1, utils.ToFtm(0), sfc201.ContractBin),
 			)
 			newImpl := r[0].ContractAddress
 
@@ -112,7 +112,7 @@ func TestSFC(t *testing.T) {
 			require.NoError(err)
 			require.Equal(newImpl, impl, "SFC-proxy: implementation address")
 
-			sfc2, err = sfc200.NewContract(sfc.ContractAddress, env)
+			sfc2, err = sfc201.NewContract(sfc.ContractAddress, env)
 			require.NoError(err)
 
 			epoch, err := sfc2.ContractCaller.CurrentEpoch(env.ReadOnly())
@@ -192,7 +192,7 @@ func TestSFC(t *testing.T) {
 		})
 }
 
-func requireRewards(t *testing.T, env *testEnv, sfc2 *sfc200.Contract, stakes []int64) {
+func requireRewards(t *testing.T, env *testEnv, sfc2 *sfc201.Contract, stakes []int64) {
 	require := require.New(t)
 
 	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
@@ -214,7 +214,7 @@ func requireRewards(t *testing.T, env *testEnv, sfc2 *sfc200.Contract, stakes []
 	}
 }
 
-func printValidators(t *testing.T, env *testEnv, sfc2 *sfc200.Contract) {
+func printValidators(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
 	require := require.New(t)
 
 	max, err := sfc2.StakersLastID(env.ReadOnly())

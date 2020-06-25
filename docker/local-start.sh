@@ -25,7 +25,7 @@ do
 	--port=${PORT} \
 	--rpc --rpcaddr="127.0.0.1" --rpcport=${RPCP} --rpccorsdomain="*" --rpcapi="eth,debug,net,admin,web3,personal,txpool,ftm,sfc" \
 	--ws --wsaddr="127.0.0.1" --wsport=${WSP} --wsorigins="*" --wsapi="eth,debug,net,admin,web3,personal,txpool,ftm,sfc" \
-	--nousb --verbosity=5 --tracing &> .lachesis$i.log)&
+	--nousb --verbosity=3 --tracing &> .lachesis$i.log)&
 done
 
 attach_and_exec() {
