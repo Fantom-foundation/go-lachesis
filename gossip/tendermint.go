@@ -1,14 +1,11 @@
 package gossip
 
 import (
-	"math"
-
 	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
@@ -26,7 +23,7 @@ func (s *Service) initApp() {
 func beginBlockRequest(
 	cheaters inter.Cheaters,
 	stateHash common.Hash,
-	block *evmcore.EvmHeader,
+	block *inter.Block,
 	participated map[idx.StakerID]bool,
 ) types.RequestBeginBlock {
 
@@ -50,13 +47,13 @@ func beginBlockRequest(
 	}
 
 	req := types.RequestBeginBlock{
-		Hash: block.Hash.Bytes(),
+		Hash: block.Atropos.Bytes(),
 		Header: types.Header{
-			Height:        block.Number.Int64(),
+			Height:        int64(block.Index),
 			Time:          block.Time.Time(),
-			ConsensusHash: block.Hash.Bytes(),
+			ConsensusHash: block.Atropos.Bytes(),
 			LastBlockId: types.BlockID{
-				Hash: block.ParentHash.Bytes(),
+				Hash: block.PrevHash.Bytes(),
 			},
 			LastCommitHash: stateHash.Bytes(),
 		},
@@ -64,10 +61,6 @@ func beginBlockRequest(
 			Votes: votes,
 		},
 		ByzantineValidators: byzantines,
-	}
-
-	if block.GasLimit != math.MaxUint64 {
-		panic("we need to pass GasLimit throuth request")
 	}
 
 	return req
