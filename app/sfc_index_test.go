@@ -131,6 +131,16 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch, tx)
 		}) &&
 
+		t.Run("Check if locking is not set", func(t *testing.T) {
+			require := require.New(t)
+
+			require.Zero(
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
+		}) &&
+
 		t.Run("Check rewards before sfc2", func(t *testing.T) {
 			env.ApplyBlock(nextEpoch)
 			rewards := requireRewards(t, env, sfc1, []int64{200, 200, 200, 115})
@@ -162,6 +172,16 @@ func TestSFC(t *testing.T) {
 			require.Equal(epoch.Cmp(big.NewInt(6)), 0, "current epoch: %d", epoch.Uint64())
 		}) &&
 
+		t.Run("Check if locking is false", func(t *testing.T) {
+			require := require.New(t)
+
+			require.Zero(
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
+		}) &&
+
 		t.Run("Some transfers III", func(t *testing.T) {
 			cicleTransfers(t, env, 3)
 		}) &&
@@ -186,6 +206,20 @@ func TestSFC(t *testing.T) {
 				sfc.ContractAddress,
 				sfcpos.CurrentSealedEpoch()).Bytes())
 			require.Equal(epoch.Cmp(raw), 0, "raw last sealed epoch")
+		}) &&
+
+		t.Run("Check if locking is true", func(t *testing.T) {
+			require := require.New(t)
+
+			epoch, err := sfc1.CurrentSealedEpoch(env.ReadOnly())
+			require.NoError(err)
+
+			require.GreaterOrEqual(
+				epoch.Uint64(),
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
 		}) &&
 
 		t.Run("Check rewards after sfc2", func(t *testing.T) {
