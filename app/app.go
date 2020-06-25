@@ -1,7 +1,12 @@
 package app
 
 import (
+	"fmt"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/core"
+	eth "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -10,6 +15,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 )
 
@@ -50,6 +56,7 @@ func New(cfg Config, s *Store) *App {
 	}
 }
 
+// beginBlock signals the beginning of a block.
 func (a *App) beginBlock(
 	evmHeader evmcore.EvmHeader,
 	stateRoot common.Hash,
@@ -79,6 +86,90 @@ func (a *App) beginBlock(
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
 	a.updateValidationScores(epoch, block.Index, blockParticipated)
+}
+
+// deliverTx for full processing.
+func (a *App) deliverTx(tx *eth.Transaction, originator idx.StakerID) (*eth.Receipt, error) {
+	const strict = false
+	receipt, fee, skip, err := a.ctx.evmProcessor.
+		ProcessTx(tx, a.ctx.txCount, a.ctx.gp, &a.ctx.header.GasUsed, a.ctx.header, a.ctx.statedb, vm.Config{}, strict)
+	a.ctx.txCount++
+	if !strict && err != nil {
+		return nil, err
+	}
+	if !strict && skip {
+		return nil, fmt.Errorf("skipped")
+	}
+
+	a.ctx.txs = append(a.ctx.txs, tx)
+	a.ctx.receipts = append(a.ctx.receipts, receipt)
+	a.ctx.totalFee.Add(a.ctx.totalFee, fee)
+	a.store.AddDirtyOriginationScore(originator, fee)
+
+	return receipt, nil
+}
+
+// endBlock signals the end of a block, returns changes to the validator set.
+func (a *App) endBlock(n idx.Block) (sealEpoch bool) {
+	if a.ctx.block.Index != n {
+		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", n)
+	}
+
+	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
+
+	for _, r := range a.ctx.receipts {
+		a.store.IndexLogs(r.Logs...)
+	}
+
+	if a.config.TxIndex && a.ctx.receipts.Len() > 0 {
+		a.store.SetReceipts(a.ctx.block.Index, a.ctx.receipts)
+	}
+
+	// Process PoI/score changes
+	a.updateOriginationScores(sealEpoch)
+	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
+	a.updateStakersPOI(a.ctx.block)
+
+	// Process SFC contract transactions
+	epoch := a.GetEpoch()
+	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
+	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
+
+	a.incLastBlock()
+	if sealEpoch {
+		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
+		a.incEpoch()
+	}
+
+	return sealEpoch
+}
+
+// commit the state and return the application Merkle root hash.
+func (a *App) commit() common.Hash {
+	root, err := a.ctx.statedb.Commit(true)
+	if err != nil {
+		a.Log.Crit("Failed to commit state", "err", err)
+	}
+
+	a.ctx.block.Root = root
+	a.store.SetBlock(a.ctx.block)
+
+	// notify
+	var logs []*eth.Log
+	for _, r := range a.ctx.receipts {
+		for _, l := range r.Logs {
+			logs = append(logs, l)
+		}
+	}
+
+	a.Feed.newTxs.Send(core.NewTxsEvent{Txs: a.ctx.txs})
+	a.Feed.newLogs.Send(logs)
+
+	// free resources
+	a.ctx = nil
+	a.store.FlushState()
+
+	return root
 }
 
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {

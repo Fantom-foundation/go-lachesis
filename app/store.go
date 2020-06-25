@@ -56,6 +56,8 @@ type Store struct {
 		Delegators   kvdb.KeyValueStore `table:"3"`
 		SfcConstants kvdb.KeyValueStore `table:"4"`
 		TotalSupply  kvdb.KeyValueStore `table:"5"`
+		TotalLocked  kvdb.KeyValueStore `table:"Z"`
+		Locked       kvdb.KeyValueStore `table:"z"`
 
 		// API-only tables
 		Receipts                   kvdb.KeyValueStore `table:"r"`

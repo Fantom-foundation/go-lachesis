@@ -127,6 +127,12 @@ func (a *App) processSfc(
 ) {
 	// process SFC contract logs
 
+	totalLockedAmount := a.store.GetTotalLocked()
+	defer a.store.SetTotalLocked(totalLockedAmount)
+
+	firstLockedUpEpoch := idx.Epoch(utils.H256toU64(a.getState(sfc.ContractAddress, sfcpos.FirstLockedUpEpoch())))
+	lockingEnabled := firstLockedUpEpoch > 0 && firstLockedUpEpoch <= epoch
+
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
 			if l.Address != sfc.ContractAddress {
@@ -157,8 +163,13 @@ func (a *App) processSfc(
 					a.Log.Warn("Internal SFC index isn't synced with SFC contract")
 					continue
 				}
+				oldAmount := staker.StakeAmount
 				staker.StakeAmount = newAmount
 				a.store.SetSfcStaker(stakerID, staker)
+
+				if a.store.IsStakeLocked(stakerID, epoch) {
+					totalLockedAmount.Add(totalLockedAmount, newAmount).Sub(totalLockedAmount, oldAmount)
+				}
 			}
 
 			// Add new delegators
@@ -222,9 +233,14 @@ func (a *App) processSfc(
 					a.Log.Warn("Internal SFC index isn't synced with SFC contract")
 					continue
 				}
+				oldAmount := staker.StakeAmount
 				staker.StakeAmount = newAmount
 				staker.DelegatedMe = newDelegatedMe
 				a.store.SetSfcStaker(stakerID, staker)
+
+				if a.store.IsStakeLocked(stakerID, epoch) {
+					totalLockedAmount.Add(totalLockedAmount, newAmount).Sub(totalLockedAmount, oldAmount)
+				}
 			}
 
 			// Update delegation
@@ -247,6 +263,33 @@ func (a *App) processSfc(
 			if l.Topics[0] == sfcpos.Topics.WithdrawnStake && len(l.Topics) > 1 {
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
 				a.delAllStakerData(stakerID)
+			}
+
+			// Locking stake
+			if l.Topics[0] == sfcpos.Topics.LockingStake && len(l.Topics) > 1 && len(l.Data) >= 64 {
+				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
+				fromEpoch := idx.Epoch(new(big.Int).SetBytes(l.Data[0:32]).Uint64())
+				endTime := inter.Timestamp(new(big.Int).SetBytes(l.Data[32:64]).Uint64())
+
+				if fromEpoch != epoch {
+					a.Log.Crit("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
+				a.store.SetStakeLock(stakerID, fromEpoch, endTime)
+			}
+
+			// Locking delegation
+			if l.Topics[0] == sfcpos.Topics.LockingDelegation && len(l.Topics) > 3 && len(l.Data) >= 64 {
+				address := common.BytesToAddress(l.Topics[1][12:])
+				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[2][:]).Uint64())
+				fromEpoch := idx.Epoch(new(big.Int).SetBytes(l.Data[0:32]).Uint64())
+				endTime := inter.Timestamp(new(big.Int).SetBytes(l.Data[32:64]).Uint64())
+
+				if fromEpoch <= epoch {
+					a.Log.Crit("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
+				a.store.SetDelegateLock(address, stakerID, fromEpoch, endTime)
 			}
 
 			// Delete delegators
@@ -385,6 +428,16 @@ func (a *App) processSfc(
 		a.setState(sfc.ContractAddress, epochPos.StakeTotalAmount(), utils.BigTo256(totalStake))
 		a.setState(sfc.ContractAddress, epochPos.DelegationsTotalAmount(), utils.BigTo256(totalDelegated))
 		a.setState(sfc.ContractAddress, epochPos.TotalSupply(), utils.BigTo256(totalSupply))
+
+		if lockingEnabled {
+			unlocked := a.store.DelOutdatedLocks(stats.End)
+			totalLockedAmount.Sub(totalLockedAmount, unlocked)
+			a.setState(sfc.ContractAddress, epochPos.TotalLockedAmount(), utils.BigTo256(totalLockedAmount))
+
+			locked := a.store.SumStartedLocks(epoch + 1)
+			totalLockedAmount.Add(totalLockedAmount, locked)
+		}
+
 		a.setState(sfc.ContractAddress, sfcpos.CurrentSealedEpoch(), utils.U64to256(uint64(epoch)))
 
 		// Add balance for SFC to pay rewards
@@ -398,6 +451,11 @@ func (a *App) processSfc(
 // setState is a short notation of
 func (a *App) setState(addr common.Address, key, value common.Hash) {
 	a.ctx.statedb.SetState(addr, key, value)
+}
+
+// getState is a short notation of
+func (a *App) getState(addr common.Address, key common.Hash) common.Hash {
+	return a.ctx.statedb.GetState(addr, key)
 }
 
 func (a *App) updateEpochStats(
