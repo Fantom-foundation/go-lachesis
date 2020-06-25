@@ -316,11 +316,15 @@ func (a *App) processSfc(
 
 			gotMissed := a.store.GetBlocksMissed(it.StakerID)
 			badMissed := a.config.Net.Economy.OfflinePenaltyThreshold
-			tz, _ := time.LoadLocation("UTC")
-			if gotMissed.Num >= badMissed.BlocksNum &&
-				(block.Time.Unix() < time.Date(2020, time.February, 01, 0, 0, 0, 0, tz).Unix() && // TODO: set hardfork date
-					gotMissed.Period >= inter.Timestamp(badMissed.Period) ||
-					gotMissed.Period >= 3*inter.Timestamp(badMissed.Period)) {
+
+			// hardfork condition
+			if (a.config.Net.NetworkID == lachesis.MainNetworkID ||
+				a.config.Net.NetworkID == lachesis.TestNetworkID) &&
+				block.Time > inter.TimeToStamp(time.Date(2020, time.June, 30, 0, 0, 0, 0, time.UTC)) {
+				badMissed.Period = 3 * badMissed.Period
+			}
+
+			if gotMissed.Num >= badMissed.BlocksNum && gotMissed.Period >= inter.Timestamp(badMissed.Period) {
 				// write into DB
 				it.Staker.Status |= sfctype.OfflineBit
 				a.store.SetSfcStaker(it.StakerID, it.Staker)
