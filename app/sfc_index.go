@@ -128,7 +128,9 @@ func (a *App) processSfc(
 
 	totalLockedAmount := a.store.GetTotalLocked()
 	defer a.store.SetTotalLocked(totalLockedAmount)
-	lockingEnabled := epoch >= idx.Epoch(utils.H256toU64(a.getState(sfc.ContractAddress, sfcpos.FirstLockedUpEpoch())))
+
+	firstLockedUpEpoch := idx.Epoch(utils.H256toU64(a.getState(sfc.ContractAddress, sfcpos.FirstLockedUpEpoch())))
+	lockingEnabled := firstLockedUpEpoch > 0 && firstLockedUpEpoch <= epoch
 
 	for _, receipt := range receipts {
 		for _, l := range receipt.Logs {
