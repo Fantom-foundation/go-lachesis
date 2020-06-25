@@ -6,8 +6,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
@@ -15,6 +13,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/app/sfc110"
 	"github.com/Fantom-foundation/go-lachesis/app/sfc201"
 	"github.com/Fantom-foundation/go-lachesis/app/sfcproxy"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/utils"
@@ -47,7 +46,7 @@ func TestSFC(t *testing.T) {
 			// nothing to do
 		}) &&
 
-		t.Run("Some transfers 1", func(t *testing.T) {
+		t.Run("Some transfers I", func(t *testing.T) {
 			cicleTransfers(t, env, 3)
 		}) &&
 
@@ -91,11 +90,52 @@ func TestSFC(t *testing.T) {
 
 		}) &&
 
-		t.Run("Some transfers 2", func(t *testing.T) {
+		t.Run("Some transfers II", func(t *testing.T) {
 			cicleTransfers(t, env, 3)
 		}) &&
 
-		t.Run("Upgrade to SFC newmodel_exp", func(t *testing.T) {
+		t.Run("Create staker 4", func(t *testing.T) {
+			require := require.New(t)
+
+			newStake := utils.ToFtm(genesisStake / 2)
+			minStake, err := sfc1.MinStake(env.ReadOnly())
+			require.NoError(err)
+			require.Greater(newStake.Cmp(minStake), 0,
+				fmt.Sprintf("newStake(%s) < minStake(%s)", newStake, minStake))
+
+			env.ApplyBlock(sameEpoch,
+				env.Transfer(1, 4, big.NewInt(0).Add(newStake, utils.ToFtm(10))),
+			)
+			tx, err := sfc1.CreateStake(env.Payer(4, newStake), nil)
+			require.NoError(err)
+			env.ApplyBlock(nextEpoch, tx)
+			newId, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+			env.AddValidator(idx.StakerID(newId.Uint64()))
+		}) &&
+
+		t.Run("Create delegator 5", func(t *testing.T) {
+			require := require.New(t)
+
+			newDelegation := utils.ToFtm(genesisStake / 2)
+			env.ApplyBlock(sameEpoch,
+				env.Transfer(1, 5, big.NewInt(0).Add(newDelegation, utils.ToFtm(10))),
+			)
+
+			staker, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+
+			tx, err := sfc1.CreateDelegation(env.Payer(5, newDelegation), staker)
+			require.NoError(err)
+			env.ApplyBlock(nextEpoch, tx)
+		}) &&
+
+		t.Run("Check rewards before sfc2", func(t *testing.T) {
+			env.ApplyBlock(nextEpoch)
+			requireRewards(t, env, sfc1, []int64{200, 200, 200, 115})
+		}) &&
+
+		t.Run("Upgrade to v2.0.1-rc2", func(t *testing.T) {
 			require := require.New(t)
 
 			r := env.ApplyBlock(nextEpoch,
@@ -117,23 +157,23 @@ func TestSFC(t *testing.T) {
 
 			epoch, err := sfc2.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(epoch.Cmp(big.NewInt(3)), 0, "current epoch")
+			require.Equal(epoch.Cmp(big.NewInt(6)), 0, "current epoch: %d", epoch.Uint64())
 		}) &&
 
-		t.Run("Some transfers 3", func(t *testing.T) {
+		t.Run("Some transfers III", func(t *testing.T) {
 			cicleTransfers(t, env, 3)
 		}) &&
 
 		t.Run("Enable lockedup functionality", func(t *testing.T) {
 			require := require.New(t)
 
-			tx, err := sfc2.StartLockedUp(env.Payer(1), big.NewInt(3))
+			tx, err := sfc2.StartLockedUp(env.Payer(1), big.NewInt(6))
 			require.NoError(err)
 			env.ApplyBlock(nextEpoch, tx)
 
 			epoch, err := sfc2.FirstLockedUpEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(epoch.Cmp(big.NewInt(3)), 0, "1st locked-up epoch")
+			require.Equal(epoch.Cmp(big.NewInt(6)), 0, "1st locked-up epoch")
 
 			raw := new(big.Int).SetBytes(env.State().GetState(
 				sfc.ContractAddress,
@@ -146,61 +186,42 @@ func TestSFC(t *testing.T) {
 			require.Equal(epoch.Cmp(raw), 0, "raw last sealed epoch")
 		}) &&
 
-		t.Run("Make staker 4", func(t *testing.T) {
+		t.Run("Check rewards after sfc2", func(t *testing.T) {
+			env.ApplyBlock(nextEpoch)
+			requireRewards(t, env, sfc2, []int64{200, 200, 200, 115})
+		}) &&
+
+		t.Run("Lockup stake 4", func(t *testing.T) {
+			return
 			require := require.New(t)
 
-			newStake := utils.ToFtm(genesisStake / 2)
-			minStake, err := sfc2.MinStake(env.ReadOnly())
+			tx, err := sfc2.LockUpStake(env.Payer(4), big.NewInt(15*86400))
 			require.NoError(err)
-			require.Greater(newStake.Cmp(minStake), 0,
-				fmt.Sprintf("newStake(%s) < minStake(%s)", newStake, minStake))
+			env.ApplyBlock(sameEpoch, tx)
+		}) &&
 
-			env.ApplyBlock(sameEpoch,
-				env.Transfer(1, 4, big.NewInt(0).Add(newStake, utils.ToFtm(10))),
-			)
-			tx, err := sfc2.CreateStake(env.Payer(4, newStake), nil)
+		t.Run("Lockup delegation 5", func(t *testing.T) {
+			return
+			require := require.New(t)
+
+			staker, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
 			require.NoError(err)
-			env.ApplyBlock(nextEpoch, tx)
-			newId, err := sfc2.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+
+			tx, err := sfc2.LockUpDelegation(env.Payer(5), big.NewInt(14*86400), staker)
 			require.NoError(err)
-			env.AddValidator(idx.StakerID(newId.Uint64()))
-
-			env.ApplyBlock(nextEpoch)
-
-			requireRewards(t, env, sfc2, []int64{2, 2, 2, 1})
-
-			/*
-				env.ApplyBlock(sameEpoch,
-					env.Transfer(1, 4, utils.ToFtm(1001)),
-				)
-
-				staker, err := sfc2.SfcAddressToStakerID(env.ReadOnly(), env.Address(1))
-				require.NoError(err)
-
-				tx, err := sfc2.CreateDelegation(env.Payer(4, utils.ToFtm(1000)), staker)
-				require.NoError(err)
-				env.ApplyBlock(nextEpoch, tx)
-
-				tx, err = sfc2.LockUpStake(env.Payer(1), big.NewInt(15*86400))
-				require.NoError(err)
-				env.ApplyBlock(sameEpoch, tx)
-
-				tx, err = sfc2.LockUpDelegation(env.Payer(4), big.NewInt(14*86400), staker)
-				require.NoError(err)
-				env.ApplyBlock(sameEpoch, tx)
-			*/
+			env.ApplyBlock(sameEpoch, tx)
 		})
 }
 
-func requireRewards(t *testing.T, env *testEnv, sfc2 *sfc201.Contract, stakes []int64) {
+func requireRewards(t *testing.T, env *testEnv, sfc commonSfc, stakes []int64) {
 	require := require.New(t)
 
-	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
+	epoch, err := sfc.CurrentSealedEpoch(env.ReadOnly())
 	require.NoError(err)
 
 	var reward0 *big.Int
 	for i, id := range env.validators {
-		rewardX, _, _, err := sfc2.CalcValidatorRewards(env.ReadOnly(), big.NewInt(int64(id)), epoch, big.NewInt(1))
+		rewardX, _, _, err := sfc.CalcValidatorRewards(env.ReadOnly(), big.NewInt(int64(id)), epoch, big.NewInt(1))
 		require.NoError(err)
 		if i == 0 {
 			reward0 = rewardX

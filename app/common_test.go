@@ -54,21 +54,28 @@ const (
 	nextEpoch = time.Hour
 )
 
-type testEnv struct {
-	App   *App
-	Store *Store
+type (
+	commonSfc interface {
+		CurrentSealedEpoch(opts *bind.CallOpts) (*big.Int, error)
+		CalcValidatorRewards(opts *bind.CallOpts, stakerID *big.Int, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error)
+	}
 
-	GasPrice *big.Int
+	testEnv struct {
+		App   *App
+		Store *Store
 
-	signer eth.Signer
+		GasPrice *big.Int
 
-	lastBlock     idx.Block
-	lastBlockTime time.Time
-	lastState     common.Hash
-	validators    []idx.StakerID
+		signer eth.Signer
 
-	nonces map[common.Address]uint64
-}
+		lastBlock     idx.Block
+		lastBlockTime time.Time
+		lastState     common.Hash
+		validators    []idx.StakerID
+
+		nonces map[common.Address]uint64
+	}
+)
 
 func newTestEnv() *testEnv {
 	vaccs := genesis.FakeAccounts(1, genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
