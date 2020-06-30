@@ -3,11 +3,9 @@ package app
 import (
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/app/sfc110"
@@ -16,19 +14,13 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
+	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
-func TestMain(m *testing.M) {
-
-	log.Root().SetHandler(log.LvlFilterHandler(
-		log.LvlTrace,
-		log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
-
-	os.Exit(m.Run())
-}
-
 func TestSFC(t *testing.T) {
+	logger.SetTestMode(t)
+
 	env := newTestEnv()
 	defer env.Close()
 
