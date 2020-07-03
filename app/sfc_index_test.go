@@ -266,15 +266,6 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
 
-			/* // epoch snapshot
-			epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
-			require.NoError(err)
-			es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
-			require.NoError(err)
-			t.Logf("Epoch%sStat{dir: %s, BaseRewardPerSecond: %s, TotalLockedAmount: %s, TotalBaseRewardWeight: %s}",
-				epoch, es.Duration, es.BaseRewardPerSecond, es.TotalLockedAmount, es.TotalBaseRewardWeight)
-			*/
-
 			rewards := requireRewards(t, env, sfc2, []int64{200 * 3, 200 * 3, 200 * 3, (200+200+200+115+85)*7 + 115*3, 85 * 3})
 			require.Equal(rewards[0].Cmp(prev.reward), 0, "%s != %s", rewards[0], prev.reward)
 		}) &&
@@ -376,6 +367,16 @@ func requireRewards(
 	}
 
 	return
+}
+
+func printEpochStats(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
+	// epoch snapshot
+	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
+	require.NoError(t, err)
+	es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
+	require.NoError(t, err)
+	t.Logf("Epoch%sStat{dir: %s, BaseRewardPerSecond: %s, TotalLockedAmount: %s, TotalBaseRewardWeight: %s}",
+		epoch, es.Duration, es.BaseRewardPerSecond, es.TotalLockedAmount, es.TotalBaseRewardWeight)
 }
 
 func printValidators(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
