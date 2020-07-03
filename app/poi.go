@@ -35,8 +35,8 @@ func (a *App) updateUsersPOI(block *BlockInfo, txs types.Transactions, receipts 
 		prevUserPoiPeriod := PoiPeriod(senderLastTxTime, &a.config.Net.Economy)
 		senderTotalFee := a.store.GetAddressFee(sender, prevUserPoiPeriod)
 
-		delegator := a.store.GetSfcDelegator(sender)
-		if delegator != nil {
+		delegators := a.store.GetSfcDelegations(sender)
+		for _, delegator := range delegators {
 			staker := a.store.GetSfcStaker(delegator.ToStakerID)
 			if staker != nil {
 				prevWeightedTxFee := a.store.GetWeightedDelegatorsFee(delegator.ToStakerID)
