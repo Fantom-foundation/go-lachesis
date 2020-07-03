@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +18,11 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
+
+type commonSfc interface {
+	CurrentSealedEpoch(opts *bind.CallOpts) (*big.Int, error)
+	CalcValidatorRewards(opts *bind.CallOpts, stakerID *big.Int, fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error)
+}
 
 func TestSFC(t *testing.T) {
 	logger.SetTestMode(t)
@@ -126,6 +132,7 @@ func TestSFC(t *testing.T) {
 			tx, err := sfc1.CreateDelegation(env.Payer(5, newDelegation), staker)
 			require.NoError(err)
 			env.ApplyBlock(sameEpoch, tx)
+			env.AddDelegator(env.Address(5))
 		}) &&
 
 		t.Run("Check if locking is not set", func(t *testing.T) {
@@ -141,7 +148,7 @@ func TestSFC(t *testing.T) {
 		t.Run("Check rewards before sfc2", func(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc1, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15})
+			rewards := requireRewards(t, env, sfc1, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
 			prev.reward = rewards[0]
 		}) &&
 
@@ -227,7 +234,7 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
 
-			rewards := requireRewards(t, env, sfc2, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15})
+			rewards := requireRewards(t, env, sfc2, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
 			expected := new(big.Int).Div(prev.reward, big.NewInt(10))
 			expected = new(big.Int).Mul(expected, big.NewInt(3))
 			require.Equal(rewards[0].Cmp(expected), 0, "%s != 0.3*%s", rewards[0], prev.reward)
@@ -257,7 +264,7 @@ func TestSFC(t *testing.T) {
 				epoch, es.Duration, es.BaseRewardPerSecond, es.TotalLockedAmount, es.TotalBaseRewardWeight)
 			*/
 
-			rewards := requireRewards(t, env, sfc2, []int64{200 * 3, 200 * 3, 200 * 3, (200+200+200+115+85)*7 + 115*3})
+			rewards := requireRewards(t, env, sfc2, []int64{200 * 3, 200 * 3, 200 * 3, (200+200+200+115+85)*7 + 115*3, 85 * 3})
 			require.Equal(rewards[0].Cmp(prev.reward), 0, "%s != %s", rewards[0], prev.reward)
 		}) &&
 
@@ -299,11 +306,31 @@ func requireRewards(
 	epoch, err := sfc.CurrentSealedEpoch(env.ReadOnly())
 	require.NoError(err)
 
-	rewards = make([]*big.Int, len(env.validators))
+	rewards = make([]*big.Int, len(env.validators)+len(env.delegators))
 	for i, id := range env.validators {
-		rewards[i], _, _, err = sfc.CalcValidatorRewards(env.ReadOnly(), big.NewInt(int64(id)), epoch, big.NewInt(1))
+		staker := big.NewInt(int64(id))
+		rewards[i], _, _, err = sfc.CalcValidatorRewards(env.ReadOnly(), staker, epoch, big.NewInt(1))
 		require.NoError(err)
 		t.Logf("reward %d: %s", i, rewards[i])
+	}
+
+	for i, addr := range env.delegators {
+		switch sfc := sfc.(type) {
+		case *sfc110.Contract:
+			rewards[i+len(env.validators)], _, _, err = sfc.CalcDelegationRewards(env.ReadOnly(), addr, epoch, big.NewInt(1))
+			require.NoError(err)
+		case *sfc201.Contract:
+			sum := new(big.Int)
+			for _, id := range env.validators {
+				staker := big.NewInt(int64(id))
+				r, _, _, err := sfc.CalcDelegationRewards(env.ReadOnly(), addr, staker, epoch, big.NewInt(1))
+				require.NoError(err)
+				sum = new(big.Int).Add(sum, r)
+			}
+			rewards[i+len(env.validators)] = sum
+		default:
+			panic("unknown contract type")
+		}
 	}
 
 	for i := range env.validators {
@@ -316,12 +343,27 @@ func requireRewards(
 		want := new(big.Int).Div(b, rewards[0])
 		require.Equal(
 			a.Cmp(b), 0,
-			"reward#0: %s, reward#%d: %s. Got %d:%d, want %d:%s proportion",
+			"reward#0: %s, reward#%d: %s. Got %d:%d, want %d:%s proportion (validator)",
 			rewards[0], i, rewards[i],
 			stakes[0], stakes[i],
 			stakes[0], want,
 		)
 	}
+
+	for i := range env.delegators {
+		i += len(env.validators)
+		a := new(big.Int).Mul(rewards[0], big.NewInt(stakes[i]))
+		b := new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))
+		want := new(big.Int).Div(b, rewards[0])
+		require.Equal(
+			a.Cmp(b), 0,
+			"reward#0: %s, reward#%d: %s. Got %d:%d, want %d:%s proportion (delegator)",
+			rewards[0], i, rewards[i],
+			stakes[0], stakes[i],
+			stakes[0], want,
+		)
+	}
+
 	return
 }
 

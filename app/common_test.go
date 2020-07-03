@@ -54,28 +54,22 @@ const (
 	nextEpoch = time.Hour
 )
 
-type (
-	commonSfc interface {
-		CurrentSealedEpoch(opts *bind.CallOpts) (*big.Int, error)
-		CalcValidatorRewards(opts *bind.CallOpts, stakerID *big.Int, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error)
-	}
+type testEnv struct {
+	App   *App
+	Store *Store
 
-	testEnv struct {
-		App   *App
-		Store *Store
+	GasPrice *big.Int
 
-		GasPrice *big.Int
+	signer eth.Signer
 
-		signer eth.Signer
+	lastBlock     idx.Block
+	lastBlockTime time.Time
+	lastState     common.Hash
+	validators    []idx.StakerID
+	delegators    []common.Address
 
-		lastBlock     idx.Block
-		lastBlockTime time.Time
-		lastState     common.Hash
-		validators    []idx.StakerID
-
-		nonces map[common.Address]uint64
-	}
-)
+	nonces map[common.Address]uint64
+}
 
 func newTestEnv() *testEnv {
 	vaccs := genesis.FakeAccounts(1, genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
@@ -135,6 +129,25 @@ func (env *testEnv) DelValidator(v idx.StakerID) {
 			continue
 		}
 		env.validators = append(env.validators[:i], env.validators[i+1:]...)
+		return
+	}
+}
+
+func (env *testEnv) AddDelegator(v common.Address) {
+	for _, already := range env.delegators {
+		if v == already {
+			return
+		}
+	}
+	env.delegators = append(env.delegators, v)
+}
+
+func (env *testEnv) DelDelegator(v common.Address) {
+	for i := 0; i < len(env.delegators); i++ {
+		if env.delegators[i] != v {
+			continue
+		}
+		env.delegators = append(env.delegators[:i], env.delegators[i+1:]...)
 		return
 	}
 }
