@@ -178,6 +178,17 @@ func TestSFC(t *testing.T) {
 			prev.epoch = epoch
 		}) &&
 
+		t.Run("Upgrade delegators storage", func(t *testing.T) {
+			require := require.New(t)
+
+			staker, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+
+			tx, err := sfc2.SyncDelegator(env.Payer(5), env.Address(5), staker)
+			require.NoError(err)
+			env.ApplyBlock(sameEpoch, tx)
+		}) &&
+
 		t.Run("Check if locking is false", func(t *testing.T) {
 			require := require.New(t)
 
