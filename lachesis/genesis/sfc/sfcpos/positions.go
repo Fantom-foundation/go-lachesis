@@ -19,6 +19,7 @@ var (
 		CreatedStake                  common.Hash
 		IncreasedStake                common.Hash
 		CreatedDelegation             common.Hash
+		IncreasedDelegation           common.Hash
 		PreparedToWithdrawStake       common.Hash
 		PreparedToWithdrawDelegation  common.Hash
 		WithdrawnStake                common.Hash
@@ -37,6 +38,7 @@ var (
 		CreatedStake:                  hash.Of([]byte("CreatedStake(uint256,address,uint256)")),
 		IncreasedStake:                hash.Of([]byte("IncreasedStake(uint256,uint256,uint256)")),
 		CreatedDelegation:             hash.Of([]byte("CreatedDelegation(address,uint256,uint256)")),
+		IncreasedDelegation:           hash.Of([]byte("IncreasedDelegation(address,uint256,uint256,uint256)")),
 		PreparedToWithdrawStake:       hash.Of([]byte("PreparedToWithdrawStake(uint256)")),
 		PreparedToWithdrawDelegation:  hash.Of([]byte("PreparedToWithdrawDelegation(address, uint256)")),
 		WithdrawnStake:                hash.Of([]byte("WithdrawnStake(uint256,uint256)")),
