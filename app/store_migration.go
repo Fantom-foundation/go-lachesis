@@ -8,6 +8,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
@@ -124,6 +125,50 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			err = it.Error()
 			return
 
+		}).
+		Next("multi-delegation", func() (err error) {
+			defer func() {
+				if err == nil {
+					s.Log.Warn("multi-delegation migration has been applied")
+				}
+			}()
+
+			t := table.New(s.mainDb, []byte("3")) // table.Delegators
+			it := t.NewIterator()
+			defer it.Release()
+
+			var toDelete [][]byte
+
+			for it.Next() {
+				if len(it.Key()) > 20 {
+					continue
+				}
+				delegator := new(sfctype.SfcDelegator)
+				err = rlp.DecodeBytes(it.Value(), delegator)
+				if err != nil {
+					return
+				}
+				toDelete = append(toDelete, it.Key())
+				key := append(it.Key(), delegator.ToStakerID.Bytes()...)
+				err = t.Put(key, it.Value())
+				if err != nil {
+					return
+				}
+			}
+
+			err = it.Error()
+			if err != nil {
+				return
+			}
+
+			for _, key := range toDelete {
+				err = t.Delete(key)
+				if err != nil {
+					return
+				}
+			}
+
+			return nil
 		})
 }
 
