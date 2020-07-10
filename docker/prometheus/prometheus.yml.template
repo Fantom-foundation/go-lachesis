@@ -1,0 +1,16 @@
+global:
+  # How frequently to scrape targets by default.
+  scrape_interval: 1m
+  rule_files:
+    - "alert.rules"
+
+scrape_configs:
+  - job_name: '${PROMETHEUS_JOB}'
+    static_configs:
+      - targets: ['${TARGET_HOST}']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+      - targets:
+        - ${ALERTMANAGER_HOST}

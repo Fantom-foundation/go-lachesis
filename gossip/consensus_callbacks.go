@@ -15,7 +15,9 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
+	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
 // processEvent extends the engine.ProcessEvent with gossip-specific actions on each event processing
@@ -253,7 +255,7 @@ func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Fra
 func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
 	// s.engineMu is locked here
 
-	confirmBlocksMeter.Inc(1)
+	s.updateMetrics(block)
 
 	block, txsPositions, okTxs, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
 	newAppHash = block.TxHash
@@ -299,6 +301,64 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
 	return
+}
+
+var lastEpoch = idx.Epoch(0)
+
+func (s *Service) updateMetrics(block *inter.Block) {
+	// lachesis_confirm:blocks
+	confirmBlocksMeter.Inc(1)
+
+	epoch := s.abciApp.GetEpoch()
+	if epoch > 0 {
+		// lachesis_epoch
+		epochGauge.Update(int64(epoch))
+
+		// lachesis_epoch:time
+		epochStat := s.abciApp.GetEpochStats(epoch-1)
+		if epochStat != nil {
+			epochTimeGauge.Update(int64(time.Since(epochStat.End.Time()).Seconds()))
+			if epochStat.TotalFee != nil {
+				epochFeeGauge.Update(epochStat.TotalFee.Int64())
+			}
+		}
+	}
+
+	// lachesis_stakers
+	// lachesis_stakers:stake
+	valueSum := int64(0)
+	count := int64(0)
+	countValidators := int64(0)
+	s.EthAPI.ForEachSfcStaker(func(it sfctype.SfcStakerAndID) {
+		valueSum += it.Staker.StakeAmount.Int64()
+		count++
+		if it.Staker.IsValidator {
+			countValidators++
+		}
+	})
+	stakersCountGauge.Update(count)
+	stakersStakeGauge.Update(valueSum)
+	validatorsCountGauge.Update(countValidators)
+
+	// lachesis_uptime
+	appUptimeGauge.Update(int64(utils.Uptime().Seconds()))
+
+	// lachesis_delegators
+	// lachesis_delegators:amount
+	valueSum = 0
+	count = 0
+	s.EthAPI.ForEachSfcDelegator(func(it sfctype.SfcDelegatorAndAddr) {
+		count++
+		valueSum += it.Delegator.Amount.Int64()
+	})
+	delegatorsCountGauge.Update(count)
+	delegatorsAmountGauge.Update(valueSum)
+
+	// lachesis_total_supply
+	totalSupply := s.abciApp.GetTotalSupply()
+	if totalSupply != nil {
+		totalSupplyGauge.Update(totalSupply.Int64())
+	}
 }
 
 // selectValidatorsGroup is a callback type to select new validators group

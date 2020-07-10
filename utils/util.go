@@ -8,12 +8,16 @@ import (
 	"strconv"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
-var startBase uint32 = 12000
+var (
+	startBase uint32 = 12000
+	startTime = time.Now()
+)
 
 // GetUnusedNetAddr return array of n unused ports starting with base port
 // NB: addresses 1-1024 are reserved for non-root users;
@@ -132,4 +136,8 @@ func ParseFlag(flags []bool, idx int, def bool) bool {
 		return def
 	}
 	return flags[idx]
+}
+
+func Uptime() time.Duration {
+	return time.Since(startTime)
 }

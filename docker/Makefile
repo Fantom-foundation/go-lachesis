@@ -1,4 +1,4 @@
-all: lachesis tx-storm
+all: lachesis tx-storm grafana
 
 TAG ?= "latest"
 
@@ -18,6 +18,33 @@ tx-storm:
 	    --network=host \
 	    --build-arg GOPROXY=$(GOPROXY) \
 	    -f docker/Dockerfile.tx-storm -t "tx-storm:$(TAG)" .
+
+.PHONY: grafana
+grafana:
+	cd ../ && \
+	./docker/grafana/configs-generate.sh && \
+	docker build \
+	    --network==host \
+	    --build-arg GOPROXY=$(GOPROXY) \
+	    -f docker/Dockerfile.grafana -t "grafana-lachesis:${TAG}" .
+
+.PHONY: prometheus
+prometheus:
+	cd ../ && \
+	./docker/prometheus/configs-generate.sh && \
+	docker build \
+	    --network==host \
+	    --build-arg GOPROXY=$(GOPROXY) \
+	    -f docker/Dockerfile.prometheus -t "prometheus-lachesis:${TAG}" .
+
+.PHONY: alertmanager
+alertmanager:
+	cd ../ && \
+	./docker/alertmanager/configs-generate.sh && \
+	docker build \
+	    --network==host \
+	    --build-arg GOPROXY=$(GOPROXY) \
+	    -f docker/Dockerfile.alertmanager -t "alertmanager-lachesis:${TAG}" .
 
 test_accs.json:
 	./_test_accs.sh

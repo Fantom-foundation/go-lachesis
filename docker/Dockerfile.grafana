@@ -1,0 +1,6 @@
+FROM grafana/grafana
+
+COPY ./docker/grafana/grafana.ini /etc/grafana/grafana.ini
+COPY ./docker/grafana/dashboard.yaml /etc/grafana/provisioning/dashboards/lachesis.yaml
+COPY ./docker/grafana/datasource.yaml /etc/grafana/provisioning/datasources/prometheus.yaml
+COPY ./docker/grafana/lachesis-dashboard.json /var/lib/grafana/dashboards/lachesis-dashboard.json

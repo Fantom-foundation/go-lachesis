@@ -172,6 +172,10 @@ func (a *App) commit() common.Hash {
 	return root
 }
 
+func (a *App) GetTotalSupply() *big.Int {
+	return a.store.GetTotalSupply()
+}
+
 func (a *App) shouldSealEpoch(block *BlockInfo, cheaters inter.Cheaters) bool {
 	startBlock, startTime := a.GetLastVoting()
 	seal := (block.Index - startBlock) >= idx.Block(a.config.Net.Dag.MaxEpochBlocks)

@@ -5,7 +5,7 @@ cd $(dirname $0)
 
 NETWORK=${NETWORK} sentry/stop.sh
 
-docker ps -a -q -f "network=${NETWORK}" -f "name=node*" | while read id
+docker ps -a -q -f "network=${NETWORK}" | while read id
 do
     docker stop $id 2> /dev/null # fine if stopped already 
     docker rm $id 2> /dev/null # fine if removed already 
