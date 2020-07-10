@@ -287,6 +287,17 @@ func castToPair(node *rbt.Node) (key, val []byte) {
 	return key, val
 }
 
+// init should be called once under lock
+func (it *iterator) init() {
+	it.parentOk = it.parentIt.Next()
+	if it.start != nil {
+		it.treeNode, it.treeOk = it.tree.Ceiling(string(it.start)) // not strict >=
+	} else {
+		it.treeNode = it.tree.Left() // lowest key
+		it.treeOk = it.treeNode != nil
+	}
+}
+
 // Next scans key-value pair by key in lexicographic order. Looks in cache first, then - in DB.
 func (it *iterator) Next() bool {
 	it.lock.Lock()
@@ -302,17 +313,6 @@ func (it *iterator) Next() bool {
 			return false, false
 		}
 		return prevKey == nil || bytes.Compare(key, prevKey) > 0, true
-	}
-
-	if !it.inited {
-		it.inited = true
-		it.parentOk = it.parentIt.Next()
-		if it.start != nil {
-			it.treeNode, it.treeOk = it.tree.Ceiling(string(it.start)) // not strict >=
-		} else {
-			it.treeNode = it.tree.Left() // lowest key
-			it.treeOk = it.treeNode != nil
-		}
 	}
 
 	for it.treeOk || it.parentOk {
@@ -394,35 +394,50 @@ func (it *iterator) Release() {
 // NewIterator creates a binary-alphabetical iterator over the entire keyspace
 // contained within the memory database.
 func (w *Flushable) NewIterator() ethdb.Iterator {
-	return &iterator{
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	it := &iterator{
 		lock:     w.lock,
 		tree:     w.modified,
 		parentIt: w.underlying.NewIterator(),
 	}
+	it.init()
+	return it
 }
 
 // NewIteratorWithStart creates a binary-alphabetical iterator over a subset of
 // database content starting at a particular initial key (or after, if it does
 // not exist).
 func (w *Flushable) NewIteratorWithStart(start []byte) ethdb.Iterator {
-	return &iterator{
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	it := &iterator{
 		lock:     w.lock,
 		tree:     w.modified,
 		start:    start,
 		parentIt: w.underlying.NewIteratorWithStart(start),
 	}
+	it.init()
+	return it
 }
 
 // NewIteratorWithPrefix creates a binary-alphabetical iterator over a subset
 // of database content with a particular key prefix.
 func (w *Flushable) NewIteratorWithPrefix(prefix []byte) ethdb.Iterator {
-	return &iterator{
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	it := &iterator{
 		lock:     w.lock,
 		tree:     w.modified,
 		start:    prefix,
 		prefix:   prefix,
 		parentIt: w.underlying.NewIteratorWithPrefix(prefix),
 	}
+	it.init()
+	return it
 }
 
 /*
