@@ -15,9 +15,17 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
 
+const testPairsNum uint64 = 20
+
 func TestFlushableParallel(t *testing.T) {
+	for x := uint64(0); x < (testPairsNum + 2); x++ {
+		testFlushableParallel(t, x)
+	}
+}
+
+func testFlushableParallel(t *testing.T, x uint64) {
 	testDuration := 2 * time.Second
-	testPairsNum := uint64(1000)
+	// testPairsNum := uint64(1000)
 
 	dir, err := ioutil.TempDir("", "test-flushable")
 	if err != nil {
@@ -61,21 +69,30 @@ func TestFlushableParallel(t *testing.T) {
 		require := require.New(t)
 		for !stopped() {
 			// iterate over tableImmutable and check its content
+			if x == 0 {
+				_ = flushableDb.Flush()
+			}
 			it := tableImmutable.NewIterator()
 			defer it.Release()
+			if x == 1 {
+				_ = flushableDb.Flush()
+			}
 			i := uint64(0)
 			for ; it.Next(); i++ {
+				require.NoError(it.Error(), i)
 				require.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
 				require.Equal(bigendian.Int64ToBytes(i), it.Value(), i)
-
-				require.NoError(it.Error(), i)
+				if x == i+2 {
+					_ = flushableDb.Flush()
+				}
 			}
-			require.Equal(testPairsNum, i)
+			require.Equal(testPairsNum, i, ">> %d", x) // !here
 		}
 	}()
 
 	go func() {
 		defer work.Done()
+		return
 		r := rand.New(rand.NewSource(0))
 		for !stopped() {
 			// try to spoil data in tableImmutable by updating other tables
