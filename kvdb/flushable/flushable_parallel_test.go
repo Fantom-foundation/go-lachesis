@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"
@@ -44,32 +44,40 @@ func TestFlushableParallel(t *testing.T) {
 		}
 	}
 
-	stopped := false
+	stop := make(chan struct{})
+	stopped := func() bool {
+		select {
+		case <-stop:
+			return true
+		default:
+			return false
+		}
+	}
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
+	work := sync.WaitGroup{}
+	work.Add(2)
 	go func() {
-		assertar := assert.New(t)
-		for !stopped {
+		defer work.Done()
+		require := require.New(t)
+		for !stopped() {
 			// iterate over tableImmutable and check its content
 			it := tableImmutable.NewIterator()
 			defer it.Release()
 			i := uint64(0)
 			for ; it.Next(); i++ {
-				assertar.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
-				assertar.Equal(bigendian.Int64ToBytes(i), it.Value(), i)
+				require.Equal(bigendian.Int64ToBytes(i), it.Key(), i)
+				require.Equal(bigendian.Int64ToBytes(i), it.Value(), i)
 
-				assertar.NoError(it.Error(), i)
+				require.NoError(it.Error(), i)
 			}
-			assertar.Equal(testPairsNum, i)
+			require.Equal(testPairsNum, i)
 		}
-
-		wg.Done()
 	}()
 
 	go func() {
+		defer work.Done()
 		r := rand.New(rand.NewSource(0))
-		for !stopped {
+		for !stopped() {
 			// try to spoil data in tableImmutable by updating other tables
 			_ = tableMutable1.Put(bigendian.Int64ToBytes(r.Uint64()%testPairsNum), bigendian.Int64ToBytes(r.Uint64()))
 			_ = tableMutable2.Put(bigendian.Int64ToBytes(r.Uint64() % testPairsNum)[:7], bigendian.Int64ToBytes(r.Uint64()))
@@ -77,11 +85,9 @@ func TestFlushableParallel(t *testing.T) {
 				_ = flushableDb.Flush() // flush with 1% chance
 			}
 		}
-
-		wg.Done()
 	}()
 
 	time.Sleep(testDuration)
-	stopped = true
-	wg.Wait()
+	close(stop)
+	work.Wait()
 }
