@@ -120,8 +120,8 @@ func (b *EthAPIBackend) GetDowntime(
 }
 
 // GetDelegator returns SFC delegator info
-func (b *EthAPIBackend) GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error) {
-	return b.app.store.GetSfcDelegator(addr), nil
+func (b *EthAPIBackend) GetDelegator(ctx context.Context, addr common.Address) ([]*sfctype.SfcDelegator, error) {
+	return b.app.store.GetSfcDelegations(addr), nil
 }
 
 // GetDelegatorClaimedRewards returns sum of claimed rewards in past, by this delegator

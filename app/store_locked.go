@@ -53,26 +53,20 @@ func (s *Store) SetDelegateLock(addr common.Address, stakerID idx.StakerID, from
 
 func (s *Store) IsStakeLocked(stakerID idx.StakerID, epoch idx.Epoch) bool {
 	key := stakerID.Bytes()
-	locked := s.get(s.table.Locked, key, &locked{}).(*locked)
-	return locked != nil && locked.FromEpoch <= epoch
-}
-
-func (s *Store) IsDelegateLocked(addr common.Address, stakerID idx.StakerID, epoch idx.Epoch) bool {
-	key := append(stakerID.Bytes(), addr.Bytes()...)
-	locked := s.get(s.table.Locked, key, &locked{}).(*locked)
-	return locked != nil && locked.FromEpoch <= epoch
-}
-
-func (s *Store) SumStartedLocks(fromEpoch idx.Epoch) (amount *big.Int) {
-	amount = big.NewInt(0)
-
-	it := s.table.Locked.NewIterator()
-	defer it.Release()
-
-	for it.Next() {
+	locked, ok := s.get(s.table.Locked, key, &locked{}).(*locked)
+	if !ok {
+		return false
 	}
+	return locked != nil && locked.FromEpoch <= epoch
+}
 
-	return amount
+func (s *Store) IsDelegationLocked(addr common.Address, stakerID idx.StakerID, epoch idx.Epoch) bool {
+	key := append(stakerID.Bytes(), addr.Bytes()...)
+	locked, ok := s.get(s.table.Locked, key, &locked{}).(*locked)
+	if !ok {
+		return false
+	}
+	return locked != nil && locked.FromEpoch <= epoch
 }
 
 func (s *Store) DelOutdatedLocks(time inter.Timestamp) (amount *big.Int) {
@@ -100,13 +94,9 @@ func (s *Store) DelOutdatedLocks(time inter.Timestamp) (amount *big.Int) {
 		stakerID := idx.BytesToStakerID(key[:4])
 
 		if len(key) > 4 {
-			// TODO: multidelegation
 			address := common.BytesToAddress(key[4:])
-			delegator := s.GetSfcDelegator(address)
+			delegator := s.GetSfcDelegator(address, stakerID)
 			amount.Add(amount, delegator.Amount)
-			if delegator.ToStakerID != stakerID {
-				panic("sanity check")
-			}
 		} else {
 			staker := s.GetSfcStaker(stakerID)
 			amount.Add(amount, staker.StakeAmount)

@@ -309,7 +309,7 @@ func (s *PublicSfcAPI) GetDelegator(ctx context.Context, addr common.Address, ve
 	}
 	it := sfctype.SfcDelegatorAndAddr{
 		Addr:      addr,
-		Delegator: delegator,
+		Delegator: delegator[0], // TODO: show all
 	}
 	delegatorRPC := RPCMarshalDelegator(it)
 	if verbosity <= 1 {

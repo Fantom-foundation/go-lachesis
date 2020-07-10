@@ -117,7 +117,7 @@ type Backend interface {
 	GetStakerID(ctx context.Context, addr common.Address) (idx.StakerID, error)
 	GetStakers(ctx context.Context) ([]sfctype.SfcStakerAndID, error)
 	GetDelegatorsOf(ctx context.Context, stakerID idx.StakerID) ([]sfctype.SfcDelegatorAndAddr, error)
-	GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error)
+	GetDelegator(ctx context.Context, addr common.Address) ([]*sfctype.SfcDelegator, error)
 }
 
 func GetAPIs(apiBackend Backend) []rpc.API {

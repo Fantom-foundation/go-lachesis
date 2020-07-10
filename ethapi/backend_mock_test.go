@@ -766,10 +766,10 @@ func (mr *MockBackendMockRecorder) GetDelegatorsOf(ctx, stakerID interface{}) *g
 }
 
 // GetDelegator mocks base method
-func (m *MockBackend) GetDelegator(ctx context.Context, addr common.Address) (*sfctype.SfcDelegator, error) {
+func (m *MockBackend) GetDelegator(ctx context.Context, addr common.Address) ([]*sfctype.SfcDelegator, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDelegator", ctx, addr)
-	ret0, _ := ret[0].(*sfctype.SfcDelegator)
+	ret0, _ := ret[0].([]*sfctype.SfcDelegator)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

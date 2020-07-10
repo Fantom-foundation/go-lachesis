@@ -275,14 +275,14 @@ func initTestBackend(t *testing.T, b *MockBackend) {
 		AnyTimes()
 
 	b.EXPECT().GetDelegator(gomock.Any(), gomock.Any()).
-		Return(&sfctype.SfcDelegator{
+		Return([]*sfctype.SfcDelegator{{
 			CreatedEpoch:     1,
 			CreatedTime:      2,
 			DeactivatedEpoch: 0,
 			DeactivatedTime:  0,
 			Amount:           nil,
 			ToStakerID:       1,
-		}, nil).
+		}}, nil).
 		AnyTimes()
 
 	b.EXPECT().GetDelegatorClaimedRewards(gomock.Any(), gomock.Any()).

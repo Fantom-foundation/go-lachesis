@@ -3,11 +3,10 @@ package app
 import (
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	eth "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/app/sfc110"
@@ -16,19 +15,18 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
+	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
-func TestMain(m *testing.M) {
-
-	log.Root().SetHandler(log.LvlFilterHandler(
-		log.LvlTrace,
-		log.StreamHandler(os.Stderr, log.TerminalFormat(false))))
-
-	os.Exit(m.Run())
+type commonSfc interface {
+	CurrentSealedEpoch(opts *bind.CallOpts) (*big.Int, error)
+	CalcValidatorRewards(opts *bind.CallOpts, stakerID *big.Int, fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error)
 }
 
 func TestSFC(t *testing.T) {
+	logger.SetTestMode(t)
+
 	env := newTestEnv()
 	defer env.Close()
 
@@ -38,7 +36,12 @@ func TestSFC(t *testing.T) {
 	var (
 		sfc1 *sfc110.Contract
 		sfc2 *sfc201.Contract
-		prev *big.Int
+
+		prev struct {
+			epoch             *big.Int
+			reward            *big.Int
+			totalLockedAmount *big.Int
+		}
 	)
 
 	_ = true &&
@@ -73,7 +76,7 @@ func TestSFC(t *testing.T) {
 
 			epoch, err := sfc1.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(epoch.Cmp(big.NewInt(2)), 0, "current epoch")
+			require.Equal(0, epoch.Cmp(big.NewInt(2)), "current epoch")
 		}) &&
 
 		t.Run("Upgrade stakers storage", func(t *testing.T) {
@@ -128,7 +131,8 @@ func TestSFC(t *testing.T) {
 
 			tx, err := sfc1.CreateDelegation(env.Payer(5, newDelegation), staker)
 			require.NoError(err)
-			env.ApplyBlock(nextEpoch, tx)
+			env.ApplyBlock(sameEpoch, tx)
+			env.AddDelegator(env.Address(5))
 		}) &&
 
 		t.Run("Check if locking is not set", func(t *testing.T) {
@@ -142,15 +146,16 @@ func TestSFC(t *testing.T) {
 		}) &&
 
 		t.Run("Check rewards before sfc2", func(t *testing.T) {
+			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc1, []int64{200, 200, 200, 115})
-			prev = rewards[0]
+			rewards := requireRewards(t, env, sfc1, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
+			prev.reward = rewards[0]
 		}) &&
 
 		t.Run("Upgrade to v2.0.1-rc2", func(t *testing.T) {
 			require := require.New(t)
 
-			r := env.ApplyBlock(nextEpoch,
+			r := env.ApplyBlock(sameEpoch,
 				env.Contract(1, utils.ToFtm(0), sfc201.ContractBin),
 			)
 			newImpl := r[0].ContractAddress
@@ -169,7 +174,19 @@ func TestSFC(t *testing.T) {
 
 			epoch, err := sfc2.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(epoch.Cmp(big.NewInt(6)), 0, "current epoch: %d", epoch.Uint64())
+			require.Equal(0, epoch.Cmp(big.NewInt(5)), "current epoch: %d", epoch.Uint64())
+			prev.epoch = epoch
+		}) &&
+
+		t.Run("Upgrade delegators storage", func(t *testing.T) {
+			require := require.New(t)
+
+			staker, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+
+			tx, err := sfc2.SyncDelegator(env.Payer(5), env.Address(5), staker)
+			require.NoError(err)
+			env.ApplyBlock(sameEpoch, tx)
 		}) &&
 
 		t.Run("Check if locking is false", func(t *testing.T) {
@@ -189,23 +206,23 @@ func TestSFC(t *testing.T) {
 		t.Run("Enable lockedup functionality", func(t *testing.T) {
 			require := require.New(t)
 
-			tx, err := sfc2.StartLockedUp(env.Payer(1), big.NewInt(6))
+			tx, err := sfc2.StartLockedUp(env.Payer(1), prev.epoch)
 			require.NoError(err)
 			env.ApplyBlock(nextEpoch, tx)
 
 			epoch, err := sfc2.FirstLockedUpEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(epoch.Cmp(big.NewInt(6)), 0, "1st locked-up epoch")
+			require.Equal(0, epoch.Cmp(prev.epoch), "1st locked-up epoch")
 
 			raw := new(big.Int).SetBytes(env.State().GetState(
 				sfc.ContractAddress,
 				sfcpos.FirstLockedUpEpoch()).Bytes())
-			require.Equal(epoch.Cmp(raw), 0, "raw 1st locked-up epoch")
+			require.Equal(0, epoch.Cmp(raw), "raw 1st locked-up epoch")
 
 			raw = new(big.Int).SetBytes(env.State().GetState(
 				sfc.ContractAddress,
 				sfcpos.CurrentSealedEpoch()).Bytes())
-			require.Equal(epoch.Cmp(raw), 0, "raw last sealed epoch")
+			require.Equal(0, epoch.Cmp(raw), "raw last sealed epoch")
 		}) &&
 
 		t.Run("Check if locking is true", func(t *testing.T) {
@@ -225,12 +242,18 @@ func TestSFC(t *testing.T) {
 		t.Run("Check rewards after sfc2", func(t *testing.T) {
 			require := require.New(t)
 
+			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc2, []int64{200, 200, 200, 115})
-			expected := new(big.Int).Div(prev, big.NewInt(10))
+
+			rewards := requireRewards(t, env, sfc2, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
+			expected := new(big.Int).Div(prev.reward, big.NewInt(10))
 			expected = new(big.Int).Mul(expected, big.NewInt(3))
-			require.Equal(rewards[0].Cmp(expected), 0, "%s != 0.3*%s", expected, rewards[0])
-			prev = expected
+			require.Equal(0, rewards[0].Cmp(expected), "%s != 0.3*%s", rewards[0], prev.reward)
+			prev.reward = expected
+
+			prev.totalLockedAmount = totalLockedAmount(t, env, sfc2)
+			expected = big.NewInt(0)
+			require.Equal(0, prev.totalLockedAmount.Cmp(expected), "expected: %s, got: %s", expected, prev.totalLockedAmount)
 		}) &&
 
 		t.Run("Lockup stake 4", func(t *testing.T) {
@@ -238,15 +261,48 @@ func TestSFC(t *testing.T) {
 
 			tx, err := sfc2.LockUpStake(env.Payer(4), big.NewInt(15*86400))
 			require.NoError(err)
-			env.ApplyBlock(nextEpoch, tx)
+			env.ApplyBlock(sameEpoch, tx)
 		}) &&
 
 		t.Run("Check rewards after stake lock", func(t *testing.T) {
 			require := require.New(t)
-			return // TODO: fix the test
+
+			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc2, []int64{2000, 200, 200, 115})
-			require.Equal(rewards[0].Cmp(prev), 0, "%s != %s", rewards[0], prev)
+
+			expected := new(big.Int).Add(prev.totalLockedAmount, utils.ToFtm(genesisStake/2))
+			totalLockedAmount := totalLockedAmount(t, env, sfc2)
+			require.Equal(0, totalLockedAmount.Cmp(expected), "expected:%s, got:%s", expected, totalLockedAmount)
+			prev.totalLockedAmount = totalLockedAmount
+
+			rewards := requireRewards(t, env, sfc2, []int64{200 * 3, 200 * 3, 200 * 3, 115*3 + (200+200+200+115+85)*7, 85 * 3})
+			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
+		}) &&
+
+		t.Run("Lockup delegation 5", func(t *testing.T) {
+			require := require.New(t)
+
+			staker, err := sfc2.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+
+			tx, err := sfc2.LockUpDelegation(env.Payer(5), big.NewInt(14*86400), staker)
+			require.NoError(err)
+			env.ApplyBlock(sameEpoch, tx)
+		}) &&
+
+		t.Run("Check rewards after delegation lock", func(t *testing.T) {
+			require := require.New(t)
+
+			env.ApplyBlock(nextEpoch) // clear epoch
+			env.ApplyBlock(nextEpoch)
+
+			expected := new(big.Int).Add(prev.totalLockedAmount, utils.ToFtm(genesisStake/2))
+			totalLockedAmount := totalLockedAmount(t, env, sfc2)
+			require.Equal(0, totalLockedAmount.Cmp(expected), "expected:%s, got:%s", expected, totalLockedAmount)
+			prev.totalLockedAmount = totalLockedAmount
+
+			rewards := requireRewards(t, env, sfc2, []int64{200 * 6, 200 * 6, 200 * 6, 115*6 + (200+200+200+115+85)*7, 85*6 + (200+200+200+115+85)*7})
+			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		}) &&
 
 		t.Run("Create delegator 6", func(t *testing.T) {
@@ -262,18 +318,8 @@ func TestSFC(t *testing.T) {
 
 			tx, err := sfc2.CreateDelegation(env.Payer(6, newDelegation), staker)
 			require.NoError(err)
-			env.ApplyBlock(nextEpoch, tx)
-		}) &&
-
-		t.Run("Lockup delegation 6", func(t *testing.T) {
-			require := require.New(t)
-
-			staker, err := sfc2.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
-			require.NoError(err)
-
-			tx, err := sfc2.LockUpDelegation(env.Payer(6), big.NewInt(14*86400), staker)
-			require.NoError(err)
 			env.ApplyBlock(sameEpoch, tx)
+			env.AddDelegator(env.Address(6))
 		})
 }
 
@@ -287,21 +333,85 @@ func requireRewards(
 	epoch, err := sfc.CurrentSealedEpoch(env.ReadOnly())
 	require.NoError(err)
 
-	rewards = make([]*big.Int, len(env.validators))
+	rewards = make([]*big.Int, len(env.validators)+len(env.delegators))
 	for i, id := range env.validators {
-		rewards[i], _, _, err = sfc.CalcValidatorRewards(env.ReadOnly(), big.NewInt(int64(id)), epoch, big.NewInt(1))
+		staker := big.NewInt(int64(id))
+		rewards[i], _, _, err = sfc.CalcValidatorRewards(env.ReadOnly(), staker, epoch, big.NewInt(1))
 		require.NoError(err)
+		t.Logf("validator reward %d: %s", i, rewards[i])
+	}
+
+	for i, addr := range env.delegators {
+		i += len(env.validators)
+		switch sfc := sfc.(type) {
+		case *sfc110.Contract:
+			rewards[i], _, _, err = sfc.CalcDelegationRewards(env.ReadOnly(), addr, epoch, big.NewInt(1))
+			require.NoError(err)
+		case *sfc201.Contract:
+			sum := new(big.Int)
+			for _, id := range env.validators {
+				staker := big.NewInt(int64(id))
+				r, _, _, err := sfc.CalcDelegationRewards(env.ReadOnly(), addr, staker, epoch, big.NewInt(1))
+				require.NoError(err)
+				sum = new(big.Int).Add(sum, r)
+			}
+			rewards[i] = sum
+		default:
+			panic("unknown contract type")
+		}
+		t.Logf("validator reward %d: %s", i, rewards[i])
+	}
+
+	for i := range env.validators {
 		if i == 0 {
 			continue
 		}
 
+		a := new(big.Int).Mul(rewards[0], big.NewInt(stakes[i]))
+		b := new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))
+		want := new(big.Int).Div(b, rewards[0])
 		require.Equal(
-			new(big.Int).Mul(rewards[0], big.NewInt(stakes[i])).Cmp(
-				new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))),
-			0, "reward#0: %s, reward#%d: %s", rewards[0], i, rewards[i])
+			0, a.Cmp(b),
+			"reward#0: %s, reward#%d: %s. Got %d:%d, want %d:%s proportion (validator)",
+			rewards[0], i, rewards[i],
+			stakes[0], stakes[i],
+			stakes[0], want,
+		)
+	}
+
+	for i := range env.delegators {
+		i += len(env.validators)
+		a := new(big.Int).Mul(rewards[0], big.NewInt(stakes[i]))
+		b := new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))
+		want := new(big.Int).Div(b, rewards[0])
+		require.Equal(
+			0, a.Cmp(b),
+			"reward#0: %s, reward#%d: %s. Got %d:%d, want %d:%s proportion (delegator)",
+			rewards[0], i, rewards[i],
+			stakes[0], stakes[i],
+			stakes[0], want,
+		)
 	}
 
 	return
+}
+
+func totalLockedAmount(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) *big.Int {
+	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
+	require.NoError(t, err)
+	es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
+	require.NoError(t, err)
+
+	return es.TotalLockedAmount
+}
+
+func printEpochStats(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
+	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
+	require.NoError(t, err)
+	es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
+	require.NoError(t, err)
+	t.Logf("Epoch%sStat{dir: %s, BaseRewardPerSecond: %s, TotalLockedAmount: %s, TotalBaseRewardWeight: %s}",
+		epoch, es.Duration, es.BaseRewardPerSecond, es.TotalLockedAmount, es.TotalBaseRewardWeight)
 }
 
 func printValidators(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
