@@ -22,6 +22,6 @@ func main() {
 
 	//checkPacks(p)
 	//checkEvents(p)
-	checkAfterMigration(p)
-
+	//checkAfterMigration(p)
+	checkReceipts(p)
 }
