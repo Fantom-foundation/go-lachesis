@@ -15,6 +15,7 @@ type Nodes struct {
 	conns  []*Sender
 	blocks chan Block
 	done   chan struct{}
+	cfg    *Config
 	logger.Instance
 }
 
@@ -23,6 +24,7 @@ func NewNodes(cfg *Config, input <-chan *Transaction) *Nodes {
 		tps:      make(chan float64, 1),
 		blocks:   make(chan Block, 1),
 		done:     make(chan struct{}),
+		cfg:      cfg,
 		Instance: logger.MakeInstance(),
 	}
 
@@ -83,7 +85,7 @@ func (n *Nodes) measureTPS() {
 }
 
 func (n *Nodes) add(url string, is1st bool) {
-	c := NewSender(url, is1st)
+	c := NewSender(url, is1st, n.cfg.SendTrusted)
 	c.SetName(fmt.Sprintf("Node-%d", len(n.conns)))
 	n.conns = append(n.conns, c)
 

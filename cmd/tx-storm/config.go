@@ -22,6 +22,7 @@ type Config struct {
 		Count  uint // count of predefined fake accounts
 		Offset uint // offset of predefined fake accounts
 	}
+	SendTrusted bool
 }
 
 func DefaultConfig() *Config {
@@ -37,6 +38,7 @@ func DefaultConfig() *Config {
 			Count:  10000,
 			Offset: 1000,
 		},
+		SendTrusted: false,
 	}
 }
 

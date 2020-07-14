@@ -16,11 +16,15 @@ import (
 )
 
 type Sender struct {
-	url            string
-	input          chan *Transaction
-	listenToBlocks bool
-	headers        chan *types.Header
-	output         chan Block
+	url     string
+	input   chan *Transaction
+	headers chan *types.Header
+	output  chan Block
+
+	cfg struct {
+		listenToBlocks bool
+		sendTrustedTx  bool
+	}
 
 	done chan struct{}
 	work sync.WaitGroup
@@ -33,14 +37,18 @@ type Block struct {
 	TxCount uint
 }
 
-func NewSender(url string, listenToBlocks bool) *Sender {
+func NewSender(url string, listenToBlocks, sendTrustedTx bool) *Sender {
 	s := &Sender{
-		url:            url,
-		input:          make(chan *Transaction, 10),
-		listenToBlocks: listenToBlocks,
-		headers:        make(chan *types.Header, 1),
-		output:         make(chan Block, 1),
-		done:           make(chan struct{}),
+		url:     url,
+		input:   make(chan *Transaction, 10),
+		headers: make(chan *types.Header, 1),
+		output:  make(chan Block, 1),
+		done:    make(chan struct{}),
+
+		cfg: struct {
+			listenToBlocks bool
+			sendTrustedTx  bool
+		}{listenToBlocks, sendTrustedTx},
 
 		Instance: logger.MakeInstance(),
 	}
@@ -117,7 +125,7 @@ func (s *Sender) background() {
 			client = s.connect()
 		}
 
-		if s.listenToBlocks && sbscr == nil {
+		if s.cfg.listenToBlocks && sbscr == nil {
 			sbscr = s.subscribe(client)
 			if sbscr == nil {
 				disconnect()
@@ -126,7 +134,11 @@ func (s *Sender) background() {
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		err = client.SendTransaction(ctx, tx.Raw)
+		if s.cfg.sendTrustedTx {
+			err = client.SendTrustedTransaction(ctx, tx.Raw)
+		} else {
+			err = client.SendTransaction(ctx, tx.Raw)
+		}
 		cancel()
 		if err == nil {
 			txCountSentMeter.Inc(1)
