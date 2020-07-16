@@ -627,7 +627,7 @@ func (pool *TxPool) add(tx *types.Transaction, t txType) (replaced bool, err err
 	}
 
 	// If the transaction pool is full, discard underpriced transactions
-	if uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
+	if t != txTrusted && uint64(pool.all.Count()) >= pool.config.GlobalSlots+pool.config.GlobalQueue {
 		// If the new transaction is underpriced, don't accept it
 		if t == txRemote && pool.priced.Underpriced(tx, pool.locals) {
 			log.Trace("Discarding underpriced transaction", "hash", hash, "price", tx.GasPrice())

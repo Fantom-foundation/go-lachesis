@@ -299,7 +299,9 @@ func TestTrustedTransaction(t *testing.T) {
 	pool := setupTxPool()
 	defer pool.Stop()
 
-	tx := transaction(0, 100000, key)
+	nonce := uint64(0)
+
+	tx := transaction(nonce, 100000, key)
 	from, _ := deriveSender(tx)
 	pool.currentState.AddBalance(from, big.NewInt(10001000000000))
 	<-pool.requestReset(nil, nil)
@@ -318,7 +320,39 @@ func TestTrustedTransaction(t *testing.T) {
 	case <-txsCh:
 		t.Fatal("trusted tx is broadcasted")
 	case <-time.After(time.Second * 2):
-		return
+		break
+	}
+
+	for nonce++; nonce < 10; nonce++ {
+		tx := transaction(nonce, 100000, key)
+		err := pool.AddTrusted(tx)
+		if err != nil {
+			t.Fatal(err, nonce)
+		}
+	}
+
+	txs, err := pool.Pending()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(txs) > 0 {
+		t.Fatal("trusted txs are pending", len(txs[from]))
+	}
+
+	txs, err = pool.Trusted(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(txs) < 1 || len(txs[from]) != int(nonce) {
+		t.Fatal("lost trusted txs", len(txs[from]))
+	}
+
+	txs, err = pool.Trusted(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(txs) != 0 {
+		t.Fatal("not cleaned trusted")
 	}
 }
 
