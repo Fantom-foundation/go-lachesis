@@ -15,12 +15,12 @@ var (
 	staterootsCommand = cli.Command{
 		Action:    utils.MigrateFlags(printStateRoots),
 		Name:      "stateroots",
-		Usage:     "Prints root hashes for states of blockchain",
-		ArgsUsage: "[<epochFrom> [<epochTo>]]",
+		Usage:     "Prints root hashes for states of blockchain blocks",
+		ArgsUsage: "[<blockFrom> [<blockTo>]]",
 		Category:  "MISCELLANEOUS COMMANDS",
 		Description: `
 For debug purpose.
-Optional first and second arguments control the first and last epoch to export.`,
+Optional first and second arguments control the first and last block to print.`,
 	}
 )
 
@@ -34,25 +34,33 @@ func printStateRoots(ctx *cli.Context) error {
 	gdb := makeGossipStore(cfg.Node.DataDir, &cfg.Lachesis)
 	defer gdb.Close()
 
-	from := idx.Epoch(0)
+	from := idx.Block(0)
 	if len(ctx.Args()) > 0 {
+		n, err := strconv.ParseUint(ctx.Args().Get(0), 10, 32)
+		if err != nil {
+			return err
+		}
+		from = idx.Block(n)
+	}
+	to := idx.Block(0)
+	if len(ctx.Args()) > 1 {
 		n, err := strconv.ParseUint(ctx.Args().Get(1), 10, 32)
 		if err != nil {
 			return err
 		}
-		from = idx.Epoch(n)
-	}
-	to := idx.Epoch(0)
-	if len(ctx.Args()) > 1 {
-		n, err := strconv.ParseUint(ctx.Args().Get(2), 10, 32)
-		if err != nil {
-			return err
+		to = idx.Block(n)
+		if to <= from {
+			return fmt.Errorf("to block num should be greater than from")
 		}
-		to = idx.Epoch(n)
 	}
 
-	fmt.Printf("from %d epoch to %d\n", from, to)
-	// TODO: print
+	for i := from; i < to || to <= from; i++ {
+		block := gdb.GetBlock(i)
+		if block == nil {
+			return nil
+		}
+		fmt.Printf("%d\t%s\n", i, block.Root.String())
+	}
 
 	return nil
 }
