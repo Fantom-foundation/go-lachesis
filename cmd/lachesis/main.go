@@ -166,6 +166,7 @@ func init() {
 		// See chaincmd.go
 		importCommand,
 		exportCommand,
+		staterootsCommand,
 	}
 	sort.Sort(cli.CommandsByName(App.Commands))
 
