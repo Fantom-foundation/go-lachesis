@@ -1172,8 +1172,14 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	if len(events) > 0 {
 		var txs []*types.Transaction
 		for _, set := range events {
-			tt := set.Flatten()
-			txs = append(txs, tt.Transactions()...)
+			var tt types.Transactions
+			for _, t := range set.Flatten() {
+				if t.batch.Count > 0 {
+					continue
+				}
+				tt = append(tt, t.Transaction)
+			}
+			txs = append(txs, tt...)
 		}
 		pool.txFeed.Send(NewTxsNotify{txs})
 	}
