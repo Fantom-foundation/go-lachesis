@@ -254,6 +254,58 @@ func TestStateChangeDuringTransactionPoolReset(t *testing.T) {
 	}
 }
 
+func TestPendingBatches(t *testing.T) {
+	t.Parallel()
+
+	var (
+		key, _     = crypto.GenerateKey()
+		address    = crypto.PubkeyToAddress(key.PublicKey)
+		statedb, _ = state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()))
+		trigger    = false
+	)
+
+	statedb.SetBalance(address, new(big.Int).SetUint64(params.Ether))
+
+	blockchain := &testChain{&testBlockChain{
+		statedb:       statedb,
+		gasLimit:      1000000000,
+		chainHeadFeed: new(notify.Feed),
+	}, address, &trigger}
+
+	pool := NewTxPool(testTxPoolConfig, params.TestChainConfig, blockchain)
+	defer pool.Stop()
+
+	tx0 := transaction(fakeTx(0, 100000, key))
+	tx1 := transaction(fakeTx(1, 100000, key))
+	tx2 := transaction(fakeTx(2, 100000, key))
+	tx3 := transaction(fakeTx(3, 100000, key))
+
+	tx1.batch.FirstTx = tx1.Hash()
+	tx1.batch.Count = 3
+	tx2.batch = tx1.batch
+	tx3.batch = tx1.batch
+	// pool.AddRemotesSync(...)
+	pool.addTxs(Transactions{tx0, tx1, tx2}, true, txRemote)
+	pending, err := pool.Pending()
+	if err != nil {
+		t.Fatalf("Could not fetch pending transactions: %v", err)
+	}
+	count := len(pending[address])
+	if count != 1 {
+		t.Fatalf("Invalid pending count, want 1, got %d", count)
+	}
+
+	pool.addTxs(Transactions{tx3}, true, txRemote)
+	pending, err = pool.Pending()
+	if err != nil {
+		t.Fatalf("Could not fetch pending transactions: %v", err)
+	}
+	count = len(pending[address])
+	if count != 4 {
+		t.Fatalf("Invalid pending count, want 4, got %d", count)
+	}
+}
+
 func TestInvalidTransactions(t *testing.T) {
 	t.Parallel()
 

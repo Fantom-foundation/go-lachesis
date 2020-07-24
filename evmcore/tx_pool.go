@@ -504,12 +504,41 @@ func (pool *TxPool) Pending() (map[common.Address]types.Transactions, error) {
 	pool.mu.Lock()
 	defer pool.mu.Unlock()
 
-	pending := make(map[common.Address]types.Transactions)
+	batches := make(map[common.Hash]uint)
+
+	pending := make(map[common.Address]Transactions)
 	for addr, list := range pool.pending {
-		tt := list.Flatten()
-		pending[addr] = tt.Transactions()
+		var tt Transactions
+		for _, t := range list.Flatten() {
+			if t.batch.Count > 0 {
+				batches[t.batch.FirstTx] += 1
+			}
+			tt = append(tt, t)
+		}
+		pending[addr] = tt
 	}
-	return pending, nil
+
+	// skip incomplete batches
+	for firstTx, want := range batches {
+		for addr, list := range pending {
+			for i, tx := range list {
+				if tx.batch.FirstTx != firstTx {
+					continue
+				}
+				if tx.batch.Count == want {
+					continue
+				}
+				pending[addr] = list[:i]
+				break
+			}
+		}
+	}
+
+	res := make(map[common.Address]types.Transactions, len(pending))
+	for addr, list := range pending {
+		res[addr] = list.Transactions()
+	}
+	return res, nil
 }
 
 // Trusted retrieves all currently processable transactions, grouped by origin
