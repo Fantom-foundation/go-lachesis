@@ -22,7 +22,6 @@ import (
 	"os"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 )
@@ -56,7 +55,7 @@ func newTxJournal(path string) *txJournal {
 
 // load parses a transaction journal dump from disk, loading its contents into
 // the specified pool.
-func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
+func (journal *txJournal) load(add func([]*Transaction) []error) error {
 	// Skip the parsing if the journal file doesn't exist at all
 	if _, err := os.Stat(journal.path); os.IsNotExist(err) {
 		return nil
@@ -79,7 +78,7 @@ func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
 	// Create a method to load a limited batch of transactions and bump the
 	// appropriate progress counters. Then use this method to load all the
 	// journaled transactions in small-ish batches.
-	loadBatch := func(txs types.Transactions) {
+	loadBatch := func(txs Transactions) {
 		for _, err := range add(txs) {
 			if err != nil {
 				log.Debug("Failed to add journaled transaction", "err", err)
@@ -89,11 +88,11 @@ func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
 	}
 	var (
 		failure error
-		batch   types.Transactions
+		batch   Transactions
 	)
 	for {
 		// Parse the next transaction and terminate on error
-		tx := new(types.Transaction)
+		tx := new(Transaction)
 		if err = stream.Decode(tx); err != nil {
 			if err != io.EOF {
 				failure = err
@@ -117,7 +116,7 @@ func (journal *txJournal) load(add func([]*types.Transaction) []error) error {
 }
 
 // insert adds the specified transaction to the local disk journal.
-func (journal *txJournal) insert(tx *types.Transaction) error {
+func (journal *txJournal) insert(tx *Transaction) error {
 	if journal.writer == nil {
 		return errNoActiveJournal
 	}
@@ -129,7 +128,7 @@ func (journal *txJournal) insert(tx *types.Transaction) error {
 
 // rotate regenerates the transaction journal based on the current contents of
 // the transaction pool.
-func (journal *txJournal) rotate(all map[common.Address]types.Transactions) error {
+func (journal *txJournal) rotate(all map[common.Address]Transactions) error {
 	// Close the current journal (if any is open)
 	if journal.writer != nil {
 		if err := journal.writer.Close(); err != nil {
