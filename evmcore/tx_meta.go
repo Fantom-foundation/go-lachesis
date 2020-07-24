@@ -11,19 +11,33 @@ import (
 // Transaction and additional fields
 type Transaction struct {
 	*types.Transaction
+	batch struct {
+		FirstTx common.Hash
+		Count   uint
+	}
 }
 
 // EncodeRLP implements rlp.Encoder
-func (tx *Transaction) EncodeRLP(w io.Writer) error {
-	err := rlp.Encode(w, tx.Transaction)
-	return err
+func (tx *Transaction) EncodeRLP(w io.Writer) (err error) {
+	err = rlp.Encode(w, tx.Transaction)
+	if err != nil {
+		return
+	}
+
+	err = rlp.Encode(w, &tx.batch)
+	return
 }
 
 // DecodeRLP implements rlp.Decoder
-func (tx *Transaction) DecodeRLP(s *rlp.Stream) error {
+func (tx *Transaction) DecodeRLP(s *rlp.Stream) (err error) {
 	tx.Transaction = new(types.Transaction)
-	err := s.Decode(tx.Transaction)
-	return err
+	err = s.Decode(tx.Transaction)
+	if err != nil {
+		return
+	}
+
+	err = s.Decode(&tx.batch)
+	return
 }
 
 // Transactions is a Transaction slice type for basic sorting.
