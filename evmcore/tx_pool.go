@@ -311,7 +311,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain state
 	if !config.NoLocals && config.Journal != "" {
 		pool.journal = newTxJournal(config.Journal)
 
-		if err := pool.journal.load(pool.addLocals); err != nil {
+		if err := pool.journal.load(pool.AddLocals); err != nil {
 			log.Warn("Failed to load transaction journal", "err", err)
 		}
 		if err := pool.journal.rotate(pool.local()); err != nil {
@@ -816,12 +816,12 @@ func (pool *TxPool) promoteTx(addr common.Address, hash common.Hash, tx *Transac
 	return true
 }
 
-// addLocals enqueues a batch of transactions into the pool if they are valid, marking the
+// AddLocals enqueues transactions into the pool if they are valid, marking the
 // senders as a local ones, ensuring they go around the local pricing constraints.
 //
 // This method is used to add transactions from the RPC API and performs synchronous pool
 // reorganization and event propagation.
-func (pool *TxPool) addLocals(txs []*Transaction) []error {
+func (pool *TxPool) AddLocals(txs []*Transaction) []error {
 	t := txLocal
 	if pool.config.NoLocals {
 		t = txRemote
@@ -829,10 +829,25 @@ func (pool *TxPool) addLocals(txs []*Transaction) []error {
 	return pool.addTxs(txs, true, t)
 }
 
+// AddTxBatch enqueues a batch of transactions into the pool if they are valid. If the
+// senders are not among the locally tracked ones, full pricing constraints will apply.
+//
+// This method is used to add transactions from the RPC API and performs synchronous pool
+// reorganization and event propagation.
+func (pool *TxPool) AddTxBatch(txs []*types.Transaction) []error {
+	tt := make([]*Transaction, len(txs))
+	for i, tx := range txs {
+		tt[i] = transaction(tx)
+		tt[i].batch.FirstTx = txs[0].Hash()
+		tt[i].batch.Count = uint(len(txs))
+	}
+	return pool.addTxs(tt, true, txRemote)
+}
+
 // AddLocal enqueues a single local transaction into the pool if it is valid. This is
 // a convenience wrapper aroundd AddLocals.
 func (pool *TxPool) AddLocal(tx *types.Transaction) error {
-	errs := pool.addLocals([]*Transaction{
+	errs := pool.AddLocals([]*Transaction{
 		transaction(tx),
 	})
 	return errs[0]
@@ -853,24 +868,13 @@ func (pool *TxPool) AddTrusted(tx *types.Transaction) error {
 	return errs[0]
 }
 
-// AddRemotes enqueues a batch of transactions into the pool if they are valid. If the
+// AddRemotes enqueues transactions into the pool if they are valid. If the
 // senders are not among the locally tracked ones, full pricing constraints will apply.
 //
 // This method is used to add transactions from the p2p network and does not wait for pool
 // reorganization and internal event propagation.
 func (pool *TxPool) AddRemotes(txs []*types.Transaction) []error {
 	return pool.addTxs(transactions(txs), false, txRemote)
-}
-
-// This is like AddRemotes, but waits for pool reorganization. Tests use this method.
-func (pool *TxPool) AddRemotesSync(txs []*types.Transaction) []error {
-	return pool.addTxs(transactions(txs), true, txRemote)
-}
-
-// This is like AddRemotes with a single transaction, but waits for pool reorganization. Tests use this method.
-func (pool *TxPool) addRemoteSync(tx *types.Transaction) error {
-	errs := pool.AddRemotesSync([]*types.Transaction{tx})
-	return errs[0]
 }
 
 // AddRemote enqueues a single transaction into the pool if it is valid. This is a convenience
