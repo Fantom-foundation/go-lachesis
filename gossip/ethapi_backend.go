@@ -345,6 +345,25 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction,
 	return err
 }
 
+func (b *EthAPIBackend) SendTxBatch(ctx context.Context, signedTxs []*types.Transaction) error {
+	errs := b.svc.txpool.AddTxBatch(signedTxs)
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, tx := range signedTxs {
+		tracing.StartTx(tx.Hash(), "EthAPIBackend.SendTxBatch()")
+		// TODO: txLatency cleaning, possible memory leak
+		if metrics.Enabled {
+			txLatency.Start(tx.Hash())
+		}
+	}
+
+	return nil
+}
+
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 	pending, err := b.svc.txpool.Pending()
 	if err != nil {
