@@ -303,6 +303,20 @@ func (mr *MockBackendMockRecorder) SendTx(ctx, signedTx interface{}, flags ...in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTx", reflect.TypeOf((*MockBackend)(nil).SendTx), varargs...)
 }
 
+// SendTxBatch mocks base method
+func (m *MockBackend) SendTxBatch(ctx context.Context, signedTxs []*types.Transaction) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendTxBatch", ctx, signedTxs)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendTxBatch indicates an expected call of SendTxBatch
+func (mr *MockBackendMockRecorder) SendTxBatch(ctx, signedTxs interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendTxBatch", reflect.TypeOf((*MockBackend)(nil).SendTxBatch), ctx, signedTxs)
+}
+
 // GetTransaction mocks base method
 func (m *MockBackend) GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error) {
 	m.ctrl.T.Helper()
