@@ -161,7 +161,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.updateMetrics(block)
 
-	block, txsPositions, okTxs, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
+	block, txsPositions, okTxs, sealEpoch := s.applyNewStateAsync(s.abciApp, block, cheaters)
 	newAppHash = block.TxHash
 
 	s.store.SetBlock(block)

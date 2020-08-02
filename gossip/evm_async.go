@@ -9,11 +9,10 @@ import (
 	tendermint "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
-
 	"github.com/Fantom-foundation/go-lachesis/inter"
 )
 
-// applyNewStateAsync is an async option of Service.applyNewState()
+// applyNewStateAsync is an async option of Service.applyNewStateSync()
 func (s *Service) applyNewStateAsync(
 	abci tendermint.Application,
 	block *inter.Block,
