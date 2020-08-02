@@ -4,9 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
@@ -102,23 +100,4 @@ type EpochStats struct {
 // Duration returns epoch duration
 func (s *EpochStats) Duration() inter.Timestamp {
 	return s.End - s.Start
-}
-
-// EpochIsForceSealed
-func EpochIsForceSealed(receipts types.Receipts) bool {
-	// temporary magic, will be placed to a constant
-	asSigHash := hash.Of([]byte("AdvanceEpoch()"))
-
-	for _, receipt := range receipts {
-		for _, log := range receipt.Logs {
-			if len(log.Topics) == 0 {
-				continue
-			}
-
-			if log.Topics[0] == asSigHash {
-				return true
-			}
-		}
-	}
-	return false
 }

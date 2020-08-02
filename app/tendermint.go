@@ -43,9 +43,16 @@ func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	cheaters := extractCheaters(req)
 	blockParticipated := extractParticipated(req)
 
-	a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
+	sealEpoch := a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
 
-	return types.ResponseBeginBlock{}
+	res := types.ResponseBeginBlock{}
+	if sealEpoch {
+		res.Events = []types.Event{
+			{Type: "epoch sealed"},
+		}
+	}
+
+	return res
 }
 
 // DeliverTx for full processing.
@@ -75,15 +82,8 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 // Wraps endBlock() to implement ABCIApplication.EndBlock.
 func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	n := idx.Block(req.Height)
-
-	sealEpoch := a.endBlock(n)
-
+	a.endBlock(n)
 	res := types.ResponseEndBlock{}
-	if sealEpoch {
-		res.Events = []types.Event{
-			{Type: "epoch sealed"},
-		}
-	}
 	return res
 }
 

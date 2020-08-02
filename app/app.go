@@ -15,7 +15,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 )
 
@@ -62,9 +61,10 @@ func (a *App) beginBlock(
 	stateRoot common.Hash,
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
-) {
+) (sealEpoch bool) {
 	block := blockInfo(&evmHeader)
 	epoch := a.GetEpoch()
+	sealEpoch = a.shouldSealEpoch(block, cheaters)
 
 	prev := a.store.GetBlock(block.Index - 1)
 	if prev.Root != stateRoot {
@@ -77,7 +77,7 @@ func (a *App) beginBlock(
 		statedb:      a.store.StateDB(stateRoot),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		cheaters:     cheaters,
-		sealEpoch:    a.shouldSealEpoch(block, cheaters),
+		sealEpoch:    sealEpoch,
 		gp:           new(evmcore.GasPool),
 		totalFee:     big.NewInt(0),
 		txCount:      0,
@@ -86,6 +86,8 @@ func (a *App) beginBlock(
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
 	a.updateValidationScores(epoch, block.Index, blockParticipated)
+
+	return
 }
 
 // deliverTx for full processing.
@@ -110,12 +112,10 @@ func (a *App) deliverTx(tx *eth.Transaction, originator idx.StakerID) (*eth.Rece
 }
 
 // endBlock signals the end of a block, returns changes to the validator set.
-func (a *App) endBlock(n idx.Block) (sealEpoch bool) {
+func (a *App) endBlock(n idx.Block) {
 	if a.ctx.block.Index != n {
 		a.Log.Crit("missed block", "current", a.ctx.block.Index, "got", n)
 	}
-
-	sealEpoch = a.ctx.sealEpoch || sfctype.EpochIsForceSealed(a.ctx.receipts)
 
 	for _, r := range a.ctx.receipts {
 		a.store.IndexLogs(r.Logs...)
@@ -126,22 +126,20 @@ func (a *App) endBlock(n idx.Block) (sealEpoch bool) {
 	}
 
 	// Process PoI/score changes
-	a.updateOriginationScores(sealEpoch)
+	a.updateOriginationScores(a.ctx.sealEpoch)
 	a.updateUsersPOI(a.ctx.block, a.ctx.txs, a.ctx.receipts)
 	a.updateStakersPOI(a.ctx.block)
 
 	// Process SFC contract transactions
 	epoch := a.GetEpoch()
-	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, sealEpoch)
+	stats := a.updateEpochStats(epoch, a.ctx.block.Time, a.ctx.totalFee, a.ctx.sealEpoch)
 	a.processSfc(epoch, a.ctx.block, a.ctx.receipts, a.ctx.cheaters, stats)
 
 	a.incLastBlock()
-	if sealEpoch {
+	if a.ctx.sealEpoch {
 		a.SetLastVoting(a.ctx.block.Index, a.ctx.block.Time)
 		a.incEpoch()
 	}
-
-	return sealEpoch
 }
 
 // commit the state and return the application Merkle root hash.

@@ -128,8 +128,15 @@ func (s *Service) applyNewState(
 	epoch := s.engine.GetEpoch()
 	stateRoot := s.store.GetBlock(block.Index - 1).Root
 
-	abci.BeginBlock(
+	var sealEpoch bool
+	resp := abci.BeginBlock(
 		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
+	for _, appEvent := range resp.Events {
+		switch appEvent.Type {
+		case "epoch sealed":
+			sealEpoch = true
+		}
+	}
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
@@ -153,14 +160,7 @@ func (s *Service) applyNewState(
 		}
 	}
 
-	var sealEpoch bool
-	resp := abci.EndBlock(endBlockRequest(block.Index))
-	for _, appEvent := range resp.Events {
-		switch appEvent.Type {
-		case "epoch sealed":
-			sealEpoch = true
-		}
-	}
+	abci.EndBlock(endBlockRequest(block.Index))
 
 	commit := abci.Commit()
 	block.Root = common.BytesToHash(commit.Data)
@@ -315,7 +315,7 @@ func (s *Service) updateMetrics(block *inter.Block) {
 		epochGauge.Update(int64(epoch))
 
 		// lachesis_epoch:time
-		epochStat := s.abciApp.GetEpochStats(epoch-1)
+		epochStat := s.abciApp.GetEpochStats(epoch - 1)
 		if epochStat != nil {
 			epochTimeGauge.Update(int64(time.Since(epochStat.End.Time()).Seconds()))
 			if epochStat.TotalFee != nil {
