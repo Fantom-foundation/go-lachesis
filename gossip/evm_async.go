@@ -9,7 +9,9 @@ import (
 	tendermint "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
+	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
 // applyNewStateAsync is an async option of Service.applyNewStateSync()
@@ -18,19 +20,28 @@ func (s *Service) applyNewStateAsync(
 	block *inter.Block,
 	cheaters inter.Cheaters,
 ) (
-	*inter.Block,
-	map[common.Hash]*app.TxPosition,
-	types.Transactions,
+	common.Hash,
 	bool,
 ) {
 	// s.engineMu is locked here
 
 	start := time.Now()
 
+	stateRoot := s.store.GetBlock(block.Index - 1).Root
+
+	var sealEpoch bool
+	resp := abci.BeginBlock(
+		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
+	for _, appEvent := range resp.Events {
+		switch appEvent.Type {
+		case "epoch sealed":
+			sealEpoch = true
+		}
+	}
+
 	events, allTxs := s.usedEvents(block)
 	unusedCount := len(block.Events) - len(events)
 	block.Events = block.Events[unusedCount:]
-
 	// memorize position of each tx, for indexing and origination scores
 	txsPositions := make(map[common.Hash]*app.TxPosition)
 	for _, e := range events {
@@ -48,17 +59,6 @@ func (s *Service) applyNewStateAsync(
 	}
 
 	epoch := s.engine.GetEpoch()
-	stateRoot := s.store.GetBlock(block.Index - 1).Root
-
-	var sealEpoch bool
-	resp := abci.BeginBlock(
-		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
-	for _, appEvent := range resp.Events {
-		switch appEvent.Type {
-		case "epoch sealed":
-			sealEpoch = true
-		}
-	}
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
@@ -103,5 +103,43 @@ func (s *Service) applyNewStateAsync(
 		"txs", len(okTxs),
 		"t", time.Since(start))
 
-	return block, txsPositions, okTxs, sealEpoch
+	s.store.SetBlock(block)
+	s.store.SetBlockIndex(block.Atropos, block.Index)
+
+	// Build index for txs
+	if s.config.TxIndex {
+		var i uint32
+		for txHash, txPos := range txsPositions {
+			if txPos.Block <= 0 {
+				continue
+			}
+			// not skipped txs only
+			txPos.BlockOffset = i
+			i++
+			s.store.SetTxPosition(txHash, txPos)
+		}
+	}
+
+	// Trace by which event this block was confirmed (only for API)
+	if s.config.DecisiveEventsIndex {
+		s.store.SetBlockDecidedBy(block.Index, s.currentEvent)
+	}
+
+	evmHeader := evmcore.ToEvmHeader(block)
+	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
+		Block: &evmcore.EvmBlock{
+			EvmHeader:    *evmHeader,
+			Transactions: okTxs,
+		}})
+
+	// trace confirmed transactions
+	confirmTxnsMeter.Inc(int64(len(txsPositions)))
+	for tx := range txsPositions {
+		tracing.FinishTx(tx, "Service.onNewBlock()")
+		if latency, err := txLatency.Finish(tx); err == nil {
+			txTtfMeter.Update(latency.Milliseconds())
+		}
+	}
+
+	return block.TxHash, sealEpoch
 }

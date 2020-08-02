@@ -9,12 +9,10 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
-	"github.com/Fantom-foundation/go-lachesis/tracing"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
@@ -161,46 +159,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.updateMetrics(block)
 
-	block, txsPositions, okTxs, sealEpoch := s.applyNewStateAsync(s.abciApp, block, cheaters)
-	newAppHash = block.TxHash
-
-	s.store.SetBlock(block)
-	s.store.SetBlockIndex(block.Atropos, block.Index)
-
-	// Build index for txs
-	if s.config.TxIndex {
-		var i uint32
-		for txHash, txPos := range txsPositions {
-			if txPos.Block <= 0 {
-				continue
-			}
-			// not skipped txs only
-			txPos.BlockOffset = i
-			i++
-			s.store.SetTxPosition(txHash, txPos)
-		}
-	}
-
-	// Trace by which event this block was confirmed (only for API)
-	if s.config.DecisiveEventsIndex {
-		s.store.SetBlockDecidedBy(block.Index, s.currentEvent)
-	}
-
-	evmHeader := evmcore.ToEvmHeader(block)
-	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
-		Block: &evmcore.EvmBlock{
-			EvmHeader:    *evmHeader,
-			Transactions: okTxs,
-		}})
-
-	// trace confirmed transactions
-	confirmTxnsMeter.Inc(int64(len(txsPositions)))
-	for tx := range txsPositions {
-		tracing.FinishTx(tx, "Service.onNewBlock()")
-		if latency, err := txLatency.Finish(tx); err == nil {
-			txTtfMeter.Update(latency.Milliseconds())
-		}
-	}
+	newAppHash, sealEpoch = s.applyNewStateAsync(s.abciApp, block, cheaters)
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
