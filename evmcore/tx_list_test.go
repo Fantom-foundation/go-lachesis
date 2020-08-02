@@ -34,19 +34,19 @@ func TestStrictTxListAdd(t *testing.T) {
 
 	txs := make(types.Transactions, 1024)
 	for i := 0; i < len(txs); i++ {
-		txs[i] = transaction(uint64(i), 0, key)
+		txs[i] = fakeTx(uint64(i), 0, key)
 	}
 	// Insert the transactions in a random order
 	list := newTxList(true)
 	for _, v := range rand.Perm(len(txs)) {
-		list.Add(txs[v], cfg.PriceBump)
+		list.Add(transaction(txs[v]), cfg.PriceBump)
 	}
 	// Verify internal state
 	if len(list.txs.items) != len(txs) {
 		t.Errorf("transaction count mismatch: have %d, want %d", len(list.txs.items), len(txs))
 	}
 	for i, tx := range txs {
-		if list.txs.items[tx.Nonce()] != tx {
+		if list.txs.items[tx.Nonce()].Transaction != tx {
 			t.Errorf("item %d: transaction mismatch: have %v, want %v", i, list.txs.items[tx.Nonce()], tx)
 		}
 	}

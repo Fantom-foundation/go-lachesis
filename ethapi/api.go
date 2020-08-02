@@ -1603,6 +1603,32 @@ func SubmitTransaction(ctx context.Context, b Backend, tx *types.Transaction, tr
 	return tx.Hash(), nil
 }
 
+// SubmitTxBatch is a helper function that submits batch of tx to txPool and logs a message.
+func SubmitTxBatch(ctx context.Context, b Backend, txs []*types.Transaction) (hashes []common.Hash, err error) {
+	err = b.SendTxBatch(ctx, txs)
+	if err != nil {
+		return
+	}
+
+	for _, tx := range txs {
+		if tx.To() == nil {
+			signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number)
+			var from common.Address
+			from, err = types.Sender(signer, tx)
+			if err != nil {
+				return
+			}
+			addr := crypto.CreateAddress(from, tx.Nonce())
+			log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
+		} else {
+			log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
+		}
+		hashes = append(hashes, tx.Hash())
+	}
+
+	return
+}
+
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
 // transaction pool.
 func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args SendTxArgs) (common.Hash, error) {
@@ -1633,6 +1659,47 @@ func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args Sen
 		return common.Hash{}, err
 	}
 	return SubmitTransaction(ctx, s.b, signed, false)
+}
+
+// SendTxBatch creates a batch of transactions for the given argument, sign it and submit it to the
+// transaction pool.
+func (s *PublicTransactionPoolAPI) SendTxBatch(ctx context.Context, args []SendTxArgs) (hashes []common.Hash, err error) {
+	var (
+		txs    []*types.Transaction
+		wallet accounts.Wallet
+	)
+	for _, arg := range args {
+		// Look up the wallet containing the requested signer
+		account := accounts.Account{Address: arg.From}
+
+		wallet, err = s.b.AccountManager().Find(account)
+		if err != nil {
+			return
+		}
+
+		if arg.Nonce == nil {
+			// Hold the addresse's mutex around signing to prevent concurrent assignment of
+			// the same nonce to multiple accounts.
+			s.nonceLock.LockAddr(arg.From)
+			defer s.nonceLock.UnlockAddr(arg.From)
+		}
+
+		// Set some sanity defaults and terminate on failure
+		err = arg.setDefaults(ctx, s.b)
+		if err != nil {
+			return
+		}
+		// Assemble the transaction and sign with the wallet
+		tx := arg.toTransaction()
+		tx, err = wallet.SignTx(account, tx, s.b.ChainConfig().ChainID)
+		if err != nil {
+			return
+		}
+
+		txs = append(txs, tx)
+	}
+
+	return SubmitTxBatch(ctx, s.b, txs)
 }
 
 // FillTransaction fills the defaults (nonce, gas, gasPrice) on a given unsigned transaction,

@@ -33,7 +33,7 @@ var senderCacher = newTxSenderCacher(runtime.NumCPU())
 // ensure they process the early transactions fast.
 type txSenderCacherRequest struct {
 	signer types.Signer
-	txs    []*types.Transaction
+	txs    []*Transaction
 	inc    int
 }
 
@@ -62,7 +62,7 @@ func newTxSenderCacher(threads int) *txSenderCacher {
 func (cacher *txSenderCacher) cache() {
 	for task := range cacher.tasks {
 		for i := 0; i < len(task.txs); i += task.inc {
-			types.Sender(task.signer, task.txs[i])
+			types.Sender(task.signer, task.txs[i].Transaction)
 		}
 	}
 }
@@ -70,7 +70,7 @@ func (cacher *txSenderCacher) cache() {
 // recover recovers the senders from a batch of transactions and caches them
 // back into the same data structures. There is no validation being done, nor
 // any reaction to invalid signatures. That is up to calling code later.
-func (cacher *txSenderCacher) recover(signer types.Signer, txs []*types.Transaction) {
+func (cacher *txSenderCacher) recover(signer types.Signer, txs []*Transaction) {
 	// If there's nothing to recover, abort
 	if len(txs) == 0 {
 		return
@@ -87,19 +87,4 @@ func (cacher *txSenderCacher) recover(signer types.Signer, txs []*types.Transact
 			inc:    tasks,
 		}
 	}
-}
-
-// recoverFromBlocks recovers the senders from a batch of blocks and caches them
-// back into the same data structures. There is no validation being done, nor
-// any reaction to invalid signatures. That is up to calling code later.
-func (cacher *txSenderCacher) recoverFromBlocks(signer types.Signer, blocks []*EvmBlock) {
-	count := 0
-	for _, block := range blocks {
-		count += len(block.Transactions)
-	}
-	txs := make([]*types.Transaction, 0, count)
-	for _, block := range blocks {
-		txs = append(txs, block.Transactions...)
-	}
-	cacher.recover(signer, txs)
 }

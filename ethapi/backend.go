@@ -81,6 +81,7 @@ type Backend interface {
 
 	// Transaction pool API
 	SendTx(ctx context.Context, signedTx *types.Transaction, trusted bool) error
+	SendTxBatch(ctx context.Context, signedTxs []*types.Transaction) error
 	GetTransaction(ctx context.Context, txHash common.Hash) (*types.Transaction, uint64, uint64, error)
 	GetPoolTransactions() (types.Transactions, error)
 	GetPoolTransaction(txHash common.Hash) *types.Transaction
