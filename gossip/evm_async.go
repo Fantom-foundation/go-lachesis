@@ -22,8 +22,8 @@ func (s *Service) applyNewStateAsync(
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
 ) (
-	common.Hash,
-	bool,
+	sealEpoch bool,
+	blockTxHashes []common.Hash,
 ) {
 	// s.engineMu is locked here
 
@@ -36,7 +36,6 @@ func (s *Service) applyNewStateAsync(
 		blockParticipatedCopy[k] = v
 	}
 
-	var sealEpoch bool
 	resp := abci.BeginBlock(
 		beginBlockRequest(cheaters, stateRoot, block, blockParticipatedCopy))
 	for _, appEvent := range resp.Events {
@@ -94,12 +93,14 @@ func (s *Service) applyNewStateAsync(
 	commit := abci.Commit()
 	block.Root = common.BytesToHash(commit.Data)
 	block.TxHash = types.DeriveSha(okTxs)
+	s.blockTxHashes = append(s.blockTxHashes, block.TxHash)
 
 	// process new epoch
 	if sealEpoch {
 		// prune not needed gas power records
 		s.store.DelGasPowerRefunds(epoch - 1)
 		s.onEpochSealed(block, cheaters)
+		blockTxHashes, s.blockTxHashes = s.blockTxHashes, nil
 	}
 
 	log.Info("New block",
@@ -148,5 +149,5 @@ func (s *Service) applyNewStateAsync(
 		}
 	}
 
-	return block.TxHash, sealEpoch
+	return
 }

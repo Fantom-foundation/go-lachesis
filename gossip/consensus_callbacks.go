@@ -154,12 +154,12 @@ func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Fra
 }
 
 // applyBlock execs ordered txns of new block on state, and fills the block DB indexes.
-func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
+func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool, newAppHashes []common.Hash) {
 	// s.engineMu is locked here
 
 	s.updateMetrics(block)
 
-	newAppHash, sealEpoch = s.applyNewStateAsync(s.abciApp, block, cheaters, s.blockParticipated)
+	sealEpoch, newAppHashes = s.applyNewStateAsync(s.abciApp, block, cheaters, s.blockParticipated)
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
