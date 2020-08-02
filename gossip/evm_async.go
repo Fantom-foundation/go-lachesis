@@ -11,6 +11,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
@@ -19,6 +20,7 @@ func (s *Service) applyNewStateAsync(
 	abci tendermint.Application,
 	block *inter.Block,
 	cheaters inter.Cheaters,
+	blockParticipated map[idx.StakerID]bool,
 ) (
 	common.Hash,
 	bool,
@@ -29,9 +31,14 @@ func (s *Service) applyNewStateAsync(
 
 	stateRoot := s.store.GetBlock(block.Index - 1).Root
 
+	blockParticipatedCopy := make(map[idx.StakerID]bool, len(blockParticipated))
+	for k, v := range blockParticipated {
+		blockParticipatedCopy[k] = v
+	}
+
 	var sealEpoch bool
 	resp := abci.BeginBlock(
-		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
+		beginBlockRequest(cheaters, stateRoot, block, blockParticipatedCopy))
 	for _, appEvent := range resp.Events {
 		switch appEvent.Type {
 		case "epoch sealed":

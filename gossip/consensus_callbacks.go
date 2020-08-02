@@ -159,7 +159,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.updateMetrics(block)
 
-	newAppHash, sealEpoch = s.applyNewStateAsync(s.abciApp, block, cheaters)
+	newAppHash, sealEpoch = s.applyNewStateAsync(s.abciApp, block, cheaters, s.blockParticipated)
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
