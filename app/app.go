@@ -59,7 +59,7 @@ func New(cfg Config, s *Store) *App {
 func (a *App) beginBlock(
 	evmHeader evmcore.EvmHeader,
 	cheaters inter.Cheaters,
-	blockParticipated map[idx.StakerID]bool,
+	participated map[idx.StakerID]bool,
 ) (sealEpoch bool) {
 	block := blockInfo(&evmHeader)
 	epoch := a.GetEpoch()
@@ -81,7 +81,7 @@ func (a *App) beginBlock(
 	a.ctx.header.GasUsed = 0
 	a.ctx.gp.AddGas(evmHeader.GasLimit)
 
-	a.updateValidationScores(epoch, block.Index, blockParticipated)
+	a.updateValidationScores(epoch, block.Index, participated)
 
 	return
 }

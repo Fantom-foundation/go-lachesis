@@ -159,9 +159,11 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.updateMetrics(block)
 
-	sealEpoch, newAppHashes = s.applyNewStateAsync(block, cheaters, s.blockParticipated)
+	// reset map of participated validators
+	var participated map[idx.StakerID]bool
+	participated, s.blockParticipated = s.blockParticipated, make(map[idx.StakerID]bool)
 
-	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
+	sealEpoch, newAppHashes = s.applyNewStateAsync(block, cheaters, participated, decidedFrame)
 
 	return
 }

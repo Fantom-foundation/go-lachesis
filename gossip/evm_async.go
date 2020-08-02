@@ -25,9 +25,12 @@ type (
 	}
 
 	processBlockArgs struct {
-		Start time.Time
-		Epoch idx.Epoch
-		Block *inter.Block
+		Start             time.Time
+		Epoch             idx.Epoch
+		Block             *inter.Block
+		Cheaters          inter.Cheaters
+		BlockParticipated map[idx.StakerID]bool
+		ShouldSealEpoch   bool
 	}
 )
 
@@ -42,7 +45,13 @@ func (s *Service) startEvmProcessing() {
 			case <-s.done:
 				return
 			case args := <-s.evmProcessor.blocks:
-				s.processBlockAsync(args.Start, args.Epoch, args.Block)
+				s.processBlockAsync(
+					args.Start,
+					args.Epoch,
+					args.Block,
+					args.Cheaters,
+					args.BlockParticipated,
+					args.ShouldSealEpoch)
 				s.evmProcessor.Done()
 			}
 		}
@@ -54,6 +63,7 @@ func (s *Service) applyNewStateAsync(
 	block *inter.Block,
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
+	frame idx.Frame,
 ) (
 	sealEpoch bool,
 	blockTxHashes []common.Hash,
@@ -61,29 +71,18 @@ func (s *Service) applyNewStateAsync(
 	// s.engineMu is locked here
 
 	start := time.Now()
-
-	blockParticipatedCopy := make(map[idx.StakerID]bool, len(blockParticipated))
-	for k, v := range blockParticipated {
-		blockParticipatedCopy[k] = v
-	}
-
-	var abci tendermint.Application = s.abciApp
-	resp := abci.BeginBlock(
-		beginBlockRequest(block, cheaters, blockParticipatedCopy))
-	for _, appEvent := range resp.Events {
-		switch appEvent.Type {
-		case "epoch sealed":
-			sealEpoch = true
-		}
-	}
-
 	epoch := s.engine.GetEpoch()
+
+	sealEpoch = s.legacyShouldSealEpoch(block, frame, cheaters)
 
 	s.evmProcessor.Add(1)
 	s.evmProcessor.blocks <- &processBlockArgs{
-		Start: start,
-		Epoch: epoch,
-		Block: block,
+		Start:             start,
+		Epoch:             epoch,
+		Block:             block,
+		Cheaters:          cheaters,
+		BlockParticipated: blockParticipated,
+		ShouldSealEpoch:   sealEpoch,
 	}
 
 	// process new epoch
@@ -103,6 +102,9 @@ func (s *Service) processBlockAsync(
 	start time.Time,
 	epoch idx.Epoch,
 	block *inter.Block,
+	cheaters inter.Cheaters,
+	participated map[idx.StakerID]bool,
+	shouldSealEpoch bool,
 ) {
 	events, allTxs := s.usedEvents(block)
 	unusedCount := len(block.Events) - len(events)
@@ -123,7 +125,23 @@ func (s *Service) processBlockAsync(
 		}
 	}
 
-	var abci tendermint.Application = s.abciApp
+	var (
+		abci      tendermint.Application = s.abciApp
+		sealEpoch bool
+	)
+
+	resp := abci.BeginBlock(
+		beginBlockRequest(block, cheaters, participated))
+	for _, appEvent := range resp.Events {
+		switch appEvent.Type {
+		case "epoch sealed":
+			sealEpoch = true
+		}
+	}
+	if sealEpoch != shouldSealEpoch {
+		s.Log.Crit("sealEpoch missing", "got", sealEpoch, "want", shouldSealEpoch)
+	}
+
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
 	for i, tx := range allTxs {
