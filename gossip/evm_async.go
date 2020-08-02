@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -15,9 +16,41 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/tracing"
 )
 
+type (
+	// evmProcessor organizes evm async processing
+	evmProcessor struct {
+		sync.WaitGroup
+		blocks        chan *processBlockArgs
+		blockTxHashes []common.Hash // buffer of block.TxHash to return to the consensus
+	}
+
+	processBlockArgs struct {
+		Start time.Time
+		Epoch idx.Epoch
+		Block *inter.Block
+	}
+)
+
+func (ep *evmProcessor) Init(maxEpochBlocks int) {
+	ep.blocks = make(chan *processBlockArgs, maxEpochBlocks)
+}
+
+func (s *Service) startEvmProcessing() {
+	go func() {
+		for {
+			select {
+			case <-s.done:
+				return
+			case args := <-s.evmProcessor.blocks:
+				s.processBlockAsync(args.Start, args.Epoch, args.Block)
+				s.evmProcessor.Done()
+			}
+		}
+	}()
+}
+
 // applyNewStateAsync is an async option of Service.applyNewStateSync()
 func (s *Service) applyNewStateAsync(
-	abci tendermint.Application,
 	block *inter.Block,
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
@@ -36,6 +69,7 @@ func (s *Service) applyNewStateAsync(
 		blockParticipatedCopy[k] = v
 	}
 
+	var abci tendermint.Application = s.abciApp
 	resp := abci.BeginBlock(
 		beginBlockRequest(cheaters, stateRoot, block, blockParticipatedCopy))
 	for _, appEvent := range resp.Events {
@@ -47,15 +81,20 @@ func (s *Service) applyNewStateAsync(
 
 	epoch := s.engine.GetEpoch()
 
-	s.processBlockAsync(abci, epoch, block, start)
+	s.evmProcessor.Add(1)
+	s.evmProcessor.blocks <- &processBlockArgs{
+		Start: start,
+		Epoch: epoch,
+		Block: block,
+	}
 
 	// process new epoch
 	if sealEpoch {
-		// TODO: wait for processBlockAsync() finished here
+		s.evmProcessor.Wait()
 		// prune not needed gas power records
 		s.store.DelGasPowerRefunds(epoch - 1)
 		s.onEpochSealed(block, cheaters)
-		blockTxHashes, s.blockTxHashes = s.blockTxHashes, nil
+		blockTxHashes, s.evmProcessor.blockTxHashes = s.evmProcessor.blockTxHashes, nil
 	}
 
 	return
@@ -63,10 +102,9 @@ func (s *Service) applyNewStateAsync(
 
 // processBlockAsync is an async part of Service.applyNewStateAsync()
 func (s *Service) processBlockAsync(
-	abci tendermint.Application,
+	start time.Time,
 	epoch idx.Epoch,
 	block *inter.Block,
-	start time.Time,
 ) {
 	events, allTxs := s.usedEvents(block)
 	unusedCount := len(block.Events) - len(events)
@@ -87,6 +125,7 @@ func (s *Service) processBlockAsync(
 		}
 	}
 
+	var abci tendermint.Application = s.abciApp
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
 	for i, tx := range allTxs {

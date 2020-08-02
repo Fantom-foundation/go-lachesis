@@ -98,8 +98,8 @@ type Service struct {
 
 	// global variables. TODO refactor to pass them as arguments if possible
 	blockParticipated map[idx.StakerID]bool // validators who participated in last block
-	blockTxHashes     []common.Hash         // buffer of block.TxHash to return to the consensus
 	currentEvent      hash.Event            // current event which is being processed
+	evmProcessor
 
 	feed ServiceFeed
 
@@ -301,6 +301,8 @@ func (s *Service) Start(srv *p2p.Server) error {
 	}
 
 	s.abciApp.Start()
+	s.evmProcessor.Init(int(s.config.Net.Dag.MaxEpochBlocks))
+	s.startEvmProcessing()
 
 	s.pm.Start(srv.MaxPeers)
 
