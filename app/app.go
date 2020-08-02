@@ -58,7 +58,6 @@ func New(cfg Config, s *Store) *App {
 // beginBlock signals the beginning of a block.
 func (a *App) beginBlock(
 	evmHeader evmcore.EvmHeader,
-	stateRoot common.Hash,
 	cheaters inter.Cheaters,
 	blockParticipated map[idx.StakerID]bool,
 ) (sealEpoch bool) {
@@ -67,14 +66,11 @@ func (a *App) beginBlock(
 	sealEpoch = a.shouldSealEpoch(block, cheaters)
 
 	prev := a.store.GetBlock(block.Index - 1)
-	if prev.Root != stateRoot {
-		panic("inconsistent state db")
-	}
 
 	a.ctx = &blockContext{
 		block:        block,
 		header:       &evmHeader,
-		statedb:      a.store.StateDB(stateRoot),
+		statedb:      a.store.StateDB(prev.Root),
 		evmProcessor: evmcore.NewStateProcessor(a.config.Net.EvmChainConfig(), a.BlockChain()),
 		cheaters:     cheaters,
 		sealEpoch:    sealEpoch,

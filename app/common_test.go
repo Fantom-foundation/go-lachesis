@@ -168,7 +168,7 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 		blockParticipated[p] = true
 	}
 
-	env.App.beginBlock(evmHeader, env.lastState, inter.Cheaters{}, blockParticipated)
+	env.App.beginBlock(evmHeader, inter.Cheaters{}, blockParticipated)
 
 	receipts := make(eth.Receipts, len(txs))
 	for i, tx := range txs {

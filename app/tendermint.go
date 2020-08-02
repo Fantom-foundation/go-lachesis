@@ -39,11 +39,10 @@ func (a *App) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 // Wraps beginBlock() to implement ABCIApplication.BeginBlock.
 func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	evmHeader := extractEvmHeader(req)
-	stateRoot := extractStateRoot(req)
 	cheaters := extractCheaters(req)
 	blockParticipated := extractParticipated(req)
 
-	sealEpoch := a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
+	sealEpoch := a.beginBlock(evmHeader, cheaters, blockParticipated)
 
 	res := types.ResponseBeginBlock{}
 	if sealEpoch {
@@ -113,11 +112,6 @@ func extractCheaters(req types.RequestBeginBlock) inter.Cheaters {
 	}
 
 	return cheaters
-}
-
-func extractStateRoot(req types.RequestBeginBlock) common.Hash {
-	return common.BytesToHash(
-		req.Header.LastCommitHash)
 }
 
 func extractParticipated(req types.RequestBeginBlock) map[idx.StakerID]bool {

@@ -62,8 +62,6 @@ func (s *Service) applyNewStateAsync(
 
 	start := time.Now()
 
-	stateRoot := s.store.GetBlock(block.Index - 1).Root
-
 	blockParticipatedCopy := make(map[idx.StakerID]bool, len(blockParticipated))
 	for k, v := range blockParticipated {
 		blockParticipatedCopy[k] = v
@@ -71,7 +69,7 @@ func (s *Service) applyNewStateAsync(
 
 	var abci tendermint.Application = s.abciApp
 	resp := abci.BeginBlock(
-		beginBlockRequest(cheaters, stateRoot, block, blockParticipatedCopy))
+		beginBlockRequest(block, cheaters, blockParticipatedCopy))
 	for _, appEvent := range resp.Events {
 		switch appEvent.Type {
 		case "epoch sealed":
