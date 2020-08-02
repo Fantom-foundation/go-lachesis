@@ -45,6 +45,29 @@ func (s *Service) applyNewStateAsync(
 		}
 	}
 
+	epoch := s.engine.GetEpoch()
+
+	s.processBlockAsync(abci, epoch, block, start)
+
+	// process new epoch
+	if sealEpoch {
+		// TODO: wait for processBlockAsync() finished here
+		// prune not needed gas power records
+		s.store.DelGasPowerRefunds(epoch - 1)
+		s.onEpochSealed(block, cheaters)
+		blockTxHashes, s.blockTxHashes = s.blockTxHashes, nil
+	}
+
+	return
+}
+
+// processBlockAsync is an async part of Service.applyNewStateAsync()
+func (s *Service) processBlockAsync(
+	abci tendermint.Application,
+	epoch idx.Epoch,
+	block *inter.Block,
+	start time.Time,
+) {
 	events, allTxs := s.usedEvents(block)
 	unusedCount := len(block.Events) - len(events)
 	block.Events = block.Events[unusedCount:]
@@ -63,8 +86,6 @@ func (s *Service) applyNewStateAsync(
 			}
 		}
 	}
-
-	epoch := s.engine.GetEpoch()
 
 	okTxs := make(types.Transactions, 0, len(allTxs))
 	block.SkippedTxs = make([]uint, 0, len(allTxs))
@@ -94,14 +115,6 @@ func (s *Service) applyNewStateAsync(
 	block.Root = common.BytesToHash(commit.Data)
 	block.TxHash = types.DeriveSha(okTxs)
 	s.blockTxHashes = append(s.blockTxHashes, block.TxHash)
-
-	// process new epoch
-	if sealEpoch {
-		// prune not needed gas power records
-		s.store.DelGasPowerRefunds(epoch - 1)
-		s.onEpochSealed(block, cheaters)
-		blockTxHashes, s.blockTxHashes = s.blockTxHashes, nil
-	}
 
 	log.Info("New block",
 		"index", block.Index,
