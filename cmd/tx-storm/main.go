@@ -27,34 +27,20 @@ var (
 
 // init the CLI app.
 func init() {
-	// Flags.
-	flags = []cli.Flag{
-		BlockChainIDFlag,
-		NumberFlag,
-		AccsStartFlag,
-		AccsCountFlag,
-		TxnsRateFlag,
-		utils.MetricsEnabledFlag,
-		MetricsPrometheusEndpointFlag,
-		VerbosityFlag,
-	}
-
-	// App.
 	app.Action = generatorMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 
 	app.Commands = []cli.Command{}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
-	app.Flags = append(app.Flags, flags...)
-
-	app.Before = func(ctx *cli.Context) error {
-		return nil
-	}
-
-	app.After = func(ctx *cli.Context) error {
-		return nil
-	}
+	app.Flags = append(app.Flags,
+		ConfigFileFlag,
+		NumberFlag,
+		TxnsRateFlag,
+		utils.MetricsEnabledFlag,
+		MetricsPrometheusEndpointFlag,
+		VerbosityFlag,
+	)
 }
 
 func main() {
@@ -70,25 +56,24 @@ func generatorMain(ctx *cli.Context) error {
 	glogger.Verbosity(log.Lvl(ctx.GlobalInt(VerbosityFlag.Name)))
 	log.Root().SetHandler(glogger)
 
-	args := ctx.Args()
-	if len(args) != 1 {
-		return fmt.Errorf("url expected")
-	}
-
 	SetupPrometheus(ctx)
 
-	url := args[0]
+	cfg := OpenConfig(ctx)
 	num, ofTotal := getNumber(ctx)
-	maxTxnsPerSec := getTxnsRate(ctx)
-	accsFrom, accsCount := getTestAccs(ctx)
-	chainId := getChainId(ctx)
 
-	tt := newThreads(url, num, ofTotal, maxTxnsPerSec, accsFrom, accsCount, chainId)
-	tt.SetName("Threads")
-	tt.Start()
+	generator := NewTxGenerator(cfg, num, ofTotal)
+	defer generator.Stop()
+	generator.SetName(fmt.Sprintf("TxGen-%d", num))
+	txs := generator.Start()
+
+	nodes := NewNodes(cfg, txs)
+	go func() {
+		for tps := range nodes.TPS() {
+			generator.SetTPS(tps + 50.0*float64(nodes.Count()))
+		}
+	}()
 
 	waitForSignal()
-	tt.Stop()
 	return nil
 }
 
