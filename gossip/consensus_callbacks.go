@@ -6,17 +6,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	tendermint "github.com/tendermint/tendermint/abci/types"
 
-	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
-	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
-	"github.com/Fantom-foundation/go-lachesis/tracing"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
 
@@ -90,100 +86,6 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
 
-// applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
-func (s *Service) applyNewState(
-	abci tendermint.Application,
-	block *inter.Block,
-	cheaters inter.Cheaters,
-) (
-	*inter.Block,
-	map[common.Hash]*app.TxPosition,
-	types.Transactions,
-	bool,
-) {
-	// s.engineMu is locked here
-
-	start := time.Now()
-
-	events, allTxs := s.usedEvents(block)
-	unusedCount := len(block.Events) - len(events)
-	block.Events = block.Events[unusedCount:]
-
-	// memorize position of each tx, for indexing and origination scores
-	txsPositions := make(map[common.Hash]*app.TxPosition)
-	for _, e := range events {
-		for i, tx := range e.Transactions {
-			// if tx was met in multiple events, then assign to first ordered event
-			if _, ok := txsPositions[tx.Hash()]; ok {
-				continue
-			}
-			txsPositions[tx.Hash()] = &app.TxPosition{
-				Event:       e.Hash(),
-				Creator:     e.Creator,
-				EventOffset: uint32(i),
-			}
-		}
-	}
-
-	epoch := s.engine.GetEpoch()
-	stateRoot := s.store.GetBlock(block.Index - 1).Root
-
-	abci.BeginBlock(
-		beginBlockRequest(cheaters, stateRoot, block, s.blockParticipated))
-
-	okTxs := make(types.Transactions, 0, len(allTxs))
-	block.SkippedTxs = make([]uint, 0, len(allTxs))
-	for i, tx := range allTxs {
-		originator := txsPositions[tx.Hash()].Creator
-		req := deliverTxRequest(tx, originator)
-		resp := abci.DeliverTx(req)
-		block.GasUsed += uint64(resp.GasUsed)
-
-		if resp.Code != txIsFullyValid {
-			block.SkippedTxs = append(block.SkippedTxs, uint(i))
-			continue
-		}
-		okTxs = append(okTxs, tx)
-		txsPositions[tx.Hash()].Block = block.Index
-		notUsedGas := resp.GasWanted - resp.GasUsed
-		s.store.IncGasPowerRefund(epoch, originator, notUsedGas)
-
-		if resp.Log != "" {
-			s.Log.Info("tx processed", "log", resp.Log)
-		}
-	}
-
-	var sealEpoch bool
-	resp := abci.EndBlock(endBlockRequest(block.Index))
-	for _, appEvent := range resp.Events {
-		switch appEvent.Type {
-		case "epoch sealed":
-			sealEpoch = true
-		}
-	}
-
-	commit := abci.Commit()
-	block.Root = common.BytesToHash(commit.Data)
-	block.TxHash = types.DeriveSha(okTxs)
-
-	// process new epoch
-	if sealEpoch {
-		// prune not needed gas power records
-		s.store.DelGasPowerRefunds(epoch - 1)
-		s.onEpochSealed(block, cheaters)
-	}
-
-	log.Info("New block",
-		"index", block.Index,
-		"atropos", block.Atropos,
-		"gasUsed", block.GasUsed,
-		"skipped_txs", len(block.SkippedTxs),
-		"txs", len(okTxs),
-		"t", time.Since(start))
-
-	return block, txsPositions, okTxs, sealEpoch
-}
-
 // spillBlockEvents excludes first events which exceed BlockGasHardLimit
 func (s *Service) spillBlockEvents(block *inter.Block) inter.Events {
 	events := make(inter.Events, len(block.Events))
@@ -252,53 +154,16 @@ func (s *Service) legacyShouldSealEpoch(block *inter.Block, decidedFrame idx.Fra
 }
 
 // applyBlock execs ordered txns of new block on state, and fills the block DB indexes.
-func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
+func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (sealEpoch bool, newAppHashes []common.Hash) {
 	// s.engineMu is locked here
 
 	s.updateMetrics(block)
 
-	block, txsPositions, okTxs, sealEpoch := s.applyNewState(s.abciApp, block, cheaters)
-	newAppHash = block.TxHash
+	// reset map of participated validators
+	var participated map[idx.StakerID]bool
+	participated, s.blockParticipated = s.blockParticipated, make(map[idx.StakerID]bool)
 
-	s.store.SetBlock(block)
-	s.store.SetBlockIndex(block.Atropos, block.Index)
-
-	// Build index for txs
-	if s.config.TxIndex {
-		var i uint32
-		for txHash, txPos := range txsPositions {
-			if txPos.Block <= 0 {
-				continue
-			}
-			// not skipped txs only
-			txPos.BlockOffset = i
-			i++
-			s.store.SetTxPosition(txHash, txPos)
-		}
-	}
-
-	// Trace by which event this block was confirmed (only for API)
-	if s.config.DecisiveEventsIndex {
-		s.store.SetBlockDecidedBy(block.Index, s.currentEvent)
-	}
-
-	evmHeader := evmcore.ToEvmHeader(block)
-	s.feed.newBlock.Send(evmcore.ChainHeadNotify{
-		Block: &evmcore.EvmBlock{
-			EvmHeader:    *evmHeader,
-			Transactions: okTxs,
-		}})
-
-	// trace confirmed transactions
-	confirmTxnsMeter.Inc(int64(len(txsPositions)))
-	for tx := range txsPositions {
-		tracing.FinishTx(tx, "Service.onNewBlock()")
-		if latency, err := txLatency.Finish(tx); err == nil {
-			txTtfMeter.Update(latency.Milliseconds())
-		}
-	}
-
-	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
+	sealEpoch, newAppHashes = s.applyNewStateAsync(block, cheaters, participated, decidedFrame)
 
 	return
 }
@@ -315,7 +180,7 @@ func (s *Service) updateMetrics(block *inter.Block) {
 		epochGauge.Update(int64(epoch))
 
 		// lachesis_epoch:time
-		epochStat := s.abciApp.GetEpochStats(epoch-1)
+		epochStat := s.abciApp.GetEpochStats(epoch - 1)
 		if epochStat != nil {
 			epochTimeGauge.Update(int64(time.Since(epochStat.End.Time()).Seconds()))
 			if epochStat.TotalFee != nil {

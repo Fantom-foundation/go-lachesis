@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	eth "github.com/ethereum/go-ethereum/core/types"
 	"github.com/tendermint/tendermint/abci/types"
 
@@ -21,9 +20,8 @@ func (s *Service) initApp() {
 }
 
 func beginBlockRequest(
-	cheaters inter.Cheaters,
-	stateHash common.Hash,
 	block *inter.Block,
+	cheaters inter.Cheaters,
 	participated map[idx.StakerID]bool,
 ) types.RequestBeginBlock {
 
@@ -55,7 +53,6 @@ func beginBlockRequest(
 			LastBlockId: types.BlockID{
 				Hash: block.PrevHash.Bytes(),
 			},
-			LastCommitHash: stateHash.Bytes(),
 		},
 		LastCommitInfo: types.LastCommitInfo{
 			Votes: votes,

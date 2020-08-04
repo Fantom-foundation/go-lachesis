@@ -39,13 +39,19 @@ func (a *App) CheckTx(req types.RequestCheckTx) types.ResponseCheckTx {
 // Wraps beginBlock() to implement ABCIApplication.BeginBlock.
 func (a *App) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	evmHeader := extractEvmHeader(req)
-	stateRoot := extractStateRoot(req)
 	cheaters := extractCheaters(req)
 	blockParticipated := extractParticipated(req)
 
-	a.beginBlock(evmHeader, stateRoot, cheaters, blockParticipated)
+	sealEpoch := a.beginBlock(evmHeader, cheaters, blockParticipated)
 
-	return types.ResponseBeginBlock{}
+	res := types.ResponseBeginBlock{}
+	if sealEpoch {
+		res.Events = []types.Event{
+			{Type: "epoch sealed"},
+		}
+	}
+
+	return res
 }
 
 // DeliverTx for full processing.
@@ -75,15 +81,8 @@ func (a *App) DeliverTx(req types.RequestDeliverTx) types.ResponseDeliverTx {
 // Wraps endBlock() to implement ABCIApplication.EndBlock.
 func (a *App) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	n := idx.Block(req.Height)
-
-	sealEpoch := a.endBlock(n)
-
+	a.endBlock(n)
 	res := types.ResponseEndBlock{}
-	if sealEpoch {
-		res.Events = []types.Event{
-			{Type: "epoch sealed"},
-		}
-	}
 	return res
 }
 
@@ -113,11 +112,6 @@ func extractCheaters(req types.RequestBeginBlock) inter.Cheaters {
 	}
 
 	return cheaters
-}
-
-func extractStateRoot(req types.RequestBeginBlock) common.Hash {
-	return common.BytesToHash(
-		req.Header.LastCommitHash)
 }
 
 func extractParticipated(req types.RequestBeginBlock) map[idx.StakerID]bool {
