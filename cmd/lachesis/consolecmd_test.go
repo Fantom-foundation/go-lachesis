@@ -67,7 +67,7 @@ func TestIPCAttachWelcome(t *testing.T) {
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
 		"--ipcpath", ipc)
 
-	waitForEndpoint(t, ipc, 10*time.Second)
+	waitForEndpoint(t, ipc, 60*time.Second)
 	testAttachWelcome(t, cli, "ipc:"+ipc, ipcAPIs)
 
 	cli.Kill()
@@ -81,7 +81,7 @@ func TestHTTPAttachWelcome(t *testing.T) {
 		"--rpc", "--rpcport", port)
 
 	endpoint := "http://127.0.0.1:" + port
-	waitForEndpoint(t, endpoint, 10*time.Second)
+	waitForEndpoint(t, endpoint, 60*time.Second)
 	testAttachWelcome(t, cli, "http://localhost:"+port, httpAPIs)
 
 	cli.Kill()
@@ -96,7 +96,7 @@ func TestWSAttachWelcome(t *testing.T) {
 		"--ws", "--wsport", port)
 
 	endpoint := "ws://127.0.0.1:" + port
-	waitForEndpoint(t, endpoint, 10*time.Second)
+	waitForEndpoint(t, endpoint, 60*time.Second)
 	testAttachWelcome(t, cli, "ws://localhost:"+port, httpAPIs)
 
 	cli.Kill()
