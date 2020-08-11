@@ -45,6 +45,7 @@ func testGetEvents(t *testing.T, protocol int) {
 		}
 		lastEvent = e
 	})
+	pm.downloader.Terminate() // disable downloader so test would be deterministic
 
 	peer, _ := newTestPeer("peer", protocol, pm, true)
 	defer peer.close()
@@ -90,7 +91,7 @@ func testGetEvents(t *testing.T, protocol int) {
 			return
 		}
 		if err := p2p.ExpectMsg(peer.app, EventsMsg, tt.expect); err != nil {
-			t.Errorf("test %d: events mismatch: %v", i, err)
+			t.Fatalf("test %d: events mismatch: %v", i, err)
 		}
 		if t.Failed() {
 			return
