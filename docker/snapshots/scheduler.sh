@@ -1,24 +1,44 @@
-#!/bin/bash \n\
+#!/bin/bash
 
-mv /docker-entrypoint.d/index.html /usr/share/nginx/html/index.html
-mkdir -p /snapshots/uploads && touch /snapshots/latest.snapshot
-while [ -f /docker-entrypoint.d/mainnet.toml ]
+set -x
+
+cd $(dirname $0)
+mkdir -p /snapshots
+touch /snapshots/part.snapshot
+ln -s /snapshots /usr/share/nginx/html/snapshots
+cp index.html /usr/share/nginx/html/index.html
+
+while true
 do
-    previous_epoch=\$(ls -1 /snapshots/*.epoch 2>/dev/null 1>&2 && echo \$(basename \$(ls -1 /snapshots/*.epoch | sort -r | head -n 1)) || echo 0.epoch)
-    previous_epoch=\${previous_epoch%%.epoch}
-    lachesis --nousb --config /docker-entrypoint.d/mainnet.toml &
-    pid=\$!
-    sleep 333
-    while [ \$(( \$(date +%%s) - \$(stat -c %%Y /snapshots/latest.snapshot) )) -lt 4321 ]
+    lachesis --nousb &
+    PID=$!
+
+    sleep 2
+    while [ $(( $(date +%s)-$(stat -c %Y /snapshots/part.snapshot) )) -lt 5 ]
     do
-        sleep 6
+        sleep 5
     done
-    current_epoch=\$(lachesis attach --exec='ftm.currentEpoch()')
-    kill \$pid && wait \$pid
-    lachesis export /snapshots/latest.snapshot \$last_epoch \$current_epoch
-    unlink /snapshots/\$previous_epoch.epoch
-    ln -s /snapshots/latest.snapshot /snapshots/\$current_epoch.epoch
-    cp /snapshots/uploads/lachesis.snapshot /snapshots/tmp.snapshot
-    cat /snapshots/latest.snapshot >> /snapshots/tmp.snapshot
-    mv /snapshots/tmp.snapshot /snapshots/uploads/lachesis.snapshot
+
+    EPOCH_WAS=$(cat /snapshots/was.epoch 2>/dev/null || echo 0)
+    while
+        EPOCH_NOW=$(lachesis attach --exec='ftm.currentEpoch()')
+	[ ${EPOCH_NOW} -le ${EPOCH_WAS} ]
+    do
+        sleep 5
+    done
+    #'
+
+    kill ${PID} && wait ${PID}
+    lachesis export /snapshots/part.snapshot ${EPOCH_WAS} $((EPOCH_NOW-1))
+
+    if [ -f ${EPOCH_WAS}.snapshot ]
+    then
+	cp /snapshots/${EPOCH_WAS}.snapshot /snapshots/${EPOCH_NOW}.snapshot
+	tail -c +9 /snapshots/part.snapshot >> /snapshots/${EPOCH_NOW}.snapshot
+    else
+        mv /snapshots/part.snapshot /snapshots/${EPOCH_NOW}.snapshot
+    fi
+    echo ${EPOCH_NOW} > /snapshots/was.epoch
+    
+    sed "s/EPOCH/${EPOCH_NOW}/g" index.html > /usr/share/nginx/html/index.html
 done
