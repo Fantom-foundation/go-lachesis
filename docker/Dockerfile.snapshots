@@ -14,13 +14,11 @@ RUN export GIT_COMMIT=$(git rev-list -1 HEAD) && \
 FROM nginx:latest
 COPY --from=lachesis /tmp/lachesis /usr/bin
 RUN apt update && apt install -y musl
-RUN sed -i 's/set -e/set -e\nnohup bash \/docker-entrypoint.d\/scheduler.sh \&/' /docker-entrypoint.sh
 RUN ln -s /lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so
 RUN ln -s /lib/libc.musl-x86_64.so /lib/libc.musl-x86_64.so.1
-RUN ln -s /snapshots/uploads/lachesis.snapshot /usr/share/nginx/html/lachesis.snapshot
-RUN curl https://raw.githubusercontent.com/Fantom-foundation/lachesis_launch/master/releases/v0.6.0/mainnet.toml > /docker-entrypoint.d/mainnet.toml
-COPY ./docker/snapshots/index.html /docker-entrypoint.d/index.html 
 COPY ./docker/snapshots/scheduler.sh /docker-entrypoint.d/scheduler.sh
+RUN sed -i 's/set -e/set -e\nnohup bash \/docker-entrypoint.d\/scheduler.sh \&/' /docker-entrypoint.sh
+COPY ./docker/snapshots/index.html /docker-entrypoint.d/index.html 
 
 EXPOSE 5050 18545 18546 18547 19090 80
 
