@@ -10,6 +10,7 @@ RUN export GIT_COMMIT=$(git rev-list -1 HEAD) && \
     export LD_FLAGS="-s -w -X main.gitCommit=$GIT_COMMIT -X main.gitDate=$GIT_DATE" && \
     go build -ldflags "$LD_FLAGS" -o /tmp/lachesis ./cmd/lachesis
 
+
 FROM nginx:latest
 COPY --from=lachesis /tmp/lachesis /usr/bin
 RUN apt update && apt install -y musl
@@ -19,31 +20,7 @@ RUN ln -s /lib/libc.musl-x86_64.so /lib/libc.musl-x86_64.so.1
 RUN ln -s /snapshots/uploads/lachesis.snapshot /usr/share/nginx/html/lachesis.snapshot
 RUN curl https://raw.githubusercontent.com/Fantom-foundation/lachesis_launch/master/releases/v0.6.0/mainnet.toml > /docker-entrypoint.d/mainnet.toml
 COPY ./docker/snapshots/index.html /docker-entrypoint.d/index.html 
-RUN printf "#!/bin/bash \n\
-\n\
-mv /docker-entrypoint.d/index.html /usr/share/nginx/html/index.html \n\
-mkdir -p /snapshots/uploads && touch /snapshots/latest.snapshot \n\
-while [ -f /docker-entrypoint.d/mainnet.toml ] \n\
-do \n\
-    previous_epoch=\$(ls -1 /snapshots/*.epoch 2>/dev/null 1>&2 && echo \$(basename \$(ls -1 /snapshots/*.epoch | sort -r | head -n 1)) || echo 0.epoch) \n\
-    previous_epoch=\${previous_epoch%%.epoch} \n\
-    lachesis --nousb --config /docker-entrypoint.d/mainnet.toml & \n\
-    pid=\$! \n\
-    sleep 333 \n\
-    while [ \$(( \$(date +%%s) - \$(stat -c %%Y /snapshots/latest.snapshot) )) -lt 4321 ] \n\
-    do \n\
-        sleep 6 \n\
-    done \n\
-    current_epoch=\$(lachesis attach --exec='ftm.currentEpoch()') \n\
-    kill \$pid && wait \$pid \n\
-    lachesis export /snapshots/latest.snapshot \$last_epoch \$current_epoch \n\
-    unlink /snapshots/\$previous_epoch.epoch \n\
-    ln -s /snapshots/latest.snapshot /snapshots/\$current_epoch.epoch \n\
-    cp /snapshots/uploads/lachesis.snapshot /snapshots/tmp.snapshot \n\
-    cat /snapshots/latest.snapshot >> /snapshots/tmp.snapshot \n\
-    mv /snapshots/tmp.snapshot /snapshots/uploads/lachesis.snapshot \n\
-done \n\
-" > /docker-entrypoint.d/scheduler.sh
+COPY ./docker/snapshots/scheduler.sh /docker-entrypoint.d/scheduler.sh
 
 EXPOSE 5050 18545 18546 18547 19090 80
 
