@@ -18,24 +18,7 @@ RUN ln -s /lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so
 RUN ln -s /lib/libc.musl-x86_64.so /lib/libc.musl-x86_64.so.1
 RUN ln -s /snapshots/uploads/lachesis.snapshot /usr/share/nginx/html/lachesis.snapshot
 RUN curl https://raw.githubusercontent.com/Fantom-foundation/lachesis_launch/master/releases/v0.6.0/mainnet.toml > /docker-entrypoint.d/mainnet.toml
-RUN printf "<!DOCTYPE html>\
-<html>\
-<head>\
-<title>Welcome fantom snapshots</title>\
-<style>\
-    body {\
-        width: 35em;\
-        margin: 0 auto;\
-        font-family: Tahoma, Verdana, Arial, sans-serif;\
-    }\
-</style>\
-</head>\
-<body>\
-<h1>Welcome to fantom snapshots</h1>\
-<p>Download the latest snapshot file&nbsp;<a href="/lachesis.snapshot">lachesis.snapshot</a>.</p>\
-<p><em>Then import snapshot by command &ldquo;lachesis import lachesis.snapshot&rdquo;</em></p>\
-</body>\
-</html>" > /docker-entrypoint.d/index.html 
+COPY ./docker/snapshots/index.html /docker-entrypoint.d/index.html 
 RUN printf "#!/bin/bash \n\
 \n\
 mv /docker-entrypoint.d/index.html /usr/share/nginx/html/index.html \n\
