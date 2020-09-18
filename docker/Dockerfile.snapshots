@@ -16,9 +16,10 @@ COPY --from=lachesis /tmp/lachesis /usr/bin
 RUN apt update && apt install -y musl
 RUN ln -s /lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so
 RUN ln -s /lib/libc.musl-x86_64.so /lib/libc.musl-x86_64.so.1
-COPY ./docker/snapshots/scheduler.sh /docker-entrypoint.d/scheduler.sh
-RUN sed -i 's/set -e/set -e\nnohup bash \/docker-entrypoint.d\/scheduler.sh \&/' /docker-entrypoint.sh
-COPY ./docker/snapshots/index.html /docker-entrypoint.d/index.html 
+RUN mkdir /snapshots
+COPY ./docker/snapshots/index.html /snapshots/
+COPY ./docker/snapshots/snapshotting.sh /snapshots/
+COPY ./docker/snapshots/90.start-snapshotting.sh /docker-entrypoint.d/
 
-EXPOSE 5050 18545 18546 18547 19090 80
+EXPOSE 80
 
