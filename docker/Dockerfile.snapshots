@@ -21,5 +21,6 @@ COPY ./docker/snapshots/index.html /snapshots/
 COPY ./docker/snapshots/snapshotting.sh /snapshots/
 COPY ./docker/snapshots/90.start-snapshotting.sh /docker-entrypoint.d/
 
+VOLUME /snapshots/files
 EXPOSE 80
 
