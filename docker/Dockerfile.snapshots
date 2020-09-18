@@ -22,5 +22,7 @@ COPY ./docker/snapshots/snapshotting.sh /snapshots/
 COPY ./docker/snapshots/90.start-snapshotting.sh /docker-entrypoint.d/
 
 VOLUME /snapshots/files
+VOLUME /root/.lachesis
+
 EXPOSE 80
 
