@@ -5,8 +5,9 @@ set -x
 cd $(dirname $0)
 mkdir -p files
 touch ./files/part.snapshot
-ln -s ./files /usr/share/nginx/html/snapshots
-ln -s ./files/index.html /usr/share/nginx/html/index.html
+ln -s ${PWD}/files /usr/share/nginx/html/snapshots
+rm -f /usr/share/nginx/html/index.html
+ln -s ${PWD}/files/index.html /usr/share/nginx/html/index.html
 PERIOD_SEC=$(( 60 ))
 
 while true
