@@ -14,6 +14,10 @@ package gossip
 //go:generate bash -c "cd ../../fantom-sfc && git checkout 2.0.1-rc2 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/gossip:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
 //go:generate mkdir -p sfc201
 //go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc201 --type=Contract --out=sfc201/contract.go
+// v2.0.2-rc.2
+//go:generate bash -c "cd ../../fantom-sfc && git checkout v2.0.2-rc.2 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/gossip:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
+//go:generate mkdir -p sfc202
+//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc202 --type=Contract --out=sfc202/contract.go
 // clean
 //go:generate rm -fr ./solc
 
