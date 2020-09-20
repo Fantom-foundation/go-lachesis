@@ -11,6 +11,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfc110"
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfc201"
+	"github.com/Fantom-foundation/go-lachesis/gossip/sfc202"
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfcproxy"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
@@ -33,8 +34,9 @@ func TestSFC(t *testing.T) {
 	require.NoError(t, err)
 
 	var (
-		sfc1 *sfc110.Contract
-		sfc2 *sfc201.Contract
+		sfc11 *sfc110.Contract
+		sfc21 *sfc201.Contract
+		sfc22 *sfc202.Contract
 
 		prev struct {
 			epoch             *big.Int
@@ -70,10 +72,10 @@ func TestSFC(t *testing.T) {
 			require.NoError(err)
 			require.Equal(newImpl, impl, "SFC-proxy: implementation address")
 
-			sfc1, err = sfc110.NewContract(sfc.ContractAddress, env)
+			sfc11, err = sfc110.NewContract(sfc.ContractAddress, env)
 			require.NoError(err)
 
-			epoch, err := sfc1.ContractCaller.CurrentEpoch(env.ReadOnly())
+			epoch, err := sfc11.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
 			require.Equal(0, epoch.Cmp(big.NewInt(2)), "current epoch")
 		}) &&
@@ -81,11 +83,11 @@ func TestSFC(t *testing.T) {
 		t.Run("Upgrade stakers storage", func(t *testing.T) {
 			require := require.New(t)
 
-			stakers, err := sfc1.StakersLastID(env.ReadOnly())
+			stakers, err := sfc11.StakersLastID(env.ReadOnly())
 			require.NoError(err)
 			txs := make([]*eth.Transaction, 0, int(stakers.Int64()))
 			for i := stakers.Int64(); i > 0; i-- {
-				tx, err := sfc1.UpgradeStakerStorage(env.Payer(int(i)), big.NewInt(i))
+				tx, err := sfc11.UpgradeStakerStorage(env.Payer(int(i)), big.NewInt(i))
 				require.NoError(err)
 				txs = append(txs, tx)
 			}
@@ -101,7 +103,7 @@ func TestSFC(t *testing.T) {
 			require := require.New(t)
 
 			newStake := utils.ToFtm(genesisStake / 2)
-			minStake, err := sfc1.MinStake(env.ReadOnly())
+			minStake, err := sfc11.MinStake(env.ReadOnly())
 			require.NoError(err)
 			require.Greater(newStake.Cmp(minStake), 0,
 				fmt.Sprintf("newStake(%s) < minStake(%s)", newStake, minStake))
@@ -109,10 +111,10 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(sameEpoch,
 				env.Transfer(1, 4, big.NewInt(0).Add(newStake, utils.ToFtm(10))),
 			)
-			tx, err := sfc1.CreateStake(env.Payer(4, newStake), nil)
+			tx, err := sfc11.CreateStake(env.Payer(4, newStake), nil)
 			require.NoError(err)
 			env.ApplyBlock(nextEpoch, tx)
-			newId, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			newId, err := sfc11.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
 			require.NoError(err)
 			env.AddValidator(idx.StakerID(newId.Uint64()))
 		}) &&
@@ -125,10 +127,10 @@ func TestSFC(t *testing.T) {
 				env.Transfer(1, 5, big.NewInt(0).Add(newDelegation, utils.ToFtm(10))),
 			)
 
-			staker, err := sfc1.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			staker, err := sfc11.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
 			require.NoError(err)
 
-			tx, err := sfc1.CreateDelegation(env.Payer(5, newDelegation), staker)
+			tx, err := sfc11.CreateDelegation(env.Payer(5, newDelegation), staker)
 			require.NoError(err)
 			env.ApplyBlock(sameEpoch, tx)
 			env.AddDelegator(env.Address(5))
@@ -151,12 +153,38 @@ func TestSFC(t *testing.T) {
 			require.NoError(err)
 			require.Equal(newImpl, impl, "SFC-proxy: implementation address")
 
-			sfc2, err = sfc201.NewContract(sfc.ContractAddress, env)
+			sfc21, err = sfc201.NewContract(sfc.ContractAddress, env)
 			require.NoError(err)
 
-			epoch, err := sfc2.ContractCaller.CurrentEpoch(env.ReadOnly())
+			epoch, err := sfc21.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
 			require.Equal(0, epoch.Cmp(big.NewInt(3)), "current epoch: %d", epoch.Uint64())
+			prev.epoch = epoch
+		}) &&
+
+		t.Run("Upgrade to v2.0.2-rc.2", func(t *testing.T) {
+			require := require.New(t)
+
+			r := env.ApplyBlock(nextEpoch,
+				env.Contract(1, utils.ToFtm(0), sfc202.ContractBin),
+			)
+			newImpl := r[0].ContractAddress
+
+			admin := env.Payer(1)
+			tx, err := sfcProxy.ContractTransactor.UpgradeTo(admin, newImpl)
+			require.NoError(err)
+			env.ApplyBlock(sameEpoch, tx)
+
+			impl, err := sfcProxy.Implementation(env.ReadOnly())
+			require.NoError(err)
+			require.Equal(newImpl, impl, "SFC-proxy: implementation address")
+
+			sfc22, err = sfc202.NewContract(sfc.ContractAddress, env)
+			require.NoError(err)
+
+			epoch, err := sfc22.ContractCaller.CurrentEpoch(env.ReadOnly())
+			require.NoError(err)
+			require.Equal(0, epoch.Cmp(big.NewInt(4)), "current epoch: %d", epoch.Uint64())
 			prev.epoch = epoch
 		})
 
