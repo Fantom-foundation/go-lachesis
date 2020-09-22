@@ -13,7 +13,7 @@ RUN export GIT_COMMIT=$(git rev-list -1 HEAD) && \
 
 FROM nginx:latest
 COPY --from=lachesis /tmp/lachesis /usr/bin
-RUN apt update && apt install -y musl
+RUN apt update && apt install -y sudo musl
 RUN ln -s /lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so
 RUN ln -s /lib/libc.musl-x86_64.so /lib/libc.musl-x86_64.so.1
 RUN mkdir /snapshots
@@ -21,8 +21,11 @@ COPY ./docker/snapshots/index.html /snapshots/
 COPY ./docker/snapshots/snapshotting.sh /snapshots/
 COPY ./docker/snapshots/90.start-snapshotting.sh /docker-entrypoint.d/
 
+ENV NODE_UID=0
+RUN mkdir -p /snapshots/files
 VOLUME /snapshots/files
-VOLUME /root/.lachesis
+RUN mkdir -p /lachesis/datadir
+VOLUME /lachesis/datadir
 
 EXPOSE 80
 

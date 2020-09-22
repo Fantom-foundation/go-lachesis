@@ -1,19 +1,17 @@
 #!/usr/bin/env bash
+cd $(dirname $0)
 
 set -x
 
-cd $(dirname $0)
+PERIOD_SEC=$(( 30*60 ))
+DATADIR=$1
 mkdir -p files
-touch ./files/part.snapshot
-ln -s ${PWD}/files /usr/share/nginx/html/snapshots
-rm -f /usr/share/nginx/html/index.html
-ln -s ${PWD}/files/index.html /usr/share/nginx/html/index.html
-PERIOD_SEC=$(( 60 ))
+touch -d "${PERIOD_SEC} seconds ago" ./files/part.snapshot
 
 while true
 do
     # start the node
-    lachesis --nousb &
+    lachesis --datadir=${DATADIR} --nousb &
     PID=$!
 
     # wait for period
@@ -27,7 +25,7 @@ do
     # wait for new epoch
     EPOCH_WAS=$(cat files/was.epoch 2>/dev/null || echo 0)
     while
-        EPOCH_NOW=$(lachesis attach --exec='ftm.currentEpoch()') #'
+        EPOCH_NOW=$(test -e ${DATADIR}/lachesis.ipc && lachesis --datadir=${DATADIR} attach --exec='ftm.currentEpoch()' ${DATADIR}/lachesis.ipc || echo 0) #'
 	[ ${EPOCH_NOW} -le ${EPOCH_WAS} ]
     do
         sleep 5
@@ -35,7 +33,7 @@ do
     
     # stop the node and export new events snapshot
     kill ${PID} && wait ${PID}
-    lachesis export files/part.snapshot ${EPOCH_WAS} $((EPOCH_NOW-1))
+    lachesis --datadir=${DATADIR} export files/part.snapshot ${EPOCH_WAS} $((EPOCH_NOW-1))
 
     if [ -f files/${EPOCH_WAS}.snapshot ]
     then
