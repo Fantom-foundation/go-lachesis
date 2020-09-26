@@ -339,7 +339,7 @@ func requireRewards(
 			sum := new(big.Int)
 			for _, id := range env.validators {
 				staker := big.NewInt(int64(id))
-				r, _, _, err := sfc.CalcDelegationRewards(env.ReadOnly(), addr, staker, epoch, big.NewInt(1))
+				r, _, _, err := sfc.CalcDelegationCompoundRewards(env.ReadOnly(), addr, staker, epoch, big.NewInt(1))
 				require.NoError(err)
 				sum = new(big.Int).Add(sum, r)
 			}
