@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfc110"
-	"github.com/Fantom-foundation/go-lachesis/gossip/sfc201"
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfc202"
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfcproxy"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -35,7 +34,6 @@ func TestSFC(t *testing.T) {
 
 	var (
 		sfc11 *sfc110.Contract
-		sfc21 *sfc201.Contract
 		sfc22 *sfc202.Contract
 
 		prev struct {
@@ -136,32 +134,6 @@ func TestSFC(t *testing.T) {
 			env.AddDelegator(env.Address(5))
 		}) &&
 
-		t.Run("Upgrade to v2.0.1-rc2", func(t *testing.T) {
-			require := require.New(t)
-
-			r := env.ApplyBlock(sameEpoch,
-				env.Contract(1, utils.ToFtm(0), sfc201.ContractBin),
-			)
-			newImpl := r[0].ContractAddress
-
-			admin := env.Payer(1)
-			tx, err := sfcProxy.ContractTransactor.UpgradeTo(admin, newImpl)
-			require.NoError(err)
-			env.ApplyBlock(sameEpoch, tx)
-
-			impl, err := sfcProxy.Implementation(env.ReadOnly())
-			require.NoError(err)
-			require.Equal(newImpl, impl, "SFC-proxy: implementation address")
-
-			sfc21, err = sfc201.NewContract(sfc.ContractAddress, env)
-			require.NoError(err)
-
-			epoch, err := sfc21.ContractCaller.CurrentEpoch(env.ReadOnly())
-			require.NoError(err)
-			require.Equal(0, epoch.Cmp(big.NewInt(3)), "current epoch: %d", epoch.Uint64())
-			prev.epoch = epoch
-		}) &&
-
 		t.Run("Upgrade to v2.0.2-rc.2", func(t *testing.T) {
 			require := require.New(t)
 
@@ -215,7 +187,7 @@ func requireRewards(
 		case *sfc110.Contract:
 			rewards[i], _, _, err = sfc.CalcDelegationRewards(env.ReadOnly(), addr, epoch, big.NewInt(1))
 			require.NoError(err)
-		case *sfc201.Contract:
+		case *sfc202.Contract:
 			sum := new(big.Int)
 			for _, id := range env.validators {
 				staker := big.NewInt(int64(id))
@@ -264,25 +236,16 @@ func requireRewards(
 	return
 }
 
-func totalLockedAmount(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) *big.Int {
+func printEpochStats(t *testing.T, env *testEnv, sfc2 *sfc202.Contract) {
 	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
 	require.NoError(t, err)
 	es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
 	require.NoError(t, err)
-
-	return es.TotalLockedAmount
+	t.Logf("Epoch%sStat{dir: %s, BaseRewardPerSecond: %s, TotalBaseRewardWeight: %s}",
+		epoch, es.Duration, es.BaseRewardPerSecond, es.TotalBaseRewardWeight)
 }
 
-func printEpochStats(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
-	epoch, err := sfc2.CurrentSealedEpoch(env.ReadOnly())
-	require.NoError(t, err)
-	es, err := sfc2.EpochSnapshots(env.ReadOnly(), epoch)
-	require.NoError(t, err)
-	t.Logf("Epoch%sStat{dir: %s, BaseRewardPerSecond: %s, TotalLockedAmount: %s, TotalBaseRewardWeight: %s}",
-		epoch, es.Duration, es.BaseRewardPerSecond, es.TotalLockedAmount, es.TotalBaseRewardWeight)
-}
-
-func printValidators(t *testing.T, env *testEnv, sfc2 *sfc201.Contract) {
+func printValidators(t *testing.T, env *testEnv, sfc2 *sfc202.Contract) {
 	require := require.New(t)
 
 	max, err := sfc2.StakersLastID(env.ReadOnly())
