@@ -168,6 +168,10 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 	}
 	env.App.store.SetBlock(block)
 
+	if len(txs) < 1 {
+		txs = []*eth.Transaction{nil}
+	}
+
 	validators := env.Validators()
 	for i, tx := range txs {
 		e := &inter.Event{
@@ -178,14 +182,16 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 					Creator: validators[i%len(validators)],
 				},
 			},
-			Transactions: eth.Transactions{tx},
 		}
 
-		sender, err := eth.Sender(env.signer, tx)
-		if err != nil {
-			panic(err)
+		if tx != nil {
+			e.Transactions = eth.Transactions{tx}
+			sender, err := eth.Sender(env.signer, tx)
+			if err != nil {
+				panic(err)
+			}
+			env.incNonce(sender)
 		}
-		env.incNonce(sender)
 		env.eventSeq++
 		env.App.store.SetEvent(e)
 		block.Events = append(block.Events, e.Hash())
@@ -198,6 +204,7 @@ func (env *testEnv) ApplyBlock(spent time.Duration, txs ...*eth.Transaction) eth
 
 	sealEpoch := spent >= env.App.config.Net.Dag.MaxEpochDuration
 	if sealEpoch {
+		env.App.store.EpochDbs.Del(uint64(env.epoch))
 		env.epoch++
 	}
 	block, _, receipts, _, _ := env.App.applyNewState(block, sealEpoch, inter.Cheaters{})
