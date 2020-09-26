@@ -14,6 +14,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/gossip/sfcproxy"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 )
@@ -134,6 +135,23 @@ func TestSFC(t *testing.T) {
 			env.AddDelegator(env.Address(5))
 		}) &&
 
+		t.Run("Check if locking is not set", func(t *testing.T) {
+			require := require.New(t)
+
+			require.Zero(
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
+		}) &&
+
+		t.Run("Check rewards before sfc2", func(t *testing.T) {
+			env.ApplyBlock(nextEpoch) // clear epoch
+			env.ApplyBlock(nextEpoch)
+			rewards := requireRewards(t, env, sfc11, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
+			prev.reward = rewards[0]
+		}) &&
+
 		t.Run("Upgrade to v2.0.2-rc.2", func(t *testing.T) {
 			require := require.New(t)
 
@@ -156,7 +174,7 @@ func TestSFC(t *testing.T) {
 
 			epoch, err := sfc22.ContractCaller.CurrentEpoch(env.ReadOnly())
 			require.NoError(err)
-			require.Equal(0, epoch.Cmp(big.NewInt(4)), "current epoch: %d", epoch.Uint64())
+			require.Equal(0, epoch.Cmp(big.NewInt(6)), "current epoch: %d", epoch.Uint64())
 			prev.epoch = epoch
 		})
 
@@ -174,15 +192,15 @@ func requireRewards(
 
 	validators := env.Validators()
 	rewards = make([]*big.Int, len(validators)+len(env.delegators))
-	for i, id := range env.validators {
+	for i, id := range validators {
 		staker := big.NewInt(int64(id))
 		rewards[i], _, _, err = sfc.CalcValidatorRewards(env.ReadOnly(), staker, epoch, big.NewInt(1))
 		require.NoError(err)
-		t.Logf("validator reward %d: %s", i, rewards[i])
+		t.Logf("validator reward %d: %s", i+1, rewards[i])
 	}
 
 	for i, addr := range env.delegators {
-		i += len(env.validators)
+		i += len(validators)
 		switch sfc := sfc.(type) {
 		case *sfc110.Contract:
 			rewards[i], _, _, err = sfc.CalcDelegationRewards(env.ReadOnly(), addr, epoch, big.NewInt(1))
@@ -199,14 +217,14 @@ func requireRewards(
 		default:
 			panic("unknown contract type")
 		}
-		t.Logf("validator reward %d: %s", i, rewards[i])
+		t.Logf("delegator reward %d: %s", i+1, rewards[i])
 	}
 
-	for i := range env.validators {
+	for i := range validators {
 		if i == 0 {
 			continue
 		}
-
+		t.Logf("LEN rewards = %d; LEN stakes = %d; I = %d", len(rewards), len(rewards), i)
 		a := new(big.Int).Mul(rewards[0], big.NewInt(stakes[i]))
 		b := new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))
 		want := new(big.Int).Div(b, rewards[0])
@@ -220,7 +238,7 @@ func requireRewards(
 	}
 
 	for i := range env.delegators {
-		i += len(env.validators)
+		i += len(validators)
 		a := new(big.Int).Mul(rewards[0], big.NewInt(stakes[i]))
 		b := new(big.Int).Mul(rewards[i], big.NewInt(stakes[0]))
 		want := new(big.Int).Div(b, rewards[0])
