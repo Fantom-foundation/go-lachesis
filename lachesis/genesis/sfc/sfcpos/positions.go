@@ -78,6 +78,10 @@ func StakeTotalAmount() common.Hash {
 	return utils.U64to256(offset + 6)
 }
 
+func FirstLockedUpEpoch() common.Hash {
+	return utils.U64to256(offset + 17)
+}
+
 // Stake
 
 type StakePos struct {
