@@ -176,6 +176,71 @@ func TestSFC(t *testing.T) {
 			require.NoError(err)
 			require.Equal(0, epoch.Cmp(big.NewInt(6)), "current epoch: %d", epoch.Uint64())
 			prev.epoch = epoch
+		}) &&
+
+		t.Run("Upgrade delegators storage", func(t *testing.T) {
+			require := require.New(t)
+
+			staker, err := sfc11.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+
+			var txs []*eth.Transaction
+			for _, delegator := range env.delegators {
+				tx, err := sfc22.SyncDelegation(env.Payer(5), delegator, staker)
+				require.NoError(err)
+				txs = append(txs, tx)
+			}
+			env.ApplyBlock(sameEpoch, txs...)
+		}) &&
+
+		t.Run("Check if locking is false", func(t *testing.T) {
+			require := require.New(t)
+
+			require.Zero(
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
+		}) &&
+
+		t.Run("Some transfers III", func(t *testing.T) {
+			cicleTransfers(t, env, 3)
+		}) &&
+
+		t.Run("Enable lockedup functionality", func(t *testing.T) {
+			require := require.New(t)
+
+			tx, err := sfc22.StartLockedUp(env.Payer(1), prev.epoch)
+			require.NoError(err)
+			env.ApplyBlock(nextEpoch, tx)
+
+			epoch, err := sfc22.FirstLockedUpEpoch(env.ReadOnly())
+			require.NoError(err)
+			require.Equal(0, epoch.Cmp(prev.epoch), "1st locked-up epoch")
+
+			raw := new(big.Int).SetBytes(env.State().GetState(
+				sfc.ContractAddress,
+				sfcpos.FirstLockedUpEpoch()).Bytes())
+			require.Equal(0, epoch.Cmp(raw), "raw 1st locked-up epoch")
+
+			raw = new(big.Int).SetBytes(env.State().GetState(
+				sfc.ContractAddress,
+				sfcpos.CurrentSealedEpoch()).Bytes())
+			require.Equal(0, epoch.Cmp(raw), "raw last sealed epoch")
+		}) &&
+
+		t.Run("Check if locking is true", func(t *testing.T) {
+			require := require.New(t)
+
+			epoch, err := sfc22.CurrentSealedEpoch(env.ReadOnly())
+			require.NoError(err)
+
+			require.GreaterOrEqual(
+				epoch.Uint64(),
+				utils.H256toU64(env.State().GetState(
+					sfc.ContractAddress,
+					sfcpos.FirstLockedUpEpoch())),
+			)
 		})
 
 }
