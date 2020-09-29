@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -139,7 +140,7 @@ func (v *Checker) Validate(e *inter.Event) error {
 		}
 	}
 	// Merkle tree
-	if e.TxHash != types.DeriveSha(e.Transactions) {
+	if e.TxHash != types.DeriveSha(e.Transactions, new(trie.Trie)) {
 		return ErrWrongTxHash
 	}
 

@@ -50,7 +50,7 @@ func (s *Store) DelSfcStaker(stakerID idx.StakerID) {
 
 // ForEachSfcStaker iterates all stored SfcStakers
 func (s *Store) ForEachSfcStaker(do func(sfctype.SfcStakerAndID)) {
-	it := s.table.Stakers.NewIterator()
+	it := s.table.Stakers.NewIterator(nil, nil)
 	defer it.Release()
 	s.forEachSfcStaker(it, do)
 }
@@ -71,7 +71,7 @@ func (s *Store) GetEpochValidators(epoch idx.Epoch) []sfctype.SfcStakerAndID {
 		return bVal.([]sfctype.SfcStakerAndID)
 	}
 
-	it := s.table.Validators.NewIteratorWithPrefix(epoch.Bytes())
+	it := s.table.Validators.NewIterator(epoch.Bytes(), nil)
 	defer it.Release()
 	validators := make([]sfctype.SfcStakerAndID, 0, 200)
 	s.forEachSfcStaker(it, func(staker sfctype.SfcStakerAndID) {

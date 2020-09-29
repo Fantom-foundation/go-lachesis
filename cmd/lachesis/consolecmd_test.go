@@ -78,7 +78,7 @@ func TestHTTPAttachWelcome(t *testing.T) {
 	port := strconv.Itoa(trulyRandInt(1024, 65536)) // Yeah, sometimes this will fail, sorry :P
 	cli := exec(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--rpc", "--rpcport", port)
+		"--http", "--http.port", port)
 
 	endpoint := "http://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 10*time.Second)
@@ -93,7 +93,7 @@ func TestWSAttachWelcome(t *testing.T) {
 
 	cli := exec(t,
 		"--port", "0", "--maxpeers", "0", "--nodiscover", "--nat", "none",
-		"--ws", "--wsport", port)
+		"--ws", "--ws.port", port)
 
 	endpoint := "ws://127.0.0.1:" + port
 	waitForEndpoint(t, endpoint, 10*time.Second)

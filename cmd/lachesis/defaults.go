@@ -26,9 +26,12 @@ const (
 
 func overrideFlags() {
 	utils.ListenPortFlag.Value = DefaultP2PPort
-	utils.RPCPortFlag.Value = DefaultHTTPPort
+	utils.HTTPPortFlag.Value = DefaultHTTPPort
+	utils.LegacyRPCPortFlag.Value = DefaultHTTPPort
 	utils.WSPortFlag.Value = DefaultWSPort
-	utils.GraphQLPortFlag.Value = DefaultGraphQLPort
+	utils.LegacyWSPortFlag.Value = DefaultWSPort
+	utils.LegacyGraphQLPortFlag.Value = DefaultGraphQLPort
+	utils.LegacyGraphQLPortFlag.Value = DefaultGraphQLPort
 }
 
 // NodeDefaultConfig contains reasonable default settings.

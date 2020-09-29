@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/trie"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/eventcheck/epochcheck"
@@ -303,7 +304,7 @@ func (s *Service) executeEvmTransactions(
 	// Filter skipped transactions
 	evmBlock = filterSkippedTxs(block, evmBlock)
 
-	block.TxHash = types.DeriveSha(evmBlock.Transactions)
+	block.TxHash = types.DeriveSha(evmBlock.Transactions, new(trie.Trie))
 	*evmBlock = evmcore.EvmBlock{
 		EvmHeader:    *evmcore.ToEvmHeader(block),
 		Transactions: evmBlock.Transactions,

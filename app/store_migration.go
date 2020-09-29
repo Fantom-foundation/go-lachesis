@@ -1,13 +1,14 @@
 package app
 
 import (
+	"math/big"
+
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
-	"math/big"
 )
 
 type legacySfcDelegation struct {
@@ -33,7 +34,7 @@ func (s *Store) MigrateMultiDelegations() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.Delegations.NewIterator()
+			it := s.table.Delegations.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
 				delegation := &legacySfcDelegation{}
@@ -64,7 +65,7 @@ func (s *Store) MigrateMultiDelegations() error {
 			}
 		}
 		{
-			it := s.table.Delegations.NewIterator()
+			it := s.table.Delegations.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.Delegations)
 		}
@@ -79,7 +80,7 @@ func (s *Store) MigrateMultiDelegations() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.DelegationOldRewards.NewIterator()
+			it := s.table.DelegationOldRewards.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
 				addr := common.BytesToAddress(it.Key())
@@ -102,7 +103,7 @@ func (s *Store) MigrateMultiDelegations() error {
 			}
 		}
 		{
-			it := s.table.DelegationOldRewards.NewIterator()
+			it := s.table.DelegationOldRewards.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.DelegationOldRewards)
 		}
@@ -117,7 +118,7 @@ func (s *Store) MigrateMultiDelegations() error {
 }
 
 func (s *Store) MigrateEraseGenesisField() error {
-	it := s.mainDb.NewIteratorWithPrefix([]byte("G"))
+	it := s.mainDb.NewIterator([]byte("G"), nil)
 	defer it.Release()
 	s.dropTable(it, s.mainDb)
 	return nil
@@ -128,7 +129,7 @@ func (s *Store) MigrateAdjustableOfflinePeriod() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.SfcConstants.NewIterator()
+			it := s.table.SfcConstants.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
 				constants := &legacySfcConstants{}
@@ -153,7 +154,7 @@ func (s *Store) MigrateAdjustableOfflinePeriod() error {
 			}
 		}
 		{
-			it := s.table.SfcConstants.NewIterator()
+			it := s.table.SfcConstants.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.SfcConstants)
 		}

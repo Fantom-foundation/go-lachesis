@@ -95,7 +95,7 @@ func TestTable(t *testing.T) {
 					got := 0
 					var prevKey []byte
 
-					it := t.NewIteratorWithPrefix([]byte(pref))
+					it := t.NewIterator([]byte(pref), nil)
 					defer it.Release()
 					for it.Next() {
 						if prevKey == nil {

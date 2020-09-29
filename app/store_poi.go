@@ -69,7 +69,7 @@ func (s *Store) DelWeightedDelegationsFee(stakerID idx.StakerID) {
 
 // DelAllWeightedDelegationsFee deletes all the records about gas used by delegations of all stakers
 func (s *Store) DelAllWeightedDelegationsFee() {
-	it := s.table.StakerDelegationsFee.NewIterator()
+	it := s.table.StakerDelegationsFee.NewIterator(nil, nil)
 	defer it.Release()
 	s.dropTable(it, s.table.StakerDelegationsFee)
 }

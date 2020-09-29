@@ -11,7 +11,8 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/hashicorp/golang-lru"
+	"github.com/ethereum/go-ethereum/trie"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
@@ -426,7 +427,7 @@ func (em *Emitter) createEvent(poolTxs map[common.Address]types.Transactions) *i
 	}
 
 	// calc Merkle root
-	event.TxHash = types.DeriveSha(event.Transactions)
+	event.TxHash = types.DeriveSha(event.Transactions, new(trie.Trie))
 
 	// sign
 	myAddress := em.myAddress

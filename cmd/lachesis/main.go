@@ -21,6 +21,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/cmd/lachesis/metrics"
 	"github.com/Fantom-foundation/go-lachesis/cmd/lachesis/tracing"
 	"github.com/Fantom-foundation/go-lachesis/debug"
+	"github.com/Fantom-foundation/go-lachesis/flags"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
@@ -37,7 +38,7 @@ var (
 	gitCommit = ""
 	gitDate   = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
+	app = flags.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
 
 	testFlags    []cli.Flag
 	nodeFlags    []cli.Flag
@@ -53,6 +54,7 @@ func init() {
 	// Flags for testing purpose.
 	testFlags = []cli.Flag{
 		FakeNetFlag,
+		LegacyTestnetFlag,
 	}
 
 	// Flags that configure the node.
@@ -61,8 +63,8 @@ func init() {
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
 		utils.BootnodesFlag,
-		utils.BootnodesV4Flag,
-		utils.BootnodesV5Flag,
+		utils.LegacyBootnodesV4Flag,
+		utils.LegacyBootnodesV5Flag,
 		DataDirFlag,
 		utils.KeyStoreDirFlag,
 		utils.ExternalSignerFlag,
@@ -94,13 +96,15 @@ func init() {
 		utils.NetrestrictFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
-		utils.TestnetFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.EthStatsURLFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
+		utils.LegacyGpoBlocksFlag,
 		utils.GpoPercentileFlag,
+		utils.LegacyGpoPercentileFlag,
+		utils.GpoMaxGasPriceFlag,
 		GpoDefaultFlag,
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
@@ -109,26 +113,35 @@ func init() {
 	}
 
 	rpcFlags = []cli.Flag{
-		utils.RPCEnabledFlag,
-		utils.RPCListenAddrFlag,
-		utils.RPCPortFlag,
-		utils.RPCCORSDomainFlag,
-		utils.RPCVirtualHostsFlag,
+		utils.HTTPEnabledFlag,
+		utils.HTTPListenAddrFlag,
+		utils.HTTPPortFlag,
+		utils.HTTPCORSDomainFlag,
+		utils.HTTPVirtualHostsFlag,
+		utils.LegacyRPCEnabledFlag,
+		utils.LegacyRPCListenAddrFlag,
+		utils.LegacyRPCPortFlag,
+		utils.LegacyRPCCORSDomainFlag,
+		utils.LegacyRPCVirtualHostsFlag,
 		utils.GraphQLEnabledFlag,
-		utils.GraphQLListenAddrFlag,
-		utils.GraphQLPortFlag,
 		utils.GraphQLCORSDomainFlag,
 		utils.GraphQLVirtualHostsFlag,
-		utils.RPCApiFlag,
+		utils.HTTPApiFlag,
+		utils.LegacyRPCApiFlag,
 		utils.WSEnabledFlag,
 		utils.WSListenAddrFlag,
+		utils.LegacyWSListenAddrFlag,
 		utils.WSPortFlag,
+		utils.LegacyWSPortFlag,
 		utils.WSApiFlag,
+		utils.LegacyWSApiFlag,
 		utils.WSAllowedOriginsFlag,
+		utils.LegacyWSAllowedOriginsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
 		utils.InsecureUnlockAllowedFlag,
 		utils.RPCGlobalGasCap,
+		utils.RPCGlobalTxFeeCap,
 	}
 
 	metricsFlags = []cli.Flag{

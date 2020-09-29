@@ -114,16 +114,8 @@ func (it *iterator) Release() {
 	*it = iterator{}
 }
 
-func (t *Table) NewIterator() ethdb.Iterator {
-	return &iterator{t.db.NewIteratorWithPrefix(t.prefix), t.prefix}
-}
-
-func (t *Table) NewIteratorWithStart(start []byte) ethdb.Iterator {
-	return &iterator{t.db.NewIteratorWithStart(prefixed(start, t.prefix)), t.prefix}
-}
-
-func (t *Table) NewIteratorWithPrefix(itPrefix []byte) ethdb.Iterator {
-	return &iterator{t.db.NewIteratorWithPrefix(prefixed(itPrefix, t.prefix)), t.prefix}
+func (t *Table) NewIterator(itPrefix []byte, start []byte) ethdb.Iterator {
+	return &iterator{t.db.NewIterator(prefixed(itPrefix, t.prefix), prefixed(start, t.prefix)), t.prefix}
 }
 
 /*
