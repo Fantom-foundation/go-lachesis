@@ -126,6 +126,8 @@ type stateReader interface {
 	GetBlock(hash common.Hash, number uint64) *EvmBlock
 	StateAt(root common.Hash) (*state.StateDB, error)
 
+	MinGasPrice() *big.Int
+
 	SubscribeNewBlock(ch chan<- ChainHeadNotify) notify.Subscription
 }
 
@@ -154,7 +156,7 @@ func DefaultTxPoolConfig() TxPoolConfig {
 		Journal:   "transactions.rlp",
 		Rejournal: time.Hour,
 
-		PriceLimit: lachesisparams.MinGasPrice.Uint64(),
+		PriceLimit: 1,
 		PriceBump:  10,
 
 		AccountSlots: 16,
@@ -416,7 +418,13 @@ func (pool *TxPool) GasPrice() *big.Int {
 	pool.mu.RLock()
 	defer pool.mu.RUnlock()
 
-	return new(big.Int).Set(pool.gasPrice)
+	current := new(big.Int).Set(pool.gasPrice)
+	// opera-specific gas price limit
+	limit := pool.chain.MinGasPrice()
+	if current.Cmp(limit) >= 0 {
+		return current
+	}
+	return limit
 }
 
 // SetGasPrice updates the minimum price required by the transaction pool for a
@@ -545,11 +553,9 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if !local && pool.gasPrice.Cmp(tx.GasPrice()) > 0 {
 		return ErrUnderpriced
 	}
-	// Ensure Lachesis-specific hard bounds
-	if pool.gasPrice.Cmp(lachesisparams.MinGasPrice) >= 0 { // if not test. TODO
-		if lachesisparams.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
-			return ErrUnderpriced
-		}
+	// Ensure Opera-specific hard bounds
+	if pool.chain.MinGasPrice().Cmp(tx.GasPrice()) > 0 {
+		return ErrUnderpriced
 	}
 	// Ensure the transaction adheres to nonce ordering
 	if pool.currentState.GetNonce(from) > tx.Nonce() {
