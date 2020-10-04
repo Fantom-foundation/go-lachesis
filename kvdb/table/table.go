@@ -115,7 +115,7 @@ func (it *iterator) Release() {
 }
 
 func (t *Table) NewIterator(itPrefix []byte, start []byte) ethdb.Iterator {
-	return &iterator{t.db.NewIterator(prefixed(itPrefix, t.prefix), prefixed(start, t.prefix)), t.prefix}
+	return &iterator{t.db.NewIterator(prefixed(itPrefix, t.prefix), start), t.prefix}
 }
 
 /*
