@@ -43,7 +43,6 @@ var NodeDefaultConfig = node.Config{
 	HTTPTimeouts:        rpc.DefaultHTTPTimeouts,
 	WSPort:              DefaultWSPort,
 	WSModules:           []string{},
-	GraphQLPort:         DefaultGraphQLPort,
 	GraphQLVirtualHosts: []string{"localhost"},
 	P2P: p2p.Config{
 		NoDiscovery: false, // enable discovery v4 by default

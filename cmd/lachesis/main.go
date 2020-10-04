@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/console"
+	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
@@ -189,8 +189,7 @@ func init() {
 	app.Flags = append(app.Flags, metricsFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		logdir := ""
-		if err := debug.Setup(ctx, logdir); err != nil {
+		if err := debug.Setup(ctx); err != nil {
 			return err
 		}
 
@@ -203,8 +202,7 @@ func init() {
 
 	app.After = func(ctx *cli.Context) error {
 		debug.Exit()
-		console.Stdin.Close() // Resets terminal mode.
-
+		prompt.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
 }
@@ -231,19 +229,20 @@ func lachesisMain(ctx *cli.Context) error {
 	}
 	defer tracingStop()
 
-	node := makeNode(ctx, makeAllConfigs(ctx))
+	node, _ := makeNode(ctx, makeAllConfigs(ctx))
 	defer node.Close()
 	startNode(ctx, node)
 	node.Wait()
 	return nil
 }
 
-func makeNode(ctx *cli.Context, cfg *config) *node.Node {
+func makeNode(ctx *cli.Context, cfg *config) (*node.Node, *gossip.Service) {
+	stack := makeConfigNode(ctx, &cfg.Node)
+
 	// check errlock file
+	// TODO: do the same with with stack.OpenDatabaseWithFreezer()
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)
 	errlock.Check()
-
-	stack := makeConfigNode(ctx, &cfg.Node)
 
 	engine, _, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
 	metrics.SetDataDir(cfg.Node.DataDir)
@@ -255,19 +254,18 @@ func makeNode(ctx *cli.Context, cfg *config) *node.Node {
 	}
 	setValidator(ctx, ks, &cfg.Lachesis.Emitter)
 
-	// Create and register a gossip network service. This is done through the definition
-	// of a node.ServiceConstructor that will instantiate a node.Service. The reason for
-	// the factory method approach is to support service restarts without relying on the
-	// individual implementations' support for such operations.
-	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine)
+	// Create and register a gossip network service.
+
+	svc, err := gossip.NewService(stack, &cfg.Lachesis, gdb, engine)
+	if err != nil {
+		utils.Fatalf("Failed to create the service: %v", err)
 	}
 
-	if err := stack.Register(gossipService); err != nil {
-		utils.Fatalf("Failed to register the service: %v", err)
-	}
+	stack.RegisterAPIs(svc.APIs())
+	stack.RegisterProtocols(svc.Protocols())
+	stack.RegisterLifecycle(svc)
 
-	return stack
+	return stack, svc
 }
 
 func makeConfigNode(ctx *cli.Context, cfg *node.Config) *node.Node {
@@ -373,7 +371,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 						time.Sleep(time.Minute)
 					}
 					log.Info("Synchronisation completed. Exiting due to exitwhensynced flag.")
-					err = stack.Stop()
+					err = stack.Close()
 					if err != nil {
 						continue
 					}
