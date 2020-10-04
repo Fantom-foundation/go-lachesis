@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/stretchr/testify/assert"
 
@@ -156,12 +155,11 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 	engine.Bootstrap(inter.ConsensusCallbacks{})
 
 	// create service
-	creator := net.Genesis.Alloc.Validators.Addresses()[0]
-	ctx := &node.ServiceContext{
-		AccountManager: mockAccountManager(net.Genesis.Alloc.Accounts, creator),
-	}
-	svc, err := NewService(ctx, &config, store, engine)
+	svc, err := newService(&config, store, engine)
 	assertar.NoError(err)
+
+	creator := net.Genesis.Alloc.Validators.Addresses()[0]
+	svc.accountManager = mockAccountManager(net.Genesis.Alloc.Accounts, creator)
 
 	// start PM
 	pm := svc.pm

@@ -85,13 +85,14 @@ type Service struct {
 	done chan struct{}
 
 	// server
-	Name  string
-	Topic discv5.Topic
+	p2pServer *p2p.Server
+	Name      string
+	Topic     discv5.Topic
 
 	serverPool *serverPool
 
 	// application
-	node                *node.ServiceContext
+	accountManager      *accounts.Manager
 	store               *Store
 	app                 *app.Store
 	engine              Consensus
@@ -120,7 +121,20 @@ type Service struct {
 	logger.Instance
 }
 
-func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine Consensus) (*Service, error) {
+func NewService(stack *node.Node, config *Config, store *Store, engine Consensus) (*Service, error) {
+	if config.TxPool.Journal != "" {
+		config.TxPool.Journal = stack.ResolvePath(config.TxPool.Journal)
+	}
+
+	svc, err := newService(config, store, engine)
+
+	svc.accountManager = stack.AccountManager()
+	svc.p2pServer = stack.Server()
+
+	return svc, err
+}
+
+func newService(config *Config, store *Store, engine Consensus) (*Service, error) {
 	svc := &Service{
 		config: config,
 
@@ -128,7 +142,6 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 		Name: fmt.Sprintf("Node-%d", rand.Int()),
 
-		node:  ctx,
 		store: store,
 		app:   store.app,
 
@@ -157,9 +170,6 @@ func NewService(ctx *node.ServiceContext, config *Config, store *Store, engine C
 
 	// create tx pool
 	stateReader := svc.GetEvmStateReader()
-	if config.TxPool.Journal != "" {
-		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
-	}
 	svc.txpool = evmcore.NewTxPool(config.TxPool, config.Net.EvmChainConfig(), stateReader)
 
 	// create checkers
@@ -290,26 +300,26 @@ func (s *Service) APIs() []rpc.API {
 }
 
 // Start method invoked when the node is ready to start the service.
-func (s *Service) Start(srv *p2p.Server) error {
+func (s *Service) Start() error {
 	// Start the RPC service
-	s.netRPCService = ethapi.NewPublicNetAPI(srv, s.config.Net.NetworkID)
+	s.netRPCService = ethapi.NewPublicNetAPI(s.p2pServer, s.config.Net.NetworkID)
 
 	var genesis common.Hash
 	genesis = s.engine.GetGenesisHash()
 	s.Topic = discv5.Topic("lachesis@" + genesis.Hex())
 
-	if srv.DiscV5 != nil {
+	if s.p2pServer.DiscV5 != nil {
 		go func(topic discv5.Topic) {
 			s.Log.Info("Starting topic registration")
 			defer s.Log.Info("Terminated topic registration")
 
-			srv.DiscV5.RegisterTopic(topic, s.done)
+			s.p2pServer.DiscV5.RegisterTopic(topic, s.done)
 		}(s.Topic)
 	}
 
-	s.pm.Start(srv.MaxPeers)
+	s.pm.Start(s.p2pServer.MaxPeers)
 
-	s.serverPool.start(srv, s.Topic)
+	s.serverPool.start(s.p2pServer, s.Topic)
 
 	s.emitter = s.makeEmitter()
 	s.emitter.SetValidator(s.config.Emitter.Validator)
@@ -336,5 +346,5 @@ func (s *Service) Stop() error {
 
 // AccountManager return node's account manager
 func (s *Service) AccountManager() *accounts.Manager {
-	return s.node.AccountManager
+	return s.accountManager
 }
