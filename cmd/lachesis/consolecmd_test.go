@@ -143,5 +143,5 @@ func trulyRandInt(lo, hi int) int {
 func genesisStart() string {
 	g := genesis.MainGenesis()
 	s := g.Time.Unix()
-	return time.Unix(s, 0).Format(time.RFC1123)
+	return time.Unix(s, 0).Format("Mon Jan 02 2006 15:04:05 GMT-0700 (MST)")
 }
