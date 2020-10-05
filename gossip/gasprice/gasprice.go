@@ -14,18 +14,18 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 )
 
-var maxPrice = big.NewInt(500 * params.GWei)
+var maxPrice = big.NewInt(1000000 * params.GWei)
 
 type Config struct {
 	Blocks     int
 	Percentile int
-	Default    *big.Int `toml:",omitempty"`
 }
 
 type Reader interface {
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error)
 	BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmBlock, error)
 	ChainConfig() *params.ChainConfig
+	MinGasPrice() *big.Int
 }
 
 // Oracle recommends gas prices based on the content of recent
@@ -56,7 +56,7 @@ func NewOracle(backend Reader, params Config) *Oracle {
 	}
 	return &Oracle{
 		backend:     backend,
-		lastPrice:   params.Default,
+		lastPrice:   backend.MinGasPrice(),
 		checkBlocks: blocks,
 		maxEmpty:    blocks / 2,
 		maxBlocks:   blocks * 5,
@@ -95,7 +95,7 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	exp := 0
 	var blockPrices []*big.Int
 	for sent < gpo.checkBlocks && blockNum > 0 {
-		go gpo.getBlockPrices(ctx, types.MakeSigner(gpo.backend.ChainConfig(), big.NewInt(int64(blockNum))), blockNum, ch)
+		go gpo.getBlockPrices(ctx, blockNum, ch)
 		sent++
 		exp++
 		blockNum--
@@ -116,7 +116,7 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 			continue
 		}
 		if blockNum > 0 && sent < gpo.maxBlocks {
-			go gpo.getBlockPrices(ctx, types.MakeSigner(gpo.backend.ChainConfig(), big.NewInt(int64(blockNum))), blockNum, ch)
+			go gpo.getBlockPrices(ctx, blockNum, ch)
 			sent++
 			exp++
 			blockNum--
@@ -129,6 +129,10 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	}
 	if price.Cmp(maxPrice) > 0 {
 		price = new(big.Int).Set(maxPrice)
+	}
+	minimum := gpo.backend.MinGasPrice()
+	if price.Cmp(minimum) < 0 {
+		price = minimum
 	}
 
 	gpo.cacheLock.Lock()
@@ -151,7 +155,7 @@ func (t transactionsByGasPrice) Less(i, j int) bool { return t[i].GasPrice().Cmp
 
 // getBlockPrices calculates the lowest transaction gas price in a given block
 // and sends it to the result channel. If the block is empty, price is nil.
-func (gpo *Oracle) getBlockPrices(ctx context.Context, signer types.Signer, blockNum uint64, ch chan getBlockPricesResult) {
+func (gpo *Oracle) getBlockPrices(ctx context.Context, blockNum uint64, ch chan getBlockPricesResult) {
 	block, err := gpo.backend.BlockByNumber(ctx, rpc.BlockNumber(blockNum))
 	if block == nil {
 		ch <- getBlockPricesResult{nil, err}
@@ -164,11 +168,7 @@ func (gpo *Oracle) getBlockPrices(ctx context.Context, signer types.Signer, bloc
 	sort.Sort(transactionsByGasPrice(txs))
 
 	for _, tx := range txs {
-		sender, err := types.Sender(signer, tx)
-		if err == nil && sender != block.Coinbase {
-			ch <- getBlockPricesResult{tx.GasPrice(), nil}
-			return
-		}
+		ch <- getBlockPricesResult{tx.GasPrice(), nil}
 	}
 	ch <- getBlockPricesResult{nil, nil}
 }
