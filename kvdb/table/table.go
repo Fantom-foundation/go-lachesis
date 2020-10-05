@@ -1,8 +1,6 @@
 package table
 
 import (
-	"bytes"
-
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
@@ -90,11 +88,7 @@ type iterator struct {
 }
 
 func (it *iterator) Next() bool {
-	next := it.it.Next()
-	for next && !bytes.HasPrefix(it.it.Key(), it.prefix) {
-		next = it.it.Next()
-	}
-	return next
+	return it.it.Next()
 }
 
 func (it *iterator) Error() error {
