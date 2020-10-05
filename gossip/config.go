@@ -98,6 +98,8 @@ func DefaultConfig(network lachesis.Config) Config {
 			Default:    params.MinGasPrice,
 			MaxPrice:   gasprice.DefaultMaxPrice,
 		},
+		RPCGasCap:   25000000,
+		RPCTxFeeCap: 1000, // 1000 FTM
 	}
 
 	if network.NetworkID == lachesis.FakeNetworkID {
