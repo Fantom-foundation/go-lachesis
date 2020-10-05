@@ -69,9 +69,9 @@ func TestTable(t *testing.T) {
 			// tables
 			t1 := New(db, []byte("t1"))
 			tables := map[string]kvdb.KeyValueStore{
-				"/t1":   t1,
-				"/t1/x": t1.NewTable([]byte("x")),
-				"/t2":   New(db, []byte("t2")),
+				"/t1":      t1,
+				"/x/t1/t2": New(db, []byte("x")).NewTable([]byte("t1t2")),
+				"/t2":      New(db, []byte("t2")),
 			}
 
 			// write

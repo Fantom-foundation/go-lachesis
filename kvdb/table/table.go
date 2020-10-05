@@ -41,8 +41,8 @@ func New(db ethdb.KeyValueStore, prefix []byte) *Table {
 	return &Table{db, prefix}
 }
 
-func (t Table) NewTable(prefix []byte) *Table {
-	return &Table{t.db, prefix}
+func (t *Table) NewTable(prefix []byte) *Table {
+	return New(t, prefix)
 }
 
 func (t *Table) Close() error {
