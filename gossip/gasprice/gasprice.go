@@ -38,7 +38,6 @@ var DefaultMaxPrice = big.NewInt(400000 * params.GWei)
 type Config struct {
 	Blocks     int
 	Percentile int
-	Default    *big.Int `toml:",omitempty"`
 	MaxPrice   *big.Int `toml:",omitempty"`
 }
 
@@ -46,6 +45,7 @@ type Reader interface {
 	HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error)
 	BlockByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmBlock, error)
 	ChainConfig() *params.ChainConfig
+	MinGasPrice() *big.Int
 }
 
 // Oracle recommends gas prices based on the content of recent
@@ -86,7 +86,7 @@ func NewOracle(backend Reader, params Config) *Oracle {
 	}
 	return &Oracle{
 		backend:     backend,
-		lastPrice:   params.Default,
+		lastPrice:   backend.MinGasPrice(),
 		maxPrice:    maxPrice,
 		checkBlocks: blocks,
 		percentile:  percent,
@@ -162,6 +162,11 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	if price.Cmp(gpo.maxPrice) > 0 {
 		price = new(big.Int).Set(gpo.maxPrice)
 	}
+	minimum := gpo.backend.MinGasPrice()
+	if price.Cmp(minimum) < 0 {
+		price = minimum
+	}
+
 	gpo.cacheLock.Lock()
 	gpo.lastHead = headHash
 	gpo.lastPrice = price

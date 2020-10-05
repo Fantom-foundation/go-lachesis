@@ -4,7 +4,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 )
 
 type (
@@ -95,7 +94,6 @@ func DefaultConfig(network lachesis.Config) Config {
 		GPO: gasprice.Config{
 			Blocks:     20,
 			Percentile: 60,
-			Default:    params.MinGasPrice,
 			MaxPrice:   gasprice.DefaultMaxPrice,
 		},
 		RPCGasCap:   25000000,

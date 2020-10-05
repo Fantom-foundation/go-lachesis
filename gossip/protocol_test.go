@@ -88,7 +88,7 @@ func TestRecvTransactions62(t *testing.T) {
 func testRecvTransactions(t *testing.T, protocol int) {
 	txAdded := make(chan []*types.Transaction)
 	pm, _ := newTestProtocolManagerMust(t, 5, 5, txAdded, nil)
-	pm.synced = 1 // mark synced to accept transactions
+	pm.synced = 1             // mark synced to accept transactions
 	pm.downloader.Terminate() // disable downloader so test would be deterministic
 	p, _ := newTestPeer("peer", protocol, pm, true)
 	defer pm.Stop()

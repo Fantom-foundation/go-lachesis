@@ -296,6 +296,12 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				constants.OfflinePenaltyThreshold.Period = inter.Timestamp(period.Uint64())
 				s.app.SetSfcConstants(epoch, constants)
 			}
+			if l.Topics[0] == sfcpos.Topics.UpdatedMinGasPrice && len(l.Data) >= 32 {
+				minGasPrice := new(big.Int).SetBytes(l.Data[0:32])
+				constants := s.app.GetSfcConstants(epoch)
+				constants.MinGasPrice = minGasPrice
+				s.app.SetSfcConstants(epoch, constants)
+			}
 
 			// Track rewards (API-only)
 			if l.Topics[0] == sfcpos.Topics.ClaimedValidatorReward && len(l.Topics) > 1 && len(l.Data) >= 32 {

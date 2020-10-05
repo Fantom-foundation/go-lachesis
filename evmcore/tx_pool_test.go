@@ -34,8 +34,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	notify "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
-
-	lachesisparams "github.com/Fantom-foundation/go-lachesis/lachesis/params"
 )
 
 // testTxPoolConfig is a transaction pool configuration without stateful disk
@@ -50,15 +48,11 @@ func init() {
 type testBlockChain struct {
 	statedb       *state.StateDB
 	gasLimit      uint64
-	minGasPrice   *big.Int
 	chainHeadFeed *notify.Feed
 }
 
 func (bc *testBlockChain) MinGasPrice() *big.Int {
-	if bc.minGasPrice == nil {
-		return common.Big0
-	}
-	return bc.minGasPrice
+	return common.Big0
 }
 
 func (bc *testBlockChain) CurrentBlock() *EvmBlock {
@@ -98,7 +92,6 @@ func pricedDataTransaction(nonce uint64, gaslimit uint64, gasprice *big.Int, key
 }
 
 func setupTxPool() (*TxPool, *ecdsa.PrivateKey) {
-	lachesisparams.MinGasPrice = new(big.Int) // disable hard bounds in tests
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(rawdb.NewMemoryDatabase()), nil)
 	blockchain := &testBlockChain{statedb, 10000000, new(notify.Feed)}
 
@@ -198,7 +191,6 @@ func (c *testChain) State() (*state.StateDB, error) {
 // state reset and tests whether the pending state is in sync with the
 // block head event that initiated the resetState().
 func TestStateChangeDuringTransactionPoolReset(t *testing.T) {
-	lachesisparams.MinGasPrice = new(big.Int) // disable hard bounds in tests
 	t.Parallel()
 
 	var (
@@ -880,7 +872,6 @@ func TestTransactionQueueTimeLimitingNoLocals(t *testing.T) {
 }
 
 func testTransactionQueueTimeLimiting(t *testing.T, nolocals bool) {
-	lachesisparams.MinGasPrice = new(big.Int) // disable hard bounds in tests
 	// Reduce the eviction interval to a testable amount
 	defer func(old time.Duration) { evictionInterval = old }(evictionInterval)
 	evictionInterval = time.Millisecond * 100

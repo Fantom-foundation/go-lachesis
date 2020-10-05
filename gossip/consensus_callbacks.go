@@ -23,7 +23,8 @@ import (
 )
 
 var (
-	errStopped = errors.New("service is stopped")
+	errStopped     = errors.New("service is stopped")
+	ErrUnderpriced = evmcore.ErrUnderpriced
 )
 
 // ProcessEvent takes event into processing.
@@ -74,6 +75,14 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	}
 	if s.config.DecisiveEventsIndex {
 		s.currentEvent = e.Hash()
+	}
+
+	// check transactions gas price
+	minGasPrice := s.MinGasPrice()
+	for _, tx := range e.Transactions {
+		if tx.GasPrice().Cmp(minGasPrice) < 0 {
+			return ErrUnderpriced
+		}
 	}
 
 	oldEpoch := e.Epoch

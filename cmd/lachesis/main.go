@@ -105,7 +105,6 @@ func init() {
 		utils.GpoPercentileFlag,
 		utils.LegacyGpoPercentileFlag,
 		utils.GpoMaxGasPriceFlag,
-		GpoDefaultFlag,
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,

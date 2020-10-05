@@ -1,8 +1,6 @@
 package params
 
 import (
-	"math/big"
-
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -18,9 +16,4 @@ const (
 	ExtraDataGas = 150
 
 	TxGas = params.TxGas
-)
-
-var (
-	// MinGasPrice is minimum possible gas price for a transaction
-	MinGasPrice = big.NewInt(1e9)
 )

@@ -55,9 +55,6 @@ func (v *Checker) validateTx(tx *types.Transaction) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
-	if tx.GasPrice().Cmp(params.MinGasPrice) < 0 {
-		return ErrUnderpriced
-	}
 	return nil
 }
 

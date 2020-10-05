@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,8 +17,9 @@ import (
 
 type EvmStateReader struct {
 	*ServiceFeed
-	engineMu *sync.RWMutex
-	engine   Consensus
+	engineMu    *sync.RWMutex
+	engine      Consensus
+	minGasPrice func() *big.Int
 
 	store *Store
 	app   *app.Store
@@ -28,9 +30,14 @@ func (s *Service) GetEvmStateReader() *EvmStateReader {
 		ServiceFeed: &s.feed,
 		engineMu:    s.engineMu,
 		engine:      s.engine,
+		minGasPrice: s.MinGasPrice,
 		store:       s.store,
 		app:         s.app,
 	}
+}
+
+func (r *EvmStateReader) MinGasPrice() *big.Int {
+	return r.minGasPrice()
 }
 
 func (r *EvmStateReader) CurrentBlock() *evmcore.EvmBlock {
