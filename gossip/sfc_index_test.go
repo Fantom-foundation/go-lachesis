@@ -147,7 +147,8 @@ func TestSFC(t *testing.T) {
 		t.Run("Check rewards before sfc2", func(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc11, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
+			const validatorCommission int64 = 15
+			rewards := requireRewards(t, env, sfc11, []int64{200, 200, 200, 100 + validatorCommission, (100 - validatorCommission)})
 			prev.reward = rewards[0]
 		}) &&
 
@@ -245,7 +246,7 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
 
-			rewards := requireRewards(t, env, sfc22, []int64{2 * 100, 2 * 100, 2 * 100, 100 + 15, 85})
+			rewards := requireRewards(t, env, sfc22, []int64{200, 200, 200, 100 + 15, 85})
 			expected := new(big.Int).Div(prev.reward, big.NewInt(10))
 			expected = new(big.Int).Mul(expected, big.NewInt(3))
 			require.Equal(0, rewards[0].Cmp(expected), "%s != 0.3*%s", rewards[0], prev.reward)
@@ -269,7 +270,16 @@ func TestSFC(t *testing.T) {
 
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 2, 200 * 3 * 2, 200 * 3 * 2, 115 * (3*2 + 7*2/2), 85 * 3 * 2})
+			const (
+				unlockedRewardRatio int64 = 30
+				lockedRewardRatio   int64 = 70
+			)
+			rewards := requireRewards(t, env, sfc22, []int64{
+				200 * unlockedRewardRatio,
+				200 * unlockedRewardRatio,
+				200 * unlockedRewardRatio,
+				115 * (unlockedRewardRatio + lockedRewardRatio/2),
+				85 * unlockedRewardRatio})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		}) &&
 
@@ -307,7 +317,16 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
 
-			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 4, 200 * 3 * 4, 200 * 3 * 4, 115 * (3*4 + 7*4/2), 85 * (3*4 + 7*4/4)})
+			const (
+				unlockedRewardRatio int64 = 30 * 2
+				lockedRewardRatio   int64 = 70 * 2
+			)
+			rewards := requireRewards(t, env, sfc22, []int64{
+				200 * unlockedRewardRatio,
+				200 * unlockedRewardRatio,
+				200 * unlockedRewardRatio,
+				115 * (unlockedRewardRatio + lockedRewardRatio/2),
+				85 * (unlockedRewardRatio + lockedRewardRatio/4)})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		})
 
