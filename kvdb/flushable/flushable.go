@@ -398,7 +398,7 @@ func (w *Flushable) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	return &iterator{
 		lock:     w.lock,
 		tree:     w.modified,
-		start:    start,
+		start:    append(common.CopyBytes(prefix), start...),
 		prefix:   prefix,
 		parentIt: w.underlying.NewIterator(prefix, start),
 	}
