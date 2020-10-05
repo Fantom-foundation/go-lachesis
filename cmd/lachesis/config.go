@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
+	"github.com/ethereum/go-ethereum/p2p/discv5"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
 	"gopkg.in/urfave/cli.v1"
@@ -110,6 +111,19 @@ func defaultLachesisConfig(ctx *cli.Context) lachesis.Config {
 	}
 
 	return cfg
+}
+
+func setBootnodes(ctx *cli.Context, urls []string, cfg *node.Config) {
+	for _, url := range urls {
+		if url != "" {
+			node, err := discv5.ParseNode(url)
+			if err != nil {
+				log.Error("Bootstrap URL invalid", "enode", url, "err", err)
+				continue
+			}
+			cfg.P2P.BootstrapNodesV5 = append(cfg.P2P.BootstrapNodesV5, node)
+		}
+	}
 }
 
 func setDataDir(ctx *cli.Context, cfg *node.Config) {
@@ -239,6 +253,10 @@ func gossipConfigWithFlags(ctx *cli.Context, src gossip.Config) gossip.Config {
 
 func nodeConfigWithFlags(ctx *cli.Context, cfg node.Config) node.Config {
 	utils.SetNodeConfig(ctx, &cfg)
+
+	if !ctx.GlobalIsSet(FakeNetFlag.Name) {
+		setBootnodes(ctx, Bootnodes, &cfg)
+	}
 	setDataDir(ctx, &cfg)
 	return cfg
 }
