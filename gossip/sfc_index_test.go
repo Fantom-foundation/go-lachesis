@@ -269,19 +269,36 @@ func TestSFC(t *testing.T) {
 
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 2, 200 * 3 * 2, 200 * 3 * 2, 115 * (3*2 + 7), 85 * 3 * 2})
+			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 2, 200 * 3 * 2, 200 * 3 * 2, 115 * (3*2 + 7*2/2), 85 * 3 * 2})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		}) &&
 
-		t.Run("Lockup delegation 5", func(t *testing.T) {
+		t.Run("Lockup delegation 5-to-4 on quarter period", func(t *testing.T) {
 			require := require.New(t)
 
 			staker, err := sfc22.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
 			require.NoError(err)
 
-			tx, err := sfc22.LockUpDelegation(env.Payer(5), big.NewInt(14*86400), staker)
+			lockDuration, err := sfc22.MaxLockupDuration(env.ReadOnly())
+			require.NoError(err)
+
+			lockDuration = big.NewInt(0).Div(lockDuration, big.NewInt(4))
+			tx, err := sfc22.LockUpDelegation(env.Payer(5), lockDuration, staker)
 			require.NoError(err)
 			env.ApplyBlock(sameEpoch, tx)
+		}) &&
+
+		t.Run("Delegation 5-to-4 is locked up", func(t *testing.T) {
+			require := require.New(t)
+
+			env.ApplyBlock(nextEpoch) // clear epoch
+
+			staker, err := sfc22.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
+			require.NoError(err)
+			isLockedUp, err := sfc22.IsDelegationLockedUp(env.ReadOnly(), env.Address(5), staker)
+			require.NoError(err)
+
+			require.True(isLockedUp)
 		}) &&
 
 		t.Run("Check rewards after delegation lock", func(t *testing.T) {
@@ -290,7 +307,7 @@ func TestSFC(t *testing.T) {
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
 
-			rewards := requireRewards(t, env, sfc22, []int64{200 * 6, 200 * 6, 200 * 6, 115*6 + (200+200+200+115+85)*7, 85*6 + (200+200+200+115+85)*7})
+			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 4, 200 * 3 * 4, 200 * 3 * 4, 115 * (3*4 + 7*4/2), 85 * (3*4 + 7*4/4)})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		})
 
