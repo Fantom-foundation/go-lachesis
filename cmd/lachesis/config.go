@@ -40,13 +40,6 @@ var (
 		Usage: "TOML configuration file",
 	}
 
-	// GpoDefaultFlag defines a starting gas price for the oracle (GPO)
-	GpoDefaultFlag = utils.BigFlag{
-		Name:  "gpofloor",
-		Usage: "The default suggested gas price",
-		Value: big.NewInt(params.GWei),
-	}
-
 	// DataDirFlag defines directory to store Lachesis state and user's wallets
 	DataDirFlag = utils.DirectoryFlag{
 		Name:  "datadir",
@@ -137,9 +130,6 @@ func setGPO(ctx *cli.Context, cfg *gasprice.Config) {
 	}
 	if ctx.GlobalIsSet(utils.GpoPercentileFlag.Name) {
 		cfg.Percentile = ctx.GlobalInt(utils.GpoPercentileFlag.Name)
-	}
-	if ctx.GlobalIsSet(GpoDefaultFlag.Name) {
-		cfg.Default = utils.GlobalBig(ctx, GpoDefaultFlag.Name)
 	}
 }
 

@@ -28,6 +28,7 @@ var (
 		UpdatedBaseRewardPerSec        common.Hash
 		UpdatedGasPowerAllocationRate  common.Hash
 		UpdatedOfflinePenaltyThreshold common.Hash
+		UpdatedMinGasPrice             common.Hash
 		DeactivatedStake               common.Hash
 		DeactivatedDelegation          common.Hash
 		UpdatedStake                   common.Hash
@@ -45,6 +46,7 @@ var (
 		UpdatedBaseRewardPerSec:        hash.Of([]byte("UpdatedBaseRewardPerSec(uint256)")),
 		UpdatedGasPowerAllocationRate:  hash.Of([]byte("UpdatedGasPowerAllocationRate(uint256,uint256)")),
 		UpdatedOfflinePenaltyThreshold: hash.Of([]byte("UpdatedOfflinePenaltyThreshold(uint256,uint256)")),
+		UpdatedMinGasPrice:             hash.Of([]byte("UpdatedMinGasPrice(uint256)")),
 		DeactivatedStake:               hash.Of([]byte("DeactivatedStake(uint256)")),
 		DeactivatedDelegation:          hash.Of([]byte("DeactivatedDelegation(address,uint256)")),
 		UpdatedStake:                   hash.Of([]byte("UpdatedStake(uint256,uint256,uint256)")),

@@ -229,6 +229,7 @@ func (s *Service) makeEmitter() *Emitter {
 					s.Log.Crit("Failed to post self-event", "err", err.Error())
 				}
 			},
+			MinGasPrice: s.MinGasPrice,
 			IsSynced: func() bool {
 				return atomic.LoadUint32(&s.pm.synced) != 0
 			},

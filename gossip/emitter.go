@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"fmt"
+	"math/big"
 	"math/rand"
 	"strings"
 	"sync"
@@ -52,9 +53,10 @@ type EmitterWorld struct {
 
 	Checkers *eventcheck.Checkers
 
-	OnEmitted func(e *inter.Event)
-	IsSynced  func() bool
-	PeersNum  func() int
+	MinGasPrice func() *big.Int
+	OnEmitted   func(e *inter.Event)
+	IsSynced    func() bool
+	PeersNum    func() int
 
 	AddVersion func(e *inter.Event) *inter.Event
 }
@@ -267,6 +269,8 @@ func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Trans
 		validatorsArrStakes[i] = validators.Get(addr)
 	}
 
+	minGasPrice := em.world.MinGasPrice()
+
 	for sender, txs := range poolTxs {
 		if txs.Len() > em.config.MaxTxsFromSender { // no more than MaxTxsFromSender txs from 1 sender
 			txs = txs[:em.config.MaxTxsFromSender]
@@ -274,6 +278,10 @@ func (em *Emitter) addTxs(e *inter.Event, poolTxs map[common.Address]types.Trans
 
 		// txs is the chain of dependent txs
 		for _, tx := range txs {
+			// not underpriced
+			if tx.GasPrice().Cmp(minGasPrice) < 0 {
+				break
+			}
 			// enough gas power
 			if tx.Gas() >= e.GasPowerLeft.Min() || e.GasPowerUsed+tx.Gas() >= maxGasUsed {
 				break // txs are dependent, so break the loop

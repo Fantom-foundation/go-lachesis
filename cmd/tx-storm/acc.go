@@ -9,12 +9,11 @@ import (
 	ethparams "github.com/ethereum/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-lachesis/crypto"
-	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 )
 
 var (
 	gasLimit = uint64(21000)
-	gasPrice = params.MinGasPrice // minimal
+	gasPrice = big.NewInt(1e9) // minimal
 )
 
 type Acc struct {

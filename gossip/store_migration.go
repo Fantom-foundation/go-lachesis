@@ -1,6 +1,8 @@
 package gossip
 
 import (
+	"github.com/ethereum/go-ethereum/ethdb"
+
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
@@ -34,5 +36,7 @@ func (s *Store) migrations() *migration.Migration {
 		Next("multi-delegations",
 			s.app.MigrateMultiDelegations).
 		Next("adjustable offline pruning time",
-			s.app.MigrateAdjustableOfflinePeriod)
+			s.app.MigrateAdjustableOfflinePeriod).
+		Next("adjustable minimum gas price",
+			s.app.MigrateAdjustableMinGasPrice)
 }

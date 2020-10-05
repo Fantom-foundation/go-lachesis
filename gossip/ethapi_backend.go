@@ -427,6 +427,10 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	return b.gpo.SuggestPrice(ctx)
 }
 
+func (b *EthAPIBackend) MinGasPrice() *big.Int {
+	return b.svc.MinGasPrice()
+}
+
 func (b *EthAPIBackend) ChainDb() ethdb.Database {
 	return b.svc.app.EvmTable()
 }

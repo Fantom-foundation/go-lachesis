@@ -49,17 +49,13 @@ func init() {
 type testBlockChain struct {
 	statedb       *state.StateDB
 	gasLimit      uint64
-	minGasPrice   *big.Int
 	chainHeadFeed *notify.Feed
 
 	sync.RWMutex
 }
 
 func (bc *testBlockChain) MinGasPrice() *big.Int {
-	if bc.minGasPrice == nil {
-		return common.Big0
-	}
-	return bc.minGasPrice
+	return common.Big0
 }
 
 func (bc *testBlockChain) CurrentBlock() *EvmBlock {
