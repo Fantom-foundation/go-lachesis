@@ -96,6 +96,7 @@ func DefaultConfig(network lachesis.Config) Config {
 			Blocks:     20,
 			Percentile: 60,
 			Default:    params.MinGasPrice,
+			MaxPrice:   gasprice.DefaultMaxPrice,
 		},
 	}
 
