@@ -292,23 +292,6 @@ func TestSFC(t *testing.T) {
 
 			rewards := requireRewards(t, env, sfc22, []int64{200 * 6, 200 * 6, 200 * 6, 115*6 + (200+200+200+115+85)*7, 85*6 + (200+200+200+115+85)*7})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
-		}) &&
-
-		t.Run("Create delegator 6", func(t *testing.T) {
-			require := require.New(t)
-
-			newDelegation := utils.ToFtm(genesisStake / 2)
-			env.ApplyBlock(sameEpoch,
-				env.Transfer(1, 6, big.NewInt(0).Add(newDelegation, utils.ToFtm(10))),
-			)
-
-			staker, err := sfc22.SfcAddressToStakerID(env.ReadOnly(), env.Address(4))
-			require.NoError(err)
-
-			tx, err := sfc22.CreateDelegation(env.Payer(6, newDelegation), staker)
-			require.NoError(err)
-			env.ApplyBlock(sameEpoch, tx)
-			env.AddDelegator(env.Address(6))
 		})
 
 }
