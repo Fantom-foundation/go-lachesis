@@ -252,10 +252,14 @@ func TestSFC(t *testing.T) {
 			prev.reward = expected
 		}) &&
 
-		t.Run("Lockup stake 4", func(t *testing.T) {
+		t.Run("Lockup stake 4 on half period", func(t *testing.T) {
 			require := require.New(t)
 
-			tx, err := sfc22.LockUpStake(env.Payer(4), big.NewInt(15*86400))
+			lockDuration, err := sfc22.MaxLockupDuration(env.ReadOnly())
+			require.NoError(err)
+
+			lockDuration = big.NewInt(0).Div(lockDuration, big.NewInt(2))
+			tx, err := sfc22.LockUpStake(env.Payer(4), lockDuration)
 			require.NoError(err)
 			env.ApplyBlock(sameEpoch, tx)
 		}) &&
@@ -265,8 +269,7 @@ func TestSFC(t *testing.T) {
 
 			env.ApplyBlock(nextEpoch) // clear epoch
 			env.ApplyBlock(nextEpoch)
-
-			rewards := requireRewards(t, env, sfc22, []int64{200 * 3, 200 * 3, 200 * 3, 115*3 + (200+200+200+115+85)*7, 85 * 3})
+			rewards := requireRewards(t, env, sfc22, []int64{200 * 3 * 2, 200 * 3 * 2, 200 * 3 * 2, 115 * (3*2 + 7), 85 * 3 * 2})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
 		}) &&
 
