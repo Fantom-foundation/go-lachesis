@@ -4,8 +4,19 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
+func isEmptyDB(db ethdb.Iteratee) bool {
+	it := db.NewIterator()
+	defer it.Release()
+	return !it.Next()
+}
+
 func (s *Store) Migrate() error {
 	versions := migration.NewKvdbIDStore(s.table.Version)
+	if isEmptyDB(s.mainDb) && isEmptyDB(s.async.mainDb) {
+		// short circuit if empty DB
+		versions.SetID(s.migrations().ID())
+		return nil
+	}
 	return s.migrations().Exec(versions)
 }
 
