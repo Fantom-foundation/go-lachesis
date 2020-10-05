@@ -33,6 +33,7 @@ var (
 		DeactivatedDelegation          common.Hash
 		UpdatedStake                   common.Hash
 		UpdatedDelegation              common.Hash
+		NetworkUpgradeActivated        common.Hash
 	}{
 		CreatedStake:                   hash.Of([]byte("CreatedStake(uint256,address,uint256)")),
 		IncreasedStake:                 hash.Of([]byte("IncreasedStake(uint256,uint256,uint256)")),
@@ -51,6 +52,7 @@ var (
 		DeactivatedDelegation:          hash.Of([]byte("DeactivatedDelegation(address,uint256)")),
 		UpdatedStake:                   hash.Of([]byte("UpdatedStake(uint256,uint256,uint256)")),
 		UpdatedDelegation:              hash.Of([]byte("UpdatedDelegation(address,uint256,uint256,uint256)")),
+		NetworkUpgradeActivated:        hash.Of([]byte("NetworkUpgradeActivated(uint256)")),
 	}
 )
 
