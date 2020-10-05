@@ -99,7 +99,7 @@ func (s *Store) MigrateMultiDelegations() error {
 
 				// don't write into DB during iteration
 				newKeys = append(newKeys, id.Bytes())
-				newValues = append(newKeys, it.Value())
+				newValues = append(newValues, it.Value())
 			}
 		}
 		{
