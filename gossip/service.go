@@ -127,6 +127,9 @@ func NewService(stack *node.Node, config *Config, store *Store, engine Consensus
 	}
 
 	svc, err := newService(config, store, engine)
+	if err != nil {
+		return nil, err
+	}
 
 	svc.accountManager = stack.AccountManager()
 	svc.p2pServer = stack.Server()
@@ -180,12 +183,15 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 	// create protocol manager
 	var err error
 	svc.pm, err = NewProtocolManager(config, &svc.feed, svc.txpool, svc.engineMu, svc.checkers, store, svc.engine, svc.serverPool)
+	if err != nil {
+		return nil, err
+	}
 
 	// create API backend
 	svc.EthAPI = &EthAPIBackend{config.ExtRPCEnabled, svc, stateReader, nil}
 	svc.EthAPI.gpo = gasprice.NewOracle(svc.EthAPI, svc.config.GPO)
 
-	return svc, err
+	return svc, nil
 }
 
 // GetEngine returns service's engine
