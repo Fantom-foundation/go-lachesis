@@ -107,10 +107,6 @@ var (
 	invalidTxMeter     = metrics.NewRegisteredMeter("txpool/invalid", nil)
 	underpricedTxMeter = metrics.NewRegisteredMeter("txpool/underpriced", nil)
 
-	pendingCounter = metrics.NewRegisteredGauge("txpool/pending", nil)
-	queuedCounter  = metrics.NewRegisteredGauge("txpool/queued", nil)
-	localCounter   = metrics.NewRegisteredGauge("txpool/local", nil)
-
 	pendingGauge = metrics.NewRegisteredGauge("txpool/pending", nil)
 	queuedGauge  = metrics.NewRegisteredGauge("txpool/queued", nil)
 	localGauge   = metrics.NewRegisteredGauge("txpool/local", nil)
@@ -238,8 +234,6 @@ type TxPool struct {
 	scope       notify.SubscriptionScope
 	signer      types.Signer
 	mu          sync.RWMutex
-
-	istanbul bool // Fork indicator whether we are in the istanbul stage.
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
