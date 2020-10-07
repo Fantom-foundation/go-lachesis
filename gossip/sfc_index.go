@@ -18,6 +18,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
+	"github.com/Fantom-foundation/go-lachesis/version"
 )
 
 // GetActiveSfcStakers returns stakers which will become validators in next epoch
@@ -307,7 +308,7 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 
 			if l.Topics[0] == sfcpos.Topics.NetworkUpgradeActivated && len(l.Data) >= 32 {
 				minVersion := new(big.Int).SetBytes(l.Data[0:32])
-				if minVersion.Sign() > 0 {
+				if minVersion.Cmp(version.AsBigInt()) > 0 {
 					errlock.Permanent(errors.New("Node is shutting down due to a non-supported network upgrade.\n" +
 						"Please upgrade the node to continue."))
 				}
