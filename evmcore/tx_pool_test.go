@@ -1461,7 +1461,7 @@ func TestTransactionPoolUnderpricing(t *testing.T) {
 	ltx := pricedTransaction(0, 100000, big.NewInt(1), keys[2])
 
 	// Import the batch and that both pending and queued transactions match up
-	pool.AddRemotes(txs)
+	pool.AddRemotesSync(txs)
 	pool.AddLocal(ltx)
 
 	pending, queued := pool.Stats()

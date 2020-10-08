@@ -33,7 +33,7 @@ import (
 
 const sampleNumber = 3 // Number of transactions sampled in a block
 
-var DefaultMaxPrice = big.NewInt(400000 * params.GWei)
+var DefaultMaxPrice = big.NewInt(1000000 * params.GWei)
 
 type Config struct {
 	Blocks     int
@@ -116,6 +116,7 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	if headHash == lastHead {
 		return lastPrice, nil
 	}
+
 	var (
 		sent, exp int
 		number    = head.Number.Uint64()
@@ -143,6 +144,7 @@ func (gpo *Oracle) SuggestPrice(ctx context.Context) (*big.Int, error) {
 		if len(res.prices) == 0 {
 			res.prices = []*big.Int{lastPrice}
 		}
+
 		// Besides, in order to collect enough data for sampling, if nothing
 		// meaningful returned, try to query more blocks. But the maximum
 		// is 2*checkBlocks.
