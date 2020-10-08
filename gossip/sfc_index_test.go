@@ -448,7 +448,8 @@ func cicleTransfers(t *testing.T, env *testEnv, count uint64) {
 		)
 	}
 
-	gas := big.NewInt(0).Mul(big.NewInt(int64(count*gasLimit)), env.GasPrice)
+	gp := env.App.MinGasPrice()
+	gas := big.NewInt(0).Mul(big.NewInt(int64(count*gasLimit)), gp)
 	for i := range balances {
 		require.Equal(
 			big.NewInt(0).Sub(balances[i], gas),
