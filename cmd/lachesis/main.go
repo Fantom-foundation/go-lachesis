@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/console"
+	"github.com/ethereum/go-ethereum/console/prompt"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
@@ -21,6 +21,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/cmd/lachesis/metrics"
 	"github.com/Fantom-foundation/go-lachesis/cmd/lachesis/tracing"
 	"github.com/Fantom-foundation/go-lachesis/debug"
+	"github.com/Fantom-foundation/go-lachesis/flags"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
@@ -37,7 +38,7 @@ var (
 	gitCommit = ""
 	gitDate   = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
+	app = flags.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
 
 	testFlags    []cli.Flag
 	nodeFlags    []cli.Flag
@@ -53,6 +54,7 @@ func init() {
 	// Flags for testing purpose.
 	testFlags = []cli.Flag{
 		FakeNetFlag,
+		LegacyTestnetFlag,
 	}
 
 	// Flags that configure the node.
@@ -61,8 +63,8 @@ func init() {
 		utils.UnlockedAccountFlag,
 		utils.PasswordFileFlag,
 		utils.BootnodesFlag,
-		utils.BootnodesV4Flag,
-		utils.BootnodesV5Flag,
+		utils.LegacyBootnodesV4Flag,
+		utils.LegacyBootnodesV5Flag,
 		DataDirFlag,
 		utils.KeyStoreDirFlag,
 		utils.ExternalSignerFlag,
@@ -94,14 +96,15 @@ func init() {
 		utils.NetrestrictFlag,
 		utils.NodeKeyFileFlag,
 		utils.NodeKeyHexFlag,
-		utils.TestnetFlag,
 		utils.VMEnableDebugFlag,
 		utils.NetworkIdFlag,
 		utils.EthStatsURLFlag,
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
+		utils.LegacyGpoBlocksFlag,
 		utils.GpoPercentileFlag,
-		GpoDefaultFlag,
+		utils.LegacyGpoPercentileFlag,
+		utils.GpoMaxGasPriceFlag,
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
@@ -109,26 +112,35 @@ func init() {
 	}
 
 	rpcFlags = []cli.Flag{
-		utils.RPCEnabledFlag,
-		utils.RPCListenAddrFlag,
-		utils.RPCPortFlag,
-		utils.RPCCORSDomainFlag,
-		utils.RPCVirtualHostsFlag,
+		utils.HTTPEnabledFlag,
+		utils.HTTPListenAddrFlag,
+		utils.HTTPPortFlag,
+		utils.HTTPCORSDomainFlag,
+		utils.HTTPVirtualHostsFlag,
+		utils.LegacyRPCEnabledFlag,
+		utils.LegacyRPCListenAddrFlag,
+		utils.LegacyRPCPortFlag,
+		utils.LegacyRPCCORSDomainFlag,
+		utils.LegacyRPCVirtualHostsFlag,
 		utils.GraphQLEnabledFlag,
-		utils.GraphQLListenAddrFlag,
-		utils.GraphQLPortFlag,
 		utils.GraphQLCORSDomainFlag,
 		utils.GraphQLVirtualHostsFlag,
-		utils.RPCApiFlag,
+		utils.HTTPApiFlag,
+		utils.LegacyRPCApiFlag,
 		utils.WSEnabledFlag,
 		utils.WSListenAddrFlag,
+		utils.LegacyWSListenAddrFlag,
 		utils.WSPortFlag,
+		utils.LegacyWSPortFlag,
 		utils.WSApiFlag,
+		utils.LegacyWSApiFlag,
 		utils.WSAllowedOriginsFlag,
+		utils.LegacyWSAllowedOriginsFlag,
 		utils.IPCDisabledFlag,
 		utils.IPCPathFlag,
 		utils.InsecureUnlockAllowedFlag,
 		utils.RPCGlobalGasCap,
+		utils.RPCGlobalTxFeeCap,
 	}
 
 	metricsFlags = []cli.Flag{
@@ -176,8 +188,7 @@ func init() {
 	app.Flags = append(app.Flags, metricsFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
-		logdir := ""
-		if err := debug.Setup(ctx, logdir); err != nil {
+		if err := debug.Setup(ctx); err != nil {
 			return err
 		}
 
@@ -190,8 +201,7 @@ func init() {
 
 	app.After = func(ctx *cli.Context) error {
 		debug.Exit()
-		console.Stdin.Close() // Resets terminal mode.
-
+		prompt.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
 }
@@ -218,19 +228,20 @@ func lachesisMain(ctx *cli.Context) error {
 	}
 	defer tracingStop()
 
-	node := makeNode(ctx, makeAllConfigs(ctx))
+	node, _ := makeNode(ctx, makeAllConfigs(ctx))
 	defer node.Close()
 	startNode(ctx, node)
 	node.Wait()
 	return nil
 }
 
-func makeNode(ctx *cli.Context, cfg *config) *node.Node {
+func makeNode(ctx *cli.Context, cfg *config) (*node.Node, *gossip.Service) {
+	stack := makeConfigNode(ctx, &cfg.Node)
+
 	// check errlock file
+	// TODO: do the same with with stack.OpenDatabaseWithFreezer()
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)
 	errlock.Check()
-
-	stack := makeConfigNode(ctx, &cfg.Node)
 
 	engine, _, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
 	metrics.SetDataDir(cfg.Node.DataDir)
@@ -242,19 +253,18 @@ func makeNode(ctx *cli.Context, cfg *config) *node.Node {
 	}
 	setValidator(ctx, ks, &cfg.Lachesis.Emitter)
 
-	// Create and register a gossip network service. This is done through the definition
-	// of a node.ServiceConstructor that will instantiate a node.Service. The reason for
-	// the factory method approach is to support service restarts without relying on the
-	// individual implementations' support for such operations.
-	gossipService := func(ctx *node.ServiceContext) (node.Service, error) {
-		return gossip.NewService(ctx, &cfg.Lachesis, gdb, engine)
+	// Create and register a gossip network service.
+
+	svc, err := gossip.NewService(stack, &cfg.Lachesis, gdb, engine)
+	if err != nil {
+		utils.Fatalf("Failed to create the service: %v", err)
 	}
 
-	if err := stack.Register(gossipService); err != nil {
-		utils.Fatalf("Failed to register the service: %v", err)
-	}
+	stack.RegisterAPIs(svc.APIs())
+	stack.RegisterProtocols(svc.Protocols())
+	stack.RegisterLifecycle(svc)
 
-	return stack
+	return stack, svc
 }
 
 func makeConfigNode(ctx *cli.Context, cfg *node.Config) *node.Node {
@@ -360,7 +370,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 						time.Sleep(time.Minute)
 					}
 					log.Info("Synchronisation completed. Exiting due to exitwhensynced flag.")
-					err = stack.Stop()
+					err = stack.Close()
 					if err != nil {
 						continue
 					}

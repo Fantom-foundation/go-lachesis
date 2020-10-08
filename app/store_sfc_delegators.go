@@ -33,7 +33,7 @@ func (s *Store) DelSfcDelegation(id sfctype.DelegationID) {
 
 // ForEachSfcDelegation iterates all stored SfcDelegations
 func (s *Store) ForEachSfcDelegation(do func(sfctype.SfcDelegationAndID)) {
-	it := s.table.Delegations.NewIterator()
+	it := s.table.Delegations.NewIterator(nil, nil)
 	defer it.Release()
 	s.forEachSfcDelegation(it, func(id sfctype.SfcDelegationAndID) bool {
 		do(id)
@@ -43,7 +43,7 @@ func (s *Store) ForEachSfcDelegation(do func(sfctype.SfcDelegationAndID)) {
 
 // GetSfcDelegationsByAddr returns a lsit of delegations by address
 func (s *Store) GetSfcDelegationsByAddr(addr common.Address, limit int) []sfctype.SfcDelegationAndID {
-	it := s.table.Delegations.NewIteratorWithPrefix(addr.Bytes())
+	it := s.table.Delegations.NewIterator(addr.Bytes(), nil)
 	defer it.Release()
 	res := make([]sfctype.SfcDelegationAndID, 0, limit)
 	s.forEachSfcDelegation(it, func(id sfctype.SfcDelegationAndID) bool {

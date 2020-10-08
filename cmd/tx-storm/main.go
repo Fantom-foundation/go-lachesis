@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/Fantom-foundation/go-lachesis/flags"
 	_ "github.com/Fantom-foundation/go-lachesis/version"
 )
 
@@ -20,15 +21,15 @@ var (
 	gitCommit = ""
 	gitDate   = ""
 	// The app that holds all commands and flags.
-	app = utils.NewApp(gitCommit, gitDate, "the transactions generator CLI")
+	app = flags.NewApp(gitCommit, gitDate, "the transactions generator CLI")
 
-	flags []cli.Flag
+	generatorFlags []cli.Flag
 )
 
 // init the CLI app.
 func init() {
 	// Flags.
-	flags = []cli.Flag{
+	generatorFlags = []cli.Flag{
 		NumberFlag,
 		AccsStartFlag,
 		AccsCountFlag,
@@ -45,7 +46,7 @@ func init() {
 	app.Commands = []cli.Command{}
 	sort.Sort(cli.CommandsByName(app.Commands))
 
-	app.Flags = append(app.Flags, flags...)
+	app.Flags = append(app.Flags, generatorFlags...)
 
 	app.Before = func(ctx *cli.Context) error {
 		return nil

@@ -61,6 +61,7 @@ type EconomyConfig struct {
 	InitialOfflinePenaltyThreshold BlocksMissed
 	TxRewardPoiImpact              *big.Int
 	InitialRewardPerSecond         *big.Int
+	InitialMinGasPrice             *big.Int
 	MaxRewardPerSecond             *big.Int
 
 	ShortGasPower GasPowerConfig `json:"shortGasPower"`
@@ -149,6 +150,7 @@ func DefaultEconomyConfig() EconomyConfig {
 		BlockMissedLatency:     3,
 		TxRewardPoiImpact:      txRewardPoiImpact,
 		InitialRewardPerSecond: initialRewardPerSecond,
+		InitialMinGasPrice:     big.NewInt(1e9),
 		MaxRewardPerSecond:     maxRewardPerSecond,
 		InitialOfflinePenaltyThreshold: BlocksMissed{
 			BlocksNum: 1000,
