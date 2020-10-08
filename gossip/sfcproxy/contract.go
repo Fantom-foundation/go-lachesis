@@ -20,7 +20,6 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -191,7 +190,7 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
-// Solidity: function admin() constant returns(address)
+// Solidity: function admin() view returns(address)
 func (_Contract *ContractCaller) Admin(opts *bind.CallOpts) (common.Address, error) {
 	var (
 		ret0 = new(common.Address)
@@ -203,21 +202,21 @@ func (_Contract *ContractCaller) Admin(opts *bind.CallOpts) (common.Address, err
 
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
-// Solidity: function admin() constant returns(address)
+// Solidity: function admin() view returns(address)
 func (_Contract *ContractSession) Admin() (common.Address, error) {
 	return _Contract.Contract.Admin(&_Contract.CallOpts)
 }
 
 // Admin is a free data retrieval call binding the contract method 0xf851a440.
 //
-// Solidity: function admin() constant returns(address)
+// Solidity: function admin() view returns(address)
 func (_Contract *ContractCallerSession) Admin() (common.Address, error) {
 	return _Contract.Contract.Admin(&_Contract.CallOpts)
 }
 
 // Implementation is a free data retrieval call binding the contract method 0x5c60da1b.
 //
-// Solidity: function implementation() constant returns(address)
+// Solidity: function implementation() view returns(address)
 func (_Contract *ContractCaller) Implementation(opts *bind.CallOpts) (common.Address, error) {
 	var (
 		ret0 = new(common.Address)
@@ -229,14 +228,14 @@ func (_Contract *ContractCaller) Implementation(opts *bind.CallOpts) (common.Add
 
 // Implementation is a free data retrieval call binding the contract method 0x5c60da1b.
 //
-// Solidity: function implementation() constant returns(address)
+// Solidity: function implementation() view returns(address)
 func (_Contract *ContractSession) Implementation() (common.Address, error) {
 	return _Contract.Contract.Implementation(&_Contract.CallOpts)
 }
 
 // Implementation is a free data retrieval call binding the contract method 0x5c60da1b.
 //
-// Solidity: function implementation() constant returns(address)
+// Solidity: function implementation() view returns(address)
 func (_Contract *ContractCallerSession) Implementation() (common.Address, error) {
 	return _Contract.Contract.Implementation(&_Contract.CallOpts)
 }
@@ -285,23 +284,44 @@ func (_Contract *ContractTransactorSession) UpgradeTo(newImplementation common.A
 
 // UpgradeToAndCall is a paid mutator transaction binding the contract method 0x4f1ef286.
 //
-// Solidity: function upgradeToAndCall(address newImplementation, bytes data) returns()
+// Solidity: function upgradeToAndCall(address newImplementation, bytes data) payable returns()
 func (_Contract *ContractTransactor) UpgradeToAndCall(opts *bind.TransactOpts, newImplementation common.Address, data []byte) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "upgradeToAndCall", newImplementation, data)
 }
 
 // UpgradeToAndCall is a paid mutator transaction binding the contract method 0x4f1ef286.
 //
-// Solidity: function upgradeToAndCall(address newImplementation, bytes data) returns()
+// Solidity: function upgradeToAndCall(address newImplementation, bytes data) payable returns()
 func (_Contract *ContractSession) UpgradeToAndCall(newImplementation common.Address, data []byte) (*types.Transaction, error) {
 	return _Contract.Contract.UpgradeToAndCall(&_Contract.TransactOpts, newImplementation, data)
 }
 
 // UpgradeToAndCall is a paid mutator transaction binding the contract method 0x4f1ef286.
 //
-// Solidity: function upgradeToAndCall(address newImplementation, bytes data) returns()
+// Solidity: function upgradeToAndCall(address newImplementation, bytes data) payable returns()
 func (_Contract *ContractTransactorSession) UpgradeToAndCall(newImplementation common.Address, data []byte) (*types.Transaction, error) {
 	return _Contract.Contract.UpgradeToAndCall(&_Contract.TransactOpts, newImplementation, data)
+}
+
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() payable returns()
+func (_Contract *ContractTransactor) Fallback(opts *bind.TransactOpts, calldata []byte) (*types.Transaction, error) {
+	return _Contract.contract.RawTransact(opts, calldata)
+}
+
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() payable returns()
+func (_Contract *ContractSession) Fallback(calldata []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Fallback(&_Contract.TransactOpts, calldata)
+}
+
+// Fallback is a paid mutator transaction binding the contract fallback function.
+//
+// Solidity: fallback() payable returns()
+func (_Contract *ContractTransactorSession) Fallback(calldata []byte) (*types.Transaction, error) {
+	return _Contract.Contract.Fallback(&_Contract.TransactOpts, calldata)
 }
 
 // ContractAdminChangedIterator is returned from FilterAdminChanged and is used to iterate over the raw logs and unpacked data for AdminChanged events raised by the Contract contract.

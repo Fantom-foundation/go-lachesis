@@ -20,7 +20,6 @@ var (
 	_ = big.NewInt
 	_ = strings.NewReader
 	_ = ethereum.NotFound
-	_ = abi.U256
 	_ = bind.Bind
 	_ = common.Big1
 	_ = types.BloomLookup
@@ -191,7 +190,7 @@ func (_Contract *ContractTransactorRaw) Transact(opts *bind.TransactOpts, method
 
 // CalcDelegationEpochReward is a free data retrieval call binding the contract method 0x6af49928.
 //
-// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) constant returns(uint256)
+// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) view returns(uint256)
 func (_Contract *ContractCaller) CalcDelegationEpochReward(opts *bind.CallOpts, stakerID *big.Int, epoch *big.Int, delegationAmount *big.Int, commission *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -203,21 +202,21 @@ func (_Contract *ContractCaller) CalcDelegationEpochReward(opts *bind.CallOpts, 
 
 // CalcDelegationEpochReward is a free data retrieval call binding the contract method 0x6af49928.
 //
-// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) constant returns(uint256)
+// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) view returns(uint256)
 func (_Contract *ContractSession) CalcDelegationEpochReward(stakerID *big.Int, epoch *big.Int, delegationAmount *big.Int, commission *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcDelegationEpochReward(&_Contract.CallOpts, stakerID, epoch, delegationAmount, commission)
 }
 
 // CalcDelegationEpochReward is a free data retrieval call binding the contract method 0x6af49928.
 //
-// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) constant returns(uint256)
+// Solidity: function _calcDelegationEpochReward(uint256 stakerID, uint256 epoch, uint256 delegationAmount, uint256 commission) view returns(uint256)
 func (_Contract *ContractCallerSession) CalcDelegationEpochReward(stakerID *big.Int, epoch *big.Int, delegationAmount *big.Int, commission *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcDelegationEpochReward(&_Contract.CallOpts, stakerID, epoch, delegationAmount, commission)
 }
 
 // CalcRawValidatorEpochReward is a free data retrieval call binding the contract method 0x6459cf86.
 //
-// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) constant returns(uint256)
+// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) view returns(uint256)
 func (_Contract *ContractCaller) CalcRawValidatorEpochReward(opts *bind.CallOpts, stakerID *big.Int, epoch *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -229,21 +228,21 @@ func (_Contract *ContractCaller) CalcRawValidatorEpochReward(opts *bind.CallOpts
 
 // CalcRawValidatorEpochReward is a free data retrieval call binding the contract method 0x6459cf86.
 //
-// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) constant returns(uint256)
+// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) view returns(uint256)
 func (_Contract *ContractSession) CalcRawValidatorEpochReward(stakerID *big.Int, epoch *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcRawValidatorEpochReward(&_Contract.CallOpts, stakerID, epoch)
 }
 
 // CalcRawValidatorEpochReward is a free data retrieval call binding the contract method 0x6459cf86.
 //
-// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) constant returns(uint256)
+// Solidity: function _calcRawValidatorEpochReward(uint256 stakerID, uint256 epoch) view returns(uint256)
 func (_Contract *ContractCallerSession) CalcRawValidatorEpochReward(stakerID *big.Int, epoch *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcRawValidatorEpochReward(&_Contract.CallOpts, stakerID, epoch)
 }
 
 // CalcValidatorEpochReward is a free data retrieval call binding the contract method 0x53bbb754.
 //
-// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) constant returns(uint256)
+// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) view returns(uint256)
 func (_Contract *ContractCaller) CalcValidatorEpochReward(opts *bind.CallOpts, stakerID *big.Int, epoch *big.Int, commission *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -255,21 +254,21 @@ func (_Contract *ContractCaller) CalcValidatorEpochReward(opts *bind.CallOpts, s
 
 // CalcValidatorEpochReward is a free data retrieval call binding the contract method 0x53bbb754.
 //
-// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) constant returns(uint256)
+// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) view returns(uint256)
 func (_Contract *ContractSession) CalcValidatorEpochReward(stakerID *big.Int, epoch *big.Int, commission *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcValidatorEpochReward(&_Contract.CallOpts, stakerID, epoch, commission)
 }
 
 // CalcValidatorEpochReward is a free data retrieval call binding the contract method 0x53bbb754.
 //
-// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) constant returns(uint256)
+// Solidity: function _calcValidatorEpochReward(uint256 stakerID, uint256 epoch, uint256 commission) view returns(uint256)
 func (_Contract *ContractCallerSession) CalcValidatorEpochReward(stakerID *big.Int, epoch *big.Int, commission *big.Int) (*big.Int, error) {
 	return _Contract.Contract.CalcValidatorEpochReward(&_Contract.CallOpts, stakerID, epoch, commission)
 }
 
 // RewardsBurnableOnDeactivation is a free data retrieval call binding the contract method 0xb1a3ebfa.
 //
-// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) constant returns(bool)
+// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) view returns(bool)
 func (_Contract *ContractCaller) RewardsBurnableOnDeactivation(opts *bind.CallOpts, isDelegation bool, stakerID *big.Int) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -281,21 +280,21 @@ func (_Contract *ContractCaller) RewardsBurnableOnDeactivation(opts *bind.CallOp
 
 // RewardsBurnableOnDeactivation is a free data retrieval call binding the contract method 0xb1a3ebfa.
 //
-// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) constant returns(bool)
+// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) view returns(bool)
 func (_Contract *ContractSession) RewardsBurnableOnDeactivation(isDelegation bool, stakerID *big.Int) (bool, error) {
 	return _Contract.Contract.RewardsBurnableOnDeactivation(&_Contract.CallOpts, isDelegation, stakerID)
 }
 
 // RewardsBurnableOnDeactivation is a free data retrieval call binding the contract method 0xb1a3ebfa.
 //
-// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) constant returns(bool)
+// Solidity: function _rewardsBurnableOnDeactivation(bool isDelegation, uint256 stakerID) view returns(bool)
 func (_Contract *ContractCallerSession) RewardsBurnableOnDeactivation(isDelegation bool, stakerID *big.Int) (bool, error) {
 	return _Contract.Contract.RewardsBurnableOnDeactivation(&_Contract.CallOpts, isDelegation, stakerID)
 }
 
 // SfcAddressToStakerID is a free data retrieval call binding the contract method 0xb42cb58d.
 //
-// Solidity: function _sfcAddressToStakerID(address sfcAddress) constant returns(uint256)
+// Solidity: function _sfcAddressToStakerID(address sfcAddress) view returns(uint256)
 func (_Contract *ContractCaller) SfcAddressToStakerID(opts *bind.CallOpts, sfcAddress common.Address) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -307,21 +306,21 @@ func (_Contract *ContractCaller) SfcAddressToStakerID(opts *bind.CallOpts, sfcAd
 
 // SfcAddressToStakerID is a free data retrieval call binding the contract method 0xb42cb58d.
 //
-// Solidity: function _sfcAddressToStakerID(address sfcAddress) constant returns(uint256)
+// Solidity: function _sfcAddressToStakerID(address sfcAddress) view returns(uint256)
 func (_Contract *ContractSession) SfcAddressToStakerID(sfcAddress common.Address) (*big.Int, error) {
 	return _Contract.Contract.SfcAddressToStakerID(&_Contract.CallOpts, sfcAddress)
 }
 
 // SfcAddressToStakerID is a free data retrieval call binding the contract method 0xb42cb58d.
 //
-// Solidity: function _sfcAddressToStakerID(address sfcAddress) constant returns(uint256)
+// Solidity: function _sfcAddressToStakerID(address sfcAddress) view returns(uint256)
 func (_Contract *ContractCallerSession) SfcAddressToStakerID(sfcAddress common.Address) (*big.Int, error) {
 	return _Contract.Contract.SfcAddressToStakerID(&_Contract.CallOpts, sfcAddress)
 }
 
 // BondedRatio is a free data retrieval call binding the contract method 0x041d97a3.
 //
-// Solidity: function bondedRatio() constant returns(uint256)
+// Solidity: function bondedRatio() view returns(uint256)
 func (_Contract *ContractCaller) BondedRatio(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -333,21 +332,21 @@ func (_Contract *ContractCaller) BondedRatio(opts *bind.CallOpts) (*big.Int, err
 
 // BondedRatio is a free data retrieval call binding the contract method 0x041d97a3.
 //
-// Solidity: function bondedRatio() constant returns(uint256)
+// Solidity: function bondedRatio() view returns(uint256)
 func (_Contract *ContractSession) BondedRatio() (*big.Int, error) {
 	return _Contract.Contract.BondedRatio(&_Contract.CallOpts)
 }
 
 // BondedRatio is a free data retrieval call binding the contract method 0x041d97a3.
 //
-// Solidity: function bondedRatio() constant returns(uint256)
+// Solidity: function bondedRatio() view returns(uint256)
 func (_Contract *ContractCallerSession) BondedRatio() (*big.Int, error) {
 	return _Contract.Contract.BondedRatio(&_Contract.CallOpts)
 }
 
 // BondedTargetPeriod is a free data retrieval call binding the contract method 0x7b8c6b02.
 //
-// Solidity: function bondedTargetPeriod() constant returns(uint256)
+// Solidity: function bondedTargetPeriod() pure returns(uint256)
 func (_Contract *ContractCaller) BondedTargetPeriod(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -359,21 +358,21 @@ func (_Contract *ContractCaller) BondedTargetPeriod(opts *bind.CallOpts) (*big.I
 
 // BondedTargetPeriod is a free data retrieval call binding the contract method 0x7b8c6b02.
 //
-// Solidity: function bondedTargetPeriod() constant returns(uint256)
+// Solidity: function bondedTargetPeriod() pure returns(uint256)
 func (_Contract *ContractSession) BondedTargetPeriod() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetPeriod(&_Contract.CallOpts)
 }
 
 // BondedTargetPeriod is a free data retrieval call binding the contract method 0x7b8c6b02.
 //
-// Solidity: function bondedTargetPeriod() constant returns(uint256)
+// Solidity: function bondedTargetPeriod() pure returns(uint256)
 func (_Contract *ContractCallerSession) BondedTargetPeriod() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetPeriod(&_Contract.CallOpts)
 }
 
 // BondedTargetRewardUnlock is a free data retrieval call binding the contract method 0x6a1cf400.
 //
-// Solidity: function bondedTargetRewardUnlock() constant returns(uint256)
+// Solidity: function bondedTargetRewardUnlock() view returns(uint256)
 func (_Contract *ContractCaller) BondedTargetRewardUnlock(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -385,21 +384,21 @@ func (_Contract *ContractCaller) BondedTargetRewardUnlock(opts *bind.CallOpts) (
 
 // BondedTargetRewardUnlock is a free data retrieval call binding the contract method 0x6a1cf400.
 //
-// Solidity: function bondedTargetRewardUnlock() constant returns(uint256)
+// Solidity: function bondedTargetRewardUnlock() view returns(uint256)
 func (_Contract *ContractSession) BondedTargetRewardUnlock() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetRewardUnlock(&_Contract.CallOpts)
 }
 
 // BondedTargetRewardUnlock is a free data retrieval call binding the contract method 0x6a1cf400.
 //
-// Solidity: function bondedTargetRewardUnlock() constant returns(uint256)
+// Solidity: function bondedTargetRewardUnlock() view returns(uint256)
 func (_Contract *ContractCallerSession) BondedTargetRewardUnlock() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetRewardUnlock(&_Contract.CallOpts)
 }
 
 // BondedTargetStart is a free data retrieval call binding the contract method 0xce5aa000.
 //
-// Solidity: function bondedTargetStart() constant returns(uint256)
+// Solidity: function bondedTargetStart() pure returns(uint256)
 func (_Contract *ContractCaller) BondedTargetStart(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -411,21 +410,21 @@ func (_Contract *ContractCaller) BondedTargetStart(opts *bind.CallOpts) (*big.In
 
 // BondedTargetStart is a free data retrieval call binding the contract method 0xce5aa000.
 //
-// Solidity: function bondedTargetStart() constant returns(uint256)
+// Solidity: function bondedTargetStart() pure returns(uint256)
 func (_Contract *ContractSession) BondedTargetStart() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetStart(&_Contract.CallOpts)
 }
 
 // BondedTargetStart is a free data retrieval call binding the contract method 0xce5aa000.
 //
-// Solidity: function bondedTargetStart() constant returns(uint256)
+// Solidity: function bondedTargetStart() pure returns(uint256)
 func (_Contract *ContractCallerSession) BondedTargetStart() (*big.Int, error) {
 	return _Contract.Contract.BondedTargetStart(&_Contract.CallOpts)
 }
 
 // CalcDelegationRewards is a free data retrieval call binding the contract method 0xb6732f3d.
 //
-// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractCaller) CalcDelegationRewards(opts *bind.CallOpts, delegator common.Address, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -443,21 +442,21 @@ func (_Contract *ContractCaller) CalcDelegationRewards(opts *bind.CallOpts, dele
 
 // CalcDelegationRewards is a free data retrieval call binding the contract method 0xb6732f3d.
 //
-// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractSession) CalcDelegationRewards(delegator common.Address, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	return _Contract.Contract.CalcDelegationRewards(&_Contract.CallOpts, delegator, _fromEpoch, maxEpochs)
 }
 
 // CalcDelegationRewards is a free data retrieval call binding the contract method 0xb6732f3d.
 //
-// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcDelegationRewards(address delegator, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractCallerSession) CalcDelegationRewards(delegator common.Address, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	return _Contract.Contract.CalcDelegationRewards(&_Contract.CallOpts, delegator, _fromEpoch, maxEpochs)
 }
 
 // CalcValidatorRewards is a free data retrieval call binding the contract method 0x96060e71.
 //
-// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractCaller) CalcValidatorRewards(opts *bind.CallOpts, stakerID *big.Int, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -475,21 +474,21 @@ func (_Contract *ContractCaller) CalcValidatorRewards(opts *bind.CallOpts, stake
 
 // CalcValidatorRewards is a free data retrieval call binding the contract method 0x96060e71.
 //
-// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractSession) CalcValidatorRewards(stakerID *big.Int, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	return _Contract.Contract.CalcValidatorRewards(&_Contract.CallOpts, stakerID, _fromEpoch, maxEpochs)
 }
 
 // CalcValidatorRewards is a free data retrieval call binding the contract method 0x96060e71.
 //
-// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) constant returns(uint256, uint256, uint256)
+// Solidity: function calcValidatorRewards(uint256 stakerID, uint256 _fromEpoch, uint256 maxEpochs) view returns(uint256, uint256, uint256)
 func (_Contract *ContractCallerSession) CalcValidatorRewards(stakerID *big.Int, _fromEpoch *big.Int, maxEpochs *big.Int) (*big.Int, *big.Int, *big.Int, error) {
 	return _Contract.Contract.CalcValidatorRewards(&_Contract.CallOpts, stakerID, _fromEpoch, maxEpochs)
 }
 
 // ContractCommission is a free data retrieval call binding the contract method 0x2709275e.
 //
-// Solidity: function contractCommission() constant returns(uint256)
+// Solidity: function contractCommission() pure returns(uint256)
 func (_Contract *ContractCaller) ContractCommission(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -501,21 +500,21 @@ func (_Contract *ContractCaller) ContractCommission(opts *bind.CallOpts) (*big.I
 
 // ContractCommission is a free data retrieval call binding the contract method 0x2709275e.
 //
-// Solidity: function contractCommission() constant returns(uint256)
+// Solidity: function contractCommission() pure returns(uint256)
 func (_Contract *ContractSession) ContractCommission() (*big.Int, error) {
 	return _Contract.Contract.ContractCommission(&_Contract.CallOpts)
 }
 
 // ContractCommission is a free data retrieval call binding the contract method 0x2709275e.
 //
-// Solidity: function contractCommission() constant returns(uint256)
+// Solidity: function contractCommission() pure returns(uint256)
 func (_Contract *ContractCallerSession) ContractCommission() (*big.Int, error) {
 	return _Contract.Contract.ContractCommission(&_Contract.CallOpts)
 }
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(uint256)
+// Solidity: function currentEpoch() view returns(uint256)
 func (_Contract *ContractCaller) CurrentEpoch(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -527,21 +526,21 @@ func (_Contract *ContractCaller) CurrentEpoch(opts *bind.CallOpts) (*big.Int, er
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(uint256)
+// Solidity: function currentEpoch() view returns(uint256)
 func (_Contract *ContractSession) CurrentEpoch() (*big.Int, error) {
 	return _Contract.Contract.CurrentEpoch(&_Contract.CallOpts)
 }
 
 // CurrentEpoch is a free data retrieval call binding the contract method 0x76671808.
 //
-// Solidity: function currentEpoch() constant returns(uint256)
+// Solidity: function currentEpoch() view returns(uint256)
 func (_Contract *ContractCallerSession) CurrentEpoch() (*big.Int, error) {
 	return _Contract.Contract.CurrentEpoch(&_Contract.CallOpts)
 }
 
 // CurrentSealedEpoch is a free data retrieval call binding the contract method 0x7cacb1d6.
 //
-// Solidity: function currentSealedEpoch() constant returns(uint256)
+// Solidity: function currentSealedEpoch() view returns(uint256)
 func (_Contract *ContractCaller) CurrentSealedEpoch(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -553,21 +552,21 @@ func (_Contract *ContractCaller) CurrentSealedEpoch(opts *bind.CallOpts) (*big.I
 
 // CurrentSealedEpoch is a free data retrieval call binding the contract method 0x7cacb1d6.
 //
-// Solidity: function currentSealedEpoch() constant returns(uint256)
+// Solidity: function currentSealedEpoch() view returns(uint256)
 func (_Contract *ContractSession) CurrentSealedEpoch() (*big.Int, error) {
 	return _Contract.Contract.CurrentSealedEpoch(&_Contract.CallOpts)
 }
 
 // CurrentSealedEpoch is a free data retrieval call binding the contract method 0x7cacb1d6.
 //
-// Solidity: function currentSealedEpoch() constant returns(uint256)
+// Solidity: function currentSealedEpoch() view returns(uint256)
 func (_Contract *ContractCallerSession) CurrentSealedEpoch() (*big.Int, error) {
 	return _Contract.Contract.CurrentSealedEpoch(&_Contract.CallOpts)
 }
 
 // DelegationLockPeriodEpochs is a free data retrieval call binding the contract method 0x1d58179c.
 //
-// Solidity: function delegationLockPeriodEpochs() constant returns(uint256)
+// Solidity: function delegationLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractCaller) DelegationLockPeriodEpochs(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -579,21 +578,21 @@ func (_Contract *ContractCaller) DelegationLockPeriodEpochs(opts *bind.CallOpts)
 
 // DelegationLockPeriodEpochs is a free data retrieval call binding the contract method 0x1d58179c.
 //
-// Solidity: function delegationLockPeriodEpochs() constant returns(uint256)
+// Solidity: function delegationLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractSession) DelegationLockPeriodEpochs() (*big.Int, error) {
 	return _Contract.Contract.DelegationLockPeriodEpochs(&_Contract.CallOpts)
 }
 
 // DelegationLockPeriodEpochs is a free data retrieval call binding the contract method 0x1d58179c.
 //
-// Solidity: function delegationLockPeriodEpochs() constant returns(uint256)
+// Solidity: function delegationLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractCallerSession) DelegationLockPeriodEpochs() (*big.Int, error) {
 	return _Contract.Contract.DelegationLockPeriodEpochs(&_Contract.CallOpts)
 }
 
 // DelegationLockPeriodTime is a free data retrieval call binding the contract method 0xec6a7f1c.
 //
-// Solidity: function delegationLockPeriodTime() constant returns(uint256)
+// Solidity: function delegationLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractCaller) DelegationLockPeriodTime(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -605,21 +604,21 @@ func (_Contract *ContractCaller) DelegationLockPeriodTime(opts *bind.CallOpts) (
 
 // DelegationLockPeriodTime is a free data retrieval call binding the contract method 0xec6a7f1c.
 //
-// Solidity: function delegationLockPeriodTime() constant returns(uint256)
+// Solidity: function delegationLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractSession) DelegationLockPeriodTime() (*big.Int, error) {
 	return _Contract.Contract.DelegationLockPeriodTime(&_Contract.CallOpts)
 }
 
 // DelegationLockPeriodTime is a free data retrieval call binding the contract method 0xec6a7f1c.
 //
-// Solidity: function delegationLockPeriodTime() constant returns(uint256)
+// Solidity: function delegationLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractCallerSession) DelegationLockPeriodTime() (*big.Int, error) {
 	return _Contract.Contract.DelegationLockPeriodTime(&_Contract.CallOpts)
 }
 
 // Delegations is a free data retrieval call binding the contract method 0xbffe3486.
 //
-// Solidity: function delegations(address ) constant returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
+// Solidity: function delegations(address ) view returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
 func (_Contract *ContractCaller) Delegations(opts *bind.CallOpts, arg0 common.Address) (struct {
 	CreatedEpoch     *big.Int
 	CreatedTime      *big.Int
@@ -645,7 +644,7 @@ func (_Contract *ContractCaller) Delegations(opts *bind.CallOpts, arg0 common.Ad
 
 // Delegations is a free data retrieval call binding the contract method 0xbffe3486.
 //
-// Solidity: function delegations(address ) constant returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
+// Solidity: function delegations(address ) view returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
 func (_Contract *ContractSession) Delegations(arg0 common.Address) (struct {
 	CreatedEpoch     *big.Int
 	CreatedTime      *big.Int
@@ -660,7 +659,7 @@ func (_Contract *ContractSession) Delegations(arg0 common.Address) (struct {
 
 // Delegations is a free data retrieval call binding the contract method 0xbffe3486.
 //
-// Solidity: function delegations(address ) constant returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
+// Solidity: function delegations(address ) view returns(uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 amount, uint256 paidUntilEpoch, uint256 toStakerID)
 func (_Contract *ContractCallerSession) Delegations(arg0 common.Address) (struct {
 	CreatedEpoch     *big.Int
 	CreatedTime      *big.Int
@@ -675,7 +674,7 @@ func (_Contract *ContractCallerSession) Delegations(arg0 common.Address) (struct
 
 // DelegationsNum is a free data retrieval call binding the contract method 0x4bd202dc.
 //
-// Solidity: function delegationsNum() constant returns(uint256)
+// Solidity: function delegationsNum() view returns(uint256)
 func (_Contract *ContractCaller) DelegationsNum(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -687,21 +686,21 @@ func (_Contract *ContractCaller) DelegationsNum(opts *bind.CallOpts) (*big.Int, 
 
 // DelegationsNum is a free data retrieval call binding the contract method 0x4bd202dc.
 //
-// Solidity: function delegationsNum() constant returns(uint256)
+// Solidity: function delegationsNum() view returns(uint256)
 func (_Contract *ContractSession) DelegationsNum() (*big.Int, error) {
 	return _Contract.Contract.DelegationsNum(&_Contract.CallOpts)
 }
 
 // DelegationsNum is a free data retrieval call binding the contract method 0x4bd202dc.
 //
-// Solidity: function delegationsNum() constant returns(uint256)
+// Solidity: function delegationsNum() view returns(uint256)
 func (_Contract *ContractCallerSession) DelegationsNum() (*big.Int, error) {
 	return _Contract.Contract.DelegationsNum(&_Contract.CallOpts)
 }
 
 // DelegationsTotalAmount is a free data retrieval call binding the contract method 0x30fa9929.
 //
-// Solidity: function delegationsTotalAmount() constant returns(uint256)
+// Solidity: function delegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractCaller) DelegationsTotalAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -713,21 +712,21 @@ func (_Contract *ContractCaller) DelegationsTotalAmount(opts *bind.CallOpts) (*b
 
 // DelegationsTotalAmount is a free data retrieval call binding the contract method 0x30fa9929.
 //
-// Solidity: function delegationsTotalAmount() constant returns(uint256)
+// Solidity: function delegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractSession) DelegationsTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.DelegationsTotalAmount(&_Contract.CallOpts)
 }
 
 // DelegationsTotalAmount is a free data retrieval call binding the contract method 0x30fa9929.
 //
-// Solidity: function delegationsTotalAmount() constant returns(uint256)
+// Solidity: function delegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractCallerSession) DelegationsTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.DelegationsTotalAmount(&_Contract.CallOpts)
 }
 
 // EpochSnapshots is a free data retrieval call binding the contract method 0x1e8a6956.
 //
-// Solidity: function epochSnapshots(uint256 ) constant returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
+// Solidity: function epochSnapshots(uint256 ) view returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
 func (_Contract *ContractCaller) EpochSnapshots(opts *bind.CallOpts, arg0 *big.Int) (struct {
 	EndTime                *big.Int
 	Duration               *big.Int
@@ -757,7 +756,7 @@ func (_Contract *ContractCaller) EpochSnapshots(opts *bind.CallOpts, arg0 *big.I
 
 // EpochSnapshots is a free data retrieval call binding the contract method 0x1e8a6956.
 //
-// Solidity: function epochSnapshots(uint256 ) constant returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
+// Solidity: function epochSnapshots(uint256 ) view returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
 func (_Contract *ContractSession) EpochSnapshots(arg0 *big.Int) (struct {
 	EndTime                *big.Int
 	Duration               *big.Int
@@ -774,7 +773,7 @@ func (_Contract *ContractSession) EpochSnapshots(arg0 *big.Int) (struct {
 
 // EpochSnapshots is a free data retrieval call binding the contract method 0x1e8a6956.
 //
-// Solidity: function epochSnapshots(uint256 ) constant returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
+// Solidity: function epochSnapshots(uint256 ) view returns(uint256 endTime, uint256 duration, uint256 epochFee, uint256 totalBaseRewardWeight, uint256 totalTxRewardWeight, uint256 baseRewardPerSecond, uint256 stakeTotalAmount, uint256 delegationsTotalAmount, uint256 totalSupply)
 func (_Contract *ContractCallerSession) EpochSnapshots(arg0 *big.Int) (struct {
 	EndTime                *big.Int
 	Duration               *big.Int
@@ -791,7 +790,7 @@ func (_Contract *ContractCallerSession) EpochSnapshots(arg0 *big.Int) (struct {
 
 // EpochValidator is a free data retrieval call binding the contract method 0xb9029d50.
 //
-// Solidity: function epochValidator(uint256 e, uint256 v) constant returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
+// Solidity: function epochValidator(uint256 e, uint256 v) view returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
 func (_Contract *ContractCaller) EpochValidator(opts *bind.CallOpts, e *big.Int, v *big.Int) (struct {
 	StakeAmount      *big.Int
 	DelegatedMe      *big.Int
@@ -811,7 +810,7 @@ func (_Contract *ContractCaller) EpochValidator(opts *bind.CallOpts, e *big.Int,
 
 // EpochValidator is a free data retrieval call binding the contract method 0xb9029d50.
 //
-// Solidity: function epochValidator(uint256 e, uint256 v) constant returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
+// Solidity: function epochValidator(uint256 e, uint256 v) view returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
 func (_Contract *ContractSession) EpochValidator(e *big.Int, v *big.Int) (struct {
 	StakeAmount      *big.Int
 	DelegatedMe      *big.Int
@@ -823,7 +822,7 @@ func (_Contract *ContractSession) EpochValidator(e *big.Int, v *big.Int) (struct
 
 // EpochValidator is a free data retrieval call binding the contract method 0xb9029d50.
 //
-// Solidity: function epochValidator(uint256 e, uint256 v) constant returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
+// Solidity: function epochValidator(uint256 e, uint256 v) view returns(uint256 stakeAmount, uint256 delegatedMe, uint256 baseRewardWeight, uint256 txRewardWeight)
 func (_Contract *ContractCallerSession) EpochValidator(e *big.Int, v *big.Int) (struct {
 	StakeAmount      *big.Int
 	DelegatedMe      *big.Int
@@ -835,7 +834,7 @@ func (_Contract *ContractCallerSession) EpochValidator(e *big.Int, v *big.Int) (
 
 // GetStakerID is a free data retrieval call binding the contract method 0x63321e27.
 //
-// Solidity: function getStakerID(address addr) constant returns(uint256)
+// Solidity: function getStakerID(address addr) view returns(uint256)
 func (_Contract *ContractCaller) GetStakerID(opts *bind.CallOpts, addr common.Address) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -847,21 +846,21 @@ func (_Contract *ContractCaller) GetStakerID(opts *bind.CallOpts, addr common.Ad
 
 // GetStakerID is a free data retrieval call binding the contract method 0x63321e27.
 //
-// Solidity: function getStakerID(address addr) constant returns(uint256)
+// Solidity: function getStakerID(address addr) view returns(uint256)
 func (_Contract *ContractSession) GetStakerID(addr common.Address) (*big.Int, error) {
 	return _Contract.Contract.GetStakerID(&_Contract.CallOpts, addr)
 }
 
 // GetStakerID is a free data retrieval call binding the contract method 0x63321e27.
 //
-// Solidity: function getStakerID(address addr) constant returns(uint256)
+// Solidity: function getStakerID(address addr) view returns(uint256)
 func (_Contract *ContractCallerSession) GetStakerID(addr common.Address) (*big.Int, error) {
 	return _Contract.Contract.GetStakerID(&_Contract.CallOpts, addr)
 }
 
 // IsOwner is a free data retrieval call binding the contract method 0x8f32d59b.
 //
-// Solidity: function isOwner() constant returns(bool)
+// Solidity: function isOwner() view returns(bool)
 func (_Contract *ContractCaller) IsOwner(opts *bind.CallOpts) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -873,21 +872,21 @@ func (_Contract *ContractCaller) IsOwner(opts *bind.CallOpts) (bool, error) {
 
 // IsOwner is a free data retrieval call binding the contract method 0x8f32d59b.
 //
-// Solidity: function isOwner() constant returns(bool)
+// Solidity: function isOwner() view returns(bool)
 func (_Contract *ContractSession) IsOwner() (bool, error) {
 	return _Contract.Contract.IsOwner(&_Contract.CallOpts)
 }
 
 // IsOwner is a free data retrieval call binding the contract method 0x8f32d59b.
 //
-// Solidity: function isOwner() constant returns(bool)
+// Solidity: function isOwner() view returns(bool)
 func (_Contract *ContractCallerSession) IsOwner() (bool, error) {
 	return _Contract.Contract.IsOwner(&_Contract.CallOpts)
 }
 
 // MaxDelegatedRatio is a free data retrieval call binding the contract method 0x2265f284.
 //
-// Solidity: function maxDelegatedRatio() constant returns(uint256)
+// Solidity: function maxDelegatedRatio() pure returns(uint256)
 func (_Contract *ContractCaller) MaxDelegatedRatio(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -899,21 +898,21 @@ func (_Contract *ContractCaller) MaxDelegatedRatio(opts *bind.CallOpts) (*big.In
 
 // MaxDelegatedRatio is a free data retrieval call binding the contract method 0x2265f284.
 //
-// Solidity: function maxDelegatedRatio() constant returns(uint256)
+// Solidity: function maxDelegatedRatio() pure returns(uint256)
 func (_Contract *ContractSession) MaxDelegatedRatio() (*big.Int, error) {
 	return _Contract.Contract.MaxDelegatedRatio(&_Contract.CallOpts)
 }
 
 // MaxDelegatedRatio is a free data retrieval call binding the contract method 0x2265f284.
 //
-// Solidity: function maxDelegatedRatio() constant returns(uint256)
+// Solidity: function maxDelegatedRatio() pure returns(uint256)
 func (_Contract *ContractCallerSession) MaxDelegatedRatio() (*big.Int, error) {
 	return _Contract.Contract.MaxDelegatedRatio(&_Contract.CallOpts)
 }
 
 // MaxStakerMetadataSize is a free data retrieval call binding the contract method 0xab2273c0.
 //
-// Solidity: function maxStakerMetadataSize() constant returns(uint256)
+// Solidity: function maxStakerMetadataSize() pure returns(uint256)
 func (_Contract *ContractCaller) MaxStakerMetadataSize(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -925,21 +924,21 @@ func (_Contract *ContractCaller) MaxStakerMetadataSize(opts *bind.CallOpts) (*bi
 
 // MaxStakerMetadataSize is a free data retrieval call binding the contract method 0xab2273c0.
 //
-// Solidity: function maxStakerMetadataSize() constant returns(uint256)
+// Solidity: function maxStakerMetadataSize() pure returns(uint256)
 func (_Contract *ContractSession) MaxStakerMetadataSize() (*big.Int, error) {
 	return _Contract.Contract.MaxStakerMetadataSize(&_Contract.CallOpts)
 }
 
 // MaxStakerMetadataSize is a free data retrieval call binding the contract method 0xab2273c0.
 //
-// Solidity: function maxStakerMetadataSize() constant returns(uint256)
+// Solidity: function maxStakerMetadataSize() pure returns(uint256)
 func (_Contract *ContractCallerSession) MaxStakerMetadataSize() (*big.Int, error) {
 	return _Contract.Contract.MaxStakerMetadataSize(&_Contract.CallOpts)
 }
 
 // MinDelegation is a free data retrieval call binding the contract method 0x02985992.
 //
-// Solidity: function minDelegation() constant returns(uint256)
+// Solidity: function minDelegation() pure returns(uint256)
 func (_Contract *ContractCaller) MinDelegation(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -951,21 +950,21 @@ func (_Contract *ContractCaller) MinDelegation(opts *bind.CallOpts) (*big.Int, e
 
 // MinDelegation is a free data retrieval call binding the contract method 0x02985992.
 //
-// Solidity: function minDelegation() constant returns(uint256)
+// Solidity: function minDelegation() pure returns(uint256)
 func (_Contract *ContractSession) MinDelegation() (*big.Int, error) {
 	return _Contract.Contract.MinDelegation(&_Contract.CallOpts)
 }
 
 // MinDelegation is a free data retrieval call binding the contract method 0x02985992.
 //
-// Solidity: function minDelegation() constant returns(uint256)
+// Solidity: function minDelegation() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinDelegation() (*big.Int, error) {
 	return _Contract.Contract.MinDelegation(&_Contract.CallOpts)
 }
 
 // MinDelegationDecrease is a free data retrieval call binding the contract method 0xcb1c4e67.
 //
-// Solidity: function minDelegationDecrease() constant returns(uint256)
+// Solidity: function minDelegationDecrease() pure returns(uint256)
 func (_Contract *ContractCaller) MinDelegationDecrease(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -977,21 +976,21 @@ func (_Contract *ContractCaller) MinDelegationDecrease(opts *bind.CallOpts) (*bi
 
 // MinDelegationDecrease is a free data retrieval call binding the contract method 0xcb1c4e67.
 //
-// Solidity: function minDelegationDecrease() constant returns(uint256)
+// Solidity: function minDelegationDecrease() pure returns(uint256)
 func (_Contract *ContractSession) MinDelegationDecrease() (*big.Int, error) {
 	return _Contract.Contract.MinDelegationDecrease(&_Contract.CallOpts)
 }
 
 // MinDelegationDecrease is a free data retrieval call binding the contract method 0xcb1c4e67.
 //
-// Solidity: function minDelegationDecrease() constant returns(uint256)
+// Solidity: function minDelegationDecrease() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinDelegationDecrease() (*big.Int, error) {
 	return _Contract.Contract.MinDelegationDecrease(&_Contract.CallOpts)
 }
 
 // MinDelegationIncrease is a free data retrieval call binding the contract method 0x60c7e37f.
 //
-// Solidity: function minDelegationIncrease() constant returns(uint256)
+// Solidity: function minDelegationIncrease() pure returns(uint256)
 func (_Contract *ContractCaller) MinDelegationIncrease(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1003,21 +1002,21 @@ func (_Contract *ContractCaller) MinDelegationIncrease(opts *bind.CallOpts) (*bi
 
 // MinDelegationIncrease is a free data retrieval call binding the contract method 0x60c7e37f.
 //
-// Solidity: function minDelegationIncrease() constant returns(uint256)
+// Solidity: function minDelegationIncrease() pure returns(uint256)
 func (_Contract *ContractSession) MinDelegationIncrease() (*big.Int, error) {
 	return _Contract.Contract.MinDelegationIncrease(&_Contract.CallOpts)
 }
 
 // MinDelegationIncrease is a free data retrieval call binding the contract method 0x60c7e37f.
 //
-// Solidity: function minDelegationIncrease() constant returns(uint256)
+// Solidity: function minDelegationIncrease() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinDelegationIncrease() (*big.Int, error) {
 	return _Contract.Contract.MinDelegationIncrease(&_Contract.CallOpts)
 }
 
 // MinStake is a free data retrieval call binding the contract method 0x375b3c0a.
 //
-// Solidity: function minStake() constant returns(uint256)
+// Solidity: function minStake() pure returns(uint256)
 func (_Contract *ContractCaller) MinStake(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1029,21 +1028,21 @@ func (_Contract *ContractCaller) MinStake(opts *bind.CallOpts) (*big.Int, error)
 
 // MinStake is a free data retrieval call binding the contract method 0x375b3c0a.
 //
-// Solidity: function minStake() constant returns(uint256)
+// Solidity: function minStake() pure returns(uint256)
 func (_Contract *ContractSession) MinStake() (*big.Int, error) {
 	return _Contract.Contract.MinStake(&_Contract.CallOpts)
 }
 
 // MinStake is a free data retrieval call binding the contract method 0x375b3c0a.
 //
-// Solidity: function minStake() constant returns(uint256)
+// Solidity: function minStake() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinStake() (*big.Int, error) {
 	return _Contract.Contract.MinStake(&_Contract.CallOpts)
 }
 
 // MinStakeDecrease is a free data retrieval call binding the contract method 0x19ddb54f.
 //
-// Solidity: function minStakeDecrease() constant returns(uint256)
+// Solidity: function minStakeDecrease() pure returns(uint256)
 func (_Contract *ContractCaller) MinStakeDecrease(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1055,21 +1054,21 @@ func (_Contract *ContractCaller) MinStakeDecrease(opts *bind.CallOpts) (*big.Int
 
 // MinStakeDecrease is a free data retrieval call binding the contract method 0x19ddb54f.
 //
-// Solidity: function minStakeDecrease() constant returns(uint256)
+// Solidity: function minStakeDecrease() pure returns(uint256)
 func (_Contract *ContractSession) MinStakeDecrease() (*big.Int, error) {
 	return _Contract.Contract.MinStakeDecrease(&_Contract.CallOpts)
 }
 
 // MinStakeDecrease is a free data retrieval call binding the contract method 0x19ddb54f.
 //
-// Solidity: function minStakeDecrease() constant returns(uint256)
+// Solidity: function minStakeDecrease() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinStakeDecrease() (*big.Int, error) {
 	return _Contract.Contract.MinStakeDecrease(&_Contract.CallOpts)
 }
 
 // MinStakeIncrease is a free data retrieval call binding the contract method 0xc4b5dd7e.
 //
-// Solidity: function minStakeIncrease() constant returns(uint256)
+// Solidity: function minStakeIncrease() pure returns(uint256)
 func (_Contract *ContractCaller) MinStakeIncrease(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1081,21 +1080,21 @@ func (_Contract *ContractCaller) MinStakeIncrease(opts *bind.CallOpts) (*big.Int
 
 // MinStakeIncrease is a free data retrieval call binding the contract method 0xc4b5dd7e.
 //
-// Solidity: function minStakeIncrease() constant returns(uint256)
+// Solidity: function minStakeIncrease() pure returns(uint256)
 func (_Contract *ContractSession) MinStakeIncrease() (*big.Int, error) {
 	return _Contract.Contract.MinStakeIncrease(&_Contract.CallOpts)
 }
 
 // MinStakeIncrease is a free data retrieval call binding the contract method 0xc4b5dd7e.
 //
-// Solidity: function minStakeIncrease() constant returns(uint256)
+// Solidity: function minStakeIncrease() pure returns(uint256)
 func (_Contract *ContractCallerSession) MinStakeIncrease() (*big.Int, error) {
 	return _Contract.Contract.MinStakeIncrease(&_Contract.CallOpts)
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
 //
-// Solidity: function owner() constant returns(address)
+// Solidity: function owner() view returns(address)
 func (_Contract *ContractCaller) Owner(opts *bind.CallOpts) (common.Address, error) {
 	var (
 		ret0 = new(common.Address)
@@ -1107,21 +1106,21 @@ func (_Contract *ContractCaller) Owner(opts *bind.CallOpts) (common.Address, err
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
 //
-// Solidity: function owner() constant returns(address)
+// Solidity: function owner() view returns(address)
 func (_Contract *ContractSession) Owner() (common.Address, error) {
 	return _Contract.Contract.Owner(&_Contract.CallOpts)
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
 //
-// Solidity: function owner() constant returns(address)
+// Solidity: function owner() view returns(address)
 func (_Contract *ContractCallerSession) Owner() (common.Address, error) {
 	return _Contract.Contract.Owner(&_Contract.CallOpts)
 }
 
 // RewardsAllowed is a free data retrieval call binding the contract method 0x8447c4df.
 //
-// Solidity: function rewardsAllowed() constant returns(bool)
+// Solidity: function rewardsAllowed() view returns(bool)
 func (_Contract *ContractCaller) RewardsAllowed(opts *bind.CallOpts) (bool, error) {
 	var (
 		ret0 = new(bool)
@@ -1133,21 +1132,21 @@ func (_Contract *ContractCaller) RewardsAllowed(opts *bind.CallOpts) (bool, erro
 
 // RewardsAllowed is a free data retrieval call binding the contract method 0x8447c4df.
 //
-// Solidity: function rewardsAllowed() constant returns(bool)
+// Solidity: function rewardsAllowed() view returns(bool)
 func (_Contract *ContractSession) RewardsAllowed() (bool, error) {
 	return _Contract.Contract.RewardsAllowed(&_Contract.CallOpts)
 }
 
 // RewardsAllowed is a free data retrieval call binding the contract method 0x8447c4df.
 //
-// Solidity: function rewardsAllowed() constant returns(bool)
+// Solidity: function rewardsAllowed() view returns(bool)
 func (_Contract *ContractCallerSession) RewardsAllowed() (bool, error) {
 	return _Contract.Contract.RewardsAllowed(&_Contract.CallOpts)
 }
 
 // RewardsStash is a free data retrieval call binding the contract method 0x6f498663.
 //
-// Solidity: function rewardsStash(address , uint256 ) constant returns(uint256 amount)
+// Solidity: function rewardsStash(address , uint256 ) view returns(uint256 amount)
 func (_Contract *ContractCaller) RewardsStash(opts *bind.CallOpts, arg0 common.Address, arg1 *big.Int) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1159,21 +1158,21 @@ func (_Contract *ContractCaller) RewardsStash(opts *bind.CallOpts, arg0 common.A
 
 // RewardsStash is a free data retrieval call binding the contract method 0x6f498663.
 //
-// Solidity: function rewardsStash(address , uint256 ) constant returns(uint256 amount)
+// Solidity: function rewardsStash(address , uint256 ) view returns(uint256 amount)
 func (_Contract *ContractSession) RewardsStash(arg0 common.Address, arg1 *big.Int) (*big.Int, error) {
 	return _Contract.Contract.RewardsStash(&_Contract.CallOpts, arg0, arg1)
 }
 
 // RewardsStash is a free data retrieval call binding the contract method 0x6f498663.
 //
-// Solidity: function rewardsStash(address , uint256 ) constant returns(uint256 amount)
+// Solidity: function rewardsStash(address , uint256 ) view returns(uint256 amount)
 func (_Contract *ContractCallerSession) RewardsStash(arg0 common.Address, arg1 *big.Int) (*big.Int, error) {
 	return _Contract.Contract.RewardsStash(&_Contract.CallOpts, arg0, arg1)
 }
 
 // SlashedDelegationsTotalAmount is a free data retrieval call binding the contract method 0xa70da4d2.
 //
-// Solidity: function slashedDelegationsTotalAmount() constant returns(uint256)
+// Solidity: function slashedDelegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractCaller) SlashedDelegationsTotalAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1185,21 +1184,21 @@ func (_Contract *ContractCaller) SlashedDelegationsTotalAmount(opts *bind.CallOp
 
 // SlashedDelegationsTotalAmount is a free data retrieval call binding the contract method 0xa70da4d2.
 //
-// Solidity: function slashedDelegationsTotalAmount() constant returns(uint256)
+// Solidity: function slashedDelegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractSession) SlashedDelegationsTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.SlashedDelegationsTotalAmount(&_Contract.CallOpts)
 }
 
 // SlashedDelegationsTotalAmount is a free data retrieval call binding the contract method 0xa70da4d2.
 //
-// Solidity: function slashedDelegationsTotalAmount() constant returns(uint256)
+// Solidity: function slashedDelegationsTotalAmount() view returns(uint256)
 func (_Contract *ContractCallerSession) SlashedDelegationsTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.SlashedDelegationsTotalAmount(&_Contract.CallOpts)
 }
 
 // SlashedStakeTotalAmount is a free data retrieval call binding the contract method 0x0a29180c.
 //
-// Solidity: function slashedStakeTotalAmount() constant returns(uint256)
+// Solidity: function slashedStakeTotalAmount() view returns(uint256)
 func (_Contract *ContractCaller) SlashedStakeTotalAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1211,21 +1210,21 @@ func (_Contract *ContractCaller) SlashedStakeTotalAmount(opts *bind.CallOpts) (*
 
 // SlashedStakeTotalAmount is a free data retrieval call binding the contract method 0x0a29180c.
 //
-// Solidity: function slashedStakeTotalAmount() constant returns(uint256)
+// Solidity: function slashedStakeTotalAmount() view returns(uint256)
 func (_Contract *ContractSession) SlashedStakeTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.SlashedStakeTotalAmount(&_Contract.CallOpts)
 }
 
 // SlashedStakeTotalAmount is a free data retrieval call binding the contract method 0x0a29180c.
 //
-// Solidity: function slashedStakeTotalAmount() constant returns(uint256)
+// Solidity: function slashedStakeTotalAmount() view returns(uint256)
 func (_Contract *ContractCallerSession) SlashedStakeTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.SlashedStakeTotalAmount(&_Contract.CallOpts)
 }
 
 // StakeLockPeriodEpochs is a free data retrieval call binding the contract method 0x54d77ed2.
 //
-// Solidity: function stakeLockPeriodEpochs() constant returns(uint256)
+// Solidity: function stakeLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractCaller) StakeLockPeriodEpochs(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1237,21 +1236,21 @@ func (_Contract *ContractCaller) StakeLockPeriodEpochs(opts *bind.CallOpts) (*bi
 
 // StakeLockPeriodEpochs is a free data retrieval call binding the contract method 0x54d77ed2.
 //
-// Solidity: function stakeLockPeriodEpochs() constant returns(uint256)
+// Solidity: function stakeLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractSession) StakeLockPeriodEpochs() (*big.Int, error) {
 	return _Contract.Contract.StakeLockPeriodEpochs(&_Contract.CallOpts)
 }
 
 // StakeLockPeriodEpochs is a free data retrieval call binding the contract method 0x54d77ed2.
 //
-// Solidity: function stakeLockPeriodEpochs() constant returns(uint256)
+// Solidity: function stakeLockPeriodEpochs() pure returns(uint256)
 func (_Contract *ContractCallerSession) StakeLockPeriodEpochs() (*big.Int, error) {
 	return _Contract.Contract.StakeLockPeriodEpochs(&_Contract.CallOpts)
 }
 
 // StakeLockPeriodTime is a free data retrieval call binding the contract method 0x3fee10a8.
 //
-// Solidity: function stakeLockPeriodTime() constant returns(uint256)
+// Solidity: function stakeLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractCaller) StakeLockPeriodTime(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1263,21 +1262,21 @@ func (_Contract *ContractCaller) StakeLockPeriodTime(opts *bind.CallOpts) (*big.
 
 // StakeLockPeriodTime is a free data retrieval call binding the contract method 0x3fee10a8.
 //
-// Solidity: function stakeLockPeriodTime() constant returns(uint256)
+// Solidity: function stakeLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractSession) StakeLockPeriodTime() (*big.Int, error) {
 	return _Contract.Contract.StakeLockPeriodTime(&_Contract.CallOpts)
 }
 
 // StakeLockPeriodTime is a free data retrieval call binding the contract method 0x3fee10a8.
 //
-// Solidity: function stakeLockPeriodTime() constant returns(uint256)
+// Solidity: function stakeLockPeriodTime() pure returns(uint256)
 func (_Contract *ContractCallerSession) StakeLockPeriodTime() (*big.Int, error) {
 	return _Contract.Contract.StakeLockPeriodTime(&_Contract.CallOpts)
 }
 
 // StakeTotalAmount is a free data retrieval call binding the contract method 0x3d0317fe.
 //
-// Solidity: function stakeTotalAmount() constant returns(uint256)
+// Solidity: function stakeTotalAmount() view returns(uint256)
 func (_Contract *ContractCaller) StakeTotalAmount(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1289,21 +1288,21 @@ func (_Contract *ContractCaller) StakeTotalAmount(opts *bind.CallOpts) (*big.Int
 
 // StakeTotalAmount is a free data retrieval call binding the contract method 0x3d0317fe.
 //
-// Solidity: function stakeTotalAmount() constant returns(uint256)
+// Solidity: function stakeTotalAmount() view returns(uint256)
 func (_Contract *ContractSession) StakeTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.StakeTotalAmount(&_Contract.CallOpts)
 }
 
 // StakeTotalAmount is a free data retrieval call binding the contract method 0x3d0317fe.
 //
-// Solidity: function stakeTotalAmount() constant returns(uint256)
+// Solidity: function stakeTotalAmount() view returns(uint256)
 func (_Contract *ContractCallerSession) StakeTotalAmount() (*big.Int, error) {
 	return _Contract.Contract.StakeTotalAmount(&_Contract.CallOpts)
 }
 
 // StakerMetadata is a free data retrieval call binding the contract method 0x98ec2de5.
 //
-// Solidity: function stakerMetadata(uint256 ) constant returns(bytes)
+// Solidity: function stakerMetadata(uint256 ) view returns(bytes)
 func (_Contract *ContractCaller) StakerMetadata(opts *bind.CallOpts, arg0 *big.Int) ([]byte, error) {
 	var (
 		ret0 = new([]byte)
@@ -1315,21 +1314,21 @@ func (_Contract *ContractCaller) StakerMetadata(opts *bind.CallOpts, arg0 *big.I
 
 // StakerMetadata is a free data retrieval call binding the contract method 0x98ec2de5.
 //
-// Solidity: function stakerMetadata(uint256 ) constant returns(bytes)
+// Solidity: function stakerMetadata(uint256 ) view returns(bytes)
 func (_Contract *ContractSession) StakerMetadata(arg0 *big.Int) ([]byte, error) {
 	return _Contract.Contract.StakerMetadata(&_Contract.CallOpts, arg0)
 }
 
 // StakerMetadata is a free data retrieval call binding the contract method 0x98ec2de5.
 //
-// Solidity: function stakerMetadata(uint256 ) constant returns(bytes)
+// Solidity: function stakerMetadata(uint256 ) view returns(bytes)
 func (_Contract *ContractCallerSession) StakerMetadata(arg0 *big.Int) ([]byte, error) {
 	return _Contract.Contract.StakerMetadata(&_Contract.CallOpts, arg0)
 }
 
 // Stakers is a free data retrieval call binding the contract method 0xfd5e6dd1.
 //
-// Solidity: function stakers(uint256 ) constant returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
+// Solidity: function stakers(uint256 ) view returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
 func (_Contract *ContractCaller) Stakers(opts *bind.CallOpts, arg0 *big.Int) (struct {
 	Status           *big.Int
 	CreatedEpoch     *big.Int
@@ -1361,7 +1360,7 @@ func (_Contract *ContractCaller) Stakers(opts *bind.CallOpts, arg0 *big.Int) (st
 
 // Stakers is a free data retrieval call binding the contract method 0xfd5e6dd1.
 //
-// Solidity: function stakers(uint256 ) constant returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
+// Solidity: function stakers(uint256 ) view returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
 func (_Contract *ContractSession) Stakers(arg0 *big.Int) (struct {
 	Status           *big.Int
 	CreatedEpoch     *big.Int
@@ -1379,7 +1378,7 @@ func (_Contract *ContractSession) Stakers(arg0 *big.Int) (struct {
 
 // Stakers is a free data retrieval call binding the contract method 0xfd5e6dd1.
 //
-// Solidity: function stakers(uint256 ) constant returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
+// Solidity: function stakers(uint256 ) view returns(uint256 status, uint256 createdEpoch, uint256 createdTime, uint256 deactivatedEpoch, uint256 deactivatedTime, uint256 stakeAmount, uint256 paidUntilEpoch, uint256 delegatedMe, address dagAddress, address sfcAddress)
 func (_Contract *ContractCallerSession) Stakers(arg0 *big.Int) (struct {
 	Status           *big.Int
 	CreatedEpoch     *big.Int
@@ -1397,7 +1396,7 @@ func (_Contract *ContractCallerSession) Stakers(arg0 *big.Int) (struct {
 
 // StakersLastID is a free data retrieval call binding the contract method 0x81d9dc7a.
 //
-// Solidity: function stakersLastID() constant returns(uint256)
+// Solidity: function stakersLastID() view returns(uint256)
 func (_Contract *ContractCaller) StakersLastID(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1409,21 +1408,21 @@ func (_Contract *ContractCaller) StakersLastID(opts *bind.CallOpts) (*big.Int, e
 
 // StakersLastID is a free data retrieval call binding the contract method 0x81d9dc7a.
 //
-// Solidity: function stakersLastID() constant returns(uint256)
+// Solidity: function stakersLastID() view returns(uint256)
 func (_Contract *ContractSession) StakersLastID() (*big.Int, error) {
 	return _Contract.Contract.StakersLastID(&_Contract.CallOpts)
 }
 
 // StakersLastID is a free data retrieval call binding the contract method 0x81d9dc7a.
 //
-// Solidity: function stakersLastID() constant returns(uint256)
+// Solidity: function stakersLastID() view returns(uint256)
 func (_Contract *ContractCallerSession) StakersLastID() (*big.Int, error) {
 	return _Contract.Contract.StakersLastID(&_Contract.CallOpts)
 }
 
 // StakersNum is a free data retrieval call binding the contract method 0x08728f6e.
 //
-// Solidity: function stakersNum() constant returns(uint256)
+// Solidity: function stakersNum() view returns(uint256)
 func (_Contract *ContractCaller) StakersNum(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1435,21 +1434,21 @@ func (_Contract *ContractCaller) StakersNum(opts *bind.CallOpts) (*big.Int, erro
 
 // StakersNum is a free data retrieval call binding the contract method 0x08728f6e.
 //
-// Solidity: function stakersNum() constant returns(uint256)
+// Solidity: function stakersNum() view returns(uint256)
 func (_Contract *ContractSession) StakersNum() (*big.Int, error) {
 	return _Contract.Contract.StakersNum(&_Contract.CallOpts)
 }
 
 // StakersNum is a free data retrieval call binding the contract method 0x08728f6e.
 //
-// Solidity: function stakersNum() constant returns(uint256)
+// Solidity: function stakersNum() view returns(uint256)
 func (_Contract *ContractCallerSession) StakersNum() (*big.Int, error) {
 	return _Contract.Contract.StakersNum(&_Contract.CallOpts)
 }
 
 // UnbondingStartDate is a free data retrieval call binding the contract method 0x53a72586.
 //
-// Solidity: function unbondingStartDate() constant returns(uint256)
+// Solidity: function unbondingStartDate() pure returns(uint256)
 func (_Contract *ContractCaller) UnbondingStartDate(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1461,21 +1460,21 @@ func (_Contract *ContractCaller) UnbondingStartDate(opts *bind.CallOpts) (*big.I
 
 // UnbondingStartDate is a free data retrieval call binding the contract method 0x53a72586.
 //
-// Solidity: function unbondingStartDate() constant returns(uint256)
+// Solidity: function unbondingStartDate() pure returns(uint256)
 func (_Contract *ContractSession) UnbondingStartDate() (*big.Int, error) {
 	return _Contract.Contract.UnbondingStartDate(&_Contract.CallOpts)
 }
 
 // UnbondingStartDate is a free data retrieval call binding the contract method 0x53a72586.
 //
-// Solidity: function unbondingStartDate() constant returns(uint256)
+// Solidity: function unbondingStartDate() pure returns(uint256)
 func (_Contract *ContractCallerSession) UnbondingStartDate() (*big.Int, error) {
 	return _Contract.Contract.UnbondingStartDate(&_Contract.CallOpts)
 }
 
 // UnbondingUnlockPeriod is a free data retrieval call binding the contract method 0x3a0af4d4.
 //
-// Solidity: function unbondingUnlockPeriod() constant returns(uint256)
+// Solidity: function unbondingUnlockPeriod() pure returns(uint256)
 func (_Contract *ContractCaller) UnbondingUnlockPeriod(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1487,21 +1486,21 @@ func (_Contract *ContractCaller) UnbondingUnlockPeriod(opts *bind.CallOpts) (*bi
 
 // UnbondingUnlockPeriod is a free data retrieval call binding the contract method 0x3a0af4d4.
 //
-// Solidity: function unbondingUnlockPeriod() constant returns(uint256)
+// Solidity: function unbondingUnlockPeriod() pure returns(uint256)
 func (_Contract *ContractSession) UnbondingUnlockPeriod() (*big.Int, error) {
 	return _Contract.Contract.UnbondingUnlockPeriod(&_Contract.CallOpts)
 }
 
 // UnbondingUnlockPeriod is a free data retrieval call binding the contract method 0x3a0af4d4.
 //
-// Solidity: function unbondingUnlockPeriod() constant returns(uint256)
+// Solidity: function unbondingUnlockPeriod() pure returns(uint256)
 func (_Contract *ContractCallerSession) UnbondingUnlockPeriod() (*big.Int, error) {
 	return _Contract.Contract.UnbondingUnlockPeriod(&_Contract.CallOpts)
 }
 
 // ValidatorCommission is a free data retrieval call binding the contract method 0xa7786515.
 //
-// Solidity: function validatorCommission() constant returns(uint256)
+// Solidity: function validatorCommission() pure returns(uint256)
 func (_Contract *ContractCaller) ValidatorCommission(opts *bind.CallOpts) (*big.Int, error) {
 	var (
 		ret0 = new(*big.Int)
@@ -1513,21 +1512,21 @@ func (_Contract *ContractCaller) ValidatorCommission(opts *bind.CallOpts) (*big.
 
 // ValidatorCommission is a free data retrieval call binding the contract method 0xa7786515.
 //
-// Solidity: function validatorCommission() constant returns(uint256)
+// Solidity: function validatorCommission() pure returns(uint256)
 func (_Contract *ContractSession) ValidatorCommission() (*big.Int, error) {
 	return _Contract.Contract.ValidatorCommission(&_Contract.CallOpts)
 }
 
 // ValidatorCommission is a free data retrieval call binding the contract method 0xa7786515.
 //
-// Solidity: function validatorCommission() constant returns(uint256)
+// Solidity: function validatorCommission() pure returns(uint256)
 func (_Contract *ContractCallerSession) ValidatorCommission() (*big.Int, error) {
 	return _Contract.Contract.ValidatorCommission(&_Contract.CallOpts)
 }
 
 // WithdrawalRequests is a free data retrieval call binding the contract method 0x4e5a2328.
 //
-// Solidity: function withdrawalRequests(address , uint256 ) constant returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
+// Solidity: function withdrawalRequests(address , uint256 ) view returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
 func (_Contract *ContractCaller) WithdrawalRequests(opts *bind.CallOpts, arg0 common.Address, arg1 *big.Int) (struct {
 	StakerID   *big.Int
 	Epoch      *big.Int
@@ -1549,7 +1548,7 @@ func (_Contract *ContractCaller) WithdrawalRequests(opts *bind.CallOpts, arg0 co
 
 // WithdrawalRequests is a free data retrieval call binding the contract method 0x4e5a2328.
 //
-// Solidity: function withdrawalRequests(address , uint256 ) constant returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
+// Solidity: function withdrawalRequests(address , uint256 ) view returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
 func (_Contract *ContractSession) WithdrawalRequests(arg0 common.Address, arg1 *big.Int) (struct {
 	StakerID   *big.Int
 	Epoch      *big.Int
@@ -1562,7 +1561,7 @@ func (_Contract *ContractSession) WithdrawalRequests(arg0 common.Address, arg1 *
 
 // WithdrawalRequests is a free data retrieval call binding the contract method 0x4e5a2328.
 //
-// Solidity: function withdrawalRequests(address , uint256 ) constant returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
+// Solidity: function withdrawalRequests(address , uint256 ) view returns(uint256 stakerID, uint256 epoch, uint256 time, uint256 amount, bool delegation)
 func (_Contract *ContractCallerSession) WithdrawalRequests(arg0 common.Address, arg1 *big.Int) (struct {
 	StakerID   *big.Int
 	Epoch      *big.Int
@@ -1680,105 +1679,105 @@ func (_Contract *ContractTransactorSession) ClaimValidatorRewards(maxEpochs *big
 
 // CreateDelegation is a paid mutator transaction binding the contract method 0xc312eb07.
 //
-// Solidity: function createDelegation(uint256 to) returns()
+// Solidity: function createDelegation(uint256 to) payable returns()
 func (_Contract *ContractTransactor) CreateDelegation(opts *bind.TransactOpts, to *big.Int) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "createDelegation", to)
 }
 
 // CreateDelegation is a paid mutator transaction binding the contract method 0xc312eb07.
 //
-// Solidity: function createDelegation(uint256 to) returns()
+// Solidity: function createDelegation(uint256 to) payable returns()
 func (_Contract *ContractSession) CreateDelegation(to *big.Int) (*types.Transaction, error) {
 	return _Contract.Contract.CreateDelegation(&_Contract.TransactOpts, to)
 }
 
 // CreateDelegation is a paid mutator transaction binding the contract method 0xc312eb07.
 //
-// Solidity: function createDelegation(uint256 to) returns()
+// Solidity: function createDelegation(uint256 to) payable returns()
 func (_Contract *ContractTransactorSession) CreateDelegation(to *big.Int) (*types.Transaction, error) {
 	return _Contract.Contract.CreateDelegation(&_Contract.TransactOpts, to)
 }
 
 // CreateStake is a paid mutator transaction binding the contract method 0xcc8c2120.
 //
-// Solidity: function createStake(bytes metadata) returns()
+// Solidity: function createStake(bytes metadata) payable returns()
 func (_Contract *ContractTransactor) CreateStake(opts *bind.TransactOpts, metadata []byte) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "createStake", metadata)
 }
 
 // CreateStake is a paid mutator transaction binding the contract method 0xcc8c2120.
 //
-// Solidity: function createStake(bytes metadata) returns()
+// Solidity: function createStake(bytes metadata) payable returns()
 func (_Contract *ContractSession) CreateStake(metadata []byte) (*types.Transaction, error) {
 	return _Contract.Contract.CreateStake(&_Contract.TransactOpts, metadata)
 }
 
 // CreateStake is a paid mutator transaction binding the contract method 0xcc8c2120.
 //
-// Solidity: function createStake(bytes metadata) returns()
+// Solidity: function createStake(bytes metadata) payable returns()
 func (_Contract *ContractTransactorSession) CreateStake(metadata []byte) (*types.Transaction, error) {
 	return _Contract.Contract.CreateStake(&_Contract.TransactOpts, metadata)
 }
 
 // CreateStakeWithAddresses is a paid mutator transaction binding the contract method 0x90475ae4.
 //
-// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) returns()
+// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) payable returns()
 func (_Contract *ContractTransactor) CreateStakeWithAddresses(opts *bind.TransactOpts, dagAdrress common.Address, sfcAddress common.Address, metadata []byte) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "createStakeWithAddresses", dagAdrress, sfcAddress, metadata)
 }
 
 // CreateStakeWithAddresses is a paid mutator transaction binding the contract method 0x90475ae4.
 //
-// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) returns()
+// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) payable returns()
 func (_Contract *ContractSession) CreateStakeWithAddresses(dagAdrress common.Address, sfcAddress common.Address, metadata []byte) (*types.Transaction, error) {
 	return _Contract.Contract.CreateStakeWithAddresses(&_Contract.TransactOpts, dagAdrress, sfcAddress, metadata)
 }
 
 // CreateStakeWithAddresses is a paid mutator transaction binding the contract method 0x90475ae4.
 //
-// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) returns()
+// Solidity: function createStakeWithAddresses(address dagAdrress, address sfcAddress, bytes metadata) payable returns()
 func (_Contract *ContractTransactorSession) CreateStakeWithAddresses(dagAdrress common.Address, sfcAddress common.Address, metadata []byte) (*types.Transaction, error) {
 	return _Contract.Contract.CreateStakeWithAddresses(&_Contract.TransactOpts, dagAdrress, sfcAddress, metadata)
 }
 
 // IncreaseDelegation is a paid mutator transaction binding the contract method 0x3a274ff6.
 //
-// Solidity: function increaseDelegation() returns()
+// Solidity: function increaseDelegation() payable returns()
 func (_Contract *ContractTransactor) IncreaseDelegation(opts *bind.TransactOpts) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "increaseDelegation")
 }
 
 // IncreaseDelegation is a paid mutator transaction binding the contract method 0x3a274ff6.
 //
-// Solidity: function increaseDelegation() returns()
+// Solidity: function increaseDelegation() payable returns()
 func (_Contract *ContractSession) IncreaseDelegation() (*types.Transaction, error) {
 	return _Contract.Contract.IncreaseDelegation(&_Contract.TransactOpts)
 }
 
 // IncreaseDelegation is a paid mutator transaction binding the contract method 0x3a274ff6.
 //
-// Solidity: function increaseDelegation() returns()
+// Solidity: function increaseDelegation() payable returns()
 func (_Contract *ContractTransactorSession) IncreaseDelegation() (*types.Transaction, error) {
 	return _Contract.Contract.IncreaseDelegation(&_Contract.TransactOpts)
 }
 
 // IncreaseStake is a paid mutator transaction binding the contract method 0xd9e257ef.
 //
-// Solidity: function increaseStake() returns()
+// Solidity: function increaseStake() payable returns()
 func (_Contract *ContractTransactor) IncreaseStake(opts *bind.TransactOpts) (*types.Transaction, error) {
 	return _Contract.contract.Transact(opts, "increaseStake")
 }
 
 // IncreaseStake is a paid mutator transaction binding the contract method 0xd9e257ef.
 //
-// Solidity: function increaseStake() returns()
+// Solidity: function increaseStake() payable returns()
 func (_Contract *ContractSession) IncreaseStake() (*types.Transaction, error) {
 	return _Contract.Contract.IncreaseStake(&_Contract.TransactOpts)
 }
 
 // IncreaseStake is a paid mutator transaction binding the contract method 0xd9e257ef.
 //
-// Solidity: function increaseStake() returns()
+// Solidity: function increaseStake() payable returns()
 func (_Contract *ContractTransactorSession) IncreaseStake() (*types.Transaction, error) {
 	return _Contract.Contract.IncreaseStake(&_Contract.TransactOpts)
 }

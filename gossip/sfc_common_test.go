@@ -5,15 +5,15 @@ package gossip
 // 1.0.0 (genesis)
 //go:generate bash -c "cd ../../fantom-sfc && git checkout 1.0.0 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/gossip:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/upgradeability/UpgradeabilityProxy.sol"
 //go:generate mkdir -p sfcproxy
-//go:generate abigen --bin=./solc/UpgradeabilityProxy.bin --abi=./solc/UpgradeabilityProxy.abi --pkg=sfcproxy --type=Contract --out=sfcproxy/contract.go
+//go:generate go run github.com/ethereum/go-ethereum/cmd/abigen --bin=./solc/UpgradeabilityProxy.bin --abi=./solc/UpgradeabilityProxy.abi --pkg=sfcproxy --type=Contract --out=sfcproxy/contract.go
 // 1.1.0-rc1
 //go:generate bash -c "cd ../../fantom-sfc && git checkout 1.1.0-rc1 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/gossip:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
 //go:generate mkdir -p sfc110
-//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc110 --type=Contract --out=sfc110/contract.go
+//go:generate go run github.com/ethereum/go-ethereum/cmd/abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc110 --type=Contract --out=sfc110/contract.go
 // v2.0.2-rc.2
 //go:generate bash -c "cd ../../fantom-sfc && git checkout v2.0.2-rc.2 && docker run --rm -v $(pwd):/src -v $(pwd)/../go-lachesis/gossip:/dst ethereum/solc:0.5.12 -o /dst/solc/ --optimize --optimize-runs=2000 --bin --abi --allow-paths /src/contracts --overwrite /src/contracts/sfc/Staker.sol"
 //go:generate mkdir -p sfc202
-//go:generate abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc202 --type=Contract --out=sfc202/contract.go
+//go:generate go run github.com/ethereum/go-ethereum/cmd/abigen --bin=./solc/Stakers.bin --abi=./solc/Stakers.abi --pkg=sfc202 --type=Contract --out=sfc202/contract.go
 // clean
 //go:generate rm -fr ./solc
 
@@ -42,7 +42,6 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
-	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 	"github.com/Fantom-foundation/go-lachesis/logger"
 	"github.com/Fantom-foundation/go-lachesis/utils"
 	"github.com/Fantom-foundation/go-lachesis/vector"
@@ -62,8 +61,6 @@ const (
 type testEnv struct {
 	App   *Service
 	Store *app.Store
-
-	GasPrice *big.Int
 
 	signer eth.Signer
 
@@ -104,8 +101,6 @@ func newTestEnv() *testEnv {
 	env := &testEnv{
 		App:   a,
 		Store: s.app,
-
-		GasPrice: params.MinGasPrice,
 
 		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
 
@@ -217,7 +212,8 @@ func (env *testEnv) Transfer(from int, to int, amount *big.Int) *eth.Transaction
 	nonce, _ := env.PendingNonceAt(nil, env.Address(from))
 	key := env.privateKey(from)
 	receiver := env.Address(to)
-	tx := eth.NewTransaction(nonce, receiver, amount, gasLimit, env.GasPrice, nil)
+	gp := env.App.MinGasPrice()
+	tx := eth.NewTransaction(nonce, receiver, amount, gasLimit, gp, nil)
 	tx, err := eth.SignTx(tx, env.signer, key)
 	if err != nil {
 		panic(err)
@@ -230,7 +226,8 @@ func (env *testEnv) Contract(from int, amount *big.Int, hex string) *eth.Transac
 	data := hexutil.MustDecode(hex)
 	nonce, _ := env.PendingNonceAt(nil, env.Address(from))
 	key := env.privateKey(from)
-	tx := eth.NewContractCreation(nonce, amount, gasLimit*10000, env.GasPrice, data)
+	gp := env.App.MinGasPrice()
+	tx := eth.NewContractCreation(nonce, amount, gasLimit*10000, gp, data)
 	tx, err := eth.SignTx(tx, env.signer, key)
 	if err != nil {
 		panic(err)
@@ -337,7 +334,9 @@ func (env *testEnv) callContract(
 	// about the transaction and calling mechanisms.
 	vmenv := vm.NewEVM(evmContext, statedb, env.App.config.Net.EvmChainConfig(), vm.Config{})
 	gaspool := new(evmcore.GasPool).AddGas(math.MaxUint64)
-	ret, usedGas, _, failed, err = evmcore.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
+	res, err := evmcore.NewStateTransition(vmenv, msg, gaspool).TransitionDb()
+
+	ret, usedGas, failed = res.Return(), res.UsedGas, res.Failed()
 	return
 }
 
@@ -360,7 +359,7 @@ func (env *testEnv) PendingNonceAt(ctx context.Context, account common.Address) 
 // SuggestGasPrice retrieves the currently suggested gas price to allow a timely
 // execution of a transaction.
 func (env *testEnv) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
-	return env.GasPrice, nil
+	return env.App.MinGasPrice(), nil
 }
 
 // EstimateGas tries to estimate the gas needed to execute a specific

@@ -1,7 +1,7 @@
 package ordering
 
 import (
-	"github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/Fantom-foundation/go-lachesis/eventcheck"
 	"github.com/Fantom-foundation/go-lachesis/hash"

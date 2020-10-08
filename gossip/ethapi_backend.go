@@ -427,6 +427,10 @@ func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
 	return b.gpo.SuggestPrice(ctx)
 }
 
+func (b *EthAPIBackend) MinGasPrice() *big.Int {
+	return b.svc.MinGasPrice()
+}
+
 func (b *EthAPIBackend) ChainDb() ethdb.Database {
 	return b.svc.app.EvmTable()
 }
@@ -439,8 +443,12 @@ func (b *EthAPIBackend) ExtRPCEnabled() bool {
 	return b.extRPCEnabled
 }
 
-func (b *EthAPIBackend) RPCGasCap() *big.Int {
+func (b *EthAPIBackend) RPCGasCap() uint64 {
 	return b.svc.config.RPCGasCap
+}
+
+func (b *EthAPIBackend) RPCTxFeeCap() float64 {
+	return b.svc.config.RPCTxFeeCap
 }
 
 func (b *EthAPIBackend) EvmLogIndex() *topicsdb.Index {

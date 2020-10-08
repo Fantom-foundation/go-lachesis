@@ -108,8 +108,8 @@ docker run -d --name lachesis-node -v /home/alice/lachesis:/root \
 
 This will start `lachesis` with ```--port 5050 --nat extip:YOUR_IP``` arguments, with DB files inside ```/home/alice/lachesis/.lachesis```
 
-Do not forget `--rpcaddr 0.0.0.0`, if you plan to access RPC from other containers
-and/or hosts. By default, `lachesis` binds to the local interface and RPC endpoints is not
+Do not forget `--http.addr 0.0.0.0`, if you plan to access HTTP RPC from other containers
+and/or hosts. By default, `lachesis` binds to the local interface and HTTP RPC endpoints is not
 accessible from the outside.
 
 To find out your enode ID, use:

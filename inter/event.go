@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ethereum/go-ethereum/trie"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
@@ -18,7 +19,7 @@ import (
 
 var (
 	// EmptyTxHash is hash of empty transactions list. Used to check that event doesn't have transactions not having full event.
-	EmptyTxHash = types.DeriveSha(types.Transactions{})
+	EmptyTxHash = types.DeriveSha(types.Transactions{}, new(trie.Trie))
 )
 
 // EventHeaderData is the graph vertex in the Lachesis consensus algorithm

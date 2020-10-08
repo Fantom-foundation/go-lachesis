@@ -1,13 +1,15 @@
 package app
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/inter"
-	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
-	"math/big"
+
+	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 )
 
 type legacySfcDelegation struct {
@@ -22,10 +24,17 @@ type legacySfcDelegation struct {
 	ToStakerID idx.StakerID
 }
 
-type legacySfcConstants struct {
+type legacySfcConstants_06 struct {
 	ShortGasPowerAllocPerSec uint64
 	LongGasPowerAllocPerSec  uint64
 	BaseRewardPerSec         *big.Int
+}
+
+type legacySfcConstants_07rc1 struct {
+	ShortGasPowerAllocPerSec uint64
+	LongGasPowerAllocPerSec  uint64
+	BaseRewardPerSec         *big.Int
+	OfflinePenaltyThreshold  BlocksMissed
 }
 
 func (s *Store) MigrateMultiDelegations() error {
@@ -33,7 +42,7 @@ func (s *Store) MigrateMultiDelegations() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.Delegations.NewIterator()
+			it := s.table.Delegations.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
 				delegation := &legacySfcDelegation{}
@@ -64,7 +73,7 @@ func (s *Store) MigrateMultiDelegations() error {
 			}
 		}
 		{
-			it := s.table.Delegations.NewIterator()
+			it := s.table.Delegations.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.Delegations)
 		}
@@ -79,7 +88,7 @@ func (s *Store) MigrateMultiDelegations() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.DelegationOldRewards.NewIterator()
+			it := s.table.DelegationOldRewards.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
 				addr := common.BytesToAddress(it.Key())
@@ -98,11 +107,11 @@ func (s *Store) MigrateMultiDelegations() error {
 
 				// don't write into DB during iteration
 				newKeys = append(newKeys, id.Bytes())
-				newValues = append(newKeys, it.Value())
+				newValues = append(newValues, it.Value())
 			}
 		}
 		{
-			it := s.table.DelegationOldRewards.NewIterator()
+			it := s.table.DelegationOldRewards.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.DelegationOldRewards)
 		}
@@ -117,7 +126,7 @@ func (s *Store) MigrateMultiDelegations() error {
 }
 
 func (s *Store) MigrateEraseGenesisField() error {
-	it := s.mainDb.NewIteratorWithPrefix([]byte("G"))
+	it := s.mainDb.NewIterator([]byte("G"), nil)
 	defer it.Release()
 	s.dropTable(it, s.mainDb)
 	return nil
@@ -128,16 +137,16 @@ func (s *Store) MigrateAdjustableOfflinePeriod() error {
 		newKeys := make([][]byte, 0, 10000)
 		newValues := make([][]byte, 0, 10000)
 		{
-			it := s.table.SfcConstants.NewIterator()
+			it := s.table.SfcConstants.NewIterator(nil, nil)
 			defer it.Release()
 			for it.Next() {
-				constants := &legacySfcConstants{}
+				constants := &legacySfcConstants_06{}
 				err := rlp.DecodeBytes(it.Value(), constants)
 				if err != nil {
 					return errors.Wrap(err, "failed legacy constants deserialization during migration")
 				}
 
-				newConstants := SfcConstants{
+				newConstants := legacySfcConstants_07rc1{
 					ShortGasPowerAllocPerSec: constants.ShortGasPowerAllocPerSec,
 					LongGasPowerAllocPerSec:  constants.LongGasPowerAllocPerSec,
 					BaseRewardPerSec:         constants.BaseRewardPerSec,
@@ -153,7 +162,53 @@ func (s *Store) MigrateAdjustableOfflinePeriod() error {
 			}
 		}
 		{
-			it := s.table.SfcConstants.NewIterator()
+			it := s.table.SfcConstants.NewIterator(nil, nil)
+			defer it.Release()
+			s.dropTable(it, s.table.SfcConstants)
+		}
+		for i := range newKeys {
+			err := s.table.SfcConstants.Put(newKeys[i], newValues[i])
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (s *Store) MigrateAdjustableMinGasPrice() error {
+	{ // migrate s.table.SfcConstants
+		newKeys := make([][]byte, 0, 10000)
+		newValues := make([][]byte, 0, 10000)
+		{
+			it := s.table.SfcConstants.NewIterator(nil, nil)
+			defer it.Release()
+			for it.Next() {
+				constants := &legacySfcConstants_07rc1{}
+				err := rlp.DecodeBytes(it.Value(), constants)
+				if err != nil {
+					return errors.Wrap(err, "failed legacy constants deserialization during migration")
+				}
+
+				newConstants := SfcConstants{
+					ShortGasPowerAllocPerSec: constants.ShortGasPowerAllocPerSec,
+					LongGasPowerAllocPerSec:  constants.LongGasPowerAllocPerSec,
+					BaseRewardPerSec:         constants.BaseRewardPerSec,
+					OfflinePenaltyThreshold:  constants.OfflinePenaltyThreshold,
+					MinGasPrice:              big.NewInt(0),
+				}
+				newValue, err := rlp.EncodeToBytes(newConstants)
+				if err != nil {
+					return err
+				}
+
+				// don't write into DB during iteration
+				newKeys = append(newKeys, it.Key())
+				newValues = append(newValues, newValue)
+			}
+		}
+		{
+			it := s.table.SfcConstants.NewIterator(nil, nil)
 			defer it.Release()
 			s.dropTable(it, s.table.SfcConstants)
 		}
