@@ -328,6 +328,22 @@ func TestSFC(t *testing.T) {
 				115 * (unlockedRewardRatio + lockedRewardRatio/2),
 				85 * (unlockedRewardRatio + lockedRewardRatio/4)})
 			require.Equal(0, rewards[0].Cmp(prev.reward), "%s != %s", rewards[0], prev.reward)
+		}) &&
+
+		t.Run("MinGasPrice up", func(t *testing.T) {
+			require := require.New(t)
+
+			admin := env.Payer(1)
+
+			gp := env.App.MinGasPrice()
+			gpExp := new(big.Int).Mul(gp, big.NewInt(10))
+			tx, err := sfc22.UpdateMinGasPrice(admin, gpExp)
+			require.NoError(err)
+			env.ApplyBlock(sameEpoch, tx)
+
+			env.ApplyBlock(nextEpoch)
+			gpGot := env.App.MinGasPrice()
+			require.Equal(gpExp, gpGot, "%s != %s", gpExp, gpGot)
 		})
 
 }
