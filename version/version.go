@@ -13,19 +13,14 @@ func init() {
 	params.VersionMeta = "rc.1" // Version metadata to append to the version string
 }
 
-func AsBigInt() *big.Int {
-	return asBigInt(uint64(params.VersionMajor), uint64(params.VersionMinor), uint64(params.VersionPatch))
+func AsU64() uint64 {
+	return asU64(uint16(params.VersionMajor), uint16(params.VersionMinor), uint16(params.VersionPatch))
 }
 
-func asBigInt(vMajor, vMinor, vPatch uint64) *big.Int {
-	return new(big.Int).Add(
-		new(big.Int).Add(
-			new(big.Int).Lsh(
-				new(big.Int).SetUint64(vMajor), 64*3),
-			new(big.Int).Lsh(
-				new(big.Int).SetUint64(vMinor), 64*2),
-		), new(big.Int).Lsh(
-			new(big.Int).SetUint64(vPatch), 64*1),
-		// VersionMeta is not used here
-	)
+func AsBigInt() *big.Int {
+	return new(big.Int).SetUint64(AsU64())
+}
+
+func asU64(vMajor, vMinor, vPatch uint16) uint64 {
+	return uint64(vMajor) * 1e12 + uint64(vMinor) * 1e6 + uint64(vPatch)
 }
