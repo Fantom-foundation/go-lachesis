@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"errors"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +17,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis/sfc/sfcpos"
 	"github.com/Fantom-foundation/go-lachesis/utils"
+	"github.com/Fantom-foundation/go-lachesis/utils/errlock"
+	"github.com/Fantom-foundation/go-lachesis/version"
 )
 
 // GetActiveSfcStakers returns stakers which will become validators in next epoch
@@ -295,6 +298,20 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				constants.OfflinePenaltyThreshold.Num = idx.Block(blocksNum.Uint64())
 				constants.OfflinePenaltyThreshold.Period = inter.Timestamp(period.Uint64())
 				s.app.SetSfcConstants(epoch, constants)
+			}
+			if l.Topics[0] == sfcpos.Topics.UpdatedMinGasPrice && len(l.Data) >= 32 {
+				minGasPrice := new(big.Int).SetBytes(l.Data[0:32])
+				constants := s.app.GetSfcConstants(epoch)
+				constants.MinGasPrice = minGasPrice
+				s.app.SetSfcConstants(epoch, constants)
+			}
+
+			if l.Topics[0] == sfcpos.Topics.NetworkUpgradeActivated && len(l.Data) >= 32 {
+				minVersion := new(big.Int).SetBytes(l.Data[0:32])
+				if minVersion.Cmp(version.AsBigInt()) > 0 {
+					errlock.Permanent(errors.New("Node is shutting down due to a non-supported network upgrade.\n" +
+						"Please upgrade the node to continue."))
+				}
 			}
 
 			// Track rewards (API-only)

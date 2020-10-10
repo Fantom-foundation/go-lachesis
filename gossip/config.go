@@ -1,12 +1,9 @@
 package gossip
 
 import (
-	"math/big"
-
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
-	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 )
 
 type (
@@ -44,7 +41,11 @@ type (
 		EVMInterpreter string // TODO custom interpreter
 
 		// RPCGasCap is the global gas cap for eth-call variants.
-		RPCGasCap *big.Int `toml:",omitempty"`
+		RPCGasCap uint64 `toml:",omitempty"`
+
+		// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
+		// send-transction variants. The unit is ether.
+		RPCTxFeeCap float64 `toml:",omitempty"`
 
 		ExtRPCEnabled bool
 	}
@@ -93,8 +94,10 @@ func DefaultConfig(network lachesis.Config) Config {
 		GPO: gasprice.Config{
 			Blocks:     20,
 			Percentile: 60,
-			Default:    params.MinGasPrice,
+			MaxPrice:   gasprice.DefaultMaxPrice,
 		},
+		RPCGasCap:   25000000,
+		RPCTxFeeCap: 1000, // 1000 FTM
 	}
 
 	if network.NetworkID == lachesis.FakeNetworkID {

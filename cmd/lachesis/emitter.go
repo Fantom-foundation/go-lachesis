@@ -26,10 +26,6 @@ func setValidator(ctx *cli.Context, ks *keystore.KeyStore, cfg *gossip.EmitterCo
 		if validator == "no" || validator == "0" {
 			validator = ""
 		}
-	case ctx.GlobalIsSet(utils.MinerEtherbaseFlag.Name):
-		validator = ctx.GlobalString(utils.MinerEtherbaseFlag.Name)
-	case ctx.GlobalIsSet(utils.MinerLegacyEtherbaseFlag.Name):
-		validator = ctx.GlobalString(utils.MinerLegacyEtherbaseFlag.Name)
 	case ctx.GlobalIsSet(FakeNetFlag.Name):
 		key := getFakeValidator(ctx)
 		if key != nil {

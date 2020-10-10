@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/Fantom-foundation/go-lachesis/gossip"
@@ -13,7 +14,7 @@ import (
 func checkPacks(db kvdb.KeyValueStore) {
 	t := table.New(db, []byte("p"))
 
-	it := t.NewIterator()
+	it := t.NewIterator(nil, nil)
 	defer it.Release()
 
 	for it.Next() {

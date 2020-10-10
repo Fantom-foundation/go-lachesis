@@ -28,10 +28,12 @@ var (
 		UpdatedBaseRewardPerSec        common.Hash
 		UpdatedGasPowerAllocationRate  common.Hash
 		UpdatedOfflinePenaltyThreshold common.Hash
+		UpdatedMinGasPrice             common.Hash
 		DeactivatedStake               common.Hash
 		DeactivatedDelegation          common.Hash
 		UpdatedStake                   common.Hash
 		UpdatedDelegation              common.Hash
+		NetworkUpgradeActivated        common.Hash
 	}{
 		CreatedStake:                   hash.Of([]byte("CreatedStake(uint256,address,uint256)")),
 		IncreasedStake:                 hash.Of([]byte("IncreasedStake(uint256,uint256,uint256)")),
@@ -45,10 +47,12 @@ var (
 		UpdatedBaseRewardPerSec:        hash.Of([]byte("UpdatedBaseRewardPerSec(uint256)")),
 		UpdatedGasPowerAllocationRate:  hash.Of([]byte("UpdatedGasPowerAllocationRate(uint256,uint256)")),
 		UpdatedOfflinePenaltyThreshold: hash.Of([]byte("UpdatedOfflinePenaltyThreshold(uint256,uint256)")),
+		UpdatedMinGasPrice:             hash.Of([]byte("UpdatedMinGasPrice(uint256)")),
 		DeactivatedStake:               hash.Of([]byte("DeactivatedStake(uint256)")),
 		DeactivatedDelegation:          hash.Of([]byte("DeactivatedDelegation(address,uint256)")),
 		UpdatedStake:                   hash.Of([]byte("UpdatedStake(uint256,uint256,uint256)")),
 		UpdatedDelegation:              hash.Of([]byte("UpdatedDelegation(address,uint256,uint256,uint256)")),
+		NetworkUpgradeActivated:        hash.Of([]byte("NetworkUpgradeActivated(uint256)")),
 	}
 )
 
@@ -76,6 +80,10 @@ func StakersNum() common.Hash {
 
 func StakeTotalAmount() common.Hash {
 	return utils.U64to256(offset + 6)
+}
+
+func FirstLockedUpEpoch() common.Hash {
+	return utils.U64to256(offset + 17)
 }
 
 // Stake
