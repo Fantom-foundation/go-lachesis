@@ -1,7 +1,7 @@
 package gossip
 
 import (
-	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -307,10 +307,17 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 			}
 
 			if l.Topics[0] == sfcpos.Topics.NetworkUpgradeActivated && len(l.Data) >= 32 {
-				minVersion := new(big.Int).SetBytes(l.Data[0:32])
-				if minVersion.Cmp(version.AsBigInt()) > 0 {
-					errlock.Permanent(errors.New("Node is shutting down due to a non-supported network upgrade.\n" +
-						"Please upgrade the node to continue."))
+				netVersion := new(big.Int).SetBytes(l.Data[0:32])
+				s.store.SetNetworkVersion(netVersion)
+				if netVersion.Cmp(version.AsBigInt()) > 0 {
+					if s.config.Upgrade.ShutDownIfNotUpgraded {
+						errlock.Permanent(fmt.Errorf("The network's supported version of %s was activated at block %d.\n"+
+							"Node's current version is %s and a shutdown is required as ShutDownIfNotUpgraded flag was set.\n"+
+							"Please upgrade the node to continue.", version.BigToString(netVersion), block.Index, version.AsString()))
+						panic("unreachable")
+					} else {
+						s.store.SetNonSupportedUpgrade(netVersion)
+					}
 				}
 			}
 

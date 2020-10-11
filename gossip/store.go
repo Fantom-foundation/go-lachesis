@@ -32,6 +32,9 @@ type Store struct {
 	table  struct {
 		Version kvdb.KeyValueStore `table:"_"`
 
+		// network version table
+		NetworkVersion kvdb.KeyValueStore `table:"J"`
+
 		// Main DAG tables
 		Events    kvdb.KeyValueStore `table:"e"`
 		Blocks    kvdb.KeyValueStore `table:"b"`
