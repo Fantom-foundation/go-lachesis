@@ -14,6 +14,11 @@ type (
 		LatencyImportance    int
 		ThroughputImportance int
 	}
+	// UpgradeConfig defines behaviour for network upgrades
+	UpgradeConfig struct {
+		ShutDownIfNotUpgraded bool // shut down the node in a case of non-supported network upgrade
+		WarningIfNotUpgraded  bool // show a warning in a case of non-supported network upgrade
+	}
 	// Config for the gossip service.
 	Config struct {
 		Net     lachesis.Config
@@ -24,6 +29,8 @@ type (
 		TxIndex             bool // Whether to enable indexing transactions and receipts or not
 		DecisiveEventsIndex bool // Whether to enable indexing events which decide blocks or not
 		EventLocalTimeIndex bool // Whether to enable indexing arrival time of events or not
+
+		Upgrade UpgradeConfig
 
 		// Protocol options
 		Protocol ProtocolConfig
@@ -82,6 +89,11 @@ func DefaultConfig(network lachesis.Config) Config {
 		Emitter:     DefaultEmitterConfig(),
 		TxPool:      evmcore.DefaultTxPoolConfig(),
 		StoreConfig: DefaultStoreConfig(),
+
+		Upgrade: UpgradeConfig{
+			ShutDownIfNotUpgraded: false,
+			WarningIfNotUpgraded:  true,
+		},
 
 		TxIndex:             true,
 		DecisiveEventsIndex: false,

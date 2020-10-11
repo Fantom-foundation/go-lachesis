@@ -30,6 +30,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/gossip/filters"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/gossip/occuredtxs"
+	"github.com/Fantom-foundation/go-lachesis/gossip/upgnotifier"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -103,6 +104,7 @@ type Service struct {
 	heavyCheckReader    HeavyCheckReader
 	gasPowerCheckReader GasPowerCheckReader
 	checkers            *eventcheck.Checkers
+	upgNotifier         *upgnotifier.Logger
 
 	// global variables. TODO refactor to pass them as arguments if possible
 	blockParticipated map[idx.StakerID]bool // validators who participated in last block
@@ -145,8 +147,9 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 
 		Name: fmt.Sprintf("Node-%d", rand.Int()),
 
-		store: store,
-		app:   store.app,
+		store:       store,
+		app:         store.app,
+		upgNotifier: upgnotifier.New(store),
 
 		engineMu:          new(sync.RWMutex),
 		occurredTxs:       occuredtxs.New(txsRingBufferSize, types.NewEIP155Signer(config.Net.EvmChainConfig().ChainID)),
@@ -331,12 +334,18 @@ func (s *Service) Start() error {
 	s.emitter = s.makeEmitter()
 	s.emitter.SetValidator(s.config.Emitter.Validator)
 	s.emitter.StartEventEmission()
+	if s.config.Upgrade.WarningIfNotUpgraded {
+		s.upgNotifier.Start()
+	}
 
 	return nil
 }
 
 // Stop method invoked when the node terminates the service.
 func (s *Service) Stop() error {
+	if s.config.Upgrade.WarningIfNotUpgraded {
+		s.upgNotifier.Stop()
+	}
 	close(s.done)
 	s.emitter.StopEventEmission()
 	s.pm.Stop()
