@@ -203,6 +203,10 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				stakerID := idx.StakerID(new(big.Int).SetBytes(l.Topics[1][:]).Uint64())
 
 				staker := s.app.GetSfcStaker(stakerID)
+				if staker == nil {
+					s.Log.Warn("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
 				staker.DeactivatedEpoch = epoch
 				staker.DeactivatedTime = block.Time
 				s.app.SetSfcStaker(stakerID, staker)
@@ -215,6 +219,10 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 				id := sfctype.DelegationID{address, stakerID}
 
 				delegation := s.app.GetSfcDelegation(id)
+				if delegation == nil {
+					s.Log.Warn("Internal SFC index isn't synced with SFC contract")
+					continue
+				}
 				staker := s.app.GetSfcStaker(stakerID)
 				if staker != nil {
 					staker.DelegatedMe.Sub(staker.DelegatedMe, delegation.Amount)
