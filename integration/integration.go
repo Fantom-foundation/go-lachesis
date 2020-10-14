@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
@@ -13,8 +14,9 @@ import (
 // NewIntegration creates gossip service for the integration test
 func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config, stack *node.Node) *gossip.Service {
 	gossipCfg := gossip.DefaultConfig(network)
+	appConfig := app.DefaultStoreConfig()
 
-	engine, _, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg)
+	engine, adb, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg, &appConfig)
 
 	coinbase := SetAccountKey(
 		stack.AccountManager(),
@@ -26,7 +28,7 @@ func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config, stack
 	gossipCfg.Emitter.EmitIntervals.Max = 3 * time.Second
 	gossipCfg.Emitter.EmitIntervals.SelfForkProtection = 0
 
-	svc, err := gossip.NewService(stack, &gossipCfg, gdb, engine)
+	svc, err := gossip.NewService(stack, &gossipCfg, gdb, engine, adb)
 	if err != nil {
 		panic(err)
 	}

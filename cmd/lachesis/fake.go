@@ -82,7 +82,7 @@ func parseFakeGen(s string) (num int, vaccs genesis.VAccounts, err error) {
 		return
 	}
 
-	vaccs = genesis.FakeValidators(validatorsNum, utils.ToFtm(1e10), utils.ToFtm(3175000))
+	vaccs = genesis.FakeAccounts(0, validatorsNum, utils.ToFtm(1e10), utils.ToFtm(3175000))
 
 	if len(parts) < 2 {
 		return

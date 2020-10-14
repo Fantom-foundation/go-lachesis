@@ -16,34 +16,36 @@ import (
 )
 
 // MakeEngine makes consensus engine from config.
-func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *flushable.SyncedPool, *gossip.Store) {
+// MakeEngine makes consensus engine from config.
+func MakeEngine(dataDir string, gossipCfg *gossip.Config, appCfg *app.StoreConfig) (*poset.Poset, *app.Store, *gossip.Store) {
 	dbs := flushable.NewSyncedPool(DBProducer(dataDir))
 
-	appStoreConfig := app.StoreConfig{
-		ReceiptsCacheSize:    gossipCfg.ReceiptsCacheSize,
-		DelegationsCacheSize: gossipCfg.DelegationsCacheSize,
-		StakersCacheSize:     gossipCfg.StakersCacheSize,
-	}
-	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig, appStoreConfig)
+	adb := app.NewStore(dbs, *appCfg)
+	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig)
 	cdb := poset.NewStore(dbs, poset.DefaultStoreConfig())
+
+	adb.SetName("app-db")
+	gdb.SetName("gossip-db")
+	cdb.SetName("poset-db")
 
 	// write genesis
 
-	err := gdb.Migrate()
+	stateRoot, _, err := adb.ApplyGenesis(&gossipCfg.Net)
 	if err != nil {
-		utils.Fatalf("Failed to migrate Gossip DB: %v", err)
+		utils.Fatalf("Failed to write App genesis state: %v", err)
 	}
-	genesisAtropos, genesisState, isNew, err := gdb.ApplyGenesis(&gossipCfg.Net)
+
+	atropos, appHash, isNew, err := gdb.ApplyGenesis(&gossipCfg.Net, stateRoot)
 	if err != nil {
 		utils.Fatalf("Failed to write Gossip genesis state: %v", err)
 	}
 
-	err = cdb.ApplyGenesis(&gossipCfg.Net.Genesis, genesisAtropos, genesisState)
+	err = cdb.ApplyGenesis(&gossipCfg.Net.Genesis, atropos, appHash)
 	if err != nil {
 		utils.Fatalf("Failed to write Poset genesis state: %v", err)
 	}
 
-	err = dbs.Flush(genesisAtropos.Bytes())
+	err = dbs.Flush(atropos.Bytes())
 	if err != nil {
 		utils.Fatalf("Failed to flush genesis state: %v", err)
 	}
@@ -57,7 +59,7 @@ func MakeEngine(dataDir string, gossipCfg *gossip.Config) (*poset.Poset, *flusha
 	// create consensus
 	engine := poset.New(gossipCfg.Net.Dag, cdb, gdb)
 
-	return engine, dbs, gdb
+	return engine, adb, gdb
 }
 
 // SetAccountKey sets key into accounts manager and unlocks it with pswd.

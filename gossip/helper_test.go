@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/enode"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
@@ -23,7 +24,7 @@ import (
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of events already known from each node
 func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.Transaction, onNewEvent func(e *inter.Event)) (*ProtocolManager, *Store, error) {
-	net := lachesis.FakeNetConfig(genesis.FakeValidators(nodesNum, big.NewInt(0), pos.StakeToBalance(1)))
+	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, nodesNum, big.NewInt(0), pos.StakeToBalance(1)))
 
 	config := DefaultConfig(net)
 	config.TxPool.Journal = ""
@@ -34,8 +35,14 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 		return nil, nil, err
 	}
 
+	apps := app.NewMemStore()
+	stateRoot, _, err := apps.ApplyGenesis(&net)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	store := NewMemStore()
-	_, _, _, err = store.ApplyGenesis(&net)
+	_, _, _, err = store.ApplyGenesis(&net, stateRoot)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -48,7 +55,7 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 		nil,
 		&dummyTxPool{added: newtx},
 		new(sync.RWMutex),
-		mockCheckers(1, &net, engine, store),
+		mockCheckers(1, &net, engine, store, apps),
 		store,
 		engine,
 		nil,

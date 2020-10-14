@@ -123,12 +123,12 @@ type Service struct {
 	logger.Instance
 }
 
-func NewService(stack *node.Node, config *Config, store *Store, engine Consensus) (*Service, error) {
+func NewService(stack *node.Node, config *Config, store *Store, engine Consensus, app *app.Store) (*Service, error) {
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = stack.ResolvePath(config.TxPool.Journal)
 	}
 
-	svc, err := newService(config, store, engine)
+	svc, err := newService(config, store, engine, app)
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func NewService(stack *node.Node, config *Config, store *Store, engine Consensus
 	return svc, err
 }
 
-func newService(config *Config, store *Store, engine Consensus) (*Service, error) {
+func newService(config *Config, store *Store, engine Consensus, app *app.Store) (*Service, error) {
 	svc := &Service{
 		config: config,
 
@@ -148,7 +148,7 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 		Name: fmt.Sprintf("Node-%d", rand.Int()),
 
 		store:       store,
-		app:         store.app,
+		app:         app,
 		upgNotifier: upgnotifier.New(store),
 
 		engineMu:          new(sync.RWMutex),

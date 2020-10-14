@@ -77,14 +77,20 @@ type testEnv struct {
 }
 
 func newTestEnv() *testEnv {
-	vaccs := genesis.FakeValidators(genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
+	vaccs := genesis.FakeAccounts(1, genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
 	cfg := &Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
 	cfg.Net.Dag.MaxEpochDuration = epochDuration
 
+	apps := app.NewMemStore()
+	stateRoot, _, err := apps.ApplyGenesis(&cfg.Net)
+	if err != nil {
+		panic(err)
+	}
+
 	s := NewMemStore()
-	_, _, _, err := s.ApplyGenesis(&cfg.Net)
+	_, _, _, err = s.ApplyGenesis(&cfg.Net, stateRoot)
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +98,7 @@ func newTestEnv() *testEnv {
 	a := &Service{
 		config:            cfg,
 		store:             s,
-		app:               s.app,
+		app:               apps,
 		blockParticipated: make(map[idx.StakerID]bool),
 
 		Instance: logger.MakeInstance(),
@@ -100,7 +106,7 @@ func newTestEnv() *testEnv {
 
 	env := &testEnv{
 		App:   a,
-		Store: s.app,
+		Store: apps,
 
 		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
 

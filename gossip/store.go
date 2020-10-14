@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/gossip/temporary"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
@@ -28,7 +27,6 @@ type Store struct {
 	async *asyncStore
 
 	mainDb kvdb.KeyValueStore
-	app    *app.Store
 	table  struct {
 		Version kvdb.KeyValueStore `table:"_"`
 
@@ -81,13 +79,12 @@ func NewMemStore() *Store {
 	mems := memorydb.NewProducer("")
 	dbs := flushable.NewSyncedPool(mems)
 	cfg := LiteStoreConfig()
-	appCfg := app.LiteStoreConfig()
 
-	return NewStore(dbs, cfg, appCfg)
+	return NewStore(dbs, cfg)
 }
 
 // NewStore creates store over key-value db.
-func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig, appCfg app.StoreConfig) *Store {
+func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
 		dbs:      dbs,
 		cfg:      cfg,
@@ -108,7 +105,6 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig, appCfg app.StoreConfig
 	})
 
 	s.initCache()
-	s.app = app.NewStore(s.mainDb, appCfg)
 
 	return s
 }
@@ -159,10 +155,6 @@ func (s *Store) Commit(flushID []byte, immediately bool) error {
 	}
 
 	// Flush the DBs
-	err := s.app.Commit()
-	if err != nil {
-		return err
-	}
 	return s.dbs.Flush(flushID)
 }
 

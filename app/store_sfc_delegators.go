@@ -41,7 +41,7 @@ func (s *Store) ForEachSfcDelegation(do func(sfctype.SfcDelegationAndID)) {
 	})
 }
 
-// GetSfcDelegationsByAddr returns a lsit of delegations by address
+// GetSfcDelegationsByAddr returns a list of delegations by address
 func (s *Store) GetSfcDelegationsByAddr(addr common.Address, limit int) []sfctype.SfcDelegationAndID {
 	it := s.table.Delegations.NewIterator(addr.Bytes(), nil)
 	defer it.Release()

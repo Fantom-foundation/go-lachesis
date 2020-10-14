@@ -12,6 +12,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/logger"
@@ -20,10 +22,13 @@ import (
 
 // Store is a node persistent storage working over physical key-value database.
 type Store struct {
+	dbs *flushable.SyncedPool
 	cfg StoreConfig
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
+		Version kvdb.KeyValueStore `table:"_"`
+
 		// score economy tables
 		ActiveValidationScore  kvdb.KeyValueStore `table:"V"`
 		DirtyValidationScore   kvdb.KeyValueStore `table:"v"`
@@ -75,11 +80,21 @@ type Store struct {
 	logger.Instance
 }
 
+// NewMemStore creates store over memory map.
+func NewMemStore() *Store {
+	mems := memorydb.NewProducer("")
+	dbs := flushable.NewSyncedPool(mems)
+	cfg := LiteStoreConfig()
+
+	return NewStore(dbs, cfg)
+}
+
 // NewStore creates store over key-value db.
-func NewStore(mainDb kvdb.KeyValueStore, cfg StoreConfig) *Store {
+func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
+		dbs:      dbs,
 		cfg:      cfg,
-		mainDb:   mainDb,
+		mainDb:   dbs.GetDb("gossip-main"),
 		Instance: logger.MakeInstance(),
 	}
 
@@ -101,6 +116,18 @@ func (s *Store) initCache() {
 	s.cache.Stakers = s.makeCache(s.cfg.StakersCacheSize)
 	s.cache.Delegations = s.makeCache(s.cfg.DelegationsCacheSize)
 	s.cache.BlockDowntime = s.makeCache(256)
+}
+
+// Close leaves underlying database.
+func (s *Store) Close() {
+	setnil := func() interface{} {
+		return nil
+	}
+
+	table.MigrateTables(&s.table, nil)
+	table.MigrateCaches(&s.cache, setnil)
+
+	s.mainDb.Close()
 }
 
 // Commit changes.
