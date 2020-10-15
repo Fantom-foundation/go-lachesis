@@ -40,6 +40,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 	"github.com/Fantom-foundation/go-lachesis/logger"
@@ -83,13 +85,16 @@ func newTestEnv() *testEnv {
 	}
 	cfg.Net.Dag.MaxEpochDuration = epochDuration
 
-	apps := app.NewMemStore()
+	mems := memorydb.NewProducer("")
+	dbs := flushable.NewSyncedPool(mems)
+
+	apps := app.NewStore(dbs, app.LiteStoreConfig())
 	stateRoot, _, err := apps.ApplyGenesis(&cfg.Net)
 	if err != nil {
 		panic(err)
 	}
 
-	s := NewMemStore()
+	s := NewStore(dbs, LiteStoreConfig())
 	_, _, _, err = s.ApplyGenesis(&cfg.Net, stateRoot)
 	if err != nil {
 		panic(err)
@@ -125,6 +130,7 @@ func newTestEnv() *testEnv {
 
 func (e *testEnv) Close() {
 	e.App.store.Close()
+	e.App.app.Close()
 }
 
 func (env *testEnv) AddValidator(v idx.StakerID) {

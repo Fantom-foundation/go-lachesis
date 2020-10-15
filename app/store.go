@@ -27,7 +27,7 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
-		Version kvdb.KeyValueStore `table:"_"`
+		Version kvdb.KeyValueStore `table:"TODO:_"`
 
 		// score economy tables
 		ActiveValidationScore  kvdb.KeyValueStore `table:"V"`

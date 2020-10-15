@@ -2,12 +2,14 @@ package app
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
+	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
@@ -19,7 +21,6 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 	// TODO: enable when implemented .GetBlock()
 	/*
 		stored = s.GetBlock(0)
-
 	*/
 	if stored != nil {
 		isNew = false
@@ -64,31 +65,30 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 			EpochBlock: 0,
 			EpochStart: net.Genesis.Time,
 		})
-
-		// calc total pre-minted supply
-		totalSupply := big.NewInt(0)
-		for _, account := range net.Genesis.Alloc.Accounts {
-			totalSupply.Add(totalSupply, account.Balance)
-		}
-		s.SetTotalSupply(totalSupply)
-
-		validatorsArr := []sfctype.SfcStakerAndID{}
-		for _, validator := range net.Genesis.Alloc.Validators {
-			staker := &sfctype.SfcStaker{
-				Address:      validator.Address,
-				CreatedEpoch: 0,
-				CreatedTime:  net.Genesis.Time,
-				StakeAmount:  validator.Stake,
-				DelegatedMe:  big.NewInt(0),
-			}
-			s.SetSfcStaker(validator.ID, staker)
-			validatorsArr = append(validatorsArr, sfctype.SfcStakerAndID{
-				StakerID: validator.ID,
-				Staker:   staker,
-			})
-		}
-		s.SetEpochValidators(1, validatorsArr)
 	*/
+	// calc total pre-minted supply
+	totalSupply := big.NewInt(0)
+	for _, account := range net.Genesis.Alloc.Accounts {
+		totalSupply.Add(totalSupply, account.Balance)
+	}
+	s.SetTotalSupply(totalSupply)
+
+	validatorsArr := []sfctype.SfcStakerAndID{}
+	for _, validator := range net.Genesis.Alloc.Validators {
+		staker := &sfctype.SfcStaker{
+			Address:      validator.Address,
+			CreatedEpoch: 0,
+			CreatedTime:  net.Genesis.Time,
+			StakeAmount:  validator.Stake,
+			DelegatedMe:  big.NewInt(0),
+		}
+		s.SetSfcStaker(validator.ID, staker)
+		validatorsArr = append(validatorsArr, sfctype.SfcStakerAndID{
+			StakerID: validator.ID,
+			Staker:   staker,
+		})
+	}
+	s.SetEpochValidators(1, validatorsArr)
 
 	s.Commit()
 	return
