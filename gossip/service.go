@@ -357,6 +357,7 @@ func (s *Service) Stop() error {
 	defer s.engineMu.Unlock()
 	s.stopped = true
 
+	s.app.FlushState()
 	return s.store.Commit(nil, true)
 }
 

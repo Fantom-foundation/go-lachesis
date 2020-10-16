@@ -27,7 +27,10 @@ type Store struct {
 
 	mainDb kvdb.KeyValueStore
 	table  struct {
-		Version kvdb.KeyValueStore `table:"TODO:_"`
+		Version kvdb.KeyValueStore `table:"_"`
+
+		// general economy tables
+		EpochStats kvdb.KeyValueStore `table:"E"`
 
 		// score economy tables
 		ActiveValidationScore  kvdb.KeyValueStore `table:"V"`
@@ -44,9 +47,6 @@ type Store struct {
 		AddressLastTxTime    kvdb.KeyValueStore `table:"X"`
 		TotalPoiFee          kvdb.KeyValueStore `table:"U"`
 
-		// gas power economy tables
-		GasPowerRefund kvdb.KeyValueStore `table:"R"`
-
 		// SFC-related economy tables
 		Validators   kvdb.KeyValueStore `table:"1"`
 		Stakers      kvdb.KeyValueStore `table:"2"`
@@ -60,12 +60,17 @@ type Store struct {
 		StakerOldRewards            kvdb.KeyValueStore `table:"7"`
 		StakerDelegationsOldRewards kvdb.KeyValueStore `table:"8"`
 
+		// internal tables
+		ForEvmTable     kvdb.KeyValueStore `table:"M"`
+		ForEvmLogsTable kvdb.KeyValueStore `table:"L"`
+
 		Evm      ethdb.Database
 		EvmState state.Database
 		EvmLogs  *topicsdb.Index
 	}
 
 	cache struct {
+		EpochStats    *lru.Cache `cache:"-"` // store by value
 		Receipts      *lru.Cache `cache:"-"` // store by value
 		Validators    *lru.Cache `cache:"-"` // store by pointer
 		Stakers       *lru.Cache `cache:"-"` // store by pointer
@@ -94,16 +99,16 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
 		dbs:      dbs,
 		cfg:      cfg,
-		mainDb:   dbs.GetDb("gossip-main"),
+		mainDb:   dbs.GetDb("app-main"),
 		Instance: logger.MakeInstance(),
 	}
 
 	table.MigrateTables(&s.table, s.mainDb)
 
-	evmTable := nokeyiserr.Wrap(table.New(s.mainDb, []byte("M"))) // ETH expects that "not found" is an error
+	evmTable := nokeyiserr.Wrap(s.table.ForEvmTable) // ETH expects that "not found" is an error
 	s.table.Evm = rawdb.NewDatabase(evmTable)
 	s.table.EvmState = state.NewDatabaseWithCache(s.table.Evm, 16, "")
-	s.table.EvmLogs = topicsdb.New(table.New(s.mainDb, []byte("L")))
+	s.table.EvmLogs = topicsdb.New(s.table.ForEvmLogsTable)
 
 	s.initCache()
 
@@ -111,6 +116,7 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 }
 
 func (s *Store) initCache() {
+	s.cache.EpochStats = s.makeCache(s.cfg.EpochStatsCacheSize)
 	s.cache.Receipts = s.makeCache(s.cfg.ReceiptsCacheSize)
 	s.cache.Validators = s.makeCache(2)
 	s.cache.Stakers = s.makeCache(s.cfg.StakersCacheSize)
@@ -130,8 +136,8 @@ func (s *Store) Close() {
 	s.mainDb.Close()
 }
 
-// Commit changes.
-func (s *Store) Commit() error {
+// FlushState changes.
+func (s *Store) FlushState() error {
 	// Flush trie on the DB
 	err := s.table.EvmState.TrieDB().Cap(0)
 	if err != nil {

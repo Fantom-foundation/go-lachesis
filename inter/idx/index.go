@@ -1,6 +1,8 @@
 package idx
 
 import (
+	"math"
+
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 )
 
@@ -28,6 +30,10 @@ type (
 
 	// StakerID numeration.
 	StakerID uint32
+)
+
+const (
+	PendingEpoch = Epoch(math.MaxUint32 - 2)
 )
 
 // Bytes gets the byte representation of the index.

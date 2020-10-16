@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"math/big"
+	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -11,6 +12,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	"github.com/Fantom-foundation/go-lachesis/kvdb"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
@@ -23,18 +26,19 @@ func isEmptyDB(db ethdb.Iteratee) bool {
 
 func (s *Store) migrate() {
 	versions := migration.NewKvdbIDStore(s.table.Version)
+	migrations := s.migrations(s.dbs)
 	if isEmptyDB(s.mainDb) && isEmptyDB(s.async.mainDb) {
 		// short circuit if empty DB
-		versions.SetID(s.migrations().ID())
+		versions.SetID(migrations.ID())
 		return
 	}
-	err := s.migrations().Exec(versions)
+	err := migrations.Exec(versions)
 	if err != nil {
 		s.Log.Crit("app store migrations", "err", err)
 	}
 }
 
-func (s *Store) migrations() *migration.Migration {
+func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 	return migration.
 		Begin("lachesis-gossip-store").
 		Next("remove async data from sync DBs",
@@ -50,7 +54,10 @@ func (s *Store) migrations() *migration.Migration {
 		Next("adjustable offline pruning time",
 			s.migrateAdjustableOfflinePeriod).
 		Next("adjustable minimum gas price",
-			s.migrateAdjustableMinGasPrice)
+			s.migrateAdjustableMinGasPrice).
+		Next("dedicated app-main database", func() error {
+			return s.migrateTablesToAppDb(dbs)
+		})
 }
 
 func (s *Store) migrateEraseGenesisField() error {
@@ -314,5 +321,54 @@ func (s *Store) migrateAdjustableMinGasPrice() error {
 			}
 		}
 	}
+	return nil
+}
+
+// tablesToMoveFromGossip is a snapshot of Store.tables for migration
+type tablesToMoveFromGossip struct {
+	EpochStats                  kvdb.KeyValueStore `table:"E"`
+	ActiveValidationScore       kvdb.KeyValueStore `table:"V"`
+	DirtyValidationScore        kvdb.KeyValueStore `table:"v"`
+	ActiveOriginationScore      kvdb.KeyValueStore `table:"O"`
+	DirtyOriginationScore       kvdb.KeyValueStore `table:"o"`
+	BlockDowntime               kvdb.KeyValueStore `table:"m"`
+	StakerPOIScore              kvdb.KeyValueStore `table:"s"`
+	AddressPOIScore             kvdb.KeyValueStore `table:"a"`
+	AddressFee                  kvdb.KeyValueStore `table:"g"`
+	StakerDelegationsFee        kvdb.KeyValueStore `table:"d"`
+	AddressLastTxTime           kvdb.KeyValueStore `table:"X"`
+	TotalPoiFee                 kvdb.KeyValueStore `table:"U"`
+	Validators                  kvdb.KeyValueStore `table:"1"`
+	Stakers                     kvdb.KeyValueStore `table:"2"`
+	Delegations                 kvdb.KeyValueStore `table:"3"`
+	SfcConstants                kvdb.KeyValueStore `table:"4"`
+	TotalSupply                 kvdb.KeyValueStore `table:"5"`
+	Receipts                    kvdb.KeyValueStore `table:"r"`
+	DelegationOldRewards        kvdb.KeyValueStore `table:"6"`
+	StakerOldRewards            kvdb.KeyValueStore `table:"7"`
+	StakerDelegationsOldRewards kvdb.KeyValueStore `table:"8"`
+	ForEvmTable                 kvdb.KeyValueStore `table:"M"`
+	ForEvmLogsTable             kvdb.KeyValueStore `table:"L"`
+}
+
+func (s *Store) migrateTablesToAppDb(dbs *flushable.SyncedPool) error {
+	// NOTE: cross db dependency
+	appDb := dbs.GetDb("app-main")
+
+	var src, dst tablesToMoveFromGossip
+	table.MigrateTables(&src, s.mainDb)
+	table.MigrateTables(&dst, appDb)
+
+	srcT := reflect.ValueOf(src)
+	dstT := reflect.ValueOf(dst)
+	for i := srcT.NumField() - 1; i >= 0; i-- {
+		from := srcT.Field(i).Interface().(kvdb.KeyValueStore)
+		to := dstT.Field(i).Interface().(kvdb.KeyValueStore)
+		err := kvdb.Move(from, to, nil)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

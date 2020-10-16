@@ -43,22 +43,24 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 		return
 	}
 
+	// init stats
+	s.SetEpochStats(0, &sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		End:      net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+	s.SetDirtyEpochStats(&sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+
 	// TODO: enable when implemented .GetBlock()
 	/*
 		block := evmcore.GenesisBlock(net, stateRoot)
 		info := blockInfo(&block.EvmHeader)
 		s.SetBlock(info)
 
-		// init stats
-		s.SetEpochStats(0, &sfctype.EpochStats{
-			Start:    net.Genesis.Time,
-			End:      net.Genesis.Time,
-			TotalFee: new(big.Int),
-		})
-		s.SetDirtyEpochStats(&sfctype.EpochStats{
-			Start:    net.Genesis.Time,
-			TotalFee: new(big.Int),
-		})
+
 		s.SetCheckpoint(Checkpoint{
 			BlockN:     0,
 			EpochN:     1,
@@ -90,7 +92,7 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 	}
 	s.SetEpochValidators(1, validatorsArr)
 
-	s.Commit()
+	s.FlushState()
 	return
 }
 
