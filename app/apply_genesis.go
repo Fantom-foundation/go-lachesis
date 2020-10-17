@@ -53,6 +53,8 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 		Start:    net.Genesis.Time,
 		TotalFee: new(big.Int),
 	})
+	// clear cache because dirty value can be set direct to db during migration
+	s.cache.EpochStats.Purge()
 
 	// TODO: enable when implemented .GetBlock()
 	/*

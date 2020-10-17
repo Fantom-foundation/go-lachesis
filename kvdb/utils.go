@@ -1,5 +1,9 @@
 package kvdb
 
+import (
+	"github.com/ethereum/go-ethereum/ethdb"
+)
+
 // Move data from src to dst.
 func Move(src, dst KeyValueStore, prefix []byte) (err error) {
 	keys := make([][]byte, 0, 5000) // don't write during iteration
@@ -48,4 +52,10 @@ func Copy(src, dst KeyValueStore, prefix []byte) (err error) {
 	}
 
 	return nil
+}
+
+func IsEmptyDB(db ethdb.Iteratee) bool {
+	it := db.NewIterator(nil, nil)
+	defer it.Release()
+	return !it.Next()
 }

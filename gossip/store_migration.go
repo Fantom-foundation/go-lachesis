@@ -13,21 +13,14 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
-	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 	"github.com/Fantom-foundation/go-lachesis/utils/migration"
 )
 
-func isEmptyDB(db ethdb.Iteratee) bool {
-	it := db.NewIterator(nil, nil)
-	defer it.Release()
-	return !it.Next()
-}
-
 func (s *Store) migrate() {
 	versions := migration.NewKvdbIDStore(s.table.Version)
-	migrations := s.migrations(s.dbs)
-	if isEmptyDB(s.mainDb) && isEmptyDB(s.async.mainDb) {
+	migrations := s.migrations()
+	if kvdb.IsEmptyDB(s.mainDb) && kvdb.IsEmptyDB(s.async.mainDb) {
 		// short circuit if empty DB
 		versions.SetID(migrations.ID())
 		return
@@ -38,7 +31,7 @@ func (s *Store) migrate() {
 	}
 }
 
-func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
+func (s *Store) migrations() *migration.Migration {
 	return migration.
 		Begin("lachesis-gossip-store").
 		Next("remove async data from sync DBs",
@@ -55,9 +48,8 @@ func (s *Store) migrations(dbs *flushable.SyncedPool) *migration.Migration {
 			s.migrateAdjustableOfflinePeriod).
 		Next("adjustable minimum gas price",
 			s.migrateAdjustableMinGasPrice).
-		Next("dedicated app-main database", func() error {
-			return s.migrateTablesToAppDb(dbs)
-		})
+		Next("dedicated app-main database",
+			s.migrateTablesToAppDb)
 }
 
 func (s *Store) migrateEraseGenesisField() error {
@@ -351,9 +343,9 @@ type tablesToMoveFromGossip struct {
 	ForEvmLogsTable             kvdb.KeyValueStore `table:"L"`
 }
 
-func (s *Store) migrateTablesToAppDb(dbs *flushable.SyncedPool) error {
+func (s *Store) migrateTablesToAppDb() error {
 	// NOTE: cross db dependency
-	appDb := dbs.GetDb("app-main")
+	appDb := s.dbs.GetDb("app-main")
 
 	var src, dst tablesToMoveFromGossip
 	table.MigrateTables(&src, s.mainDb)
@@ -370,5 +362,5 @@ func (s *Store) migrateTablesToAppDb(dbs *flushable.SyncedPool) error {
 		}
 	}
 
-	return nil
+	return s.Commit(nil, true)
 }
