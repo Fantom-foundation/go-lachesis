@@ -3,9 +3,11 @@ package app
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -53,8 +55,6 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 		Start:    net.Genesis.Time,
 		TotalFee: new(big.Int),
 	})
-	// clear cache because dirty value can be set direct to db during migration
-	s.cache.EpochStats.Purge()
 
 	// TODO: enable when implemented .GetBlock()
 	/*
@@ -94,7 +94,10 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew
 	}
 	s.SetEpochValidators(1, validatorsArr)
 
+	// clear caches because tables can be filled direct by migrations
+	s.purgeCaches()
 	s.FlushState()
+
 	return
 }
 
@@ -115,4 +118,12 @@ func (s *Store) applyGenesis(net *lachesis.Config) (stateRoot common.Hash, err e
 	}
 
 	return
+}
+
+func (s *Store) purgeCaches() {
+	caches := reflect.ValueOf(s.cache)
+	for i := caches.NumField() - 1; i >= 0; i-- {
+		c := caches.Field(i).Interface().(*lru.Cache)
+		c.Purge()
+	}
 }
