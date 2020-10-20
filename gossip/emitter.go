@@ -237,7 +237,9 @@ func (em *Emitter) findMyStakerID() (idx.StakerID, bool) {
 }
 
 // safe for concurrent use
-func (em *Emitter) isMyTxTurn(txHash common.Hash, sender common.Address, accountNonce uint64, now time.Time, validatorsArr []idx.StakerID, validatorsArrStakes []pos.Stake, me idx.StakerID) bool {
+func (em *Emitter) isMyTxTurn(
+	txHash common.Hash, sender common.Address, accountNonce uint64, now time.Time, validatorsArr []idx.StakerID, validatorsArrStakes []pos.Stake, me idx.StakerID,
+) bool {
 	turnHash := hash.Of(sender.Bytes(), bigendian.Int64ToBytes(accountNonce/TxTurnNonces), em.world.Engine.GetEpoch().Bytes())
 
 	var txTime time.Time
@@ -250,7 +252,8 @@ func (em *Emitter) isMyTxTurn(txHash common.Hash, sender common.Address, account
 	}
 
 	roundIndex := int((now.Sub(txTime) / TxTurnPeriod) % time.Duration(len(validatorsArr)))
-	turns := utils.WeightedPermutation(roundIndex+1, validatorsArrStakes, turnHash)
+	// turns := utils.WeightedPermutation(roundIndex+1, validatorsArrStakes, turnHash)
+	turns := utils.StochasticPermutation(roundIndex+1, validatorsArrStakes, turnHash)
 
 	return validatorsArr[turns[roundIndex]] == me
 }
