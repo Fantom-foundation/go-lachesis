@@ -2,6 +2,7 @@ package utils
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,7 +34,6 @@ func TestRouletteSA_Selection(t *testing.T) {
 	assert.True(t, int(i) < len(w))
 }
 
-
 func TestRouletteSA_NSelection(t *testing.T) {
 	var w = []float64{0.1, 0.2, 0.15, 0.3, 0.25}
 	var RW = NewRouletteSA(w)
@@ -53,7 +53,6 @@ func TestRouletteSA_NSelectionThree(t *testing.T) {
 	assert.True(t, selection[0] != selection[2])
 	assert.True(t, selection[1] != selection[2])
 }
-
 
 func TestRouletteSA_Large_NSelectionThree(t *testing.T) {
 	var w = []float64{
