@@ -63,10 +63,7 @@ func StochasticPermutation(size int, weights []pos.Stake, seed common.Hash) []in
 		return make([]int, 0)
 	}
 
-	roulette := &rouletteSA{
-		weights: weights,
-	}
-	roulette.seed = seed
+	roulette := newRouletteSA(weights, seed)
 
 	result := roulette.NSelection(size)
 
