@@ -135,6 +135,8 @@ func NewService(stack *node.Node, config *Config, store *Store, engine Consensus
 
 	svc.accountManager = stack.AccountManager()
 	svc.p2pServer = stack.Server()
+	// Create the net API service
+	svc.netRPCService = ethapi.NewPublicNetAPI(svc.p2pServer, svc.config.Net.NetworkID)
 
 	return svc, err
 }
@@ -311,9 +313,6 @@ func (s *Service) APIs() []rpc.API {
 
 // Start method invoked when the node is ready to start the service.
 func (s *Service) Start() error {
-	// Start the RPC service
-	s.netRPCService = ethapi.NewPublicNetAPI(s.p2pServer, s.config.Net.NetworkID)
-
 	var genesis common.Hash
 	genesis = s.engine.GetGenesisHash()
 	s.Topic = discv5.Topic("lachesis@" + genesis.Hex())
