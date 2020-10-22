@@ -252,8 +252,8 @@ func (em *Emitter) isMyTxTurn(
 	}
 
 	roundIndex := int((now.Sub(txTime) / TxTurnPeriod) % time.Duration(len(validatorsArr)))
-	// turns := utils.WeightedPermutation(roundIndex+1, validatorsArrStakes, turnHash)
-	turns := utils.StochasticPermutation(roundIndex+1, validatorsArrStakes, turnHash)
+	//turns := utils.StochasticPermutation(roundIndex+1, validatorsArrStakes, turnHash)
+	turns := utils.WeightedPermutation(roundIndex+1, validatorsArrStakes, turnHash)
 
 	return validatorsArr[turns[roundIndex]] == me
 }
