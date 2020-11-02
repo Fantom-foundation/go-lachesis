@@ -63,7 +63,7 @@ require (
 	golang.org/x/tools v0.0.0-20191109212701-97ad0ed33101 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200619000410-60c24ae608a6 // indirect
-	gopkg.in/urfave/cli.v1 v1.22.1
+	gopkg.in/urfave/cli.v1 v1.22.5
 	gopkg.in/yaml.v2 v2.2.5 // indirect
 )
 
