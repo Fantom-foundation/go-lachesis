@@ -60,6 +60,16 @@ func generatorMain(ctx *cli.Context) error {
 	SetupPrometheus(ctx)
 
 	cfg := OpenConfig(ctx)
+	for i := 0; i < ctx.NArg(); i++ {
+		cfg.URLs = append(cfg.URLs, ctx.Args().Get(i))
+	}
+	if ctx.GlobalIsSet(AccsStartFlag.Name) {
+		cfg.Accs.Offset = uint(ctx.GlobalInt(AccsStartFlag.Name))
+	}
+	if ctx.GlobalIsSet(AccsCountFlag.Name) {
+		cfg.Accs.Count = uint(ctx.GlobalInt(AccsCountFlag.Name))
+	}
+
 	num, ofTotal := getNumber(ctx)
 
 	generator := NewTxGenerator(cfg, num, ofTotal)
