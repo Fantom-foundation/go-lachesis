@@ -5,6 +5,8 @@ import (
 
 	"gopkg.in/urfave/cli.v1"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/utils/toml"
 )
@@ -47,7 +49,7 @@ func OpenConfig(ctx *cli.Context) *Config {
 	f := ctx.GlobalString(ConfigFileFlag.Name)
 	err := cfg.Load(f)
 	if err != nil {
-		panic(err)
+		log.Error("Cann't load config file", "file", f, "err", err)
 	}
 	return cfg
 }

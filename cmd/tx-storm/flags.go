@@ -65,3 +65,15 @@ var VerbosityFlag = cli.IntFlag{
 	Usage: "sets the verbosity level",
 	Value: 3,
 }
+
+var AccsStartFlag = cli.IntFlag{
+	Name:  "accs-start",
+	Usage: "offset of predefined fake accounts",
+	Value: 1000,
+}
+
+var AccsCountFlag = cli.IntFlag{
+	Name:  "accs-count",
+	Usage: "count of predefined fake accounts",
+	Value: 10000,
+}
