@@ -20,45 +20,32 @@ var (
 	// Git SHA1 commit hash of the release (set via linker flags).
 	gitCommit = ""
 	gitDate   = ""
-	// The app that holds all commands and flags.
-	app = flags.NewApp(gitCommit, gitDate, "the transactions generator CLI")
+	// The App that holds all commands and flags.
+	App = flags.NewApp(gitCommit, gitDate, "the transactions generator CLI")
 
-	generatorFlags []cli.Flag
+	Flags []cli.Flag
 )
 
 // init the CLI app.
 func init() {
-	// Flags.
-	generatorFlags = []cli.Flag{
+	App.Action = generatorMain
+	App.Version = params.VersionWithCommit(gitCommit, gitDate)
+
+	App.Commands = []cli.Command{}
+	sort.Sort(cli.CommandsByName(App.Commands))
+
+	App.Flags = append(App.Flags,
+		ConfigFileFlag,
 		NumberFlag,
-		AccsStartFlag,
-		AccsCountFlag,
 		TxnsRateFlag,
 		utils.MetricsEnabledFlag,
 		MetricsPrometheusEndpointFlag,
 		VerbosityFlag,
-	}
-
-	// App.
-	app.Action = generatorMain
-	app.Version = params.VersionWithCommit(gitCommit, gitDate)
-
-	app.Commands = []cli.Command{}
-	sort.Sort(cli.CommandsByName(app.Commands))
-
-	app.Flags = append(app.Flags, generatorFlags...)
-
-	app.Before = func(ctx *cli.Context) error {
-		return nil
-	}
-
-	app.After = func(ctx *cli.Context) error {
-		return nil
-	}
+	)
 }
 
 func main() {
-	if err := app.Run(os.Args); err != nil {
+	if err := App.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -70,24 +57,24 @@ func generatorMain(ctx *cli.Context) error {
 	glogger.Verbosity(log.Lvl(ctx.GlobalInt(VerbosityFlag.Name)))
 	log.Root().SetHandler(glogger)
 
-	args := ctx.Args()
-	if len(args) != 1 {
-		return fmt.Errorf("url expected")
-	}
-
 	SetupPrometheus(ctx)
 
-	url := args[0]
+	cfg := OpenConfig(ctx)
 	num, ofTotal := getNumber(ctx)
-	maxTxnsPerSec := getTxnsRate(ctx)
-	accsFrom, accsCount := getTestAccs(ctx)
 
-	tt := newThreads(url, num, ofTotal, maxTxnsPerSec, accsFrom, accsCount)
-	tt.SetName("Threads")
-	tt.Start()
+	generator := NewTxGenerator(cfg, num, ofTotal)
+	defer generator.Stop()
+	generator.SetName(fmt.Sprintf("TxGen-%d", num))
+	txs := generator.Start()
+
+	nodes := NewNodes(cfg, txs)
+	go func() {
+		for tps := range nodes.TPS() {
+			generator.SetTPS(tps + 50.0*float64(nodes.Count()))
+		}
+	}()
 
 	waitForSignal()
-	tt.Stop()
 	return nil
 }
 
