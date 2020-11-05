@@ -6,14 +6,14 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	ethparams "github.com/ethereum/go-ethereum/params"
 
 	"github.com/Fantom-foundation/go-lachesis/crypto"
+	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 var (
 	gasLimit = uint64(21000)
-	gasPrice = big.NewInt(1e9) // minimal
+	gasPrice = lachesis.FakeEconomyConfig().InitialMinGasPrice // minimal
 )
 
 type Acc struct {
@@ -31,7 +31,7 @@ func MakeAcc(n uint) *Acc {
 	}
 }
 
-func (a *Acc) TransactionTo(b *Acc, nonce uint, amount *big.Int) *types.Transaction {
+func (a *Acc) TransactionTo(b *Acc, nonce uint, amount *big.Int, chainId uint) *types.Transaction {
 	tx := types.NewTransaction(
 		uint64(nonce),
 		*b.Addr,
@@ -43,7 +43,7 @@ func (a *Acc) TransactionTo(b *Acc, nonce uint, amount *big.Int) *types.Transact
 
 	signed, err := types.SignTx(
 		tx,
-		types.NewEIP155Signer(ethparams.AllEthashProtocolChanges.ChainID),
+		types.NewEIP155Signer(big.NewInt(int64(chainId))),
 		a.Key,
 	)
 	if err != nil {
