@@ -1,19 +1,13 @@
-package gossip
+package app
 
 import (
-	"math"
-
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 )
 
-const (
-	pendingEpoch = idx.Epoch(math.MaxUint32 - 2)
-)
-
 // GetDirtyEpochStats returns EpochStats for current (not sealed) epoch
 func (s *Store) GetDirtyEpochStats() *sfctype.EpochStats {
-	return s.GetEpochStats(pendingEpoch)
+	return s.GetEpochStats(idx.PendingEpoch)
 }
 
 // GetEpochStats returns EpochStats for an already sealed epoch
@@ -41,7 +35,7 @@ func (s *Store) GetEpochStats(epoch idx.Epoch) *sfctype.EpochStats {
 
 // SetDirtyEpochStats set EpochStats for current (not sealed) epoch
 func (s *Store) SetDirtyEpochStats(value *sfctype.EpochStats) {
-	s.SetEpochStats(pendingEpoch, value)
+	s.SetEpochStats(idx.PendingEpoch, value)
 }
 
 // SetEpochStats set EpochStats for an already sealed epoch

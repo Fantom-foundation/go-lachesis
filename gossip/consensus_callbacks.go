@@ -132,6 +132,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 
 	immediately := (newEpoch != oldEpoch)
 
+	s.app.FlushState()
 	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
 
@@ -347,7 +348,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 	confirmBlocksMeter.Inc(1)
 	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list
 
-	epochStart := s.store.GetEpochStats(pendingEpoch).Start
+	epochStart := s.app.GetEpochStats(idx.PendingEpoch).Start
 	sealEpoch = decidedFrame >= s.config.Net.Dag.MaxEpochBlocks
 	sealEpoch = sealEpoch || block.Time-epochStart >= inter.Timestamp(s.config.Net.Dag.MaxEpochDuration)
 	sealEpoch = sealEpoch || cheaters.Len() > 0

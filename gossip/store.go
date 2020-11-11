@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/common/bigendian"
 	"github.com/Fantom-foundation/go-lachesis/gossip/temporary"
 	"github.com/Fantom-foundation/go-lachesis/kvdb"
@@ -28,7 +27,6 @@ type Store struct {
 	async *asyncStore
 
 	mainDb kvdb.KeyValueStore
-	app    *app.Store
 	table  struct {
 		Version kvdb.KeyValueStore `table:"_"`
 
@@ -42,10 +40,8 @@ type Store struct {
 		Packs     kvdb.KeyValueStore `table:"P"`
 		PacksNum  kvdb.KeyValueStore `table:"n"`
 
-		// general economy tables
-		EpochStats kvdb.KeyValueStore `table:"E"`
-
 		// gas power economy tables
+		GasPowerRefund   kvdb.KeyValueStore `table:"R"`
 		LastEpochHeaders kvdb.KeyValueStore `table:"l"`
 
 		// API-only tables
@@ -64,7 +60,6 @@ type Store struct {
 		EventsHeaders *lru.Cache `cache:"-"` // store by pointer
 		Blocks        *lru.Cache `cache:"-"` // store by pointer
 		PackInfos     *lru.Cache `cache:"-"` // store by value
-		EpochStats    *lru.Cache `cache:"-"` // store by value
 		TxPositions   *lru.Cache `cache:"-"` // store by pointer
 		BlockHashes   *lru.Cache `cache:"-"` // store by pointer
 	}
@@ -81,13 +76,12 @@ func NewMemStore() *Store {
 	mems := memorydb.NewProducer("")
 	dbs := flushable.NewSyncedPool(mems)
 	cfg := LiteStoreConfig()
-	appCfg := app.LiteStoreConfig()
 
-	return NewStore(dbs, cfg, appCfg)
+	return NewStore(dbs, cfg)
 }
 
 // NewStore creates store over key-value db.
-func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig, appCfg app.StoreConfig) *Store {
+func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig) *Store {
 	s := &Store{
 		dbs:      dbs,
 		cfg:      cfg,
@@ -108,7 +102,6 @@ func NewStore(dbs *flushable.SyncedPool, cfg StoreConfig, appCfg app.StoreConfig
 	})
 
 	s.initCache()
-	s.app = app.NewStore(s.mainDb, appCfg)
 
 	return s
 }
@@ -126,7 +119,6 @@ func (s *Store) initCache() {
 	s.cache.EventsHeaders = s.makeCache(s.cfg.EventsHeadersCacheSize)
 	s.cache.Blocks = s.makeCache(s.cfg.BlockCacheSize)
 	s.cache.PackInfos = s.makeCache(s.cfg.PackInfosCacheSize)
-	s.cache.EpochStats = s.makeCache(s.cfg.EpochStatsCacheSize)
 	s.cache.TxPositions = s.makeCache(s.cfg.TxPositionsCacheSize)
 	s.cache.BlockHashes = s.makeCache(s.cfg.BlockCacheSize)
 }
@@ -159,10 +151,6 @@ func (s *Store) Commit(flushID []byte, immediately bool) error {
 	}
 
 	// Flush the DBs
-	err := s.app.Commit()
-	if err != nil {
-		return err
-	}
 	return s.dbs.Flush(flushID)
 }
 

@@ -8,8 +8,9 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
@@ -20,9 +21,9 @@ import (
 
 func TestGetGenesisBlock(t *testing.T) {
 	logger.SetTestMode(t)
-	assertar := assert.New(t)
+	require := require.New(t)
 
-	net := lachesis.FakeNetConfig(genesis.FakeValidators(5, big.NewInt(0), pos.StakeToBalance(1)))
+	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
 	addrWithStorage := net.Genesis.Alloc.Accounts.Addresses()[0]
 	accountWithCode := net.Genesis.Alloc.Accounts[addrWithStorage]
 	accountWithCode.Code = []byte{1, 2, 3}
@@ -30,36 +31,38 @@ func TestGetGenesisBlock(t *testing.T) {
 	accountWithCode.Storage[common.Hash{}] = common.BytesToHash(common.Big1.Bytes())
 	net.Genesis.Alloc.Accounts[addrWithStorage] = accountWithCode
 
-	store := NewMemStore()
-	genesisHash, stateHash, _, err := store.ApplyGenesis(&net)
-	if !assertar.NoError(err) {
-		return
-	}
+	apps := app.NewMemStore()
+	stateRoot, _, err := apps.ApplyGenesis(&net)
+	require.NoError(err)
 
-	assertar.NotEqual(common.Hash{}, genesisHash)
-	assertar.NotEqual(common.Hash{}, stateHash)
+	store := NewMemStore()
+	genesisHash, stateHash, _, err := store.ApplyGenesis(&net, stateRoot)
+	require.NoError(err)
+
+	require.NotEqual(common.Hash{}, genesisHash)
+	require.NotEqual(common.Hash{}, stateHash)
 
 	reader := EvmStateReader{
 		store:    store,
-		app:      store.app,
+		app:      apps,
 		engineMu: new(sync.RWMutex),
 	}
 	genesisBlock := reader.GetBlock(common.Hash(genesisHash), 0)
 
-	assertar.Equal(common.Hash(genesisHash), genesisBlock.Hash)
-	assertar.Equal(net.Genesis.Time, genesisBlock.Time)
-	assertar.Empty(genesisBlock.Transactions)
+	require.Equal(common.Hash(genesisHash), genesisBlock.Hash)
+	require.Equal(net.Genesis.Time, genesisBlock.Time)
+	require.Empty(genesisBlock.Transactions)
 
 	statedb, err := reader.StateAt(genesisBlock.Root)
-	assertar.NoError(err)
+	require.NoError(err)
 	for addr, account := range net.Genesis.Alloc.Accounts {
-		assertar.Equal(account.Balance.String(), statedb.GetBalance(addr).String())
-		assertar.Equal(account.Code, statedb.GetCode(addr))
+		require.Equal(account.Balance.String(), statedb.GetBalance(addr).String())
+		require.Equal(account.Code, statedb.GetCode(addr))
 		if len(account.Storage) == 0 {
-			assertar.Equal(common.Hash{}, statedb.GetState(addr, common.Hash{}))
+			require.Equal(common.Hash{}, statedb.GetState(addr, common.Hash{}))
 		} else {
 			for key, val := range account.Storage {
-				assertar.Equal(val, statedb.GetState(addr, key))
+				require.Equal(val, statedb.GetState(addr, key))
 			}
 		}
 	}
@@ -67,22 +70,24 @@ func TestGetGenesisBlock(t *testing.T) {
 
 func TestGetBlock(t *testing.T) {
 	logger.SetTestMode(t)
-	assertar := assert.New(t)
+	require := require.New(t)
 
-	net := lachesis.FakeNetConfig(genesis.FakeValidators(5, big.NewInt(0), pos.StakeToBalance(1)))
+	net := lachesis.FakeNetConfig(genesis.FakeAccounts(0, 5, big.NewInt(0), pos.StakeToBalance(1)))
+
+	apps := app.NewMemStore()
+	stateRoot, _, err := apps.ApplyGenesis(&net)
+	require.NoError(err)
 
 	store := NewMemStore()
-	genesisHash, _, _, err := store.ApplyGenesis(&net)
-	if !assertar.NoError(err) {
-		return
-	}
+	genesisHash, _, _, err := store.ApplyGenesis(&net, stateRoot)
+	require.NoError(err)
 
 	txs := types.Transactions{}
 	key, err := crypto.GenerateKey()
-	assertar.NoError(err)
+	require.NoError(err)
 	for i := 0; i < 6; i++ {
 		tx, err := types.SignTx(types.NewTransaction(uint64(i), common.Address{}, big.NewInt(100), 0, big.NewInt(1), nil), types.HomesteadSigner{}, key)
-		assertar.NoError(err)
+		require.NoError(err)
 		txs = append(txs, tx)
 	}
 
@@ -101,16 +106,17 @@ func TestGetBlock(t *testing.T) {
 
 	reader := EvmStateReader{
 		store:    store,
+		app:      apps,
 		engineMu: new(sync.RWMutex),
 	}
 	evmBlock := reader.GetDagBlock(block.Atropos, block.Index)
 
-	assertar.Equal(uint64(block.Index), evmBlock.Number.Uint64())
-	assertar.Equal(common.Hash(block.Atropos), evmBlock.Hash)
-	assertar.Equal(common.Hash(genesisHash), evmBlock.ParentHash)
-	assertar.Equal(block.Time, evmBlock.Time)
-	assertar.Equal(len(txs)-len(block.SkippedTxs), evmBlock.Transactions.Len())
-	assertar.Equal(txs[1].Hash(), evmBlock.Transactions[0].Hash())
-	assertar.Equal(txs[3].Hash(), evmBlock.Transactions[1].Hash())
-	assertar.Equal(txs[5].Hash(), evmBlock.Transactions[2].Hash())
+	require.Equal(uint64(block.Index), evmBlock.Number.Uint64())
+	require.Equal(common.Hash(block.Atropos), evmBlock.Hash)
+	require.Equal(common.Hash(genesisHash), evmBlock.ParentHash)
+	require.Equal(block.Time, evmBlock.Time)
+	require.Equal(len(txs)-len(block.SkippedTxs), evmBlock.Transactions.Len())
+	require.Equal(txs[1].Hash(), evmBlock.Transactions[0].Hash())
+	require.Equal(txs[3].Hash(), evmBlock.Transactions[1].Hash())
+	require.Equal(txs[5].Hash(), evmBlock.Transactions[2].Hash())
 }

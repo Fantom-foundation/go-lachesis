@@ -156,8 +156,8 @@ func benchInsertChain(b *testing.B, disk bool, gen func(int, *BlockGen)) {
 		},
 	}
 
-	genesisBlock := MustApplyGenesis(net, db)
-	genesisBlock.GasLimit = 1000000
+	stateRoot := MustApplyGenesis(net, db)
+	genesisBlock := GenesisBlock(net, stateRoot)
 
 	// Time the insertion of the new chain.
 	// State and blocks are stored in the same DB.

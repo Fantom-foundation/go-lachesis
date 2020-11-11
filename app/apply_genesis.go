@@ -1,20 +1,75 @@
 package app
 
 import (
+	"fmt"
 	"math/big"
+	"reflect"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
+	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
 // ApplyGenesis writes initial state.
-func (s *Store) ApplyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, err error) {
-	evmBlock, err = evmcore.ApplyGenesis(s.table.Evm, net)
+func (s *Store) ApplyGenesis(net *lachesis.Config) (stateRoot common.Hash, isNew bool, err error) {
+	s.migrate()
+
+	var stored *inter.Block
+	// TODO: enable when implemented .GetBlock()
+	/*
+		stored = s.GetBlock(0)
+	*/
+	if stored != nil {
+		isNew = false
+		stateRoot, err = calcGenesis(net)
+		if err != nil {
+			return
+		}
+
+		if stateRoot != stored.Root {
+			err = fmt.Errorf("database contains incompatible state hash (have %s, new %s)", stored.Root, stateRoot)
+		}
+
+		return
+	}
+
+	// if we'here, then it's first time genesis is applied
+	isNew = true
+	stateRoot, err = s.applyGenesis(net)
 	if err != nil {
 		return
 	}
 
+	// init stats
+	s.SetEpochStats(0, &sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		End:      net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+	s.SetDirtyEpochStats(&sfctype.EpochStats{
+		Start:    net.Genesis.Time,
+		TotalFee: new(big.Int),
+	})
+
+	// TODO: enable when implemented .GetBlock()
+	/*
+		block := evmcore.GenesisBlock(net, stateRoot)
+		info := blockInfo(&block.EvmHeader)
+		s.SetBlock(info)
+
+
+		s.SetCheckpoint(Checkpoint{
+			BlockN:     0,
+			EpochN:     1,
+			EpochBlock: 0,
+			EpochStart: net.Genesis.Time,
+		})
+	*/
 	// calc total pre-minted supply
 	totalSupply := big.NewInt(0)
 	for _, account := range net.Genesis.Alloc.Accounts {
@@ -39,5 +94,36 @@ func (s *Store) ApplyGenesis(net *lachesis.Config) (evmBlock *evmcore.EvmBlock, 
 	}
 	s.SetEpochValidators(1, validatorsArr)
 
+	// clear caches because tables can be filled direct by migrations
+	s.purgeCaches()
+	s.FlushState()
+
 	return
+}
+
+// calcGenesis calcs hash of genesis state.
+func calcGenesis(net *lachesis.Config) (common.Hash, error) {
+	s := NewMemStore()
+	defer s.Close()
+
+	s.Log.SetHandler(log.DiscardHandler())
+
+	return s.applyGenesis(net)
+}
+
+func (s *Store) applyGenesis(net *lachesis.Config) (stateRoot common.Hash, err error) {
+	stateRoot, err = evmcore.ApplyGenesis(s.table.Evm, net)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func (s *Store) purgeCaches() {
+	caches := reflect.ValueOf(s.cache)
+	for i := caches.NumField() - 1; i >= 0; i-- {
+		c := caches.Field(i).Interface().(*lru.Cache)
+		c.Purge()
+	}
 }

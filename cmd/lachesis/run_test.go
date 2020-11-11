@@ -42,7 +42,7 @@ func (tt *testcli) readConfig() {
 func init() {
 	// Run the app if we've been exec'd as "lachesis-test" in exec().
 	reexec.Register("lachesis-test", func() {
-		if err := app.Run(os.Args); err != nil {
+		if err := App.Run(os.Args); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}

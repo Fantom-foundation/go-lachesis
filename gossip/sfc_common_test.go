@@ -40,6 +40,8 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/memorydb"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 	"github.com/Fantom-foundation/go-lachesis/lachesis/genesis"
 	"github.com/Fantom-foundation/go-lachesis/logger"
@@ -77,14 +79,23 @@ type testEnv struct {
 }
 
 func newTestEnv() *testEnv {
-	vaccs := genesis.FakeValidators(genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
+	vaccs := genesis.FakeAccounts(1, genesisStakers, utils.ToFtm(genesisBalance), utils.ToFtm(genesisStake))
 	cfg := &Config{
 		Net: lachesis.FakeNetConfig(vaccs),
 	}
 	cfg.Net.Dag.MaxEpochDuration = epochDuration
 
-	s := NewMemStore()
-	_, _, _, err := s.ApplyGenesis(&cfg.Net)
+	mems := memorydb.NewProducer("")
+	dbs := flushable.NewSyncedPool(mems)
+
+	apps := app.NewStore(dbs, app.LiteStoreConfig())
+	stateRoot, _, err := apps.ApplyGenesis(&cfg.Net)
+	if err != nil {
+		panic(err)
+	}
+
+	s := NewStore(dbs, LiteStoreConfig())
+	_, _, _, err = s.ApplyGenesis(&cfg.Net, stateRoot)
 	if err != nil {
 		panic(err)
 	}
@@ -92,7 +103,7 @@ func newTestEnv() *testEnv {
 	a := &Service{
 		config:            cfg,
 		store:             s,
-		app:               s.app,
+		app:               apps,
 		blockParticipated: make(map[idx.StakerID]bool),
 
 		Instance: logger.MakeInstance(),
@@ -100,7 +111,7 @@ func newTestEnv() *testEnv {
 
 	env := &testEnv{
 		App:   a,
-		Store: s.app,
+		Store: apps,
 
 		signer: eth.NewEIP155Signer(big.NewInt(int64(cfg.Net.NetworkID))),
 
@@ -119,6 +130,7 @@ func newTestEnv() *testEnv {
 
 func (e *testEnv) Close() {
 	e.App.store.Close()
+	e.App.app.Close()
 }
 
 func (env *testEnv) AddValidator(v idx.StakerID) {

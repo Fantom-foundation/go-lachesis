@@ -2,14 +2,13 @@ package gossip
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
 )
 
@@ -25,44 +24,43 @@ func (e *GenesisMismatchError) Error() string {
 }
 
 // ApplyGenesis writes initial state.
-func (s *Store) ApplyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, genesisState common.Hash, new bool, err error) {
-	storedGenesis := s.GetBlock(0)
-	if storedGenesis != nil {
-		newHash := calcGenesisHash(net)
-		if storedGenesis.Atropos != newHash {
-			return genesisAtropos, genesisState, true, &GenesisMismatchError{storedGenesis.Atropos, newHash}
-		}
+func (s *Store) ApplyGenesis(
+	net *lachesis.Config, stateRoot common.Hash,
+) (
+	atropos hash.Event, appState common.Hash, isNew bool, err error,
+) {
+	s.migrate()
 
-		genesisAtropos = storedGenesis.Atropos
-		genesisState = common.Hash(genesisAtropos)
-		return genesisAtropos, genesisState, false, nil
+	stored := s.GetBlock(0)
+	if stored != nil {
+		isNew = false
+		atropos = calcGenesisHash(net, stateRoot)
+		if stored.Atropos != atropos {
+			err = &GenesisMismatchError{stored.Atropos, atropos}
+			return
+		}
+		appState = common.Hash(atropos) // is not state.Root because legacy
+		return
 	}
 	// if we'here, then it's first time genesis is applied
-	genesisAtropos, genesisState, err = s.applyGenesis(net)
-	if err != nil {
-		return genesisAtropos, genesisState, true, err
-	}
-
-	return genesisAtropos, genesisState, true, err
+	isNew = true
+	atropos = s.applyGenesis(net, stateRoot)
+	appState = common.Hash(atropos) // is not state.Root because legacy
+	return
 }
 
-// calcGenesisHash calcs hash of genesis state.
-func calcGenesisHash(net *lachesis.Config) hash.Event {
+// calcGenesisHash calcs hash of genesis atropos.
+func calcGenesisHash(net *lachesis.Config, stateRoot common.Hash) hash.Event {
 	s := NewMemStore()
 	defer s.Close()
 
-	h, _, _ := s.applyGenesis(net)
+	s.Log.SetHandler(log.DiscardHandler())
 
-	return h
+	atropos := s.applyGenesis(net, stateRoot)
+	return atropos
 }
 
-func (s *Store) applyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, genesisState common.Hash, err error) {
-	// apply app genesis
-	state, err := s.app.ApplyGenesis(net)
-	if err != nil {
-		return genesisAtropos, genesisState, err
-	}
-
+func (s *Store) applyGenesis(net *lachesis.Config, stateRoot common.Hash) (atropos hash.Event) {
 	prettyHash := func(net *lachesis.Config) hash.Event {
 		e := inter.NewEvent()
 		// for nice-looking ID
@@ -75,28 +73,18 @@ func (s *Store) applyGenesis(net *lachesis.Config) (genesisAtropos hash.Event, g
 
 		return e.CalcHash()
 	}
-	genesisAtropos = prettyHash(net)
-	genesisState = common.Hash(genesisAtropos)
+	atropos = prettyHash(net)
 
 	block := inter.NewBlock(0,
 		net.Genesis.Time,
-		genesisAtropos,
+		atropos,
 		hash.Event{},
-		hash.Events{genesisAtropos},
+		hash.Events{atropos},
 	)
+	block.Root = stateRoot
 
-	block.Root = state.Root
 	s.SetBlock(block)
-	s.SetBlockIndex(genesisAtropos, block.Index)
-	s.SetEpochStats(0, &sfctype.EpochStats{
-		Start:    net.Genesis.Time,
-		End:      net.Genesis.Time,
-		TotalFee: new(big.Int),
-	})
-	s.SetDirtyEpochStats(&sfctype.EpochStats{
-		Start:    net.Genesis.Time,
-		TotalFee: new(big.Int),
-	})
+	s.SetBlockIndex(atropos, block.Index)
 
-	return genesisAtropos, genesisState, nil
+	return atropos
 }
