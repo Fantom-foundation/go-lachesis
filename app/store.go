@@ -104,9 +104,9 @@ func (s *Store) initCache() {
 }
 
 // Commit changes.
-func (s *Store) Commit() error {
+func (s *Store) Commit(root common.Hash) error {
 	// Flush trie on the DB
-	err := s.table.EvmState.TrieDB().Cap(0)
+	err := s.table.EvmState.TrieDB().Commit(root, false, nil)
 	if err != nil {
 		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
 	}
