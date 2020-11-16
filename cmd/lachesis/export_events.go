@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"compress/gzip"
-
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -22,6 +21,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/integration"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
+	"github.com/Fantom-foundation/go-lachesis/poset"
 )
 
 var (
@@ -33,14 +33,14 @@ var (
 // always print out progress. This avoids the user wondering what's going on.
 const statsReportLimit = 8 * time.Second
 
-func exportChain(ctx *cli.Context) error {
+func exportEvents(ctx *cli.Context) error {
 	if len(ctx.Args()) < 1 {
 		utils.Fatalf("This command requires an argument.")
 	}
 
 	cfg := makeAllConfigs(ctx)
 
-	gdb := makeGossipStore(cfg.Node.DataDir, &cfg.Lachesis)
+	gdb, _ := makeStores(cfg.Node.DataDir, &cfg.Lachesis)
 	defer gdb.Close()
 
 	fn := ctx.Args().First()
@@ -89,11 +89,13 @@ func exportChain(ctx *cli.Context) error {
 	return nil
 }
 
-func makeGossipStore(dataDir string, gossipCfg *gossip.Config) *gossip.Store {
+func makeStores(dataDir string, gossipCfg *gossip.Config) (*gossip.Store, *poset.Store) {
 	dbs := flushable.NewSyncedPool(integration.DBProducer(dataDir))
 	gdb := gossip.NewStore(dbs, gossipCfg.StoreConfig, appdb.LiteStoreConfig())
 	gdb.SetName("gossip-db")
-	return gdb
+	cdb := poset.NewStore(dbs, poset.LiteStoreConfig())
+	cdb.SetName("poset-db")
+	return gdb, cdb
 }
 
 // exportTo writer the active chain.
