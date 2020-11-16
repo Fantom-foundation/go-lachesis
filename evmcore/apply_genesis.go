@@ -56,7 +56,7 @@ func ApplyGenesis(db ethdb.Database, net *lachesis.Config) (*EvmBlock, error) {
 	}
 	block := genesisBlock(net, root)
 
-	err = statedb.Database().TrieDB().Cap(0)
+	err = statedb.Database().TrieDB().Commit(root, false, nil)
 	if err != nil {
 		return nil, err
 	}
