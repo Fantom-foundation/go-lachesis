@@ -167,6 +167,10 @@ func (s *Store) Commit(root common.Hash, flushID []byte, immediately bool) error
 	return s.dbs.Flush(flushID)
 }
 
+func (s *Store) App() *app.Store {
+	return s.app
+}
+
 /*
  * Utils:
  */
