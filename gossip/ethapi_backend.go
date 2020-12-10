@@ -100,8 +100,8 @@ func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.B
 	if header == nil {
 		return nil, nil, errors.New("header not found")
 	}
-	stateDb := b.svc.app.StateDB(header.Root)
-	return stateDb, header, nil
+	stateDb, err := b.svc.app.StateDB(header.Root)
+	return stateDb, header, err
 }
 
 // decodeShortEventID decodes ShortID
@@ -484,7 +484,10 @@ func (b *EthAPIBackend) GetEpochStats(ctx context.Context, requestedEpoch rpc.Bl
 
 	// read total reward weights from SFC contract
 	header := b.state.CurrentHeader()
-	statedb := b.svc.app.StateDB(header.Root)
+	statedb, err := b.svc.app.StateDB(header.Root)
+	if err != nil {
+		return nil, err
+	}
 
 	epochPosition := sfcpos.EpochSnapshot(epoch)
 	stats.TotalBaseRewardWeight = statedb.GetState(sfc.ContractAddress, epochPosition.TotalBaseRewardWeight()).Big()
@@ -523,7 +526,10 @@ func (b *EthAPIBackend) GetRewardWeights(ctx context.Context, stakerID idx.Stake
 		return nil, nil, nil
 	}
 	header := b.state.CurrentHeader()
-	statedb := b.svc.app.StateDB(header.Root)
+	statedb, err := b.svc.app.StateDB(header.Root)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	// read reward weight from SFC contract
 	epoch := b.svc.engine.GetEpoch()
@@ -554,7 +560,10 @@ func (b *EthAPIBackend) GetStaker(ctx context.Context, stakerID idx.StakerID) (*
 // GetStakerID returns SFC staker's Id by address
 func (b *EthAPIBackend) GetStakerID(ctx context.Context, addr common.Address) (idx.StakerID, error) {
 	header := b.state.CurrentHeader()
-	statedb := b.svc.app.StateDB(header.Root)
+	statedb, err := b.svc.app.StateDB(header.Root)
+	if err != nil {
+		return 0, err
+	}
 
 	position := sfcpos.StakerID(addr)
 	stakerID256 := statedb.GetState(sfc.ContractAddress, position)
