@@ -264,7 +264,8 @@ func (env *testEnv) ReadOnly() *bind.CallOpts {
 }
 
 func (env *testEnv) State() *state.StateDB {
-	return env.Store.StateDB(env.lastState)
+	s, _ := env.Store.StateDB(env.lastState)
+	return s
 }
 
 func (env *testEnv) incNonce(account common.Address) {
