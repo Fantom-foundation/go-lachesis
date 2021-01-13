@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math/big"
 	"math/rand"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 
 	"github.com/Fantom-foundation/go-lachesis/inter/pos"
+	"github.com/Fantom-foundation/go-lachesis/kvdb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/flushable"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/leveldb"
 	"github.com/Fantom-foundation/go-lachesis/kvdb/nokeyiserr"
@@ -25,26 +27,51 @@ func main() {
 		http.ListenAndServe("127.0.0.1:8080", nil)
 	}()
 
-	dbs, db := stateDB()
-
-	var stateRoot common.Hash
-	accs := genesis.FakeValidators(1000, big.NewInt(10), pos.StakeToBalance(1))
-	data := make([]byte, 1024)
+	var (
+		err       error
+		dbs       = stateDB()
+		table     kvdb.KeyValueStore
+		db        state.Database
+		stateRoot common.Hash
+		accs      = genesis.FakeValidators(1000, big.NewInt(10), pos.StakeToBalance(1))
+		data      = make([]byte, 1024)
+	)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	for {
+mainloop:
+	for i := 0; true; i++ {
 		select {
 		case <-sigs:
-			return
+			break mainloop
 		default:
 		}
 
+		// free disk space
+		if i%10e6 == 0 {
+			if table != nil {
+				err = table.Close()
+				if err != nil {
+					panic(err)
+				}
+				table.Drop()
+			}
+			table = dbs.GetDb(fmt.Sprintf("main%d", i))
+
+			db = state.NewDatabaseWithCache(
+				rawdb.NewDatabase(
+					nokeyiserr.Wrap(table)),
+				16,
+				"")
+
+			stateRoot = common.Hash{}
+		}
+
+		// change the state
 		statedb, err := state.New(stateRoot, db, nil)
 		if err != nil {
 			panic(err)
 		}
-
 		for addr, acc := range accs.Accounts {
 			nonce := statedb.GetNonce(addr)
 			statedb.AddBalance(addr, acc.Balance)
@@ -52,27 +79,30 @@ func main() {
 			rand.Read(data)
 			statedb.SetCode(addr, data)
 		}
-
 		stateRoot, err := statedb.Commit(true)
 		if err != nil {
 			panic(err)
 		}
 
-		// flush
-		err = db.TrieDB().Commit(stateRoot, false, nil)
-		if err != nil {
-			panic(err)
-		}
+		// flush to disk
+		if i%10 == 1 {
+			err = db.TrieDB().Commit(stateRoot, false, nil)
+			if err != nil {
+				panic(err)
+			}
 
-		if dbs.IsFlushNeeded() {
-			dbs.Flush([]byte("flag"))
+			if dbs.IsFlushNeeded() {
+				dbs.Flush([]byte(fmt.Sprintf("point%d", i)))
+			}
 		}
-
 	}
 
+	if table != nil {
+		table.Close()
+	}
 }
 
-func stateDB() (*flushable.SyncedPool, state.Database) {
+func stateDB() *flushable.SyncedPool {
 	err := os.Mkdir("dbs", 0755)
 	if err != nil {
 		panic(err)
@@ -80,14 +110,5 @@ func stateDB() (*flushable.SyncedPool, state.Database) {
 	disk := leveldb.NewProducer("dbs")
 	dbs := flushable.NewSyncedPool(disk)
 
-	table := dbs.GetDb("main")
-	// defer table.Close()
-
-	db := state.NewDatabaseWithCache(
-		rawdb.NewDatabase(
-			nokeyiserr.Wrap(table)),
-		16,
-		"")
-
-	return dbs, db
+	return dbs
 }
