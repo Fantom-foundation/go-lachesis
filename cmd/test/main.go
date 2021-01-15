@@ -33,8 +33,8 @@ func main() {
 		table     kvdb.KeyValueStore
 		db        state.Database
 		stateRoot common.Hash
-		accs      = genesis.FakeValidators(1000, big.NewInt(10), pos.StakeToBalance(1))
-		data      = make([]byte, 1024)
+		accs      = genesis.FakeValidators(100, big.NewInt(10), pos.StakeToBalance(1))
+		data      = make([]byte, 512)
 	)
 
 	sigs := make(chan os.Signal, 1)
@@ -47,8 +47,20 @@ mainloop:
 		default:
 		}
 
+		// flush to disk
+		if i%10e1 == 0 && table != nil {
+			err = db.TrieDB().Commit(stateRoot, false, nil)
+			if err != nil {
+				panic(err)
+			}
+
+			if dbs.IsFlushNeeded() {
+				dbs.Flush([]byte(fmt.Sprintf("point%d", i)))
+			}
+		}
+
 		// free disk space
-		if i%10e6 == 0 {
+		if i%10e4 == 0 {
 			if table != nil {
 				err = table.Close()
 				if err != nil {
@@ -79,22 +91,11 @@ mainloop:
 			rand.Read(data)
 			statedb.SetCode(addr, data)
 		}
-		stateRoot, err := statedb.Commit(true)
+		stateRoot, err = statedb.Commit(true)
 		if err != nil {
 			panic(err)
 		}
 
-		// flush to disk
-		if i%10 == 1 {
-			err = db.TrieDB().Commit(stateRoot, false, nil)
-			if err != nil {
-				panic(err)
-			}
-
-			if dbs.IsFlushNeeded() {
-				dbs.Flush([]byte(fmt.Sprintf("point%d", i)))
-			}
-		}
 	}
 
 	if table != nil {
