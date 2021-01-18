@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -35,7 +36,7 @@ func main() {
 		db        state.Database
 		stateRoot common.Hash
 		accs      = genesis.FakeValidators(200, big.NewInt(10), pos.StakeToBalance(1))
-		data      = make([]byte, 1024)
+		data      = make([]byte, 512)
 	)
 
 	sigs := make(chan os.Signal, 1)
@@ -46,6 +47,7 @@ mainloop:
 		case <-sigs:
 			break mainloop
 		default:
+			time.Sleep(time.Nanosecond)
 		}
 
 		// flush to disk
@@ -67,7 +69,7 @@ mainloop:
 		}
 
 		// free disk space
-		if i%10e5 == 0 {
+		if i%10e3 == 0 {
 			log.Printf("(re)create db (step %d)", i)
 			if table != nil {
 				err = table.Close()
