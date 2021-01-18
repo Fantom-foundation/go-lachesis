@@ -109,8 +109,15 @@ func (s *Store) Commit(root common.Hash) error {
 	err := s.table.EvmState.TrieDB().Commit(root, false, nil)
 	if err != nil {
 		s.Log.Error("Failed to flush trie DB into main DB", "err", err)
+		return err
 	}
-	return err
+	err = s.table.EvmState.TrieDB().Cap(0)
+	if err != nil {
+		s.Log.Error("Failed to clean trie DB cache", "err", err)
+		return err
+	}
+
+	return nil
 }
 
 // StateDB returns state database.
