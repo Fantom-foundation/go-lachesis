@@ -75,28 +75,28 @@ const (
 
 // connReq represents a request for peer connection.
 type connReq struct {
-	p      *peer
+	p      *Peer
 	node   *enode.Node
-	result chan *poolEntry
+	result chan *PoolEntry
 }
 
 // disconnReq represents a request for peer disconnection.
 type disconnReq struct {
-	entry   *poolEntry
+	entry   *PoolEntry
 	stopped bool
 	done    chan struct{}
 }
 
 // registerReq represents a request for peer registration.
 type registerReq struct {
-	entry *poolEntry
+	entry *PoolEntry
 	done  chan struct{}
 }
 
-// serverPool implements a pool for storing and selecting newly discovered and already
+// ServerPool implements a pool for storing and selecting newly discovered and already
 // known nodes. It received discovered nodes, stores statistics about
 // known nodes and takes care of always having enough good quality servers connected.
-type serverPool struct {
+type ServerPool struct {
 	db     kvdb.KeyValueStore
 	dbKey  []byte
 	server *p2p.Server
@@ -111,8 +111,8 @@ type serverPool struct {
 	discLookups   chan bool
 
 	trustedNodes         map[enode.ID]*enode.Node
-	entries              map[enode.ID]*poolEntry
-	timeout, enableRetry chan *poolEntry
+	entries              map[enode.ID]*PoolEntry
+	timeout, enableRetry chan *PoolEntry
 	adjustStats          chan poolStatAdjust
 
 	knownQueue, newQueue       poolEntryQueue
@@ -124,16 +124,16 @@ type serverPool struct {
 	registerCh                 chan *registerReq
 }
 
-// newServerPool creates a new serverPool instance
-func newServerPool(db kvdb.KeyValueStore, quit chan struct{}, wg *sync.WaitGroup, trustedNodes []string) *serverPool {
-	pool := &serverPool{
+// NewServerPool creates a new serverPool instance
+func NewServerPool(db kvdb.KeyValueStore, quit chan struct{}, wg *sync.WaitGroup, trustedNodes []string) *ServerPool {
+	pool := &ServerPool{
 		db:           db,
 		quit:         quit,
 		wg:           wg,
-		entries:      make(map[enode.ID]*poolEntry),
-		timeout:      make(chan *poolEntry, 1),
+		entries:      make(map[enode.ID]*PoolEntry),
+		timeout:      make(chan *PoolEntry, 1),
 		adjustStats:  make(chan poolStatAdjust, 100),
-		enableRetry:  make(chan *poolEntry, 1),
+		enableRetry:  make(chan *PoolEntry, 1),
 		connCh:       make(chan *connReq),
 		disconnCh:    make(chan *disconnReq),
 		registerCh:   make(chan *registerReq),
@@ -148,7 +148,7 @@ func newServerPool(db kvdb.KeyValueStore, quit chan struct{}, wg *sync.WaitGroup
 	return pool
 }
 
-func (pool *serverPool) start(server *p2p.Server, topic discv5.Topic) {
+func (pool *ServerPool) Start(server *p2p.Server, topic discv5.Topic) {
 	pool.server = server
 	pool.topic = topic
 	pool.dbKey = append([]byte("serverPool/"), []byte(topic)...)
@@ -167,7 +167,7 @@ func (pool *serverPool) start(server *p2p.Server, topic discv5.Topic) {
 }
 
 // discoverNodes wraps SearchTopic, converting result nodes to enode.Node.
-func (pool *serverPool) discoverNodes() {
+func (pool *ServerPool) discoverNodes() {
 	ch := make(chan *discv5.Node)
 	go func() {
 		pool.server.DiscV5.SearchTopic(pool.topic, pool.discSetPeriod, ch, pool.discLookups)
@@ -182,14 +182,14 @@ func (pool *serverPool) discoverNodes() {
 	}
 }
 
-// connect should be called upon any incoming connection. If the connection has been
+// Connect should be called upon any incoming connection. If the connection has been
 // dialed by the server pool recently, the appropriate pool entry is returned.
 // Otherwise, the connection should be rejected.
 // Note that whenever a connection has been accepted and a pool entry has been returned,
 // disconnect should also always be called.
-func (pool *serverPool) connect(p *peer, node *enode.Node) *poolEntry {
+func (pool *ServerPool) Connect(p *Peer, node *enode.Node) *PoolEntry {
 	log.Debug("Connect new entry", "enode", p.id)
-	req := &connReq{p: p, node: node, result: make(chan *poolEntry, 1)}
+	req := &connReq{p: p, node: node, result: make(chan *PoolEntry, 1)}
 	select {
 	case pool.connCh <- req:
 	case <-pool.quit:
@@ -199,7 +199,7 @@ func (pool *serverPool) connect(p *peer, node *enode.Node) *poolEntry {
 }
 
 // registered should be called after a successful handshake
-func (pool *serverPool) registered(entry *poolEntry) {
+func (pool *ServerPool) registered(entry *PoolEntry) {
 	log.Debug("Registered new entry", "enode", entry.node.ID())
 	req := &registerReq{entry: entry, done: make(chan struct{})}
 	select {
@@ -210,10 +210,10 @@ func (pool *serverPool) registered(entry *poolEntry) {
 	<-req.done
 }
 
-// disconnect should be called when ending a connection. Service quality statistics
+// Disconnect should be called when ending a connection. Service quality statistics
 // can be updated optionally (not updated if no registration happened, in this case
 // only connection statistics are updated, just like in case of timeout)
-func (pool *serverPool) disconnect(entry *poolEntry) {
+func (pool *ServerPool) Disconnect(entry *PoolEntry) {
 	stopped := false
 	select {
 	case <-pool.quit:
@@ -236,12 +236,12 @@ const (
 // poolStatAdjust records are sent to adjust peer block delay/response time statistics
 type poolStatAdjust struct {
 	adjustType int
-	entry      *poolEntry
+	entry      *PoolEntry
 	time       time.Duration
 }
 
 // adjustResponseTime adjusts the request response time statistics of a node
-func (pool *serverPool) adjustResponseTime(entry *poolEntry, time time.Duration, timeout bool) {
+func (pool *ServerPool) adjustResponseTime(entry *PoolEntry, time time.Duration, timeout bool) {
 	if entry == nil {
 		return
 	}
@@ -253,7 +253,7 @@ func (pool *serverPool) adjustResponseTime(entry *poolEntry, time time.Duration,
 }
 
 // eventLoop handles pool events and mutex locking for all internal functions
-func (pool *serverPool) eventLoop() {
+func (pool *ServerPool) eventLoop() {
 	lookupCnt := 0
 	var convTime mclock.AbsTime
 	if pool.discSetPeriod != nil {
@@ -401,12 +401,12 @@ func (pool *serverPool) eventLoop() {
 	}
 }
 
-func (pool *serverPool) findOrNewNode(node *enode.Node) *poolEntry {
+func (pool *ServerPool) findOrNewNode(node *enode.Node) *PoolEntry {
 	now := mclock.Now()
 	entry := pool.entries[node.ID()]
 	if entry == nil {
 		log.Debug("Discovered new entry", "id", node.ID())
-		entry = &poolEntry{
+		entry = &PoolEntry{
 			node:       node,
 			addr:       make(map[string]*poolEntryAddress),
 			addrSelect: *newWeightedRandomSelect(),
@@ -435,12 +435,12 @@ func (pool *serverPool) findOrNewNode(node *enode.Node) *poolEntry {
 }
 
 // loadNodes loads known nodes and their statistics from the database
-func (pool *serverPool) loadNodes() {
+func (pool *ServerPool) loadNodes() {
 	enc, err := pool.db.Get(pool.dbKey)
 	if err != nil {
 		return
 	}
-	var list []*poolEntry
+	var list []*PoolEntry
 	err = rlp.DecodeBytes(enc, &list)
 	if err != nil {
 		log.Debug("Failed to decode node list", "err", err)
@@ -465,7 +465,7 @@ func (pool *serverPool) loadNodes() {
 // Note: trusted nodes are not handled by the server pool logic, they are not
 // added to either the known or new selection pools. They are connected/reconnected
 // by p2p.Server whenever possible.
-func (pool *serverPool) connectToTrustedNodes() {
+func (pool *ServerPool) connectToTrustedNodes() {
 	//connect to trusted nodes
 	for _, node := range pool.trustedNodes {
 		pool.server.AddTrustedPeer(node)
@@ -491,8 +491,8 @@ func parseTrustedNodes(trustedNodes []string) map[enode.ID]*enode.Node {
 
 // saveNodes saves known nodes and their statistics into the database. Nodes are
 // ordered from least to most recently connected.
-func (pool *serverPool) saveNodes() {
-	list := make([]*poolEntry, len(pool.knownQueue.queue))
+func (pool *ServerPool) saveNodes() {
+	list := make([]*PoolEntry, len(pool.knownQueue.queue))
 	for i := range list {
 		list[i] = pool.knownQueue.fetchOldest()
 	}
@@ -505,7 +505,7 @@ func (pool *serverPool) saveNodes() {
 // removeEntry removes a pool entry when the entry count limit is reached.
 // Note that it is called by the new/known queues from which the entry has already
 // been removed so removing it from the queues is not necessary.
-func (pool *serverPool) removeEntry(entry *poolEntry) {
+func (pool *ServerPool) removeEntry(entry *PoolEntry) {
 	pool.newSelect.remove((*discoveredEntry)(entry))
 	pool.knownSelect.remove((*knownEntry)(entry))
 	entry.removed = true
@@ -513,7 +513,7 @@ func (pool *serverPool) removeEntry(entry *poolEntry) {
 }
 
 // setRetryDial starts the timer which will enable dialing a certain node again
-func (pool *serverPool) setRetryDial(entry *poolEntry) {
+func (pool *ServerPool) setRetryDial(entry *PoolEntry) {
 	delay := longRetryDelay
 	if entry.shortRetry > 0 {
 		entry.shortRetry--
@@ -535,7 +535,7 @@ func (pool *serverPool) setRetryDial(entry *poolEntry) {
 
 // updateCheckDial is called when an entry can potentially be dialed again. It updates
 // its selection weights and checks if new dials can/should be made.
-func (pool *serverPool) updateCheckDial(entry *poolEntry) {
+func (pool *ServerPool) updateCheckDial(entry *PoolEntry) {
 	pool.newSelect.update((*discoveredEntry)(entry))
 	pool.knownSelect.update((*knownEntry)(entry))
 	pool.checkDial()
@@ -543,7 +543,7 @@ func (pool *serverPool) updateCheckDial(entry *poolEntry) {
 
 // checkDial checks if new dials can/should be made. It tries to select servers both
 // based on good statistics and recent discovery.
-func (pool *serverPool) checkDial() {
+func (pool *ServerPool) checkDial() {
 	fillWithKnownSelects := !pool.fastDiscover
 	for pool.knownSelected < targetKnownSelect {
 		entry := pool.knownSelect.choose()
@@ -551,14 +551,14 @@ func (pool *serverPool) checkDial() {
 			fillWithKnownSelects = false
 			break
 		}
-		pool.dial((*poolEntry)(entry.(*knownEntry)), true)
+		pool.dial((*PoolEntry)(entry.(*knownEntry)), true)
 	}
 	for pool.knownSelected+pool.newSelected < targetServerCount {
 		entry := pool.newSelect.choose()
 		if entry == nil {
 			break
 		}
-		pool.dial((*poolEntry)(entry.(*discoveredEntry)), false)
+		pool.dial((*PoolEntry)(entry.(*discoveredEntry)), false)
 	}
 	if fillWithKnownSelects {
 		// no more newly discovered nodes to select and since fast discover period
@@ -569,13 +569,13 @@ func (pool *serverPool) checkDial() {
 			if entry == nil {
 				break
 			}
-			pool.dial((*poolEntry)(entry.(*knownEntry)), true)
+			pool.dial((*PoolEntry)(entry.(*knownEntry)), true)
 		}
 	}
 }
 
 // dial initiates a new connection
-func (pool *serverPool) dial(entry *poolEntry, knownSelected bool) {
+func (pool *ServerPool) dial(entry *PoolEntry, knownSelected bool) {
 	if pool.server == nil || entry.state != psNotConnected {
 		return
 	}
@@ -604,7 +604,7 @@ func (pool *serverPool) dial(entry *poolEntry, knownSelected bool) {
 
 // checkDialTimeout checks if the node is still in dialed state and if so, resets it
 // and adjusts connection statistics accordingly.
-func (pool *serverPool) checkDialTimeout(entry *poolEntry) {
+func (pool *ServerPool) checkDialTimeout(entry *PoolEntry) {
 	if entry.state != psDialed {
 		return
 	}
@@ -627,9 +627,9 @@ const (
 	psRegistered
 )
 
-// poolEntry represents a server node and stores its current state and statistics.
-type poolEntry struct {
-	peer                  *peer
+// PoolEntry represents a server node and stores its current state and statistics.
+type PoolEntry struct {
+	peer                  *Peer
 	addr                  map[string]*poolEntryAddress
 	node                  *enode.Node
 	lastConnected, dialed *poolEntryAddress
@@ -657,7 +657,7 @@ type poolEntryEnc struct {
 	CStat, DStat, RStat, TStat poolStats
 }
 
-func (e *poolEntry) EncodeRLP(w io.Writer) error {
+func (e *PoolEntry) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, &poolEntryEnc{
 		Pubkey: encodePubkey64(e.node.Pubkey()),
 		IP:     e.lastConnected.ip,
@@ -670,7 +670,7 @@ func (e *poolEntry) EncodeRLP(w io.Writer) error {
 	})
 }
 
-func (e *poolEntry) DecodeRLP(s *rlp.Stream) error {
+func (e *PoolEntry) DecodeRLP(s *rlp.Stream) error {
 	var entry poolEntryEnc
 	if err := s.Decode(&entry); err != nil {
 		return err
@@ -704,7 +704,7 @@ func decodePubkey64(b []byte) (*ecdsa.PublicKey, error) {
 }
 
 // discoveredEntry implements wrsItem
-type discoveredEntry poolEntry
+type discoveredEntry PoolEntry
 
 // Weight calculates random selection weight for newly discovered entries
 func (e *discoveredEntry) Weight() int64 {
@@ -719,7 +719,7 @@ func (e *discoveredEntry) Weight() int64 {
 }
 
 // knownEntry implements wrsItem
-type knownEntry poolEntry
+type knownEntry PoolEntry
 
 // Weight calculates random selection weight for known entries
 func (e *knownEntry) Weight() int64 {
@@ -818,18 +818,18 @@ func (s *poolStats) DecodeRLP(st *rlp.Stream) error {
 // poolEntryQueue keeps track of its least recently accessed entries and removes
 // them when the number of entries reaches the limit
 type poolEntryQueue struct {
-	queue                  map[int]*poolEntry // known nodes indexed by their latest lastConnCnt value
+	queue                  map[int]*PoolEntry // known nodes indexed by their latest lastConnCnt value
 	newPtr, oldPtr, maxCnt int
-	removeFromPool         func(*poolEntry)
+	removeFromPool         func(*PoolEntry)
 }
 
 // newPoolEntryQueue returns a new poolEntryQueue
-func newPoolEntryQueue(maxCnt int, removeFromPool func(*poolEntry)) poolEntryQueue {
-	return poolEntryQueue{queue: make(map[int]*poolEntry), maxCnt: maxCnt, removeFromPool: removeFromPool}
+func newPoolEntryQueue(maxCnt int, removeFromPool func(*PoolEntry)) poolEntryQueue {
+	return poolEntryQueue{queue: make(map[int]*PoolEntry), maxCnt: maxCnt, removeFromPool: removeFromPool}
 }
 
 // fetchOldest returns and removes the least recently accessed entry
-func (q *poolEntryQueue) fetchOldest() *poolEntry {
+func (q *poolEntryQueue) fetchOldest() *PoolEntry {
 	if len(q.queue) == 0 {
 		return nil
 	}
@@ -844,7 +844,7 @@ func (q *poolEntryQueue) fetchOldest() *poolEntry {
 }
 
 // remove removes an entry from the queue
-func (q *poolEntryQueue) remove(entry *poolEntry) {
+func (q *poolEntryQueue) remove(entry *PoolEntry) {
 	if q.queue[entry.queueIdx] == entry {
 		delete(q.queue, entry.queueIdx)
 	}
@@ -852,7 +852,7 @@ func (q *poolEntryQueue) remove(entry *poolEntry) {
 
 // setLatest adds or updates a recently accessed entry. It also checks if an old entry
 // needs to be removed and removes it from the parent pool too with a callback function.
-func (q *poolEntryQueue) setLatest(entry *poolEntry) {
+func (q *poolEntryQueue) setLatest(entry *PoolEntry) {
 	if q.queue[entry.queueIdx] == entry {
 		delete(q.queue, entry.queueIdx)
 	} else {

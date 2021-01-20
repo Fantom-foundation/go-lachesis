@@ -52,7 +52,7 @@ type PeerInfo struct {
 	NumOfBlocks idx.Block `json:"blocks"`
 }
 
-type peer struct {
+type Peer struct {
 	id string
 
 	*p2p.Peer
@@ -69,19 +69,19 @@ type peer struct {
 
 	progress PeerProgress
 
-	poolEntry *poolEntry
+	PoolEntry *PoolEntry
 
 	sync.RWMutex
 }
 
-func (p *peer) SetProgress(x PeerProgress) {
+func (p *Peer) SetProgress(x PeerProgress) {
 	p.Lock()
 	defer p.Unlock()
 
 	p.progress = x
 }
 
-func (p *peer) InterestedIn(h hash.Event) bool {
+func (p *Peer) InterestedIn(h hash.Event) bool {
 	e := h.Epoch()
 
 	p.RLock()
@@ -103,8 +103,8 @@ func (a *PeerProgress) Less(b PeerProgress) bool {
 	return a.LastPackInfo.Index < b.LastPackInfo.Index
 }
 
-func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
-	return &peer{
+func NewPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
+	return &Peer{
 		Peer:        p,
 		rw:          rw,
 		version:     version,
@@ -121,7 +121,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 // broadcast is a write loop that multiplexes event propagations, announcements
 // and transaction broadcasts into the remote peer. The goal is to have an async
 // writer that does not lock up node internals.
-func (p *peer) broadcast() {
+func (p *Peer) broadcast() {
 	for {
 		select {
 		case txs := <-p.queuedTxs:
@@ -149,12 +149,12 @@ func (p *peer) broadcast() {
 }
 
 // close signals the broadcast goroutine to terminate.
-func (p *peer) close() {
+func (p *Peer) close() {
 	close(p.term)
 }
 
 // Info gathers and returns a collection of metadata known about a peer.
-func (p *peer) Info() *PeerInfo {
+func (p *Peer) Info() *PeerInfo {
 	return &PeerInfo{
 		Version:     p.version,
 		Epoch:       p.progress.Epoch,
@@ -164,7 +164,7 @@ func (p *peer) Info() *PeerInfo {
 
 // MarkEvent marks a event as known for the peer, ensuring that the event will
 // never be propagated to this particular peer.
-func (p *peer) MarkEvent(hash hash.Event) {
+func (p *Peer) MarkEvent(hash hash.Event) {
 	// If we reached the memory allowance, drop a previously known event hash
 	for p.knownEvents.Cardinality() >= maxKnownEvents {
 		p.knownEvents.Pop()
@@ -174,7 +174,7 @@ func (p *peer) MarkEvent(hash hash.Event) {
 
 // MarkTransaction marks a transaction as known for the peer, ensuring that it
 // will never be propagated to this particular peer.
-func (p *peer) MarkTransaction(hash common.Hash) {
+func (p *Peer) MarkTransaction(hash common.Hash) {
 	// If we reached the memory allowance, drop a previously known transaction hash
 	for p.knownTxs.Cardinality() >= maxKnownTxs {
 		p.knownTxs.Pop()
@@ -184,7 +184,7 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 
 // SendTransactions sends transactions to the peer and includes the hashes
 // in its transaction hash set for future reference.
-func (p *peer) SendTransactions(txs types.Transactions) error {
+func (p *Peer) SendTransactions(txs types.Transactions) error {
 	// Mark all the transactions as known, but ensure we don't overflow our limits
 	for _, tx := range txs {
 		p.knownTxs.Add(tx.Hash())
@@ -197,7 +197,7 @@ func (p *peer) SendTransactions(txs types.Transactions) error {
 
 // AsyncSendTransactions queues list of transactions propagation to a remote
 // peer. If the peer's broadcast queue is full, the event is silently dropped.
-func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
+func (p *Peer) AsyncSendTransactions(txs []*types.Transaction) {
 	select {
 	case p.queuedTxs <- txs:
 		// Mark all the transactions as known, but ensure we don't overflow our limits
@@ -214,7 +214,7 @@ func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 
 // SendNewEventHashes announces the availability of a number of events through
 // a hash notification.
-func (p *peer) SendNewEventHashes(hashes []hash.Event) error {
+func (p *Peer) SendNewEventHashes(hashes []hash.Event) error {
 	// Mark all the event hashes as known, but ensure we don't overflow our limits
 	for _, hash := range hashes {
 		p.knownEvents.Add(hash)
@@ -228,7 +228,7 @@ func (p *peer) SendNewEventHashes(hashes []hash.Event) error {
 // AsyncSendNewEventHash queues the availability of a event for propagation to a
 // remote peer. If the peer's broadcast queue is full, the event is silently
 // dropped.
-func (p *peer) AsyncSendNewEventHashes(ids hash.Events) {
+func (p *Peer) AsyncSendNewEventHashes(ids hash.Events) {
 	select {
 	case p.queuedAnns <- ids:
 		// Mark all the event hash as known, but ensure we don't overflow our limits
@@ -244,7 +244,7 @@ func (p *peer) AsyncSendNewEventHashes(ids hash.Events) {
 }
 
 // SendNewEvent propagates an entire event to a remote peer.
-func (p *peer) SendEvents(events inter.Events) error {
+func (p *Peer) SendEvents(events inter.Events) error {
 	// Mark all the event hash as known, but ensure we don't overflow our limits
 	for _, event := range events {
 		p.knownEvents.Add(event.Hash())
@@ -255,7 +255,7 @@ func (p *peer) SendEvents(events inter.Events) error {
 	return p2p.Send(p.rw, EventsMsg, events)
 }
 
-func (p *peer) SendEventsRLP(events []rlp.RawValue, ids []hash.Event) error {
+func (p *Peer) SendEventsRLP(events []rlp.RawValue, ids []hash.Event) error {
 	// Mark all the event hash as known, but ensure we don't overflow our limits
 	for _, id := range ids {
 		p.knownEvents.Add(id)
@@ -266,17 +266,17 @@ func (p *peer) SendEventsRLP(events []rlp.RawValue, ids []hash.Event) error {
 	return p2p.Send(p.rw, EventsMsg, events)
 }
 
-func (p *peer) SendPackInfosRLP(packInfos *packInfosDataRLP) error {
+func (p *Peer) SendPackInfosRLP(packInfos *packInfosDataRLP) error {
 	return p2p.Send(p.rw, PackInfosMsg, packInfos)
 }
 
-func (p *peer) SendPack(pack *packData) error {
+func (p *Peer) SendPack(pack *packData) error {
 	return p2p.Send(p.rw, PackMsg, pack)
 }
 
 // AsyncSendEvents queues an entire event for propagation to a remote peer. If
 // the peer's broadcast queue is full, the event is silently dropped.
-func (p *peer) AsyncSendEvents(events inter.Events) {
+func (p *Peer) AsyncSendEvents(events inter.Events) {
 	select {
 	case p.queuedProps <- events:
 		// Mark all the event hash as known, but ensure we don't overflow our limits
@@ -317,7 +317,7 @@ func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 	return p2p.Send(p.rw, GetEventHeadersMsg, &getEventHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse})
 }*/
 
-func (p *peer) RequestEvents(ids hash.Events) error {
+func (p *Peer) RequestEvents(ids hash.Events) error {
 	// divide big batch into smaller ones
 	for start := 0; start < len(ids); start += softLimitItems {
 		end := len(ids)
@@ -333,14 +333,14 @@ func (p *peer) RequestEvents(ids hash.Events) error {
 	return nil
 }
 
-func (p *peer) RequestPackInfos(epoch idx.Epoch, indexes []idx.Pack) error {
+func (p *Peer) RequestPackInfos(epoch idx.Epoch, indexes []idx.Pack) error {
 	return p2p.Send(p.rw, GetPackInfosMsg, getPackInfosData{
 		Epoch:   epoch,
 		Indexes: indexes,
 	})
 }
 
-func (p *peer) RequestPack(epoch idx.Epoch, index idx.Pack) error {
+func (p *Peer) RequestPack(epoch idx.Epoch, index idx.Pack) error {
 	return p2p.Send(p.rw, GetPackMsg, getPackData{
 		Epoch: epoch,
 		Index: index,
@@ -349,7 +349,7 @@ func (p *peer) RequestPack(epoch idx.Epoch, index idx.Pack) error {
 
 // Handshake executes the protocol handshake, negotiating version number,
 // network IDs, difficulties, head and genesis object.
-func (p *peer) Handshake(network uint64, progress PeerProgress, genesis common.Hash) error {
+func (p *Peer) Handshake(network uint64, progress PeerProgress, genesis common.Hash) error {
 	// Send out own handshake in a new thread
 	errc := make(chan error, 2)
 	var status ethStatusData // safe to read after two values have been received from errc
@@ -387,11 +387,11 @@ func (p *peer) Handshake(network uint64, progress PeerProgress, genesis common.H
 	return nil
 }
 
-func (p *peer) SendProgress(progress PeerProgress) error {
+func (p *Peer) SendProgress(progress PeerProgress) error {
 	return p2p.Send(p.rw, ProgressMsg, progress)
 }
 
-func (p *peer) readStatus(network uint64, status *ethStatusData, genesis common.Hash) (err error) {
+func (p *Peer) readStatus(network uint64, status *ethStatusData, genesis common.Hash) (err error) {
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
 		return err
@@ -419,7 +419,7 @@ func (p *peer) readStatus(network uint64, status *ethStatusData, genesis common.
 }
 
 // String implements fmt.Stringer.
-func (p *peer) String() string {
+func (p *Peer) String() string {
 	return fmt.Sprintf("Peer %s [%s]", p.id,
 		fmt.Sprintf("lachesis/%2d", p.version),
 	)
@@ -428,7 +428,7 @@ func (p *peer) String() string {
 // peerSet represents the collection of active peers currently participating in
 // the sub-protocol.
 type peerSet struct {
-	peers  map[string]*peer
+	peers  map[string]*Peer
 	lock   sync.RWMutex
 	closed bool
 }
@@ -436,14 +436,14 @@ type peerSet struct {
 // newPeerSet creates a new peer set to track the active participants.
 func newPeerSet() *peerSet {
 	return &peerSet{
-		peers: make(map[string]*peer),
+		peers: make(map[string]*Peer),
 	}
 }
 
 // Register injects a new peer into the working set, or returns an error if the
 // peer is already known. If a new peer it registered, its broadcast loop is also
 // started.
-func (ps *peerSet) Register(p *peer) error {
+func (ps *peerSet) Register(p *Peer) error {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
@@ -476,7 +476,7 @@ func (ps *peerSet) Unregister(id string) error {
 }
 
 // Peer retrieves the registered peer with the given id.
-func (ps *peerSet) Peer(id string) *peer {
+func (ps *peerSet) Peer(id string) *Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -493,11 +493,11 @@ func (ps *peerSet) Len() int {
 
 // PeersWithoutEvent retrieves a list of peers that do not have a given event in
 // their set of known hashes.
-func (ps *peerSet) PeersWithoutEvent(e hash.Event) []*peer {
+func (ps *peerSet) PeersWithoutEvent(e hash.Event) []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
-	list := make([]*peer, 0, len(ps.peers))
+	list := make([]*Peer, 0, len(ps.peers))
 	for _, p := range ps.peers {
 		if p.InterestedIn(e) {
 			list = append(list, p)
@@ -506,11 +506,11 @@ func (ps *peerSet) PeersWithoutEvent(e hash.Event) []*peer {
 	return list
 }
 
-func (ps *peerSet) List() []*peer {
+func (ps *peerSet) List() []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
-	list := make([]*peer, 0, len(ps.peers))
+	list := make([]*Peer, 0, len(ps.peers))
 	for _, p := range ps.peers {
 		list = append(list, p)
 	}
@@ -519,11 +519,11 @@ func (ps *peerSet) List() []*peer {
 
 // PeersWithoutTx retrieves a list of peers that do not have a given transaction
 // in their set of known hashes.
-func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
+func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
-	list := make([]*peer, 0, len(ps.peers))
+	list := make([]*Peer, 0, len(ps.peers))
 	for _, p := range ps.peers {
 		if !p.knownTxs.Contains(hash) {
 			list = append(list, p)
@@ -533,12 +533,12 @@ func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
 }
 
 // BestPeer retrieves the known peer with the currently highest total difficulty.
-func (ps *peerSet) BestPeer() *peer {
+func (ps *peerSet) BestPeer() *Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
 	var (
-		bestPeer     *peer
+		bestPeer     *Peer
 		bestProgress PeerProgress
 	)
 	for _, p := range ps.peers {

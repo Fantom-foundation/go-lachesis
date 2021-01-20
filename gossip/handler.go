@@ -69,7 +69,7 @@ type ProtocolManager struct {
 
 	peers *peerSet
 
-	serverPool *serverPool
+	serverPool *ServerPool
 
 	txsCh  chan evmcore.NewTxsNotify
 	txsSub notify.Subscription
@@ -91,7 +91,7 @@ type ProtocolManager struct {
 	newEpochsSub     notify.Subscription
 
 	// channels for fetcher, syncer, txsyncLoop
-	newPeerCh   chan *peer
+	newPeerCh   chan *Peer
 	txsyncCh    chan *txsync
 	quitSync    chan struct{}
 	noMorePeers chan struct{}
@@ -114,7 +114,7 @@ func NewProtocolManager(
 	checkers *eventcheck.Checkers,
 	s *Store,
 	engine Consensus,
-	serverPool *serverPool,
+	serverPool *ServerPool,
 ) (
 	*ProtocolManager,
 	error,
@@ -129,7 +129,7 @@ func NewProtocolManager(
 		peers:       newPeerSet(),
 		serverPool:  serverPool,
 		engineMu:    engineMu,
-		newPeerCh:   make(chan *peer),
+		newPeerCh:   make(chan *Peer),
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
@@ -267,24 +267,24 @@ func (pm *ProtocolManager) makeProtocol(version uint) p2p.Protocol {
 		Version: version,
 		Length:  length,
 		Run: func(p *p2p.Peer, rw p2p.MsgReadWriter) error {
-			var entry *poolEntry
+			var entry *PoolEntry
 			peer := pm.newPeer(int(version), p, rw)
 			if pm.serverPool != nil {
-				entry = pm.serverPool.connect(peer, peer.Node())
+				entry = pm.serverPool.Connect(peer, peer.Node())
 			}
-			peer.poolEntry = entry
+			peer.PoolEntry = entry
 			select {
 			case pm.newPeerCh <- peer:
 				pm.wg.Add(1)
 				defer pm.wg.Done()
 				err := pm.handle(peer)
 				if entry != nil {
-					pm.serverPool.disconnect(entry)
+					pm.serverPool.Disconnect(entry)
 				}
 				return err
 			case <-pm.quitSync:
 				if entry != nil {
-					pm.serverPool.disconnect(entry)
+					pm.serverPool.Disconnect(entry)
 				}
 				return p2p.DiscQuitting
 			}
@@ -385,8 +385,8 @@ func (pm *ProtocolManager) Stop() {
 	log.Info("Fantom protocol stopped")
 }
 
-func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
-	return newPeer(pv, p, rw)
+func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
+	return NewPeer(pv, p, rw)
 }
 
 func (pm *ProtocolManager) myProgress() PeerProgress {
@@ -413,7 +413,7 @@ func (pm *ProtocolManager) highestPeerProgress() PeerProgress {
 
 // handle is the callback invoked to manage the life cycle of a peer. When
 // this function terminates, the peer is disconnected.
-func (pm *ProtocolManager) handle(p *peer) error {
+func (pm *ProtocolManager) handle(p *Peer) error {
 	// Ignore maxPeers if this is a trusted peer
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers
@@ -454,7 +454,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 
 // handleMsg is invoked whenever an inbound message is received from a remote
 // peer. The remote connection is torn down upon returning any error.
-func (pm *ProtocolManager) handleMsg(p *peer) error {
+func (pm *ProtocolManager) handleMsg(p *Peer) error {
 	// Read the next message from the remote peer, and ensure it's fully consumed
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
@@ -777,7 +777,7 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 		txs = txs[:softLimitItems]
 	}
 
-	var txset = make(map[*peer]types.Transactions)
+	var txset = make(map[*Peer]types.Transactions)
 
 	// Broadcast transactions to a batch of peers not knowing about it
 	for _, tx := range txs {
