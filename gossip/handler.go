@@ -404,8 +404,8 @@ func (pm *ProtocolManager) highestPeerProgress() PeerProgress {
 	peers := pm.peers.List()
 	max := pm.myProgress()
 	for _, peer := range peers {
-		if max.NumOfBlocks < peer.progress.NumOfBlocks {
-			max = peer.progress
+		if max.NumOfBlocks < peer.Progress.NumOfBlocks {
+			max = peer.Progress
 		}
 	}
 	return max
@@ -437,7 +437,7 @@ func (pm *ProtocolManager) handle(p *Peer) error {
 		p.Log().Warn("Peer registration failed", "err", err)
 		return err
 	}
-	defer pm.removePeer(p.id)
+	defer pm.removePeer(p.Uid)
 
 	// Propagate existing transactions. new transactions appearing
 	// after this will be sent via broadcasts.
@@ -456,7 +456,7 @@ func (pm *ProtocolManager) handle(p *Peer) error {
 // peer. The remote connection is torn down upon returning any error.
 func (pm *ProtocolManager) handleMsg(p *Peer) error {
 	// Read the next message from the remote peer, and ensure it's fully consumed
-	msg, err := p.rw.ReadMsg()
+	msg, err := p.ReadMsg()
 	if err != nil {
 		return err
 	}
@@ -466,7 +466,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 	defer msg.Discard()
 
 	myEpoch := pm.engine.GetEpoch()
-	peerDwnlr := pm.downloader.Peer(p.id)
+	peerDwnlr := pm.downloader.Peer(p.Uid)
 
 	// Handle the message depending on its contents
 	switch {
@@ -486,15 +486,15 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 
 		// notify downloader about new peer's epoch
 		_ = pm.downloader.RegisterPeer(packsdownloader.Peer{
-			ID:               p.id,
-			Epoch:            p.progress.Epoch,
+			ID:               p.Uid,
+			Epoch:            p.Progress.Epoch,
 			RequestPack:      p.RequestPack,
 			RequestPackInfos: p.RequestPackInfos,
 		}, myEpoch)
-		peerDwnlr = pm.downloader.Peer(p.id)
+		peerDwnlr = pm.downloader.Peer(p.Uid)
 
 		if peerDwnlr != nil && progress.LastPackInfo.Index > 0 {
-			_ = peerDwnlr.NotifyPackInfo(p.progress.Epoch, progress.LastPackInfo.Index, progress.LastPackInfo.Heads, time.Now())
+			_ = peerDwnlr.NotifyPackInfo(p.Progress.Epoch, progress.LastPackInfo.Index, progress.LastPackInfo.Heads, time.Now())
 		}
 
 	case msg.Code == NewEventHashesMsg:
@@ -517,7 +517,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 			p.MarkEvent(id)
 		}
 		// Schedule all the unknown hashes for retrieval
-		_ = pm.fetcher.Notify(p.id, announces, time.Now(), p.RequestEvents)
+		_ = pm.fetcher.Notify(p.Uid, announces, time.Now(), p.RequestEvents)
 
 	case msg.Code == EventsMsg:
 		if pm.fetcher.Overloaded() {
@@ -534,7 +534,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 		for _, e := range events {
 			p.MarkEvent(e.Hash())
 		}
-		_ = pm.fetcher.Enqueue(p.id, events, time.Now(), p.RequestEvents)
+		_ = pm.fetcher.Enqueue(p.Uid, events, time.Now(), p.RequestEvents)
 
 	case msg.Code == EvmTxMsg:
 		// Transactions arrived, make sure we have a valid and fresh graph to handle them
@@ -820,7 +820,7 @@ func (pm *ProtocolManager) progressBroadcastLoop() {
 			for _, peer := range pm.peers.List() {
 				err := peer.SendProgress(prevProgress)
 				if err != nil {
-					log.Warn("Failed to send progress status", "peer", peer.id, "err", err)
+					log.Warn("Failed to send progress status", "peer", peer.Uid, "err", err)
 				}
 			}
 			prevProgress = pm.myProgress()
@@ -841,12 +841,12 @@ func (pm *ProtocolManager) onNewEpochLoop() {
 				if p == nil {
 					return 0
 				}
-				return p.progress.Epoch
+				return p.Progress.Epoch
 			}
 			if atomic.LoadUint32(&pm.synced) == 0 {
 				synced := false
 				for _, peer := range pm.peers.List() {
-					if peer.progress.Epoch == myEpoch {
+					if peer.Progress.Epoch == myEpoch {
 						synced = true
 					}
 				}

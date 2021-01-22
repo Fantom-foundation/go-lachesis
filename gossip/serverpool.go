@@ -188,7 +188,7 @@ func (pool *ServerPool) discoverNodes() {
 // Note that whenever a connection has been accepted and a pool entry has been returned,
 // disconnect should also always be called.
 func (pool *ServerPool) Connect(p *Peer, node *enode.Node) *PoolEntry {
-	log.Debug("Connect new entry", "enode", p.id)
+	log.Debug("Connect new entry", "enode", p.Uid)
 	req := &connReq{p: p, node: node, result: make(chan *PoolEntry, 1)}
 	select {
 	case pool.connCh <- req:

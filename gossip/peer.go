@@ -53,7 +53,7 @@ type PeerInfo struct {
 }
 
 type Peer struct {
-	id string
+	Uid string
 
 	*p2p.Peer
 	rw p2p.MsgReadWriter
@@ -67,7 +67,7 @@ type Peer struct {
 	queuedAnns  chan hash.Events          // Queue of events to announce to the peer
 	term        chan struct{}             // Termination channel to stop the broadcaster
 
-	progress PeerProgress
+	Progress PeerProgress
 
 	PoolEntry *PoolEntry
 
@@ -78,7 +78,7 @@ func (p *Peer) SetProgress(x PeerProgress) {
 	p.Lock()
 	defer p.Unlock()
 
-	p.progress = x
+	p.Progress = x
 }
 
 func (p *Peer) InterestedIn(h hash.Event) bool {
@@ -88,8 +88,8 @@ func (p *Peer) InterestedIn(h hash.Event) bool {
 	defer p.RUnlock()
 
 	return e != 0 &&
-		p.progress.Epoch != 0 &&
-		(e == p.progress.Epoch || e == p.progress.Epoch+1) &&
+		p.Progress.Epoch != 0 &&
+		(e == p.Progress.Epoch || e == p.Progress.Epoch+1) &&
 		!p.knownEvents.Contains(h)
 }
 
@@ -108,7 +108,7 @@ func NewPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
 		Peer:        p,
 		rw:          rw,
 		version:     version,
-		id:          fmt.Sprintf("%x", p.ID().Bytes()[:8]),
+		Uid:          fmt.Sprintf("%x", p.ID().Bytes()[:8]),
 		knownTxs:    mapset.NewSet(),
 		knownEvents: mapset.NewSet(),
 		queuedTxs:   make(chan []*types.Transaction, maxQueuedTxs),
@@ -157,8 +157,8 @@ func (p *Peer) close() {
 func (p *Peer) Info() *PeerInfo {
 	return &PeerInfo{
 		Version:     p.version,
-		Epoch:       p.progress.Epoch,
-		NumOfBlocks: p.progress.NumOfBlocks,
+		Epoch:       p.Progress.Epoch,
+		NumOfBlocks: p.Progress.NumOfBlocks,
 	}
 }
 
@@ -180,6 +180,11 @@ func (p *Peer) MarkTransaction(hash common.Hash) {
 		p.knownTxs.Pop()
 	}
 	p.knownTxs.Add(hash)
+}
+
+// ReadMsg reads a message.
+func (p *Peer) ReadMsg() (p2p.Msg, error) {
+	return p.rw.ReadMsg()
 }
 
 // SendTransactions sends transactions to the peer and includes the hashes
@@ -392,7 +397,7 @@ func (p *Peer) SendProgress(progress PeerProgress) error {
 }
 
 func (p *Peer) readStatus(network uint64, status *ethStatusData, genesis common.Hash) (err error) {
-	msg, err := p.rw.ReadMsg()
+	msg, err := p.ReadMsg()
 	if err != nil {
 		return err
 	}
@@ -420,7 +425,7 @@ func (p *Peer) readStatus(network uint64, status *ethStatusData, genesis common.
 
 // String implements fmt.Stringer.
 func (p *Peer) String() string {
-	return fmt.Sprintf("Peer %s [%s]", p.id,
+	return fmt.Sprintf("Peer %s [%s]", p.Uid,
 		fmt.Sprintf("lachesis/%2d", p.version),
 	)
 }
@@ -450,10 +455,10 @@ func (ps *PeerSet) Register(p *Peer) error {
 	if ps.closed {
 		return errClosed
 	}
-	if _, ok := ps.peers[p.id]; ok {
+	if _, ok := ps.peers[p.Uid]; ok {
 		return errAlreadyRegistered
 	}
-	ps.peers[p.id] = p
+	ps.peers[p.Uid] = p
 	go p.broadcast()
 
 	return nil
@@ -542,8 +547,8 @@ func (ps *PeerSet) BestPeer() *Peer {
 		bestProgress PeerProgress
 	)
 	for _, p := range ps.peers {
-		if bestProgress.Less(p.progress) {
-			bestPeer, bestProgress = p, p.progress
+		if bestProgress.Less(p.Progress) {
+			bestPeer, bestProgress = p, p.Progress
 		}
 	}
 	return bestPeer
