@@ -67,7 +67,7 @@ type ProtocolManager struct {
 	txpool   txPool
 	maxPeers int
 
-	peers *peerSet
+	peers *PeerSet
 
 	serverPool *ServerPool
 
@@ -126,7 +126,7 @@ func NewProtocolManager(
 		txpool:      txpool,
 		store:       s,
 		engine:      engine,
-		peers:       newPeerSet(),
+		peers:       NewPeerSet(),
 		serverPool:  serverPool,
 		engineMu:    engineMu,
 		newPeerCh:   make(chan *Peer),

@@ -425,17 +425,17 @@ func (p *Peer) String() string {
 	)
 }
 
-// peerSet represents the collection of active peers currently participating in
+// PeerSet represents the collection of active peers currently participating in
 // the sub-protocol.
-type peerSet struct {
+type PeerSet struct {
 	peers  map[string]*Peer
 	lock   sync.RWMutex
 	closed bool
 }
 
-// newPeerSet creates a new peer set to track the active participants.
-func newPeerSet() *peerSet {
-	return &peerSet{
+// NewPeerSet creates a new peer set to track the active participants.
+func NewPeerSet() *PeerSet {
+	return &PeerSet{
 		peers: make(map[string]*Peer),
 	}
 }
@@ -443,7 +443,7 @@ func newPeerSet() *peerSet {
 // Register injects a new peer into the working set, or returns an error if the
 // peer is already known. If a new peer it registered, its broadcast loop is also
 // started.
-func (ps *peerSet) Register(p *Peer) error {
+func (ps *PeerSet) Register(p *Peer) error {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
@@ -461,7 +461,7 @@ func (ps *peerSet) Register(p *Peer) error {
 
 // Unregister removes a remote peer from the active set, disabling any further
 // actions to/from that particular entity.
-func (ps *peerSet) Unregister(id string) error {
+func (ps *PeerSet) Unregister(id string) error {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
@@ -476,7 +476,7 @@ func (ps *peerSet) Unregister(id string) error {
 }
 
 // Peer retrieves the registered peer with the given id.
-func (ps *peerSet) Peer(id string) *Peer {
+func (ps *PeerSet) Peer(id string) *Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -484,7 +484,7 @@ func (ps *peerSet) Peer(id string) *Peer {
 }
 
 // Len returns if the current number of peers in the set.
-func (ps *peerSet) Len() int {
+func (ps *PeerSet) Len() int {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -493,7 +493,7 @@ func (ps *peerSet) Len() int {
 
 // PeersWithoutEvent retrieves a list of peers that do not have a given event in
 // their set of known hashes.
-func (ps *peerSet) PeersWithoutEvent(e hash.Event) []*Peer {
+func (ps *PeerSet) PeersWithoutEvent(e hash.Event) []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -506,7 +506,7 @@ func (ps *peerSet) PeersWithoutEvent(e hash.Event) []*Peer {
 	return list
 }
 
-func (ps *peerSet) List() []*Peer {
+func (ps *PeerSet) List() []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -519,7 +519,7 @@ func (ps *peerSet) List() []*Peer {
 
 // PeersWithoutTx retrieves a list of peers that do not have a given transaction
 // in their set of known hashes.
-func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*Peer {
+func (ps *PeerSet) PeersWithoutTx(hash common.Hash) []*Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -533,7 +533,7 @@ func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*Peer {
 }
 
 // BestPeer retrieves the known peer with the currently highest total difficulty.
-func (ps *peerSet) BestPeer() *Peer {
+func (ps *PeerSet) BestPeer() *Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
@@ -551,7 +551,7 @@ func (ps *peerSet) BestPeer() *Peer {
 
 // Close disconnects all peers.
 // No new peers can be registered after Close has returned.
-func (ps *peerSet) Close() {
+func (ps *PeerSet) Close() {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
