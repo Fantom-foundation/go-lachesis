@@ -149,7 +149,7 @@ type getPackData struct {
 	Index idx.Pack
 }
 
-type packData struct {
+type PackData struct {
 	Epoch idx.Epoch
 	Index idx.Pack
 	IDs   hash.Events

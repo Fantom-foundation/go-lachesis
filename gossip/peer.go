@@ -275,7 +275,7 @@ func (p *Peer) SendPackInfosRLP(packInfos *packInfosDataRLP) error {
 	return p2p.Send(p.rw, PackInfosMsg, packInfos)
 }
 
-func (p *Peer) SendPack(pack *packData) error {
+func (p *Peer) SendPack(pack *PackData) error {
 	return p2p.Send(p.rw, PackMsg, pack)
 }
 

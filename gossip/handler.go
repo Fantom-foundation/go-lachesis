@@ -641,7 +641,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 			}
 		}
 		if len(ids) != 0 {
-			_ = p.SendPack(&packData{
+			_ = p.SendPack(&PackData{
 				Epoch: request.Epoch,
 				Index: request.Index,
 				IDs:   ids,
@@ -681,7 +681,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 			break
 		}
 
-		var pack packData
+		var pack PackData
 		if err := msg.Decode(&pack); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
