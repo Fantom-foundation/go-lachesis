@@ -127,7 +127,7 @@ type PeerProgress struct {
 	LastBlock    hash.Event
 }
 
-type packInfosData struct {
+type PackInfosData struct {
 	Epoch           idx.Epoch
 	TotalNumOfPacks idx.Pack // in specified epoch
 	Infos           []PackInfo

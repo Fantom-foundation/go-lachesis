@@ -653,7 +653,7 @@ func (pm *ProtocolManager) handleMsg(p *Peer) error {
 			break
 		}
 
-		var infos packInfosData
+		var infos PackInfosData
 		if err := msg.Decode(&infos); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
 		}
