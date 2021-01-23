@@ -132,7 +132,9 @@ func New(callback Callback) *Fetcher {
 // Start boots up the announcement based synchroniser, accepting and processing
 // hash notifications and event fetches until termination requested.
 func (f *Fetcher) Start() {
-	f.callback.HeavyCheck.Start()
+	if f.callback.HeavyCheck != nil {
+		f.callback.HeavyCheck.Start()
+	}
 	f.wg.Add(1)
 	go f.loop()
 }
@@ -141,7 +143,9 @@ func (f *Fetcher) Start() {
 // operations.
 func (f *Fetcher) Stop() {
 	close(f.quit)
-	f.callback.HeavyCheck.Stop()
+	if f.callback.HeavyCheck != nil {
+		f.callback.HeavyCheck.Stop()
+	}
 	f.wg.Wait()
 }
 
@@ -153,6 +157,9 @@ func (f *Fetcher) Overloaded() bool {
 }
 
 func (f *Fetcher) overloaded() bool {
+	if f.callback.HeavyCheck == nil {
+		return false
+	}
 	return len(f.inject) > maxQueuedInjects*3/4 ||
 		len(f.notify) > maxQueuedAnns*3/4 ||
 		len(f.announced) > hashLimit || // protected by stateMu
@@ -228,6 +235,10 @@ func (f *Fetcher) Enqueue(peer string, inEvents inter.Events, t time.Time, fetch
 		}
 	}
 
+	if f.callback.HeavyCheck == nil {
+		_ = f.enqueue(peer, passed, t, fetchEvents)
+		return nil
+	}
 	// Run heavy check in parallel
 	return f.callback.HeavyCheck.Enqueue(passed, func(res *heavycheck.TaskData) {
 		// Check errors of heavy check

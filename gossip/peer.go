@@ -108,7 +108,7 @@ func NewPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *Peer {
 		Peer:        p,
 		rw:          rw,
 		version:     version,
-		Uid:          fmt.Sprintf("%x", p.ID().Bytes()[:8]),
+		Uid:         fmt.Sprintf("%x", p.ID().Bytes()[:8]),
 		knownTxs:    mapset.NewSet(),
 		knownEvents: mapset.NewSet(),
 		queuedTxs:   make(chan []*types.Transaction, maxQueuedTxs),
