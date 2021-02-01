@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
@@ -130,12 +131,15 @@ func DefaultConfig(network lachesis.Config) Config {
 // DefaultStoreConfig for product.
 func DefaultStoreConfig() StoreConfig {
 	return StoreConfig{
-		EventsCacheSize:        500,
-		EventsHeadersCacheSize: 10000,
+		EventsCacheSize:        300,
+		EventsHeadersCacheSize: 1000,
 		BlockCacheSize:         100,
 		PackInfosCacheSize:     100,
 		TxPositionsCacheSize:   1000,
 		EpochStatsCacheSize:    100,
+		ReceiptsCacheSize:      app.DefaultStoreConfig().ReceiptsCacheSize,
+		StakersCacheSize:       app.DefaultStoreConfig().StakersCacheSize,
+		DelegationsCacheSize:   app.DefaultStoreConfig().DelegationsCacheSize,
 	}
 }
 
@@ -148,5 +152,8 @@ func LiteStoreConfig() StoreConfig {
 		PackInfosCacheSize:     100,
 		TxPositionsCacheSize:   100,
 		EpochStatsCacheSize:    100,
+		ReceiptsCacheSize:      app.LiteStoreConfig().ReceiptsCacheSize,
+		StakersCacheSize:       app.LiteStoreConfig().StakersCacheSize,
+		DelegationsCacheSize:   app.LiteStoreConfig().DelegationsCacheSize,
 	}
 }

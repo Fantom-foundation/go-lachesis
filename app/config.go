@@ -15,17 +15,17 @@ type (
 // DefaultStoreConfig for product.
 func DefaultStoreConfig() StoreConfig {
 	return StoreConfig{
-		ReceiptsCacheSize:    100,
-		DelegationsCacheSize: 4000,
-		StakersCacheSize:     4000,
+		ReceiptsCacheSize:    0,
+		DelegationsCacheSize: 1000,
+		StakersCacheSize:     400,
 	}
 }
 
 // LiteStoreConfig is for tests or inmemory.
 func LiteStoreConfig() StoreConfig {
 	return StoreConfig{
-		ReceiptsCacheSize:    100,
-		DelegationsCacheSize: 400,
-		StakersCacheSize:     400,
+		ReceiptsCacheSize:    0,
+		DelegationsCacheSize: 200,
+		StakersCacheSize:     80,
 	}
 }
