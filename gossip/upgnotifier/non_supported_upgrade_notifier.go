@@ -35,6 +35,7 @@ func (l *Logger) Start() {
 	go func() {
 		defer l.wg.Done()
 		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:

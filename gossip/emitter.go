@@ -141,6 +141,7 @@ func (em *Emitter) StartEventEmission() {
 	go func() {
 		defer em.wg.Done()
 		ticker := time.NewTicker(10 * time.Millisecond)
+		defer ticker.Stop()
 		for {
 			select {
 			case txNotify := <-newTxsCh:
