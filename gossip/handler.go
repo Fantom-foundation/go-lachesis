@@ -36,7 +36,7 @@ const (
 	txChanSize = 4096
 
 	// the maximum number of events in the ordering buffer
-	eventsBuffSize = 2048
+	eventsBuffSize = 1024
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {
