@@ -45,7 +45,7 @@ func (buf *EventBuffer) PushEvent(e *inter.Event, peer string) {
 		peer:  peer,
 	}
 
-	buf.pushEvent(w, buf.getIncompleteEventsList(), true)
+	buf.pushEvent(w, nil, true)
 }
 
 func (buf *EventBuffer) getIncompleteEventsList() []*event {
@@ -99,6 +99,9 @@ func (buf *EventBuffer) pushEvent(e *event, incompleteEventsList []*event, stric
 	// now child events may become complete, check it again
 	eHash := e.Hash()
 	buf.incompletes.Remove(eHash)
+	if incompleteEventsList == nil {
+		incompleteEventsList = buf.getIncompleteEventsList()
+	}
 	for _, child := range incompleteEventsList {
 		for _, parent := range child.Parents {
 			if parent == eHash {
