@@ -188,6 +188,7 @@ func (d *PeerPacksDownloader) NotifyPack(epoch idx.Epoch, index idx.Pack, ids ha
 func (d *PeerPacksDownloader) loop() {
 	// Iterate the event fetching until a quit is requested
 	syncTicker := time.NewTicker(recheckInterval)
+	defer syncTicker.Stop()
 
 	for {
 		// Wait for an outside event to occur

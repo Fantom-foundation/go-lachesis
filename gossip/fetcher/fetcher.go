@@ -276,6 +276,7 @@ func (f *Fetcher) loop() {
 	defer f.wg.Done()
 	// Iterate the event fetching until a quit is requested
 	fetchTimer := time.NewTimer(0)
+	defer fetchTimer.Stop()
 
 	for {
 		// Clean up any expired event fetches
