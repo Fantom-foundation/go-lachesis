@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	godebug "runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -204,6 +205,9 @@ func init() {
 		prompt.Stdin.Close() // Resets terminal mode.
 		return nil
 	}
+
+	// Tune Go's GC to be more aggressive
+	godebug.SetGCPercent(65)
 }
 
 func main() {
