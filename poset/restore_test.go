@@ -54,9 +54,9 @@ func TestRestore(t *testing.T) {
 	// seal epoch on decided frame == maxEpochBlocks
 	for _, poset := range posets {
 		applyBlock := poset.callback.ApplyBlock
-		poset.callback.ApplyBlock = func(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (common.Hash, bool) {
-			h, _ := applyBlock(block, decidedFrame, cheaters)
-			return h, decidedFrame == idx.Frame(maxEpochBlocks)
+		poset.callback.ApplyBlock = func(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (common.Hash, bool, bool) {
+			h, _, _ := applyBlock(block, decidedFrame, cheaters)
+			return h, decidedFrame == idx.Frame(maxEpochBlocks), false
 		}
 	}
 

@@ -82,6 +82,8 @@ type ProtocolManager struct {
 	engine   Consensus
 	engineMu *sync.RWMutex
 
+	isMigration func() bool
+
 	notifier         dagNotifier
 	emittedEventsCh  chan *inter.Event
 	emittedEventsSub notify.Subscription
@@ -115,6 +117,7 @@ func NewProtocolManager(
 	s *Store,
 	engine Consensus,
 	serverPool *serverPool,
+	isMigration func() bool,
 ) (
 	*ProtocolManager,
 	error,
@@ -133,6 +136,7 @@ func NewProtocolManager(
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
 		quitSync:    make(chan struct{}),
+		isMigration: isMigration,
 
 		Instance: logger.MakeInstance(),
 	}
@@ -475,6 +479,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		return errResp(ErrExtraStatusMsg, "uncontrolled status message")
 
 	case msg.Code == ProgressMsg:
+		if pm.isMigration() {
+			break
+		}
 		var progress PeerProgress
 		if err := msg.Decode(&progress); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
@@ -498,6 +505,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 
 	case msg.Code == NewEventHashesMsg:
+		if pm.isMigration() {
+			break
+		}
 		if pm.fetcher.Overloaded() {
 			break
 		}
@@ -523,6 +533,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		_ = pm.fetcher.Notify(p.id, announces, time.Now(), p.RequestEvents)
 
 	case msg.Code == EventsMsg:
+		if pm.isMigration() {
+			break
+		}
 		slept := time.Duration(0)
 		for pm.fetcher.Overloaded() && slept < time.Second {
 			time.Sleep(time.Millisecond * 5)
@@ -548,6 +561,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		_ = pm.fetcher.Enqueue(p.id, events, time.Now(), p.RequestEvents)
 
 	case msg.Code == EvmTxMsg:
+		if pm.isMigration() {
+			break
+		}
 		// Transactions arrived, make sure we have a valid and fresh graph to handle them
 		if atomic.LoadUint32(&pm.synced) == 0 {
 			break
@@ -663,6 +679,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if peerDwnlr == nil {
 			break
 		}
+		if pm.isMigration() {
+			break
+		}
 
 		var infos packInfosData
 		if err := msg.Decode(&infos); err != nil {
@@ -689,6 +708,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	case msg.Code == PackMsg:
 		if peerDwnlr == nil {
+			break
+		}
+		if pm.isMigration() {
 			break
 		}
 

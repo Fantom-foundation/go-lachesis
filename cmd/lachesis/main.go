@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/Fantom-foundation/go-lachesis/utils/delayer"
 	"os"
 	godebug "runtime/debug"
 	"sort"
@@ -109,6 +110,7 @@ func init() {
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
 		configFileFlag,
+		operaConfigFileFlag,
 		validatorFlag,
 	}
 
@@ -159,7 +161,7 @@ func init() {
 
 	// App.
 
-	app.Action = lachesisMain
+	app.Action = lachesisOperaMigrationMain
 	app.Version = params.VersionWithCommit(gitCommit, gitDate)
 	app.HideVersion = true // we have a command to print the version
 	app.Commands = []cli.Command{
@@ -211,20 +213,15 @@ func init() {
 }
 
 func main() {
+	overrideFlags()
+	overrideParams()
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-// lachesis is the main entry point into the system if no special subcommand is ran.
-// It creates a default node based on the command line arguments and runs it in
-// blocking mode, waiting for it to be shut down.
-func lachesisMain(ctx *cli.Context) error {
-	if args := ctx.Args(); len(args) > 0 {
-		return fmt.Errorf("invalid command: %q", args[0])
-	}
-
+func lachesisMain(ctx *cli.Context, cfg *config) error {
 	// TODO: tracing flags
 	tracingStop, err := tracing.Start(ctx)
 	if err != nil {
@@ -247,15 +244,11 @@ func makeNode(ctx *cli.Context, cfg *config) (*node.Node, *gossip.Service) {
 	errlock.SetDefaultDatadir(cfg.Node.DataDir)
 	errlock.Check()
 
-	engine, _, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
+	engine, _, cdb, gdb := integration.MakeEngine(cfg.Node.DataDir, &cfg.Lachesis)
 	metrics.SetDataDir(cfg.Node.DataDir)
 
 	// configure emitter
-	var ks *keystore.KeyStore
-	if keystores := stack.AccountManager().Backends(keystore.KeyStoreType); len(keystores) > 0 {
-		ks = keystores[0].(*keystore.KeyStore)
-	}
-	setValidator(ctx, ks, &cfg.Lachesis.Emitter)
+	setValidator(ctx, &cfg.Lachesis.Emitter)
 
 	// Create and register a gossip network service.
 
@@ -263,6 +256,20 @@ func makeNode(ctx *cli.Context, cfg *config) (*node.Node, *gossip.Service) {
 	if err != nil {
 		utils.Fatalf("Failed to create the service: %v", err)
 	}
+
+	delayer.New(svc.IsMigration, 10*time.Second, func() {
+		myValidatorID, myValidatorAddr := svc.Emitter().GetValidator()
+		operaMigrationCtx.Store(&OperaMigration{
+			validatorID:   myValidatorID,
+			validatorAddr: myValidatorAddr,
+			gdb:           gdb,
+			cdb:           cdb,
+		})
+		err := stack.Close()
+		if err != nil {
+			utils.Fatalf("Service stopping error during migration: %v", err)
+		}
+	}).Start()
 
 	stack.RegisterAPIs(svc.APIs())
 	stack.RegisterProtocols(svc.Protocols())

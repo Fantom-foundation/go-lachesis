@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/inter"
@@ -327,6 +328,12 @@ func (s *Service) processSfc(block *inter.Block, receipts types.Receipts, blockF
 						s.store.SetNonSupportedUpgrade(netVersion)
 					}
 				}
+			}
+
+			if l.Topics[0] == sfcpos.Topics.NetworkMigration && len(l.Data) >= 32 {
+				netVersion := new(big.Int).SetBytes(l.Data[0:32])
+				log.Info("Network migration is initiated", "version", version.BigToString(netVersion))
+				s.migration = true
 			}
 
 			// Track rewards (API-only)

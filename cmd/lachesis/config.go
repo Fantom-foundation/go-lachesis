@@ -5,13 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
 
+	"github.com/Fantom-foundation/go-opera/cmd/opera/launcher"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discv5"
 	"github.com/ethereum/go-ethereum/params"
@@ -36,8 +39,13 @@ var (
 	}
 
 	configFileFlag = cli.StringFlag{
+		Name:  "legacy_config",
+		Usage: "Lachesis TOML configuration file",
+	}
+
+	operaConfigFileFlag = cli.StringFlag{
 		Name:  "config",
-		Usage: "TOML configuration file",
+		Usage: "Opera TOML configuration file",
 	}
 
 	// DataDirFlag defines directory to store Lachesis state and user's wallets
@@ -290,6 +298,8 @@ func dumpConfig(ctx *cli.Context) error {
 		return err
 	}
 
+	log.Info("Dumping legacy Lachesis config file")
+
 	dump := os.Stdout
 	if ctx.NArg() > 0 {
 		dump, err = os.OpenFile(ctx.Args().Get(0), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
@@ -301,5 +311,15 @@ func dumpConfig(ctx *cli.Context) error {
 	dump.WriteString(comment)
 	dump.Write(out)
 
-	return nil
+	log.Info("Dumping Opera config file")
+
+	operaDatadir := path.Join(cfg.Node.DataDir, "opera")
+	operaArgs := excludeArg(os.Args, "--"+validatorFlag.Name, true)
+	operaArgs = excludeArg(operaArgs, "--"+configFileFlag.Name, true)
+	operaArgs = excludeArg(operaArgs, "--"+DataDirFlag.Name, true)
+	operaArgs = addFrontArgs(operaArgs, []string{"--" + DataDirFlag.Name, operaDatadir})
+	operaArgs = excludeArg(operaArgs, "--"+utils.LegacyTestnetFlag.Name, false)
+
+	metrics.Enabled = false
+	return launcher.Launch(operaArgs)
 }

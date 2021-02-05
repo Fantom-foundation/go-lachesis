@@ -14,7 +14,7 @@ import (
 func NewIntegration(ctx *adapters.ServiceContext, network lachesis.Config, stack *node.Node) *gossip.Service {
 	gossipCfg := gossip.DefaultConfig(network)
 
-	engine, _, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg)
+	engine, _, _, gdb := MakeEngine(ctx.Config.DataDir, &gossipCfg)
 
 	coinbase := SetAccountKey(
 		stack.AccountManager(),

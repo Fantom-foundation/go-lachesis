@@ -81,10 +81,10 @@ As an alternative to passing the numerous flags to the `lachesis` binary, you ca
 configuration file via:
 
 ```shell
-$ lachesis --config /path/to/your_config.toml
+$ lachesis --legacy_config /path/to/your_lachesis_config.toml --config /path/to/your_opera_config.toml
 ```
 
-To get an idea how the file should look like you can use the `dumpconfig` subcommand to
+To get an idea how the files should look like you can use the `dumpconfig` subcommand to
 export your existing configuration:
 
 ```shell

@@ -64,6 +64,21 @@ last epoch to write. If the file ends with .gz, the output will
 be gzipped
 `,
 			},
+			{
+				Name:      "state",
+				Usage:     "Export blockchain state",
+				ArgsUsage: "<filename>",
+				Action:    utils.MigrateFlags(exportState),
+				Flags: []cli.Flag{
+					DataDirFlag,
+					utils.CacheFlag,
+				},
+				Description: `
+    lachesis export state
+
+Exports blockchain state into a file.
+`,
+			},
 		},
 	}
 )

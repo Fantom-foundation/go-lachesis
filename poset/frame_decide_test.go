@@ -25,7 +25,7 @@ func TestConfirmBlockEvents(t *testing.T) {
 		blocks []*inter.Block
 	)
 	applyBlock := poset.callback.ApplyBlock
-	poset.callback.ApplyBlock = func(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (common.Hash, bool) {
+	poset.callback.ApplyBlock = func(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (common.Hash, bool, bool) {
 		frames = append(frames, poset.LastDecidedFrame)
 		blocks = append(blocks, block)
 

@@ -24,6 +24,7 @@ import (
 
 var (
 	errStopped     = errors.New("service is stopped")
+	errMigration   = errors.New("network is migrating")
 	ErrUnderpriced = evmcore.ErrUnderpriced
 )
 
@@ -63,6 +64,9 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 	// s.engineMu is locked here
 	if s.stopped {
 		return errStopped
+	}
+	if s.migration {
+		return eventcheck.ErrMigration
 	}
 
 	if s.store.HasEvent(e.Hash()) { // sanity check
@@ -137,7 +141,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 		s.feed.newEpoch.Send(newEpoch)
 	}
 
-	immediately := (newEpoch != oldEpoch)
+	immediately := newEpoch != oldEpoch
 
 	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
@@ -351,7 +355,10 @@ func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 }
 
 // applyBlock execs ordered txns of new block on state, and fills the block DB indexes.
-func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
+func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool, skip bool) {
+	if s.migration {
+		return common.Hash{}, false, true
+	}
 	// s.engineMu is locked here
 
 	s.lastBlockProcessed = time.Now()
@@ -410,7 +417,7 @@ func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheater
 
 	s.blockParticipated = make(map[idx.StakerID]bool) // reset map of participated validators
 
-	return newAppHash, sealEpoch
+	return newAppHash, sealEpoch, false
 }
 
 // selectValidatorsGroup is a callback type to select new validators group

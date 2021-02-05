@@ -60,6 +60,8 @@ type EmitterWorld struct {
 	LastBlockProcessed func() time.Time
 	PeersNum           func() int
 
+	IsMigration func() bool
+
 	AddVersion func(e *inter.Event) *inter.Event
 }
 
@@ -345,6 +347,9 @@ func (em *Emitter) findBestParents(epoch idx.Epoch, myStakerID idx.StakerID) (*h
 func (em *Emitter) createEvent(poolTxs map[common.Address]types.Transactions) *inter.Event {
 	if em.myStakerID == 0 {
 		// not a validator
+		return nil
+	}
+	if em.world.IsMigration() {
 		return nil
 	}
 
