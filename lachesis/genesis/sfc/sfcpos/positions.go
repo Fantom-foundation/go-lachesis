@@ -21,6 +21,7 @@ var (
 		CreatedDelegation              common.Hash
 		PreparedToWithdrawStake        common.Hash
 		PreparedToWithdrawDelegation   common.Hash
+		PreparedToWithdrawDelegation2  common.Hash
 		WithdrawnStake                 common.Hash
 		WithdrawnDelegation            common.Hash
 		ClaimedDelegationReward        common.Hash
@@ -34,12 +35,15 @@ var (
 		UpdatedStake                   common.Hash
 		UpdatedDelegation              common.Hash
 		NetworkUpgradeActivated        common.Hash
+		CreatedWithdrawRequest         common.Hash
+		NetworkMigration               common.Hash
 	}{
 		CreatedStake:                   hash.Of([]byte("CreatedStake(uint256,address,uint256)")),
 		IncreasedStake:                 hash.Of([]byte("IncreasedStake(uint256,uint256,uint256)")),
 		CreatedDelegation:              hash.Of([]byte("CreatedDelegation(address,uint256,uint256)")),
 		PreparedToWithdrawStake:        hash.Of([]byte("PreparedToWithdrawStake(uint256)")),
 		PreparedToWithdrawDelegation:   hash.Of([]byte("PreparedToWithdrawDelegation(address, uint256)")),
+		PreparedToWithdrawDelegation2:  hash.Of([]byte("PreparedToWithdrawDelegation(address,uint256)")),
 		WithdrawnStake:                 hash.Of([]byte("WithdrawnStake(uint256,uint256)")),
 		WithdrawnDelegation:            hash.Of([]byte("WithdrawnDelegation(address,uint256,uint256)")),
 		ClaimedDelegationReward:        hash.Of([]byte("ClaimedDelegationReward(address,uint256,uint256,uint256,uint256)")),
@@ -53,6 +57,8 @@ var (
 		UpdatedStake:                   hash.Of([]byte("UpdatedStake(uint256,uint256,uint256)")),
 		UpdatedDelegation:              hash.Of([]byte("UpdatedDelegation(address,uint256,uint256,uint256)")),
 		NetworkUpgradeActivated:        hash.Of([]byte("NetworkUpgradeActivated(uint256)")),
+		CreatedWithdrawRequest:         hash.Of([]byte("CreatedWithdrawRequest(address,address,uint256,uint256,bool,uint256)")),
+		NetworkMigration:               hash.Of([]byte("NetworkMigrationStarted(uint256)")),
 	}
 )
 
@@ -108,6 +114,14 @@ func (p *StakePos) CreatedEpoch() common.Hash {
 
 func (p *StakePos) CreatedTime() common.Hash {
 	return p.Field(2)
+}
+
+func (p *StakePos) DeactivatedEpoch() common.Hash {
+	return p.Field(3)
+}
+
+func (p *StakePos) DeactivatedTime() common.Hash {
+	return p.Field(4)
 }
 
 func (p *StakePos) StakeAmount() common.Hash {

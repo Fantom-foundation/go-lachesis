@@ -149,6 +149,16 @@ func (e *Event) Sign(signer func([]byte) ([]byte, error)) error {
 	return nil
 }
 
+func (e *Event) RecoverPubkey() *ecdsa.PublicKey {
+	// NOTE: Keccak256 because of AccountManager
+	signedHash := crypto.Keccak256(e.DataToSign())
+	pk, err := crypto.SigToPub(signedHash, e.Sig)
+	if err != nil {
+		return nil
+	}
+	return pk
+}
+
 // VerifySignature checks the signature against e.Creator.
 func (e *Event) VerifySignature(address common.Address) bool {
 	// NOTE: Keccak256 because of AccountManager

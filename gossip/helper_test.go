@@ -52,6 +52,9 @@ func newTestProtocolManager(nodesNum int, eventsNum int, newtx chan<- []*types.T
 		store,
 		engine,
 		nil,
+		func() bool {
+			return false
+		},
 	)
 	if err != nil {
 		return nil, nil, err

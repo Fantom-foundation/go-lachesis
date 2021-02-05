@@ -326,6 +326,9 @@ func (b *EthAPIBackend) GetEVM(ctx context.Context, msg evmcore.Message, state *
 }
 
 func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction) error {
+	if b.svc.IsMigration() {
+		return errMigration
+	}
 	err := b.svc.txpool.AddLocal(signedTx)
 	if err == nil {
 		// NOTE: only sent txs tracing, see TxPool.addTxs() for all

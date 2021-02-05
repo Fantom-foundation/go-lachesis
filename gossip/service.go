@@ -119,7 +119,8 @@ type Service struct {
 	EthAPI        *EthAPIBackend
 	netRPCService *ethapi.PublicNetAPI
 
-	stopped bool
+	stopped   bool
+	migration bool
 
 	logger.Instance
 }
@@ -198,7 +199,7 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 
 	// create protocol manager
 	var err error
-	svc.pm, err = NewProtocolManager(config, &svc.feed, svc.txpool, svc.engineMu, svc.checkers, store, svc.engine, svc.serverPool)
+	svc.pm, err = NewProtocolManager(config, &svc.feed, svc.txpool, svc.engineMu, svc.checkers, store, svc.engine, svc.serverPool, svc.IsMigration)
 	if err != nil {
 		return nil, err
 	}
@@ -272,6 +273,7 @@ func (s *Service) makeEmitter() *Emitter {
 			PeersNum: func() int {
 				return s.pm.peers.Len()
 			},
+			IsMigration: s.IsMigration,
 			AddVersion: func(e *inter.Event) *inter.Event {
 				// serialization version
 				e.Version = 0
@@ -352,6 +354,14 @@ func (s *Service) Start() error {
 	}
 
 	return nil
+}
+
+func (s *Service) IsMigration() bool {
+	return s.migration
+}
+
+func (s *Service) Emitter() *Emitter {
+	return s.emitter
 }
 
 // Stop method invoked when the node terminates the service.
