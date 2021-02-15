@@ -86,7 +86,8 @@ func TestPublicBlockChainAPI_EstimateGas(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
-		_, _ = api.EstimateGas(ctx, CallArgs{}, rpc.PendingBlockNumber)
+		blockNr := rpc.PendingBlockNumber
+		_, _ = api.EstimateGas(ctx, CallArgs{}, &blockNr)
 	})
 }
 
