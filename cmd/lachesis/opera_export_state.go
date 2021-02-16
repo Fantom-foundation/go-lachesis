@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -29,12 +30,14 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	ethparams "github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/pkg/errors"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"gopkg.in/urfave/cli.v1"
@@ -51,33 +54,11 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/poset"
 )
 
-type EvmSaver struct {
-	genStore *genesisstore.Store
-}
-
-var sfc2HistoryAddress = common.HexToAddress("0xdead00fc00000000000000000000000000020000")
-
-func (d *EvmSaver) OnStorage(addr common.Address, key common.Hash, val []byte) {
-	value := common.BytesToHash(val)
-	if addr == osfc.ContractAddress {
-		addr = sfc2HistoryAddress
-	}
-	if value != common.Hash(hash.Zero) {
-		d.genStore.SetEvmState(addr, key, value)
-	}
-}
-
-func (d *EvmSaver) OnAccount(addr common.Address, acc state.SafeDumpAccount) {
-	if addr == osfc.ContractAddress {
-		addr = sfc2HistoryAddress
-		acc.Balance = new(big.Int)
-	}
-	d.genStore.SetEvmAccount(addr, genesis.Account{
-		Code:    acc.Code,
-		Balance: acc.Balance,
-		Nonce:   acc.Nonce,
-	})
-}
+var (
+	emptyCodeHash = common.BytesToHash(crypto.Keccak256(nil))
+	emptyRoot     = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	emptyNodeHash = common.Hash{}
+)
 
 type evmCaller struct {
 	statedb     *state.StateDB
@@ -85,11 +66,11 @@ type evmCaller struct {
 	chainConfig *ethparams.ChainConfig
 }
 
-func (c *evmCaller) CodeAt(ctx context.Context, contract common.Address, blockNumber *big.Int) ([]byte, error) {
+func (c *evmCaller) CodeAt(_ context.Context, contract common.Address, _ *big.Int) ([]byte, error) {
 	return c.statedb.GetCode(contract), nil
 }
 
-func (c *evmCaller) CallContract(ctx context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
+func (c *evmCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
 	msg := types.NewMessage(call.From, call.To, 0, new(big.Int), 1e12, new(big.Int), call.Data, false)
 
 	// Create a new context to be used in the EVM environment
@@ -127,15 +108,33 @@ func addDelegation(genStore *genesisstore.Store, addr common.Address, to oidx.Va
 	genStore.SetDelegation(addr, to, delegation)
 }
 
-func addBalance(genStore *genesisstore.Store, addr common.Address, added *big.Int) {
+func addBalance(genStore *genesisstore.Store, statedb *state.StateDB, addr common.Address, added *big.Int) {
 	acc := genStore.GetEvmAccount(addr)
-	acc.Balance.Add(acc.Balance, added)
+	if acc.Balance.Sign() == 0 {
+		acc.Balance = statedb.GetBalance(addr)
+	}
+	acc.Balance = new(big.Int).Add(acc.Balance, added)
 	genStore.SetEvmAccount(addr, acc)
 }
 
 type withdrawalRequestID struct {
 	from common.Address
 	wrID string
+}
+
+type rawEvmItemsToEthdb struct {
+	*genesisstore.Store
+}
+
+// Put inserts the given value into the key-value data store.
+func (db *rawEvmItemsToEthdb) Put(key []byte, value []byte) error {
+	db.Store.SetRawEvmItem(key, value)
+	return nil
+}
+
+// Delete removes the key from the key-value data store.
+func (db *rawEvmItemsToEthdb) Delete(key []byte) error {
+	return errors.New("not supported")
 }
 
 func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis.Config) (*genesisstore.Store, error) {
@@ -181,18 +180,65 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 	// export EVM state
 	log.Info("Exporting EVM state", "root", lastBlock.Root.String())
 	statedb, _ := gdb.App().StateDB(lastBlock.Root)
-	iterator := &EvmSaver{genStore}
-	_, err = statedb.DumpToSafeCollector(iterator, false, false, nil, 0)
+
+	stateTr, err := statedb.Database().OpenTrie(lastBlock.Root)
 	if err != nil {
-		return genStore, errors.Wrap(err, "failed to dump EVM state")
+		return genStore, errors.Wrap(err, "failed to open EVM trie")
 	}
-	log.Info("Exported EVM state", "elapsed", common.PrettyDuration(time.Since(start)))
+
+	// export EVM tries
+	destDb := &rawEvmItemsToEthdb{genStore}
+	stateIt := stateTr.NodeIterator(nil)
+	for stateIt.Next(true) {
+		if stateIt.Leaf() {
+			addrHash := common.BytesToHash(stateIt.LeafKey())
+
+			var account state.Account
+			if err := rlp.Decode(bytes.NewReader(stateIt.LeafBlob()), &account); err != nil {
+				return genStore, errors.Wrap(err, "failed to decode account")
+			}
+
+			codeHash := common.BytesToHash(account.CodeHash)
+			if codeHash != emptyCodeHash {
+				code, err := statedb.Database().ContractCode(addrHash, codeHash)
+				if err != nil {
+					return genStore, errors.Wrap(err, "failed to open EVM trie")
+				}
+				rawdb.WriteCode(destDb, codeHash, code)
+			}
+
+			if account.Root != emptyRoot {
+				dataTr, err := statedb.Database().OpenStorageTrie(addrHash, account.Root)
+				if err != nil {
+					return genStore, errors.Wrap(err, "failed to open EVM trie")
+				}
+				dataIt := dataTr.NodeIterator(nil)
+				for dataIt.Next(true) {
+					if dataIt.Leaf() || dataIt.Hash() == emptyNodeHash {
+						continue
+					}
+					nodeBody, err := gdb.App().EvmTable().Get(dataIt.Hash().Bytes())
+					if err != nil {
+						return genStore, errors.Wrap(err, "failed to get storage trie node")
+					}
+					rawdb.WriteTrieNode(destDb, dataIt.Hash(), nodeBody)
+				}
+			}
+		} else if stateIt.Hash() != emptyNodeHash {
+			nodeBody, err := gdb.App().EvmTable().Get(stateIt.Hash().Bytes())
+			if err != nil {
+				return genStore, errors.Wrap(err, "failed to get trie node")
+			}
+			rawdb.WriteTrieNode(destDb, stateIt.Hash(), nodeBody)
+		}
+	}
 
 	// SFC 3.x
 	genStore.SetEvmAccount(osfc.ContractAddress, genesis.Account{
-		Code:    osfc.GetContractBin(),
-		Balance: new(big.Int),
-		Nonce:   0,
+		Code:         osfc.GetContractBin(),
+		Balance:      new(big.Int),
+		Nonce:        0,
+		SelfDestruct: true, // erase SFCv2 storage
 	})
 	// NodeDriverAuth
 	genStore.SetEvmAccount(driverauth.ContractAddress, genesis.Account{
@@ -202,7 +248,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 	})
 	// NodeDriver
 	genStore.SetEvmAccount(driver.ContractAddress, genesis.Account{
-		Code:    netinit.GetContractBin(),
+		Code:    driver.GetContractBin(),
 		Balance: new(big.Int),
 		Nonce:   0,
 	})
@@ -218,6 +264,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 		Balance: new(big.Int),
 		Nonce:   0,
 	})
+	log.Info("Exported EVM state", "elapsed", common.PrettyDuration(time.Since(start)))
 
 	// export network rules
 	var rules = opera.TestNetRules()
@@ -280,7 +327,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 		if stake.Sign() != 0 {
 			if oDeactivatedEpoch != 0 && status != sfctype.ForkBit {
 				// finalize withdrawal balance if validator isn't a cheater
-				addBalance(genStore, addr, stake)
+				addBalance(genStore, statedb, addr, stake)
 			} else {
 				// retrieve lockup info
 				info, _ := sfcCaller.LockedStakes(callsOpts, futils.U64toBig(uint64(stakerID)))
@@ -466,7 +513,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 		v := validatorsMap[oidx.ValidatorID(it.ID.StakerID)]
 		if delegation.DeactivatedTime.Sign() != 0 && v.Status != drivertype.DoublesignBit {
 			// finalize withdrawal balance if validator isn't a cheater
-			addBalance(genStore, it.ID.Delegator, delegation.Amount)
+			addBalance(genStore, statedb, it.ID.Delegator, delegation.Amount)
 		} else {
 			// retrieve lockup info
 			info, _ := sfcCaller.LockedDelegations(callsOpts, it.ID.Delegator, futils.U64toBig(uint64(it.ID.StakerID)))
@@ -524,7 +571,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 		v := validatorsMap[stakerID]
 		if v.Status != drivertype.DoublesignBit {
 			// finalize withdrawal balance if validator isn't a cheater
-			addBalance(genStore, receiver, res.Amount)
+			addBalance(genStore, statedb, receiver, res.Amount)
 		} else {
 			addDelegation(genStore, receiver, stakerID, genesis.Delegation{
 				Stake:              res.Amount,
@@ -546,8 +593,6 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 	metadata.DriverOwner, _ = sfcCaller.Owner(callsOpts)
 	metadata.TotalSupply = gdb.App().GetTotalSupply()
 	genStore.SetMetadata(metadata)
-
-	println(genStore.Hash().String())
 
 	return genStore, nil
 }
