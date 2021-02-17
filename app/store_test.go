@@ -10,6 +10,7 @@ import (
 func cachedStore() *Store {
 	mems := memorydb.NewProducer("", withDelay)
 	cfg := LiteStoreConfig()
+	cfg.ReceiptsCacheSize = 1
 
 	return NewStore(mems.OpenDb("test"), cfg)
 }

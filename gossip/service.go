@@ -356,9 +356,7 @@ func (s *Service) Stop() error {
 	defer s.engineMu.Unlock()
 	s.stopped = true
 
-	lastBlockIdx, _ := s.engine.LastBlock()
-	lastBlock := s.store.GetBlock(lastBlockIdx)
-	return s.store.Commit(lastBlock.Root, nil, true)
+	return s.store.Commit(nil, true)
 }
 
 // AccountManager return node's account manager

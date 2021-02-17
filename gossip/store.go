@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/rlp"
 	lru "github.com/hashicorp/golang-lru"
@@ -146,7 +145,7 @@ func (s *Store) Close() {
 }
 
 // Commit changes.
-func (s *Store) Commit(root common.Hash, flushID []byte, immediately bool) error {
+func (s *Store) Commit(flushID []byte, immediately bool) error {
 	if flushID == nil {
 		// if flushId not specified, use current time
 		buf := bytes.NewBuffer(nil)
@@ -160,7 +159,7 @@ func (s *Store) Commit(root common.Hash, flushID []byte, immediately bool) error
 	}
 
 	// Flush the DBs
-	err := s.app.Commit(root)
+	err := s.app.Commit()
 	if err != nil {
 		return err
 	}
