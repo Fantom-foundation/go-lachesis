@@ -38,23 +38,6 @@ Events are fully verified by default, unless overridden by check=false flag.`,
 The import command imports events from an RLP-encoded files.
 Events are fully verified by default, unless overridden by --check=false flag.`,
 			},
-			{
-				Action:    utils.MigrateFlags(importPreimages),
-				Name:      "preimages",
-				Usage:     "Import accounts preimages",
-				ArgsUsage: "<filename>",
-				Flags: []cli.Flag{
-					DataDirFlag,
-					EventsCheckFlag,
-					utils.CacheFlag,
-					utils.SyncModeFlag,
-					utils.GCModeFlag,
-					utils.CacheDatabaseFlag,
-					utils.CacheGCFlag,
-				},
-				Description: `
-The import command imports account preimages from an RLP-encoded file.`,
-			},
 		},
 	}
 	exportCommand = cli.Command{
@@ -79,21 +62,6 @@ Requires a first argument of the file to write to.
 Optional second and third arguments control the first and
 last epoch to write. If the file ends with .gz, the output will
 be gzipped
-`,
-			},
-			{
-				Name:      "preimages",
-				Usage:     "Export account preimages",
-				ArgsUsage: "<filename>",
-				Action:    utils.MigrateFlags(exportPreimages),
-				Flags: []cli.Flag{
-					DataDirFlag,
-					utils.CacheFlag,
-				},
-				Description: `
-    lachesis export preimages
-
-Exports account preimages into a file.
 `,
 			},
 		},
