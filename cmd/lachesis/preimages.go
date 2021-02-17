@@ -25,9 +25,7 @@ func importPreimages(ctx *cli.Context) error {
 	if err := utils.ImportPreimages(gdb.App().EvmTable(), ctx.Args().First()); err != nil {
 		utils.Fatalf("Import error: %v\n", err)
 	}
-	lastBlockIdx := cdb.GetCheckpoint().LastBlockN
-	lastBlock := gdb.GetBlock(lastBlockIdx)
-	err := gdb.Commit(lastBlock.Root, nil, true)
+	err := gdb.Commit(nil, true)
 	if err != nil {
 		utils.Fatalf("DB flushing error: %v\n", err)
 	}

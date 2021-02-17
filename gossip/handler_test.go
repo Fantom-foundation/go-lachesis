@@ -153,12 +153,7 @@ func testBroadcastEvent(t *testing.T, totalPeers int, forcedAggressiveBroadcast 
 
 	// create consensus engine
 	engine := poset.New(net.Dag, engineStore, store)
-	engine.Bootstrap(inter.ConsensusCallbacks{
-		ApplyBlock: func(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
-			store.SetBlock(block)
-			return common.Hash{}, false
-		},
-	})
+	engine.Bootstrap(inter.ConsensusCallbacks{})
 
 	// create service
 	svc, err := newService(&config, store, engine)

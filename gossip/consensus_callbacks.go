@@ -132,9 +132,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 
 	immediately := (newEpoch != oldEpoch)
 
-	lastBlockIdx, _ := realEngine.LastBlock()
-	lastBlock := s.store.GetBlock(lastBlockIdx)
-	return s.store.Commit(lastBlock.Root, e.Hash().Bytes(), immediately)
+	return s.store.Commit(e.Hash().Bytes(), immediately)
 }
 
 // applyNewState moves the state according to new block (txs execution, SFC logic, epoch sealing)
