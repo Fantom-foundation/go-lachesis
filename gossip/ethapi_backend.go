@@ -710,3 +710,7 @@ func (b *EthAPIBackend) ValidatorTimeDrifts(ctx context.Context, epoch rpc.Block
 	})
 	return drifts, err
 }
+
+func (b *EthAPIBackend) CalcLogsBloom() bool {
+	return b.svc.config.RPCLogsBloom
+}

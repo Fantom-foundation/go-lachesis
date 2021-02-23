@@ -231,7 +231,7 @@ func TestRPCMarshalBlock(t *testing.T) {
 				types.NewTransaction(1, common.Address{1}, big.NewInt(1), 1, big.NewInt(0), []byte{}),
 				types.NewTransaction(2, common.Address{2}, big.NewInt(2), 2, big.NewInt(0), []byte{}),
 			},
-		}, true, true)
+		}, types.Bloom{}, true, true)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
@@ -311,7 +311,7 @@ func TestRPCMarshalHeader(t *testing.T) {
 				Coinbase:   common.Address{7},
 				GasLimit:   8,
 				GasUsed:    9,
-			},
+			}, types.Bloom{},
 		)
 		require.NotEmpty(t, res)
 	})

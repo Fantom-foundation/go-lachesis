@@ -118,6 +118,9 @@ func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 	api := NewPublicBlockChainAPI(b)
 
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		res, err := api.GetBlockByHash(ctx, common.Hash{1}, true)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
@@ -126,6 +129,9 @@ func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 	require.NotPanics(t, func() {
 		b.EXPECT().GetBlock(gomock.Any(), gomock.Any()).
 			Return(nil, ErrBackendTest).
+			Times(1)
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
 			Times(1)
 		res, err := api.GetBlockByHash(ctx, common.Hash{1}, true)
 		require.NoError(t, err)
@@ -140,12 +146,18 @@ func TestPublicBlockChainAPI_GetBlockByNumber(t *testing.T) {
 	api := NewPublicBlockChainAPI(b)
 
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		res, err := api.GetBlockByNumber(ctx, rpc.BlockNumber(rpc.PendingBlockNumber), true)
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
 
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		b.EXPECT().BlockByNumber(gomock.Any(), gomock.Any()).
 			Return(nil, ErrBackendTest).
 			Times(1)
@@ -182,6 +194,9 @@ func TestPublicBlockChainAPI_GetHeaderByHash(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		b.EXPECT().HeaderByHash(ctx, gomock.Any()).
 			Return(&evmcore.EvmHeader{
 				Number: big.NewInt(1),
@@ -191,6 +206,9 @@ func TestPublicBlockChainAPI_GetHeaderByHash(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		b.EXPECT().HeaderByHash(ctx, gomock.Any()).
 			Return(nil, nil).
 			Times(1)
@@ -205,6 +223,9 @@ func TestPublicBlockChainAPI_GetHeaderByNumber(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		b.EXPECT().HeaderByNumber(ctx, gomock.Any()).
 			Return(&evmcore.EvmHeader{
 				Number: big.NewInt(1),
@@ -215,6 +236,9 @@ func TestPublicBlockChainAPI_GetHeaderByNumber(t *testing.T) {
 		require.NotEmpty(t, res)
 	})
 	require.NotPanics(t, func() {
+		b.EXPECT().CalcLogsBloom().
+			Return(false).
+			Times(1)
 		b.EXPECT().HeaderByNumber(gomock.Any(), gomock.Any()).
 			Return(nil, ErrBackendTest).
 			Times(1)
