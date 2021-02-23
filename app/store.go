@@ -69,7 +69,10 @@ type Store struct {
 	}
 
 	mutex struct {
-		Inc sync.Mutex
+		BlockDowntime sync.Mutex
+		Validators    sync.Mutex
+		Stakers       sync.Mutex
+		Delegations   sync.Mutex
 	}
 
 	logger.Instance
