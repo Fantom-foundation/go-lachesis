@@ -646,7 +646,7 @@ func (s *PublicBlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.H
 func (s *PublicBlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error) {
 	block, err := s.b.BlockByNumber(ctx, number)
 	if block != nil && err == nil {
-		response, err := s.rpcMarshalBlock(block, true, fullTx)
+		response, err := s.rpcMarshalBlock(ctx, block, true, fullTx)
 		if err == nil && number == rpc.PendingBlockNumber {
 			// Pending blocks need to nil out a few fields
 			for _, field := range []string{"hash", "nonce", "miner"} {
@@ -663,7 +663,7 @@ func (s *PublicBlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.B
 func (s *PublicBlockChainAPI) GetBlockByHash(ctx context.Context, hash common.Hash, fullTx bool) (map[string]interface{}, error) {
 	block, err := s.b.GetBlock(ctx, hash)
 	if block != nil {
-		return s.rpcMarshalBlock(block, true, fullTx)
+		return s.rpcMarshalBlock(ctx, block, true, fullTx)
 	}
 	return nil, err
 }
@@ -1105,8 +1105,8 @@ func RPCMarshalHeader(head *evmcore.EvmHeader) map[string]interface{} {
 // transaction hashes.
 func RPCMarshalBlock(block *evmcore.EvmBlock, inclTx bool, fullTx bool) (map[string]interface{}, error) {
 	fields := RPCMarshalHeader(block.Header())
-	fields["size"] = block.EthBlock().Size()
 
+	fields["size"] = hexutil.Uint64(block.EthBlock().Size())
 	if inclTx {
 		formatTx := func(tx *types.Transaction) (interface{}, error) {
 			return tx.Hash(), nil
@@ -1146,10 +1146,17 @@ func (s *PublicBlockChainAPI) rpcMarshalHeader(header *evmcore.EvmHeader) map[st
 
 // rpcMarshalBlock uses the generalized output filler, then adds the total difficulty field, which requires
 // a `PublicBlockchainAPI`.
-func (s *PublicBlockChainAPI) rpcMarshalBlock(b *evmcore.EvmBlock, inclTx bool, fullTx bool) (map[string]interface{}, error) {
+func (s *PublicBlockChainAPI) rpcMarshalBlock(ctx context.Context, b *evmcore.EvmBlock, inclTx bool, fullTx bool) (map[string]interface{}, error) {
 	fields, err := RPCMarshalBlock(b, inclTx, fullTx)
 	if err != nil {
 		return nil, err
+	}
+	blkNumber := rpc.BlockNumber(b.NumberU64())
+	if blkNumber != rpc.EarliestBlockNumber {
+		receipts, _ := s.b.GetReceiptsByNumber(ctx, blkNumber)
+		if receipts != nil {
+			fields["logsBloom"] = types.CreateBloom(receipts)
+		}
 	}
 	fields["totalDifficulty"] = (*hexutil.Big)(s.b.GetTd(b.Hash))
 	return fields, err
@@ -1364,6 +1371,10 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 	if tx == nil || err != nil {
 		return nil, err
 	}
+	blk, err := s.b.BlockByNumber(ctx, rpc.BlockNumber(blockNumber))
+	if blk == nil || err != nil {
+		return nil, err
+	}
 	header, err := s.b.HeaderByNumber(ctx, rpc.BlockNumber(blockNumber)) // retrieve header to get block hash
 	if header == nil || err != nil {
 		return nil, err
@@ -1376,12 +1387,20 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		return nil, nil
 	}
 	receipt := receipts[index]
-
 	var signer types.Signer = types.FrontierSigner{}
 	if tx.Protected() {
 		signer = types.NewEIP155Signer(tx.ChainId())
 	}
 	from, _ := types.Sender(signer, tx)
+
+	if receipt.Logs != nil {
+		for _, log := range receipt.Logs {
+			log.TxHash = hash
+			log.BlockHash = blk.Hash
+			log.BlockNumber = blockNumber
+			log.TxIndex = receipt.TransactionIndex
+		}
+	}
 
 	fields := map[string]interface{}{
 		"blockHash":         header.Hash,
@@ -1394,6 +1413,7 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
 		"contractAddress":   nil,
 		"logs":              receipt.Logs,
+		"logsBloom":         receipt.Bloom,
 	}
 
 	// Assign receipt status or post state.
