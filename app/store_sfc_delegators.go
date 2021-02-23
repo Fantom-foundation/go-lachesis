@@ -10,6 +10,9 @@ import (
 
 // SetSfcDelegation stores SfcDelegation
 func (s *Store) SetSfcDelegation(id sfctype.DelegationID, v *sfctype.SfcDelegation) {
+	s.mutex.Delegations.Lock()
+	defer s.mutex.Delegations.Unlock()
+
 	s.set(s.table.Delegations, id.Bytes(), v)
 
 	// Add to LRU cache.
@@ -20,6 +23,9 @@ func (s *Store) SetSfcDelegation(id sfctype.DelegationID, v *sfctype.SfcDelegati
 
 // DelSfcDelegation deletes SfcDelegation
 func (s *Store) DelSfcDelegation(id sfctype.DelegationID) {
+	s.mutex.Delegations.Lock()
+	defer s.mutex.Delegations.Unlock()
+
 	err := s.table.Delegations.Delete(id.Bytes())
 	if err != nil {
 		s.Log.Crit("Failed to erase delegation")
@@ -76,6 +82,9 @@ func (s *Store) forEachSfcDelegation(it ethdb.Iterator, do func(sfctype.SfcDeleg
 
 // GetSfcDelegation returns stored SfcDelegation
 func (s *Store) GetSfcDelegation(id sfctype.DelegationID) *sfctype.SfcDelegation {
+	s.mutex.Delegations.Lock()
+	defer s.mutex.Delegations.Unlock()
+
 	// Get data from LRU cache first.
 	if s.cache.Delegations != nil {
 		if c, ok := s.cache.Delegations.Get(id); ok {
