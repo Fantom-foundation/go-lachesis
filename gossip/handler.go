@@ -36,7 +36,7 @@ const (
 	txChanSize = 4096
 
 	// the maximum number of events in the ordering buffer
-	eventsBuffSize = 2048
+	eventsBuffSize = 1000
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {
@@ -520,7 +520,12 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		_ = pm.fetcher.Notify(p.id, announces, time.Now(), p.RequestEvents)
 
 	case msg.Code == EventsMsg:
-		if pm.fetcher.Overloaded() {
+		slept := time.Duration(0)
+		for pm.fetcher.Overloaded() && slept < time.Second {
+			time.Sleep(time.Millisecond * 5)
+			slept += time.Millisecond * 5
+		}
+		if slept >= time.Second {
 			break
 		}
 		var events []*inter.Event

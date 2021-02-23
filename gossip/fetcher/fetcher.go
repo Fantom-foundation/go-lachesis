@@ -23,20 +23,20 @@ import (
 
 const (
 	forgetTimeout = 1 * time.Minute         // Time before an announced event is forgotten
-	arriveTimeout = 1000 * time.Millisecond // Time allowance before an announced event is explicitly requested
+	arriveTimeout = 1500 * time.Millisecond // Time allowance before an announced event is explicitly requested
 	gatherSlack   = 100 * time.Millisecond  // Interval used to collate almost-expired announces with fetches
 	fetchTimeout  = 10 * time.Second        // Maximum allowed time to return an explicitly requested event
-	hashLimit     = 3000                    // Maximum number of unique events a peer may have announced
+	hashLimit     = 10000                   // Maximum number of unique events a peer may have announced
 
 	maxInjectBatch   = 4   // Maximum number of events in an inject batch (batch is divided if exceeded)
-	maxAnnounceBatch = 256 // Maximum number of hashes in an announce batch (batch is divided if exceeded)
+	maxAnnounceBatch = 512 // Maximum number of hashes in an announce batch (batch is divided if exceeded)
 
 	// maxQueuedInjects is the maximum number of inject batches to queue up before
 	// dropping incoming events.
-	maxQueuedInjects = 128
+	maxQueuedInjects = 1024
 	// maxQueuedAnns is the maximum number of announce batches to queue up before
 	// dropping incoming hashes.
-	maxQueuedAnns = 128
+	maxQueuedAnns = 1024
 )
 
 var (
@@ -153,9 +153,8 @@ func (f *Fetcher) Overloaded() bool {
 }
 
 func (f *Fetcher) overloaded() bool {
-	return len(f.inject) > maxQueuedInjects*3/4 ||
-		len(f.notify) > maxQueuedAnns*3/4 ||
-		len(f.announced) > hashLimit || // protected by stateMu
+	return len(f.inject) > maxQueuedInjects/2 ||
+		len(f.notify) > maxQueuedAnns/2 ||
 		f.callback.HeavyCheck.Overloaded()
 }
 

@@ -2,7 +2,6 @@ package heavycheck
 
 import (
 	"errors"
-	"runtime"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -23,7 +22,7 @@ var (
 )
 
 const (
-	maxQueuedTasks = 128 // the maximum number of events to queue up
+	maxQueuedTasks = 256 // the maximum number of events to queue up
 	maxBatch       = 4   // Maximum number of events in an task batch (batch is divided if exceeded)
 )
 
@@ -57,14 +56,7 @@ type TaskData struct {
 
 // NewDefault uses N-1 threads
 func NewDefault(config *lachesis.DagConfig, reader DagReader, txSigner types.Signer) *Checker {
-	threads := runtime.NumCPU()
-	if threads > 1 {
-		threads--
-	}
-	if threads < 1 {
-		threads = 1
-	}
-	return New(config, reader, txSigner, threads)
+	return New(config, reader, txSigner, 1)
 }
 
 // New validator which performs heavy checks, related to signatures validation and Merkle tree validation
