@@ -173,7 +173,7 @@ func (s *Service) applyNewState(
 	stateHash := s.store.GetBlock(block.Index - 1).Root
 	statedb, err := s.app.StateDB(stateHash)
 	if err != nil {
-		s.Log.Crit("Failed to open state", "block", block.Index - 1, "root", stateHash.String())
+		s.Log.Crit("Failed to open state", "block", block.Index-1, "root", stateHash.String())
 	}
 
 	// Process EVM txs
