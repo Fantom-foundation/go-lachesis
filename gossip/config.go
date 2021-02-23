@@ -56,6 +56,8 @@ type (
 		RPCTxFeeCap float64 `toml:",omitempty"`
 
 		ExtRPCEnabled bool
+
+		RPCLogsBloom bool
 	}
 
 	// StoreConfig is a config for store db.
@@ -109,8 +111,9 @@ func DefaultConfig(network lachesis.Config) Config {
 			Percentile: 60,
 			MaxPrice:   gasprice.DefaultMaxPrice,
 		},
-		RPCGasCap:   25000000,
-		RPCTxFeeCap: 1000, // 1000 FTM
+		RPCGasCap:    25000000,
+		RPCTxFeeCap:  1000, // 1000 FTM
+		RPCLogsBloom: true,
 	}
 
 	if network.NetworkID == lachesis.FakeNetworkID {

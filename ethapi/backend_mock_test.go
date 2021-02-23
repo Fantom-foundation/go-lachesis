@@ -163,6 +163,20 @@ func (mr *MockBackendMockRecorder) RPCTxFeeCap() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RPCTxFeeCap", reflect.TypeOf((*MockBackend)(nil).RPCTxFeeCap))
 }
 
+// CalcLogsBloom mocks base method
+func (m *MockBackend) CalcLogsBloom() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CalcLogsBloom")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// CalcLogsBloom indicates an expected call of CalcLogsBloom
+func (mr *MockBackendMockRecorder) CalcLogsBloom() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CalcLogsBloom", reflect.TypeOf((*MockBackend)(nil).CalcLogsBloom))
+}
+
 // HeaderByNumber mocks base method
 func (m *MockBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*evmcore.EvmHeader, error) {
 	m.ctrl.T.Helper()
