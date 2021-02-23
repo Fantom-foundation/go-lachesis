@@ -13,7 +13,7 @@ func (s *Store) IncBlocksMissed(stakerID idx.StakerID, periodDiff inter.Timestam
 	s.mutex.Inc.Lock()
 	defer s.mutex.Inc.Unlock()
 
-	missed := s.GetBlocksMissed(stakerID)
+	missed := s.getBlocksMissed(stakerID)
 	missed.Num++
 	missed.Period += periodDiff
 	s.set(s.table.BlockDowntime, stakerID.Bytes(), &missed)
@@ -36,6 +36,13 @@ func (s *Store) ResetBlocksMissed(stakerID idx.StakerID) {
 
 // GetBlocksMissed return blocks missed num for validator
 func (s *Store) GetBlocksMissed(stakerID idx.StakerID) BlocksMissed {
+	s.mutex.Inc.Lock()
+	defer s.mutex.Inc.Unlock()
+
+	return s.getBlocksMissed(stakerID)
+}
+
+func (s *Store) getBlocksMissed(stakerID idx.StakerID) BlocksMissed {
 	missedVal, ok := s.cache.BlockDowntime.Get(stakerID)
 	if ok {
 		if missed, ok := missedVal.(BlocksMissed); ok {
