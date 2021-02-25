@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	errStopped     = errors.New("service is stopped")
-	ErrUnderpriced = evmcore.ErrUnderpriced
+	errStopped         = errors.New("service is stopped")
+	ErrUnderpriced     = evmcore.ErrUnderpriced
 )
 
 // ProcessEvent takes event into processing.
@@ -346,6 +346,8 @@ func (s *Service) onEpochSealed(block *inter.Block, cheaters inter.Cheaters) {
 // applyBlock execs ordered txns of new block on state, and fills the block DB indexes.
 func (s *Service) applyBlock(block *inter.Block, decidedFrame idx.Frame, cheaters inter.Cheaters) (newAppHash common.Hash, sealEpoch bool) {
 	// s.engineMu is locked here
+
+	s.lastBlockProcessed = time.Now()
 
 	confirmBlocksMeter.Inc(1)
 	// if cheater is confirmed, seal epoch right away to prune them from of BFT validators list

@@ -105,6 +105,7 @@ type Service struct {
 	gasPowerCheckReader GasPowerCheckReader
 	checkers            *eventcheck.Checkers
 	upgNotifier         *upgnotifier.Logger
+	lastBlockProcessed  time.Time
 
 	// global variables. TODO refactor to pass them as arguments if possible
 	blockParticipated map[idx.StakerID]bool // validators who participated in last block
@@ -153,9 +154,10 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 		app:         store.app,
 		upgNotifier: upgnotifier.New(store),
 
-		engineMu:          new(sync.RWMutex),
-		occurredTxs:       occuredtxs.New(txsRingBufferSize, types.NewEIP155Signer(config.Net.EvmChainConfig().ChainID)),
-		blockParticipated: make(map[idx.StakerID]bool),
+		engineMu:           new(sync.RWMutex),
+		occurredTxs:        occuredtxs.New(txsRingBufferSize, types.NewEIP155Signer(config.Net.EvmChainConfig().ChainID)),
+		blockParticipated:  make(map[idx.StakerID]bool),
+		lastBlockProcessed: time.Now(),
 
 		Instance: logger.MakeInstance(),
 	}
@@ -230,13 +232,15 @@ func (s *Service) makeEmitter() *Emitter {
 
 	return NewEmitter(&s.config.Net, &emitterCfg,
 		EmitterWorld{
-			Am:          s.AccountManager(),
-			Engine:      s.engine,
-			EngineMu:    s.engineMu,
 			Store:       s.store,
 			App:         s.app,
+			Engine:      s.engine,
+			EngineMu:    s.engineMu,
 			Txpool:      s.txpool,
+			Am:          s.AccountManager(),
 			OccurredTxs: s.occurredTxs,
+			Checkers:    s.checkers,
+			MinGasPrice: s.MinGasPrice,
 			OnEmitted: func(emitted *inter.Event) {
 				// s.engineMu is locked here
 
@@ -250,9 +254,11 @@ func (s *Service) makeEmitter() *Emitter {
 					s.Log.Crit("Failed to post self-event", "err", err.Error())
 				}
 			},
-			MinGasPrice: s.MinGasPrice,
 			IsSynced: func() bool {
 				return atomic.LoadUint32(&s.pm.synced) != 0
+			},
+			LastBlockProcessed: func() time.Time {
+				return s.lastBlockProcessed
 			},
 			PeersNum: func() int {
 				return s.pm.peers.Len()
@@ -270,7 +276,6 @@ func (s *Service) makeEmitter() *Emitter {
 
 				return e
 			},
-			Checkers: s.checkers,
 		},
 	)
 }
