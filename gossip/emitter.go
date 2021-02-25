@@ -691,7 +691,11 @@ func (em *Emitter) isAllowedToEmit(e *inter.Event, selfParent *inter.EventHeader
 	}
 	// Emit no more than 1 event per confirmingEmitInterval (when there's no txs to originate, but at least 1 tx to confirm)
 	{
-		if passedTime < em.intervals.Confirming &&
+		interval := em.intervals.Confirming
+		if time.Since(lastBlockProcessed) > 40*time.Minute {
+			interval *= 100
+		}
+		if passedTime < interval &&
 			em.world.OccurredTxs.Len() != 0 &&
 			len(e.Transactions) == 0 {
 			return false
