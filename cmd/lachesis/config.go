@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p/discv5"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/naoina/toml"
 	"gopkg.in/urfave/cli.v1"
 
@@ -22,6 +21,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/gossip"
 	"github.com/Fantom-foundation/go-lachesis/gossip/gasprice"
 	"github.com/Fantom-foundation/go-lachesis/lachesis"
+	"github.com/Fantom-foundation/go-lachesis/lachesis/params"
 )
 
 var (
@@ -244,7 +244,7 @@ func nodeConfigWithFlags(ctx *cli.Context, cfg node.Config) node.Config {
 	utils.SetNodeConfig(ctx, &cfg)
 
 	if !ctx.GlobalIsSet(FakeNetFlag.Name) {
-		setBootnodes(ctx, Bootnodes, &cfg)
+		setBootnodes(ctx, params.Bootnodes, &cfg)
 	}
 	setDataDir(ctx, &cfg)
 	return cfg
@@ -272,7 +272,7 @@ func makeAllConfigs(ctx *cli.Context) *config {
 func defaultNodeConfig() node.Config {
 	cfg := NodeDefaultConfig
 	cfg.Name = clientIdentifier
-	cfg.Version = params.VersionWithCommit(gitCommit, gitDate)
+	cfg.Version = version()
 	cfg.HTTPModules = append(cfg.HTTPModules, "eth", "ftm", "sfc", "web3")
 	cfg.WSModules = append(cfg.WSModules, "eth", "ftm", "sfc", "web3")
 	cfg.IPCPath = "lachesis.ipc"

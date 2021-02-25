@@ -38,6 +38,13 @@ var (
 	// Git SHA1 commit hash of the release (set via linker flags).
 	gitCommit = ""
 	gitDate   = ""
+)
+
+func version() string {
+	return params.VersionWithCommit(gitCommit, gitDate)
+}
+
+var (
 	// The app that holds all commands and flags.
 	app = flags.NewApp(gitCommit, gitDate, "the go-lachesis command line interface")
 
@@ -50,7 +57,6 @@ var (
 // init the CLI app.
 func init() {
 	overrideFlags()
-	overrideParams()
 
 	// Flags for testing purpose.
 	testFlags = []cli.Flag{
@@ -160,7 +166,7 @@ func init() {
 	// App.
 
 	app.Action = lachesisMain
-	app.Version = params.VersionWithCommit(gitCommit, gitDate)
+	app.Version = version()
 	app.HideVersion = true // we have a command to print the version
 	app.Commands = []cli.Command{
 		// See accountcmd.go:

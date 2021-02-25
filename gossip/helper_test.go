@@ -100,7 +100,7 @@ func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *typ
 type testPeer struct {
 	net p2p.MsgReadWriter // Network layer reader/writer to simulate remote messaging
 	app *p2p.MsgPipeRW    // Application layer reader/writer to simulate the local side
-	*peer
+	*Peer
 }
 
 // newTestPeer creates a new peer registered at the given protocol manager.
@@ -126,7 +126,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 			errc <- p2p.DiscQuitting
 		}
 	}()
-	tp := &testPeer{app: app, net: net, peer: peer}
+	tp := &testPeer{app: app, net: net, Peer: peer}
 	// Execute any implicitly requested handshakes and return
 	if shake {
 		var (

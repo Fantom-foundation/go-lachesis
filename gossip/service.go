@@ -90,7 +90,7 @@ type Service struct {
 	Name      string
 	Topic     discv5.Topic
 
-	serverPool *serverPool
+	serverPool *ServerPool
 
 	// application
 	accountManager      *accounts.Manager
@@ -174,7 +174,7 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 
 	// create server pool
 	trustedNodes := []string{}
-	svc.serverPool = newServerPool(store.async.table.Peers, svc.done, &svc.wg, trustedNodes)
+	svc.serverPool = NewServerPool(store.async.table.Peers, svc.done, &svc.wg, trustedNodes)
 
 	// create tx pool
 	stateReader := svc.GetEvmStateReader()
@@ -328,7 +328,7 @@ func (s *Service) Start() error {
 
 	s.pm.Start(s.p2pServer.MaxPeers)
 
-	s.serverPool.start(s.p2pServer, s.Topic)
+	s.serverPool.Start(s.p2pServer, s.Topic)
 
 	s.emitter = s.makeEmitter()
 	s.emitter.SetValidator(s.config.Emitter.Validator)
