@@ -54,10 +54,11 @@ type EmitterWorld struct {
 
 	Checkers *eventcheck.Checkers
 
-	MinGasPrice func() *big.Int
-	OnEmitted   func(e *inter.Event)
-	IsSynced    func() bool
-	PeersNum    func() int
+	MinGasPrice        func() *big.Int
+	OnEmitted          func(e *inter.Event)
+	IsSynced           func() bool
+	LastBlockProcessed func() time.Time
+	PeersNum           func() int
 
 	AddVersion func(e *inter.Event) *inter.Event
 }
@@ -657,7 +658,17 @@ func (em *Emitter) maxGasPowerToUse(e *inter.Event) uint64 {
 			return maxGasUsed
 		}
 	}
-	return params.MaxGasPowerUsed
+	maxGasUsed := uint64(params.MaxGasPowerUsed)
+	if time.Since(em.world.LastBlockProcessed()) > 2*em.intervals.Max {
+		maxGasUsed /= 2
+	}
+	if time.Since(em.world.LastBlockProcessed()) > 3*em.intervals.Max {
+		maxGasUsed /= 2
+	}
+	if time.Since(em.world.LastBlockProcessed()) > 4*em.intervals.Max {
+		maxGasUsed /= 15
+	}
+	return maxGasUsed
 }
 
 func (em *Emitter) isAllowedToEmit(e *inter.Event, selfParent *inter.EventHeaderData) bool {
@@ -701,7 +712,17 @@ func (em *Emitter) isAllowedToEmit(e *inter.Event, selfParent *inter.EventHeader
 	}
 	// Emit no more than 1 event per confirmingEmitInterval (when there's no txs to originate, but at least 1 tx to confirm)
 	{
-		if passedTime < em.intervals.Confirming &&
+		interval := em.intervals.Confirming
+		if time.Since(em.world.LastBlockProcessed()) > 2*em.intervals.Max {
+			interval *= 2
+		}
+		if time.Since(em.world.LastBlockProcessed()) > 3*em.intervals.Max {
+			interval *= 2
+		}
+		if time.Since(em.world.LastBlockProcessed()) > 4*em.intervals.Max {
+			interval *= 25
+		}
+		if passedTime < interval &&
 			em.world.OccurredTxs.Len() != 0 &&
 			len(e.Transactions) == 0 {
 			return false
