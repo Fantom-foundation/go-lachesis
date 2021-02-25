@@ -10,5 +10,4 @@ type SfcConstants struct {
 	LongGasPowerAllocPerSec  uint64
 	BaseRewardPerSec         *big.Int
 	OfflinePenaltyThreshold  BlocksMissed
-	MinGasPrice *big.Int
 }
