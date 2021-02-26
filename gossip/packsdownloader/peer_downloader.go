@@ -20,9 +20,9 @@ const (
 
 	// Maximum number of stored packs per peer.
 	// Shouldn't be high, because we do binary search, so stored packs are O(log_2(total packs)) + PeerProgress broadcasts
-	maxPeerPacks = 128
+	maxPeerPacks = 2048
 	// Maximum number of parallel full pack requests to a peer
-	maxFetchingFullPacks = 3
+	maxFetchingFullPacks = 2
 
 	// maxQueuedFullPacks is the maximum number of inject batches to queue up before
 	// dropping incoming packs.
@@ -93,6 +93,7 @@ type PeerPacksDownloader struct {
 	fetchingInfo map[idx.Pack]time.Time // the packs we've requested
 	fetchingFull map[idx.Pack]time.Time // the packs we've requested
 	prevRequest  time.Time              // time of prev. request to the peer
+	start        time.Time
 }
 
 // New creates a packs fetcher to retrieve events based on pack announcements. Works only with 1 peer.
@@ -110,6 +111,7 @@ func newPeer(peer Peer, myEpoch idx.Epoch, fetcher *fetcher.Fetcher, onlyNotConn
 		fetcher:          fetcher,
 		onlyNotConnected: onlyNotConnected,
 		dropPeer:         dropPeer,
+		start:            time.Now(),
 	}
 }
 
@@ -274,7 +276,11 @@ func (d *PeerPacksDownloader) tryToSync() {
 
 	if requestFull {
 		// request a few packs in parallel
-		for i := index; i < index+maxFetchingFullPacks && i <= d.packsNum; i++ {
+		maxPacks := idx.Pack(maxFetchingFullPacks)
+		if time.Since(d.start) > 10*time.Minute {
+			maxPacks = 1
+		}
+		for i := index; i < index+maxPacks && i <= d.packsNum; i++ {
 			d.timedRequestFullPack(i, true)
 			if i+1 <= d.packsNum {
 				_, found := d.packInfos.Get(int(i + 1))
@@ -380,10 +386,6 @@ func (d *PeerPacksDownloader) sweepKnown() {
 		allKnown := len(d.onlyNotConnected(packInfo.heads)) == 0
 		if allKnownMet {
 			toRemove = append(toRemove, packIdx)
-
-			if !allKnown {
-				log.Error("Peer downloader error: met pack with an unknown head before pack with only known heads. Faulty peer?", "peer", d.peer.ID)
-			}
 		} else if allKnown {
 			allKnownMet = true
 		}
