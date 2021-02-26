@@ -26,7 +26,7 @@ const (
 	arriveTimeout = 1000 * time.Millisecond // Time allowance before an announced event is explicitly requested
 	gatherSlack   = 100 * time.Millisecond  // Interval used to collate almost-expired announces with fetches
 	fetchTimeout  = 10 * time.Second        // Maximum allowed time to return an explicitly requested event
-	hashLimit     = 3000                    // Maximum number of unique events a peer may have announced
+	hashLimit     = 4000                    // Maximum number of unique events a peer may have announced
 
 	maxInjectBatch   = 4   // Maximum number of events in an inject batch (batch is divided if exceeded)
 	maxAnnounceBatch = 256 // Maximum number of hashes in an announce batch (batch is divided if exceeded)

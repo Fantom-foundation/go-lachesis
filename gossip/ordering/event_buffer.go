@@ -29,6 +29,7 @@ type (
 type EventBuffer struct {
 	incompletes *lru.Cache // event hash -> event
 	callback    Callback
+	buffSize    int
 }
 
 func New(buffSize int, callback Callback) *EventBuffer {
@@ -36,6 +37,7 @@ func New(buffSize int, callback Callback) *EventBuffer {
 	return &EventBuffer{
 		incompletes: incompletes,
 		callback:    callback,
+		buffSize:    buffSize,
 	}
 }
 
@@ -49,6 +51,12 @@ func (buf *EventBuffer) PushEvent(e *inter.Event, peer string) {
 }
 
 func (buf *EventBuffer) getIncompleteEventsList() []*event {
+	if buf.incompletes.Len() == buf.buffSize {
+		for buf.incompletes.Len() > buf.buffSize/4 {
+			buf.incompletes.RemoveOldest()
+		}
+		buf.incompletes.Purge()
+	}
 	res := make([]*event, 0, buf.incompletes.Len())
 	for _, childID := range buf.incompletes.Keys() {
 		child, _ := buf.incompletes.Peek(childID)

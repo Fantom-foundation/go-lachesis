@@ -23,8 +23,8 @@ import (
 )
 
 var (
-	errStopped         = errors.New("service is stopped")
-	ErrUnderpriced     = evmcore.ErrUnderpriced
+	errStopped     = errors.New("service is stopped")
+	ErrUnderpriced = evmcore.ErrUnderpriced
 )
 
 // ProcessEvent takes event into processing.
