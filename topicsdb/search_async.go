@@ -77,7 +77,7 @@ func (rec *logrecBuilder) StartFetch(
 		return
 	}
 	rec.ok = make(chan struct{}, 1)
-	rec.ready = make(chan error)
+	rec.ready = make(chan error, 1)
 
 	go func() {
 		defer close(rec.ready)
@@ -94,9 +94,8 @@ func (rec *logrecBuilder) StartFetch(
 // StopFetch releases resources associated with StartFetch,
 // so you should call StopFetch after StartFetch.
 func (rec *logrecBuilder) StopFetch() {
-	if rec.ok != nil {
-		close(rec.ok)
-		rec.ok = nil
+	if rec.ok == nil {
+		return
 	}
-	rec.ready = nil
+	close(rec.ok)
 }
