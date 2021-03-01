@@ -141,13 +141,17 @@ func importFile(srv *gossip.Service, check bool, fn string) error {
 		}
 
 		eStart := time.Now()
+		var err error
 		if check {
-			err := srv.ValidateEvent(e)
+			err = srv.ValidateEvent(e)
 			if err != nil && err != epochcheck.ErrNotRelevant && err != eventcheck.ErrAlreadyConnectedEvent {
 				return err
 			}
 		}
-		err := srv.ProcessEvent(e)
+
+		if err == nil {
+			err = srv.ProcessEvent(e)
+		}
 		if err == epochcheck.ErrNotRelevant || err == eventcheck.ErrAlreadyConnectedEvent {
 			skipped++
 		} else if err != nil {
