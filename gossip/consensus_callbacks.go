@@ -65,7 +65,7 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 		return errStopped
 	}
 
-	if s.store.HasEventHeader(e.Hash()) { // sanity check
+	if s.store.HasEvent(e.Hash()) { // sanity check
 		return eventcheck.ErrAlreadyConnectedEvent
 	}
 
