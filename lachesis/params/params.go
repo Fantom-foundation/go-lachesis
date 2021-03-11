@@ -17,3 +17,13 @@ const (
 
 	TxGas = params.TxGas
 )
+
+func MaxGasLimit() uint64 {
+	maxEmptyEventGas := EventGas +
+		7*ParentGas +
+		uint64(MaxExtraData)*ExtraDataGas
+	if MaxGasPowerUsed < maxEmptyEventGas {
+		return 0
+	}
+	return MaxGasPowerUsed - maxEmptyEventGas
+}
