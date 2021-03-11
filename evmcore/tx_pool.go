@@ -1113,16 +1113,6 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	}
 }
 
-func maxGasLimit() uint64 {
-	maxEmptyEventGas := lachesisparams.EventGas +
-		7*lachesisparams.ParentGas +
-		uint64(lachesisparams.MaxExtraData)*lachesisparams.ExtraDataGas
-	if lachesisparams.MaxGasPowerUsed < maxEmptyEventGas {
-		return 0
-	}
-	return lachesisparams.MaxGasPowerUsed - maxEmptyEventGas
-}
-
 // reset retrieves the current state of the blockchain and ensures the content
 // of the transaction pool is valid with regard to the chain state.
 func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
@@ -1200,8 +1190,8 @@ func (pool *TxPool) reset(oldHead, newHead *EvmHeader) {
 	pool.currentState = statedb
 	pool.pendingNonces = newTxNoncer(statedb)
 	pool.currentMaxGas = newHead.GasLimit
-	if pool.currentMaxGas > maxGasLimit() {
-		pool.currentMaxGas = maxGasLimit()
+	if pool.currentMaxGas > lachesisparams.MaxGasLimit() {
+		pool.currentMaxGas = lachesisparams.MaxGasLimit()
 	}
 
 	// Inject any transactions discarded due to reorgs
