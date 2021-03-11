@@ -40,7 +40,7 @@ func TestPublicBlockChainAPI_Call(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), &map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), &map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -86,7 +86,7 @@ func TestPublicBlockChainAPI_EstimateGas(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
-		blockNr := rpc.PendingBlockNumber
+		blockNr := rpc.BlockNumberOrHashWithNumber(rpc.PendingBlockNumber)
 		_, _ = api.EstimateGas(ctx, CallArgs{}, &blockNr)
 	})
 }
@@ -97,16 +97,16 @@ func TestPublicBlockChainAPI_GetBalance(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
-		balance, err := api.GetBalance(ctx, common.Address{1}, rpc.BlockNumber(1))
+		balance, err := api.GetBalance(ctx, common.Address{1}, rpc.BlockNumberOrHashWithNumber(1))
 		require.NoError(t, err)
 		require.Equal(t, big.NewInt(10), balance.ToInt())
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().StateAndHeaderByNumber(ctx, gomock.Any()).
+		b.EXPECT().StateAndHeaderByNumberOrHash(ctx, gomock.Any()).
 			Return(nil, nil, ErrBackendTest).
 			Times(1)
-		_, err := api.GetBalance(ctx, common.Address{1}, rpc.BlockNumber(1))
+		_, err := api.GetBalance(ctx, common.Address{1}, rpc.BlockNumberOrHashWithNumber(1))
 		require.Error(t, err)
 	})
 }
@@ -127,7 +127,7 @@ func TestPublicBlockChainAPI_GetBlockByHash(t *testing.T) {
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().GetBlock(gomock.Any(), gomock.Any()).
+		b.EXPECT().BlockByHash(gomock.Any(), gomock.Any()).
 			Return(nil, ErrBackendTest).
 			Times(1)
 		b.EXPECT().CalcLogsBloom().
@@ -173,16 +173,16 @@ func TestPublicBlockChainAPI_GetCode(t *testing.T) {
 	api := NewPublicBlockChainAPI(b)
 
 	require.NotPanics(t, func() {
-		res, err := api.GetCode(ctx, common.Address{1}, rpc.BlockNumber(1))
+		res, err := api.GetCode(ctx, common.Address{1}, rpc.BlockNumberOrHashWithNumber(1))
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().StateAndHeaderByNumber(ctx, gomock.Any()).
+		b.EXPECT().StateAndHeaderByNumberOrHash(ctx, gomock.Any()).
 			Return(nil, nil, ErrBackendTest).
 			Times(1)
-		res, err := api.GetCode(ctx, common.Address{1}, rpc.BlockNumber(1))
+		res, err := api.GetCode(ctx, common.Address{1}, rpc.BlockNumberOrHashWithNumber(1))
 		require.Error(t, err)
 		require.Empty(t, res)
 	})
@@ -253,15 +253,15 @@ func TestPublicBlockChainAPI_GetProof(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
-		res, err := api.GetProof(ctx, common.Address{1}, []string{"1"}, rpc.BlockNumber(1))
+		res, err := api.GetProof(ctx, common.Address{1}, []string{"1"}, rpc.BlockNumberOrHashWithNumber(1))
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
 	require.NotPanics(t, func() {
-		b.EXPECT().StateAndHeaderByNumber(gomock.Any(), gomock.Any()).
+		b.EXPECT().StateAndHeaderByNumberOrHash(gomock.Any(), gomock.Any()).
 			Return(nil, nil, ErrBackendTest).
 			Times(1)
-		_, err := api.GetProof(ctx, common.Address{1}, []string{"1"}, rpc.BlockNumber(1))
+		_, err := api.GetProof(ctx, common.Address{1}, []string{"1"}, rpc.BlockNumberOrHashWithNumber(1))
 		require.Error(t, err)
 	})
 }
@@ -272,15 +272,15 @@ func TestPublicBlockChainAPI_GetStorageAt(t *testing.T) {
 
 	api := NewPublicBlockChainAPI(b)
 	require.NotPanics(t, func() {
-		res, err := api.GetStorageAt(ctx, common.Address{1}, "1", rpc.BlockNumber(1))
+		res, err := api.GetStorageAt(ctx, common.Address{1}, "1", rpc.BlockNumberOrHashWithNumber(1))
 		require.NoError(t, err)
 		require.NotEmpty(t, res)
 	})
 	require.NotPanics(t, func() {
-		b.EXPECT().StateAndHeaderByNumber(gomock.Any(), gomock.Any()).
+		b.EXPECT().StateAndHeaderByNumberOrHash(gomock.Any(), gomock.Any()).
 			Return(nil, nil, ErrBackendTest).
 			Times(1)
-		res, err := api.GetStorageAt(ctx, common.Address{1}, "1", rpc.BlockNumber(1))
+		res, err := api.GetStorageAt(ctx, common.Address{1}, "1", rpc.BlockNumberOrHashWithNumber(1))
 		require.Error(t, err)
 		require.Empty(t, res)
 	})
@@ -297,7 +297,7 @@ func TestPublicBlockChainAPI_GetUncleByBlockHashAndIndex(t *testing.T) {
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().GetBlock(ctx, gomock.Any()).
+		b.EXPECT().BlockByHash(ctx, gomock.Any()).
 			Return(nil, ErrBackendTest).
 			Times(1)
 		_, err := api.GetUncleByBlockHashAndIndex(ctx, common.Hash{1}, hexutil.Uint(1))
@@ -330,14 +330,14 @@ func TestPublicBlockChainAPI_GetUncleCountByBlockHash(t *testing.T) {
 	api := NewPublicBlockChainAPI(b)
 
 	require.NotPanics(t, func() {
-		b.EXPECT().GetBlock(ctx, gomock.Any()).
+		b.EXPECT().BlockByHash(ctx, gomock.Any()).
 			Return(nil, nil).
 			Times(1)
 		api.GetUncleCountByBlockHash(ctx, common.Hash{1})
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().GetBlock(ctx, gomock.Any()).
+		b.EXPECT().BlockByHash(ctx, gomock.Any()).
 			Return(nil, ErrBackendTest).
 			Times(1)
 		api.GetUncleCountByBlockHash(ctx, common.Hash{1})

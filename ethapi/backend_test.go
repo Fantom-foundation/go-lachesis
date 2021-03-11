@@ -95,7 +95,7 @@ func initTestBackend(t *testing.T, b *MockBackend) {
 		Return(1).
 		AnyTimes()
 
-	b.EXPECT().GetBlock(gomock.Any(), gomock.Any()).
+	b.EXPECT().BlockByHash(gomock.Any(), gomock.Any()).
 		Return(&evmcore.EvmBlock{
 			EvmHeader: evmcore.EvmHeader{
 				Number:     big.NewInt(1),
@@ -186,7 +186,7 @@ func initTestBackend(t *testing.T, b *MockBackend) {
 	stateDB.SetNonce(common.Address{1}, 1)
 	stateDB.AddBalance(common.Address{1}, big.NewInt(10))
 	stateDB.SetCode(common.Address{1}, []byte{1, 2, 3})
-	b.EXPECT().StateAndHeaderByNumber(gomock.Any(), gomock.Any()).
+	b.EXPECT().StateAndHeaderByNumberOrHash(gomock.Any(), gomock.Any()).
 		Return(stateDB, &evmcore.EvmHeader{}, nil).
 		Times(1)
 
