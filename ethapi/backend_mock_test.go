@@ -222,35 +222,35 @@ func (mr *MockBackendMockRecorder) BlockByNumber(ctx, number interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockByNumber", reflect.TypeOf((*MockBackend)(nil).BlockByNumber), ctx, number)
 }
 
-// StateAndHeaderByNumber mocks base method
-func (m *MockBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *evmcore.EvmHeader, error) {
+// StateAndHeaderByNumberOrHash mocks base method
+func (m *MockBackend) StateAndHeaderByNumberOrHash(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (*state.StateDB, *evmcore.EvmHeader, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateAndHeaderByNumber", ctx, number)
+	ret := m.ctrl.Call(m, "StateAndHeaderByNumberOrHash", ctx, blockNrOrHash)
 	ret0, _ := ret[0].(*state.StateDB)
 	ret1, _ := ret[1].(*evmcore.EvmHeader)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// StateAndHeaderByNumber indicates an expected call of StateAndHeaderByNumber
-func (mr *MockBackendMockRecorder) StateAndHeaderByNumber(ctx, number interface{}) *gomock.Call {
+// StateAndHeaderByNumberOrHash indicates an expected call of StateAndHeaderByNumberOrHash
+func (mr *MockBackendMockRecorder) StateAndHeaderByNumberOrHash(ctx, blockNrOrHash interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAndHeaderByNumber", reflect.TypeOf((*MockBackend)(nil).StateAndHeaderByNumber), ctx, number)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAndHeaderByNumberOrHash", reflect.TypeOf((*MockBackend)(nil).StateAndHeaderByNumberOrHash), ctx, blockNrOrHash)
 }
 
-// GetBlock mocks base method
-func (m *MockBackend) GetBlock(ctx context.Context, hash common.Hash) (*evmcore.EvmBlock, error) {
+// BlockByHash mocks base method
+func (m *MockBackend) BlockByHash(ctx context.Context, hash common.Hash) (*evmcore.EvmBlock, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetBlock", ctx, hash)
+	ret := m.ctrl.Call(m, "BlockByHash", ctx, hash)
 	ret0, _ := ret[0].(*evmcore.EvmBlock)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetBlock indicates an expected call of GetBlock
-func (mr *MockBackendMockRecorder) GetBlock(ctx, hash interface{}) *gomock.Call {
+// BlockByHash indicates an expected call of BlockByHash
+func (mr *MockBackendMockRecorder) BlockByHash(ctx, hash interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlock", reflect.TypeOf((*MockBackend)(nil).GetBlock), ctx, hash)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BlockByHash", reflect.TypeOf((*MockBackend)(nil).BlockByHash), ctx, hash)
 }
 
 // GetReceiptsByNumber mocks base method

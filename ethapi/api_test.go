@@ -37,7 +37,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -51,7 +51,7 @@ func TestDoCall(t *testing.T) {
 	})
 
 	require.NotPanics(t, func() {
-		b.EXPECT().StateAndHeaderByNumber(gomock.Any(), gomock.Any()).
+		b.EXPECT().StateAndHeaderByNumberOrHash(gomock.Any(), gomock.Any()).
 			Return(nil, nil, ErrBackendTest).
 			Times(1)
 
@@ -60,7 +60,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -80,7 +80,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -102,7 +102,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -123,7 +123,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -145,7 +145,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -164,7 +164,7 @@ func TestDoCall(t *testing.T) {
 			GasPrice: &gasPrice,
 			Value:    &value,
 			Data:     &data,
-		}, rpc.BlockNumber(1), map[common.Address]account{
+		}, rpc.BlockNumberOrHashWithNumber(1), map[common.Address]account{
 			common.HexToAddress("0x0"): account{
 				Nonce:   &nonce,
 				Code:    &code,
@@ -184,7 +184,7 @@ func TestDoEstimateGas(t *testing.T) {
 
 	require.NotPanics(t, func() {
 		gas := hexutil.Uint64(21000)
-		DoEstimateGas(ctx, b, CallArgs{Gas: &gas}, rpc.BlockNumber(1), 22000)
+		DoEstimateGas(ctx, b, CallArgs{Gas: &gas}, rpc.BlockNumberOrHashWithNumber(1), 22000)
 		// require.NoError(t, err)
 	})
 }
