@@ -24,3 +24,13 @@ var (
 	// MinGasPrice is minimum possible gas price for a transaction
 	MinGasPrice = big.NewInt(1e9)
 )
+
+func MaxGasLimit() uint64 {
+	maxEmptyEventGas := EventGas +
+		7*ParentGas +
+		uint64(MaxExtraData)*ExtraDataGas
+	if MaxGasPowerUsed < maxEmptyEventGas {
+		return 0
+	}
+	return MaxGasPowerUsed - maxEmptyEventGas
+}
