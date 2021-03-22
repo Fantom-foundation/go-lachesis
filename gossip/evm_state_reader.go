@@ -1,7 +1,6 @@
 package gossip
 
 import (
-	"github.com/Fantom-foundation/go-lachesis/inter"
 	"math/big"
 	"sync"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/app"
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 )
 
