@@ -30,6 +30,7 @@ import (
 
 	"github.com/Fantom-foundation/go-lachesis/evmcore"
 	"github.com/Fantom-foundation/go-lachesis/hash"
+	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/topicsdb"
 )
 
@@ -97,7 +98,7 @@ func newFilter(backend Backend, addresses []common.Address, topics [][]common.Ha
 // first block that contains matches, updating the start of the filter accordingly.
 func (f *Filter) Logs(ctx context.Context) ([]*types.Log, error) {
 	// If we're doing singleton block filtering, execute and return
-	if f.block != hash.Zero {
+	if f.block != common.Hash(hash.Zero) {
 		header, err := f.backend.HeaderByHash(ctx, f.block)
 		if err != nil {
 			return nil, err
@@ -126,19 +127,23 @@ func (f *Filter) Logs(ctx context.Context) ([]*types.Log, error) {
 		return f.unindexedLogs(ctx, int64(end))
 	}
 
-	return f.indexedLogs(ctx, int64(end))
+	return f.indexedLogs(ctx, idx.Block(f.begin), idx.Block(end))
 }
 
 // indexedLogs returns the logs matching the filter criteria based on topics index.
-func (f *Filter) indexedLogs(ctx context.Context, end int64) ([]*types.Log, error) {
-	logs, err := f.backend.EvmLogIndex().Find(f.topics)
-	if err != nil {
-		return nil, err
+func (f *Filter) indexedLogs(ctx context.Context, begin, end idx.Block) ([]*types.Log, error) {
+	addresses := make([]common.Hash, len(f.addresses))
+	for i, addr := range f.addresses {
+		addresses[i] = addr.Hash()
 	}
 
-	logs = filterLogs(logs, big.NewInt(f.begin), big.NewInt(end), f.addresses, f.topics)
+	pattern := make([][]common.Hash, 1, len(f.topics)+1)
+	pattern[0] = addresses
+	pattern = append(pattern, f.topics...)
 
-	return logs, nil
+	logs, err := f.backend.EvmLogIndex().FindInBlocks(ctx, begin, end, pattern)
+
+	return logs, err
 }
 
 // indexedLogs returns the logs matching the filter criteria based on raw block
