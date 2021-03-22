@@ -1,10 +1,11 @@
 package gossip
 
 import (
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
-	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // SetBlock stores chain block.

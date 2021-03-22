@@ -10,6 +10,7 @@ import (
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
 	"github.com/Fantom-foundation/go-lachesis/inter/sfctype"
+	"github.com/Fantom-foundation/go-lachesis/kvdb/table"
 )
 
 type legacySfcDelegation struct {
@@ -219,5 +220,23 @@ func (s *Store) MigrateAdjustableMinGasPrice() error {
 			}
 		}
 	}
+	return nil
+}
+
+func (s *Store) DropTopicsdb(flush func ()) error {
+	logsTable := table.New(s.mainDb, []byte("L"))
+	it := logsTable.NewIterator(nil, nil)
+	defer it.Release()
+
+	i := 1
+	for it.Next() {
+		_ = logsTable.Delete(it.Key())
+		if i % 100000 == 0 {
+			flush()
+		}
+		i++
+	}
+	flush()
+
 	return nil
 }

@@ -69,6 +69,7 @@ func (m *Migration) Exec(curr IDStore) error {
 		return err
 	}
 
+	log.Warn("Applying '" + m.name + "' migration")
 	err = m.exec()
 	if err != nil {
 		log.Error("'"+m.name+"' migration failed", "err", err)
