@@ -1,6 +1,8 @@
 package gossip
 
 import (
+	"github.com/ethereum/go-ethereum/rlp"
+
 	"github.com/Fantom-foundation/go-lachesis/hash"
 	"github.com/Fantom-foundation/go-lachesis/inter"
 	"github.com/Fantom-foundation/go-lachesis/inter/idx"
@@ -35,6 +37,18 @@ func (s *Store) GetBlock(n idx.Block) *inter.Block {
 	}
 
 	return block
+}
+
+func (s *Store) ForEachBlock(fn func(index idx.Block, block *inter.Block)) {
+	it := s.table.Blocks.NewIterator(nil, nil)
+	for it.Next() {
+		var block inter.Block
+		err := rlp.DecodeBytes(it.Value(), &block)
+		if err != nil {
+			s.Log.Crit("Failed to decode block", "err", err)
+		}
+		fn(idx.BytesToBlock(it.Key()), &block)
+	}
 }
 
 // SetBlockIndex stores chain block index.
