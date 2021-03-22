@@ -367,7 +367,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 				createdTime = net.Genesis.Time
 			} else {
 				// event CreatedStake(uint256 indexed stakerID, address indexed dagSfcAddress, uint256 amount)
-				creationLog, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfcpos.Topics.CreatedStake}, {futils.U64to256(uint64(stakerID))}})
+				creationLog, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfc.ContractAddress.Hash()}, {sfcpos.Topics.CreatedStake}, {futils.U64to256(uint64(stakerID))}})
 				if err != nil {
 					return genStore, err
 				}
@@ -394,7 +394,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 			// recover deactivation time/epoch from logs
 			{
 				// event WithdrawnStake(uint256 indexed stakerID, uint256 penalty)
-				withdrawalLog, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfcpos.Topics.WithdrawnStake}, {futils.U64to256(uint64(stakerID))}})
+				withdrawalLog, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfc.ContractAddress.Hash()}, {sfcpos.Topics.WithdrawnStake}, {futils.U64to256(uint64(stakerID))}})
 				if err != nil {
 					return genStore, err
 				}
@@ -548,7 +548,7 @@ func ExportState(path string, gdb *gossip.Store, cdb *poset.Store, net *lachesis
 	})
 	log.Info("Exported delegations", "elapsed", common.PrettyDuration(time.Since(start)))
 
-	withdrawalRequestLogs, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfcpos.Topics.CreatedWithdrawRequest}})
+	withdrawalRequestLogs, err := gdb.App().EvmLogs().Find([][]common.Hash{{sfc.ContractAddress.Hash()}, {sfcpos.Topics.CreatedWithdrawRequest}})
 	if err != nil {
 		return genStore, err
 	}
