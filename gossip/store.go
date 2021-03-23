@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -36,11 +37,12 @@ type Store struct {
 		NetworkVersion kvdb.KeyValueStore `table:"J"`
 
 		// Main DAG tables
-		Events    kvdb.KeyValueStore `table:"e"`
-		Blocks    kvdb.KeyValueStore `table:"b"`
-		PackInfos kvdb.KeyValueStore `table:"p"`
-		Packs     kvdb.KeyValueStore `table:"P"`
-		PacksNum  kvdb.KeyValueStore `table:"n"`
+		Events         kvdb.KeyValueStore `table:"e"`
+		Blocks         kvdb.KeyValueStore `table:"b"`
+		PackInfos      kvdb.KeyValueStore `table:"p"`
+		Packs          kvdb.KeyValueStore `table:"P"`
+		PacksNum       kvdb.KeyValueStore `table:"n"`
+		HighestLamport kvdb.KeyValueStore `table:"u"`
 
 		// general economy tables
 		EpochStats kvdb.KeyValueStore `table:"E"`
@@ -60,13 +62,14 @@ type Store struct {
 	EpochDbs *temporary.Dbs
 
 	cache struct {
-		Events        *lru.Cache `cache:"-"` // store by pointer
-		EventsHeaders *lru.Cache `cache:"-"` // store by pointer
-		Blocks        *lru.Cache `cache:"-"` // store by pointer
-		PackInfos     *lru.Cache `cache:"-"` // store by value
-		EpochStats    *lru.Cache `cache:"-"` // store by value
-		TxPositions   *lru.Cache `cache:"-"` // store by pointer
-		BlockHashes   *lru.Cache `cache:"-"` // store by pointer
+		Events         *lru.Cache   `cache:"-"` // store by pointer
+		EventsHeaders  *lru.Cache   `cache:"-"` // store by pointer
+		Blocks         *lru.Cache   `cache:"-"` // store by pointer
+		PackInfos      *lru.Cache   `cache:"-"` // store by value
+		EpochStats     *lru.Cache   `cache:"-"` // store by value
+		TxPositions    *lru.Cache   `cache:"-"` // store by pointer
+		BlockHashes    *lru.Cache   `cache:"-"` // store by pointer
+		HighestLamport atomic.Value // store by value
 	}
 
 	mutex struct {

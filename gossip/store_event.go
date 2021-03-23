@@ -133,3 +133,15 @@ func (s *Store) GetEventRLP(id hash.Event) rlp.RawValue {
 func (s *Store) HasEvent(h hash.Event) bool {
 	return s.has(s.table.Events, h.Bytes())
 }
+
+func (s *Store) GetHighestLamport() idx.Lamport {
+	cache := s.cache.HighestLamport.Load()
+	if cache != nil {
+		return cache.(idx.Lamport)
+	}
+	return 0
+}
+
+func (s *Store) SetHighestLamport(lamport idx.Lamport) {
+	s.cache.HighestLamport.Store(lamport)
+}

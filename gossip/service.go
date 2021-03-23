@@ -174,6 +174,15 @@ func newService(config *Config, store *Store, engine Consensus) (*Service, error
 		IsEventAllowedIntoBlock: svc.isEventAllowedIntoBlock,
 	})
 
+	// find highest lamport
+	var highestLamport idx.Lamport
+	for _, id := range store.GetHeads(svc.engine.GetEpoch()) {
+		if highestLamport < id.Lamport() {
+			highestLamport = id.Lamport()
+		}
+	}
+	store.SetHighestLamport(highestLamport)
+
 	// create server pool
 	trustedNodes := []string{}
 	svc.serverPool = newServerPool(store.async.table.Peers, svc.done, &svc.wg, trustedNodes)
