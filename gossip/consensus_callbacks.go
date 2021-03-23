@@ -114,6 +114,13 @@ func (s *Service) processEvent(realEngine Consensus, e *inter.Event) error {
 		newEpoch = realEngine.GetEpoch()
 	}
 
+	// update highest lamport
+	if newEpoch != oldEpoch {
+		s.store.SetHighestLamport(0)
+	} else if e.Lamport > s.store.GetHighestLamport() {
+		s.store.SetHighestLamport(e.Lamport)
+	}
+
 	if newEpoch != oldEpoch {
 		// notify event checkers about new validation data
 		s.heavyCheckReader.Addrs.Store(ReadEpochPubKeys(s.app, newEpoch))

@@ -36,7 +36,7 @@ const (
 	txChanSize = 4096
 
 	// the maximum number of events in the ordering buffer
-	eventsBuffSize = 1024
+	eventsBuffSize = 1500
 )
 
 func errResp(code errCode, format string, v ...interface{}) error {
@@ -512,6 +512,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := checkLenLimits(len(announces), announces); err != nil {
 			return err
 		}
+		if len(announces) > 0 && announces[0].Lamport() > pm.store.GetHighestLamport()+eventsBuffSize {
+			break
+		}
 		// Mark the hashes as present at the remote node
 		for _, id := range announces {
 			p.MarkEvent(id)
@@ -534,6 +537,9 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		if err := checkLenLimits(len(events), events); err != nil {
 			return err
+		}
+		if len(events) > 0 && events[0].Lamport > pm.store.GetHighestLamport()+eventsBuffSize {
+			break
 		}
 		// Mark the hashes as present at the remote node
 		for _, e := range events {
