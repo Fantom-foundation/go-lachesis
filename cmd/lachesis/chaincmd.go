@@ -79,6 +79,20 @@ be gzipped
 Exports blockchain state into a file.
 `,
 			},
+			{
+				Name:      "evm",
+				Usage:     "Export EVM storage",
+				ArgsUsage: "<filename>",
+				Action:    utils.MigrateFlags(exportEvmStorage),
+				Flags: []cli.Flag{
+					DataDirFlag,
+				},
+				Description: `
+    lachesis export evm
+
+Exports EVM storage into a file.
+`,
+			},
 		},
 	}
 )
