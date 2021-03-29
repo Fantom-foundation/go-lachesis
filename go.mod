@@ -3,7 +3,7 @@ module github.com/Fantom-foundation/go-lachesis
 go 1.13
 
 require (
-	github.com/Fantom-foundation/go-opera v0.0.0-20210324110412-a1a66a2652d0
+	github.com/Fantom-foundation/go-opera v0.0.0-20210329030859-db15cedd849d
 	github.com/Fantom-foundation/lachesis-base v0.0.0-20210323130105-a8e5ca7f15ac
 	github.com/beorn7/perks v1.0.1
 	github.com/cespare/cp v1.1.1
